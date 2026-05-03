@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.16",
+  "version": "1.1.18",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -1001,97 +1001,115 @@
       ],
       "settings": [
         {
-          "id": "address",
-          "type": "text",
+          "type": "group",
           "label": {
-            "en": "IP Address",
-            "de": "IP-Adresse"
+            "en": "Connection",
+            "de": "Verbindung"
           },
-          "value": "",
-          "hint": {
-            "en": "IP address of the SUN2000 inverter or SDongle.",
-            "de": "IP-Adresse des Inverter SUN 2000s oder SDongle."
-          },
-          "highlight": true
+          "children": [
+            {
+              "id": "address",
+              "type": "text",
+              "label": {
+                "en": "IP Address",
+                "de": "IP-Adresse"
+              },
+              "value": "",
+              "hint": {
+                "en": "IP address of the SUN2000 inverter or SDongle.",
+                "de": "IP-Adresse des Inverter SUN 2000s oder SDongle."
+              },
+              "highlight": true
+            },
+            {
+              "id": "port",
+              "type": "number",
+              "label": {
+                "en": "Modbus Port",
+                "de": "Modbus Port"
+              },
+              "value": 502,
+              "min": 1,
+              "max": 65535,
+              "hint": {
+                "en": "Default 502. SDongle typically uses 6607.",
+                "de": "Standard 502. SDongle verwendet typischerweise 6607."
+              }
+            },
+            {
+              "id": "modbus_id",
+              "type": "number",
+              "label": {
+                "en": "Modbus Unit ID",
+                "de": "Modbus Geräte-ID"
+              },
+              "value": 1,
+              "min": 1,
+              "max": 247,
+              "hint": {
+                "en": "Modbus unit ID of the inverter (default: 1).",
+                "de": "Modbus Geräte-ID des Wechselrichters (Standard: 1)."
+              }
+            },
+            {
+              "id": "poll_interval",
+              "type": "number",
+              "label": {
+                "en": "Update Interval",
+                "de": "Aktualisierungsintervall"
+              },
+              "units": {
+                "en": "seconds",
+                "de": "Sekunden"
+              },
+              "value": 60,
+              "min": 10,
+              "max": 300,
+              "hint": {
+                "en": "How often to read data from the inverter.",
+                "de": "Wie oft Daten vom Wechselrichter abgerufen werden."
+              }
+            }
+          ]
         },
         {
-          "id": "port",
-          "type": "number",
+          "type": "group",
           "label": {
-            "en": "Modbus Port",
-            "de": "Modbus Port"
+            "en": "Feed-in Power Control",
+            "de": "Einspeiseleistungs-Begrenzung"
           },
-          "value": 502,
-          "min": 1,
-          "max": 65535,
-          "hint": {
-            "en": "Default 502. SDongle typically uses 6607.",
-            "de": "Standard 502. SDongle verwendet typischerweise 6607."
-          }
-        },
-        {
-          "id": "modbus_id",
-          "type": "number",
-          "label": {
-            "en": "Modbus Unit ID",
-            "de": "Modbus Geräte-ID"
-          },
-          "value": 1,
-          "min": 1,
-          "max": 247,
-          "hint": {
-            "en": "Modbus unit ID of the inverter (default: 1).",
-            "de": "Modbus Geräte-ID des Wechselrichters (Standard: 1)."
-          }
-        },
-        {
-          "id": "poll_interval",
-          "type": "number",
-          "label": {
-            "en": "Update Interval",
-            "de": "Aktualisierungsintervall"
-          },
-          "units": {
-            "en": "seconds",
-            "de": "Sekunden"
-          },
-          "value": 60,
-          "min": 10,
-          "max": 300,
-          "hint": {
-            "en": "How often to read data from the inverter.",
-            "de": "Wie oft Daten vom Wechselrichter abgerufen werden."
-          }
-        },
-        {
-          "id": "max_feed_in_power",
-          "type": "number",
-          "label": {
-            "en": "Max feed-in power (W)",
-            "de": "Maximale Einspeiseleistung (W)"
-          },
-          "min": 0,
-          "max": 100000,
-          "step": 100,
-          "hint": {
-            "en": "Maximum power fed into the grid in watts (register 47416). Only effective when active power control mode is set to 'Limited by power'. Synced from the inverter every 5 poll cycles.",
-            "de": "Maximale Einspeiseleistung in Watt (Register 47416). Nur wirksam wenn der Einspeisemodus auf 'Leistungsbegrenzt' gesetzt ist. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
-          }
-        },
-        {
-          "id": "max_feed_in_power_pct",
-          "type": "number",
-          "label": {
-            "en": "Max feed-in power (%)",
-            "de": "Maximale Einspeiseleistung (%)"
-          },
-          "min": 0,
-          "max": 100,
-          "step": 1,
-          "hint": {
-            "en": "Maximum power fed into the grid as percentage of rated power (register 47418). Only effective when active power control mode is set to 'Limited by percentage'. Synced from the inverter every 5 poll cycles.",
-            "de": "Maximale Einspeiseleistung als Prozentsatz der Nennleistung (Register 47418). Nur wirksam wenn der Einspeisemodus auf 'Prozentbegrenzt' gesetzt ist. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
-          }
+          "children": [
+            {
+              "id": "max_feed_in_power",
+              "type": "number",
+              "label": {
+                "en": "Max feed-in power (W)",
+                "de": "Maximale Einspeiseleistung (W)"
+              },
+              "min": 0,
+              "max": 100000,
+              "step": 100,
+              "hint": {
+                "en": "Maximum power fed into the grid in watts (register 47416). Only effective when active power control mode is set to 'Limited by power'. Synced from the inverter every 5 poll cycles.",
+                "de": "Maximale Einspeiseleistung in Watt (Register 47416). Nur wirksam wenn der Einspeisemodus auf 'Leistungsbegrenzt' gesetzt ist. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
+              }
+            },
+            {
+              "id": "max_feed_in_power_pct",
+              "type": "number",
+              "label": {
+                "en": "Max feed-in power (%)",
+                "de": "Maximale Einspeiseleistung (%)"
+              },
+              "min": 0,
+              "max": 100,
+              "step": 1,
+              "hint": {
+                "en": "Maximum power fed into the grid as percentage of rated power (register 47418). Only effective when active power control mode is set to 'Limited by percentage'. Synced from the inverter every 5 poll cycles.",
+                "de": "Maximale Einspeiseleistung als Prozentsatz der Nennleistung (Register 47418). Nur wirksam wenn der Einspeisemodus auf 'Prozentbegrenzt' gesetzt ist. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
+              }
+            }
+          ]
         }
       ]
     },
@@ -3697,6 +3715,80 @@
         ]
       },
       {
+        "id": "sun2000_set_max_feed_in_power",
+        "title": {
+          "en": "Set max feed-in power",
+          "de": "Maximale Einspeiseleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "Set max feed-in power to [[power]] W",
+          "de": "Maximale Einspeiseleistung auf [[power]] W setzen"
+        },
+        "hint": {
+          "en": "Sets the maximum grid feed-in power of the SUN2000 inverter via Modbus (register 47416). Set to 0 to block all export.",
+          "de": "Setzt die maximale Einspeiseleistung des SUN2000 Wechselrichters über Modbus (Register 47416). Auf 0 setzen, um die Einspeisung zu unterbinden."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 5000",
+              "de": "z.B. 5000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_max_feed_in_power_pct",
+        "title": {
+          "en": "Set max feed-in power (%)",
+          "de": "Maximale Einspeiseleistung (%) setzen"
+        },
+        "titleFormatted": {
+          "en": "Set max feed-in power to [[percentage]] %",
+          "de": "Maximale Einspeiseleistung auf [[percentage]] % setzen"
+        },
+        "hint": {
+          "en": "Sets the maximum grid feed-in power as a percentage of rated power via Modbus (register 47418). Set to 0 to block all export.",
+          "de": "Setzt die maximale Einspeiseleistung als Prozentsatz der Nennleistung über Modbus (Register 47418). Auf 0 setzen, um die Einspeisung zu unterbinden."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "percentage",
+            "title": {
+              "en": "Percentage (%)",
+              "de": "Prozent (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "0–100",
+              "de": "0–100"
+            }
+          }
+        ]
+      },
+      {
         "id": "luna2000_emma_set_working_mode",
         "title": {
           "en": "Set storage working mode",
@@ -4531,6 +4623,43 @@
             }
           }
         ]
+      },
+      {
+        "id": "luna2000_set_grid_charge_power",
+        "title": {
+          "en": "Set grid charge power",
+          "de": "Netzladeleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "Set grid charge power to [[power]] W",
+          "de": "Netzladeleistung auf [[power]] W setzen"
+        },
+        "hint": {
+          "en": "Sets the power at which the battery charges from the grid (register 47242). Requires 'Charge from grid' to be enabled.",
+          "de": "Setzt die Leistung, mit der die Batterie aus dem Netz geladen wird (Register 47242). Erfordert aktiviertes Netzladen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 5000",
+              "de": "z.B. 5000"
+            }
+          }
+        ]
       }
     ],
     "conditions": [
@@ -4635,6 +4764,80 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          }
+        ]
+      },
+      {
+        "id": "luna2000_soc_above",
+        "title": {
+          "en": "Battery SoC is !{{above|not above}} threshold",
+          "de": "Batterie-Ladezustand !{{über|nicht über}} Schwellwert"
+        },
+        "titleFormatted": {
+          "en": "Battery SoC is !{{above|not above}} [[soc]] %",
+          "de": "Batterie-Ladezustand !{{über|nicht über}} [[soc]] %"
+        },
+        "hint": {
+          "en": "True when the battery state of charge is above the given threshold.",
+          "de": "Wahr, wenn der Batterie-Ladezustand über dem angegebenen Schwellwert liegt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "number",
+            "name": "soc",
+            "title": {
+              "en": "SoC (%)",
+              "de": "Ladezustand (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 90",
+              "de": "z.B. 90"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_soc_below",
+        "title": {
+          "en": "Battery SoC is !{{below|not below}} threshold",
+          "de": "Batterie-Ladezustand !{{unter|nicht unter}} Schwellwert"
+        },
+        "titleFormatted": {
+          "en": "Battery SoC is !{{below|not below}} [[soc]] %",
+          "de": "Batterie-Ladezustand !{{unter|nicht unter}} [[soc]] %"
+        },
+        "hint": {
+          "en": "True when the battery state of charge is below the given threshold.",
+          "de": "Wahr, wenn der Batterie-Ladezustand unter dem angegebenen Schwellwert liegt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "number",
+            "name": "soc",
+            "title": {
+              "en": "SoC (%)",
+              "de": "Ladezustand (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 20",
+              "de": "z.B. 20"
+            }
           }
         ]
       },

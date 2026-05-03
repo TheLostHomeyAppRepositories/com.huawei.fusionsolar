@@ -479,6 +479,26 @@ class LUNA2000ModbusDevice extends Device {
           this._writeInProgress = false;
         }
       });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_grid_charge_power')
+      .registerRunListener(async ({ device, power }) => {
+        const raw = Math.round(Math.max(0, parseFloat(power) || 0));
+        this.log(`Set grid charge power: ${raw} W → reg 47242`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusU32(host(), port(), unitId(), 47242, raw);
+          this.log('Grid charge power written');
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ max_grid_charge_power: raw }).catch(() => {});
+        } catch (err) {
+          this.error('Set grid charge power failed:', err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
   }
 
   // ─── Conditions ────────────────────────────────────────────────────────────
@@ -491,6 +511,20 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getConditionCard('luna2000_is_discharging')
       .registerRunListener((args) => args.device._prevChargingState === 'discharging');
+
+    this.homey.flow
+      .getConditionCard('luna2000_soc_above')
+      .registerRunListener((args) => {
+        const soc = args.device.getCapabilityValue('measure_battery');
+        return soc !== null && soc !== undefined && soc > args.soc;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_soc_below')
+      .registerRunListener((args) => {
+        const soc = args.device.getCapabilityValue('measure_battery');
+        return soc !== null && soc !== undefined && soc < args.soc;
+      });
 
     this.homey.flow
       .getDeviceTriggerCard('luna2000_battery_status_changed')

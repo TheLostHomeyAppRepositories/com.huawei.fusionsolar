@@ -235,6 +235,47 @@ class SUN2000ModbusDevice extends Device {
           this._writeInProgress   = false;
         }
       });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_max_feed_in_power')
+      .registerRunListener(async ({ power }) => {
+        const raw = Math.round(Math.max(0, parseFloat(power) || 0));
+        this.log(`Write start  [sun2000_set_max_feed_in_power → reg 47416] value=${raw}W`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusU32(host(), port(), unitId(), 47416, raw);
+          this.log(`Write OK     [sun2000_set_max_feed_in_power → reg 47416]`);
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ max_feed_in_power: raw }).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [sun2000_set_max_feed_in_power → reg 47416]:`, err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_max_feed_in_power_pct')
+      .registerRunListener(async ({ percentage }) => {
+        const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
+        const raw = Math.round(pct * 10);
+        this.log(`Write start  [sun2000_set_max_feed_in_power_pct → reg 47418] value=${pct}%`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusRegister(host(), port(), unitId(), 47418, raw);
+          this.log(`Write OK     [sun2000_set_max_feed_in_power_pct → reg 47418]`);
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ max_feed_in_power_pct: pct }).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [sun2000_set_max_feed_in_power_pct → reg 47418]:`, err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
   }
 
   // ─── Power threshold triggers ──────────────────────────────────────────────

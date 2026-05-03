@@ -94,5 +94,11 @@
   },
   "1.1.16": {
     "en": "New flow triggers for all SUN2000 devices: solar power above/below a value for a specified duration (minutes)"
+  },
+  "1.1.17": {
+    "en": "New flow action cards for SUN2000 (Modbus): set max feed-in power in W and %"
+  },
+  "1.1.18": {
+    "en": "LUNA2000 (Modbus): new flow action to set grid charge power, new SoC condition cards (above/below)"
   }
 }

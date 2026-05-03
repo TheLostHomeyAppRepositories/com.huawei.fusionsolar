@@ -190,6 +190,20 @@ class LUNA2000EmmaModbusDevice extends Device {
     this.homey.flow
       .getConditionCard('luna2000_is_discharging')
       .registerRunListener((args) => args.device._prevChargingState === 'discharging');
+
+    this.homey.flow
+      .getConditionCard('luna2000_soc_above')
+      .registerRunListener((args) => {
+        const soc = args.device.getCapabilityValue('measure_battery');
+        return soc !== null && soc !== undefined && soc > args.soc;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_soc_below')
+      .registerRunListener((args) => {
+        const soc = args.device.getCapabilityValue('measure_battery');
+        return soc !== null && soc !== undefined && soc < args.soc;
+      });
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
