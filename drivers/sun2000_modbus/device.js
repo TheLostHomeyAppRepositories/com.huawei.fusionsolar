@@ -77,11 +77,13 @@ const DEPRECATED_CAPABILITIES = [
   'meter_power.today_batt_output',
 ];
 
-// Only the inverter control register addresses (47xxx)
+// Only the inverter control register addresses (47xxx + 40125/40126)
 const INVERTER_CONTROL_REGISTERS = {
-  activePowerControlMode:  CONTROL_REGISTERS.activePowerControlMode,
-  activePowerMaxFeedIn:    CONTROL_REGISTERS.activePowerMaxFeedIn,
-  activePowerMaxFeedInPct: CONTROL_REGISTERS.activePowerMaxFeedInPct,
+  activePowerControlMode:        CONTROL_REGISTERS.activePowerControlMode,
+  activePowerMaxFeedIn:          CONTROL_REGISTERS.activePowerMaxFeedIn,
+  activePowerMaxFeedInPct:       CONTROL_REGISTERS.activePowerMaxFeedInPct,
+  activePowerFixedValueDerating: CONTROL_REGISTERS.activePowerFixedValueDerating,
+  activePowerPercentageDerating: CONTROL_REGISTERS.activePowerPercentageDerating,
 };
 
 // Maps writable enum capability → Modbus register address (47xxx)
@@ -101,6 +103,7 @@ class SUN2000ModbusDevice extends Device {
     this._settingsInitialized       = false; // true after first successful _fetchControl
     this._controlPollCounter        = 4; // start at 4 so first poll immediately reads control registers
     this._powerHistory              = [];
+    this._ratedPowerW               = null; // populated by first poll, used to compute output_limit_w "no-cap" default
     await this._ensureCapabilities();
     this._registerControlListeners();
     this._registerFlowActions();
@@ -138,6 +141,21 @@ class SUN2000ModbusDevice extends Device {
         this.log(`Write max_feed_in_power_pct: ${newSettings.max_feed_in_power_pct} % → reg 47418 raw=${raw}`);
         writeModbusRegister(address, port, modbusId, 47418, raw)
           .catch((err) => this.error('max_feed_in_power_pct write failed:', err.message));
+      }
+
+      if (changedKeys.includes('output_limit_w')) {
+        const raw = Math.round(Math.max(0, parseFloat(newSettings.output_limit_w) || 0));
+        this.log(`Write output_limit_w: ${raw} W → reg 40126`);
+        writeModbusU32(address, port, modbusId, 40126, raw)
+          .catch((err) => this.error('output_limit_w write failed:', err.message));
+      }
+
+      if (changedKeys.includes('output_limit_pct')) {
+        const pct = Math.min(100, Math.max(0, parseFloat(newSettings.output_limit_pct) || 0));
+        const raw = Math.round(pct * 10);
+        this.log(`Write output_limit_pct: ${pct} % → reg 40125 raw=${raw}`);
+        writeModbusRegister(address, port, modbusId, 40125, raw)
+          .catch((err) => this.error('output_limit_pct write failed:', err.message));
       }
     }
   }
@@ -276,6 +294,75 @@ class SUN2000ModbusDevice extends Device {
           this._writeInProgress           = false;
         }
       });
+
+    // Direct derating cards (40125/40126) — work standalone without a Smart Power
+    // Sensor. Reference: ioBroker.sun2000 issue #176, confirmed by Huawei.
+    this.homey.flow
+      .getActionCard('sun2000_set_active_power_derating_w')
+      .registerRunListener(async ({ power }) => {
+        const raw = Math.round(Math.max(0, parseFloat(power) || 0));
+        this.log(`Write start  [sun2000_set_active_power_derating_w → reg 40126] value=${raw}W`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusU32(host(), port(), unitId(), 40126, raw);
+          this.log(`Write OK     [sun2000_set_active_power_derating_w → reg 40126]`);
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ output_limit_w: raw }).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [sun2000_set_active_power_derating_w → reg 40126]:`, err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_active_power_derating_pct')
+      .registerRunListener(async ({ percentage }) => {
+        const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
+        const raw = Math.round(pct * 10);
+        this.log(`Write start  [sun2000_set_active_power_derating_pct → reg 40125] value=${pct}%`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusRegister(host(), port(), unitId(), 40125, raw);
+          this.log(`Write OK     [sun2000_set_active_power_derating_pct → reg 40125]`);
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ output_limit_pct: pct }).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [sun2000_set_active_power_derating_pct → reg 40125]:`, err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
+
+    // Resets both derating registers to "no limit": rated power × 1.1 (W) + 100 (%).
+    // Falls back to 100000 W if rated power has not been polled yet (the inverter
+    // will clamp it to its own ceiling on the next read).
+    this.homey.flow
+      .getActionCard('sun2000_reset_output_limit')
+      .registerRunListener(async () => {
+        const ceilingW = this._ratedPowerW
+          ? Math.round(this._ratedPowerW * 1.1)
+          : 100000;
+        this.log(`Write start  [sun2000_reset_output_limit] reg 40126=${ceilingW}W (rated×1.1), reg 40125=1000 (100%)`);
+        this._writeInProgress = true;
+        try {
+          await writeModbusU32(host(), port(), unitId(), 40126, ceilingW);
+          await writeModbusRegister(host(), port(), unitId(), 40125, 1000);
+          this.log(`Write OK     [sun2000_reset_output_limit] inverter back to no cap`);
+          this._updatingSettingFromModbus = true;
+          await this.setSettings({ output_limit_w: ceilingW, output_limit_pct: 100 }).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [sun2000_reset_output_limit]:`, err.message);
+          throw err;
+        } finally {
+          this._updatingSettingFromModbus = false;
+          this._writeInProgress           = false;
+        }
+      });
   }
 
   // ─── Power threshold triggers ──────────────────────────────────────────────
@@ -347,6 +434,10 @@ class SUN2000ModbusDevice extends Device {
 
     try {
       const data = await readModbusRegisters(address, port, modbusId, REGISTERS, abort);
+
+      if (typeof data.ratedPower === 'number' && data.ratedPower > 0) {
+        this._ratedPowerW = data.ratedPower;
+      }
 
       const prevPower = this.getCapabilityValue('measure_power');
       const newPower  = data.inputPower ?? 0;
@@ -461,8 +552,10 @@ class SUN2000ModbusDevice extends Device {
       // Sync feed-in power settings if they differ
       const settingUpdates = {};
       const numericSync = [
-        ['activePowerMaxFeedIn',    'max_feed_in_power',     1  ],
-        ['activePowerMaxFeedInPct', 'max_feed_in_power_pct', 0.5],
+        ['activePowerMaxFeedIn',          'max_feed_in_power',     1  ],
+        ['activePowerMaxFeedInPct',       'max_feed_in_power_pct', 0.5],
+        ['activePowerFixedValueDerating', 'output_limit_w',        1  ],
+        ['activePowerPercentageDerating', 'output_limit_pct',      0.5],
       ];
       for (const [key, settingId, tolerance] of numericSync) {
         const v = ctrl[key];
