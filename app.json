@@ -1110,6 +1110,45 @@
               }
             }
           ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Output Limit (works without power meter)",
+            "de": "Ausgangsbegrenzung (ohne Stromzähler)"
+          },
+          "children": [
+            {
+              "id": "output_limit_w",
+              "type": "number",
+              "label": {
+                "en": "Inverter output limit (W)",
+                "de": "Wechselrichter-Ausgangsbegrenzung (W)"
+              },
+              "min": 0,
+              "max": 100000,
+              "step": 100,
+              "hint": {
+                "en": "Maximum AC output of the inverter in watts (register 40126). This is a ceiling — actual production stays at the natural PV level when sun is weaker, and is throttled to this value only when sun would otherwise produce more. Set to 0 to fully shut down the inverter. Works WITHOUT a Smart Power Sensor. Set above rated power × 1.1 to effectively disable the limit. Synced from the inverter every 5 poll cycles.",
+                "de": "Maximale AC-Ausgangsleistung des Wechselrichters in Watt (Register 40126). Dies ist eine Obergrenze — die tatsächliche Erzeugung folgt der PV-Leistung wenn sie geringer ist, und wird nur auf diesen Wert begrenzt wenn die Sonne sonst mehr liefern würde. Auf 0 setzen schaltet den Wechselrichter komplett ab. Funktioniert OHNE Smart Power Sensor. Über Nennleistung × 1.1 setzen hebt die Begrenzung effektiv auf. Wird alle 5 Abfragezyklen synchronisiert."
+              }
+            },
+            {
+              "id": "output_limit_pct",
+              "type": "number",
+              "label": {
+                "en": "Inverter output limit (%)",
+                "de": "Wechselrichter-Ausgangsbegrenzung (%)"
+              },
+              "min": 0,
+              "max": 100,
+              "step": 1,
+              "hint": {
+                "en": "Maximum AC output as percentage of rated power (register 40125). This is a ceiling — actual production stays at the natural PV level when sun is weaker, and is throttled to this percentage only when sun would otherwise produce more. Example on a 4 kW inverter: 50 % = 2 kW cap. Set to 0 to fully shut down, 100 to remove the limit. Works WITHOUT a Smart Power Sensor. Synced from the inverter every 5 poll cycles.",
+                "de": "Maximale AC-Ausgangsleistung als Prozentsatz der Nennleistung (Register 40125). Dies ist eine Obergrenze — die tatsächliche Erzeugung folgt der PV-Leistung wenn sie geringer ist, und wird nur auf diesen Prozentsatz begrenzt wenn die Sonne sonst mehr liefern würde. Beispiel bei einem 4-kW-Wechselrichter: 50 % = 2 kW Obergrenze. Auf 0 setzen schaltet komplett ab, 100 hebt die Begrenzung auf. Funktioniert OHNE Smart Power Sensor. Wird alle 5 Abfragezyklen synchronisiert."
+              }
+            }
+          ]
         }
       ]
     },
@@ -3747,6 +3786,102 @@
             "placeholder": {
               "en": "e.g. 5000",
               "de": "z.B. 5000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_active_power_derating_w",
+        "title": {
+          "en": "Set inverter output limit (W)",
+          "de": "Wechselrichter-Ausgangsbegrenzung setzen (W)"
+        },
+        "titleFormatted": {
+          "en": "Limit inverter output to [[power]] W",
+          "de": "Wechselrichter-Ausgang auf [[power]] W begrenzen"
+        },
+        "hint": {
+          "en": "Sets the maximum AC output of the inverter in watts (register 40126). This is a ceiling, not a setpoint — actual production follows the natural PV level when sun is weaker, and is only throttled when sun would otherwise produce more. Set to 0 to fully shut down. Set above rated power × 1.1 to effectively disable the limit. Works WITHOUT a Smart Power Sensor.",
+          "de": "Setzt die maximale AC-Ausgangsleistung des Wechselrichters in Watt (Register 40126). Dies ist eine Obergrenze, kein Sollwert — die Erzeugung folgt der natürlichen PV-Leistung wenn sie geringer ist, und wird nur begrenzt wenn die Sonne sonst mehr liefern würde. Auf 0 setzen schaltet ab. Über Nennleistung × 1.1 hebt die Begrenzung effektiv auf. Funktioniert OHNE Smart Power Sensor."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 4400",
+              "de": "z.B. 4400"
+            }
+          }
+        ]
+      },
+      {
+        "id": "sun2000_reset_output_limit",
+        "title": {
+          "en": "Remove inverter output limit",
+          "de": "Wechselrichter-Ausgangsbegrenzung aufheben"
+        },
+        "titleFormatted": {
+          "en": "Remove inverter output limit (no cap)",
+          "de": "Wechselrichter-Ausgangsbegrenzung aufheben (keine Begrenzung)"
+        },
+        "hint": {
+          "en": "Resets both output limits to 'no cap': writes rated power × 1.1 to register 40126 and 100 % to register 40125. Use this to fully remove a previously set output limit and let the inverter run at its natural maximum.",
+          "de": "Setzt beide Ausgangsbegrenzungen auf 'unbegrenzt' zurück: schreibt Nennleistung × 1.1 in Register 40126 und 100 % in Register 40125. Verwende diese Aktion um eine zuvor gesetzte Begrenzung komplett aufzuheben."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_active_power_derating_pct",
+        "title": {
+          "en": "Set inverter output limit (%)",
+          "de": "Wechselrichter-Ausgangsbegrenzung setzen (%)"
+        },
+        "titleFormatted": {
+          "en": "Limit inverter output to [[percentage]] %",
+          "de": "Wechselrichter-Ausgang auf [[percentage]] % begrenzen"
+        },
+        "hint": {
+          "en": "Sets the maximum AC output as a percentage of rated power (register 40125). This is a ceiling, not a setpoint — actual production follows the natural PV level when sun is weaker, and is only throttled when sun would otherwise produce more. Example on a 4 kW inverter: 50 % = 2 kW cap. Set to 0 to fully shut down, 100 to remove the limit. Works WITHOUT a Smart Power Sensor.",
+          "de": "Setzt die maximale AC-Ausgangsleistung als Prozentsatz der Nennleistung (Register 40125). Dies ist eine Obergrenze, kein Sollwert — die Erzeugung folgt der natürlichen PV-Leistung wenn sie geringer ist, und wird nur begrenzt wenn die Sonne sonst mehr liefern würde. Beispiel bei einem 4-kW-Wechselrichter: 50 % = 2 kW Obergrenze. Auf 0 setzen schaltet ab, 100 hebt die Begrenzung auf. Funktioniert OHNE Smart Power Sensor."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "percentage",
+            "title": {
+              "en": "Percentage (%)",
+              "de": "Prozent (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "0–100",
+              "de": "0–100"
             }
           }
         ]
