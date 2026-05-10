@@ -3,6 +3,7 @@
 const { Device } = require('homey');
 const {
   BATTERY_REGISTERS,
+  BATTERY_MODULE_REGISTERS,
   CONTROL_REGISTERS,
   isBatteryDataValid,
 } = require('../../lib/modbus-registers');
@@ -24,6 +25,9 @@ const UNIT1_STATUS_MAP = {
   4: 'Sleep mode',
 };
 
+// Battery module slot keys — used to count installed packs from BATTERY_MODULE_REGISTERS
+const BATTERY_MODULE_KEYS = ['unit1Pack1', 'unit1Pack2', 'unit1Pack3', 'unit2Pack1', 'unit2Pack2', 'unit2Pack3'];
+
 // All battery capabilities are always present (device IS a LUNA2000)
 const REQUIRED_CAPABILITIES = [
   'measure_power',           // combined W: positive = charging, negative = discharging
@@ -41,6 +45,7 @@ const REQUIRED_CAPABILITIES = [
   'storage_force_charge_discharge',
   'storage_excess_pv_energy_use_in_tou',
   'remote_charge_discharge_control_mode',
+  'measure_battery_modules',
 ];
 
 // Only the battery-related control registers
@@ -73,6 +78,7 @@ class LUNA2000ModbusDevice extends Device {
     this.log(`Device initialised: ${this.getName()}`);
     this._prevChargingState         = null;
     this._prevBatteryStatus         = null;
+    this._batteryModuleCount        = null; // tracks last known module count for setEnergy
     this._failureCount              = 0;
     this._updatingFromModbus        = false;
     this._updatingSettingFromModbus = false;
@@ -325,7 +331,7 @@ class LUNA2000ModbusDevice extends Device {
           this._forceTimer = this.homey.setTimeout(async () => {
             this._forceTimer = null;
             try {
-              await writeModbusRegister(h, p, u, 47100, 0);
+              await writeModbusRegister(h, p, u, 47100, 0); // stop
               this.log(`Force charge auto-stopped after ${duration} min`);
             } catch (err) {
               this.error('Force charge auto-stop failed:', err.message);
@@ -356,7 +362,7 @@ class LUNA2000ModbusDevice extends Device {
           this._forceTimer = this.homey.setTimeout(async () => {
             this._forceTimer = null;
             try {
-              await writeModbusRegister(h, p, u, 47100, 0);
+              await writeModbusRegister(h, p, u, 47100, 0); // stop
               this.log(`Force discharge auto-stopped after ${duration} min`);
             } catch (err) {
               this.error('Force discharge auto-stop failed:', err.message);
@@ -716,6 +722,29 @@ class LUNA2000ModbusDevice extends Device {
         await this.setSettings(settingUpdates)
           .catch((err) => this.log('setSettings sync failed:', err.message));
         this._updatingSettingFromModbus = false;
+      }
+
+      // Battery module count — read once per control-poll cycle (regs 47750–47755)
+      // Each register holds the pack-ID of the installed module; 0 = empty slot.
+      // Updates the capability AND the Homey energy batteries array dynamically.
+      try {
+        const mods  = await readModbusRegisters(address, port, modbusId, BATTERY_MODULE_REGISTERS, () => this._writeInProgress);
+        const count = BATTERY_MODULE_KEYS.filter((k) => mods[k] !== null && mods[k] !== undefined && mods[k] !== 0).length;
+        await this._set('measure_battery_modules', count);
+
+        if (count !== this._batteryModuleCount) {
+          this._batteryModuleCount = count;
+          const batteries = Array(Math.max(count, 1)).fill('INTERNAL');
+          await this.setEnergy({
+            batteries,
+            homeBattery:                    true,
+            meterPowerImportedCapability:   'meter_power.charged',
+            meterPowerExportedCapability:   'meter_power.discharged',
+          }).catch((err) => this.log('setEnergy failed:', err.message));
+          this.log(`Battery modules: ${count} → energy.batteries updated to ${JSON.stringify(batteries)}`);
+        }
+      } catch (err) {
+        this.log('Battery module register read skipped:', err.message);
       }
 
       // Mark settings as initialised — onSettings writes are now safe

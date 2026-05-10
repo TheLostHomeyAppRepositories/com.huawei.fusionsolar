@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.19",
+  "version": "1.1.20",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -252,21 +252,21 @@
       "insights": false,
       "values": [
         {
-          "id": "170",
+          "id": "0",
           "title": {
             "en": "Stop",
             "de": "Stopp"
           }
         },
         {
-          "id": "187",
+          "id": "1",
           "title": {
             "en": "Charge",
             "de": "Laden"
           }
         },
         {
-          "id": "204",
+          "id": "2",
           "title": {
             "en": "Discharge",
             "de": "Entladen"
@@ -619,6 +619,19 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false
+    },
+    "measure_battery_modules": {
+      "type": "number",
+      "title": {
+        "en": "Battery Modules",
+        "de": "Batteriemodule"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/measure_battery_modules.svg"
     }
   },
   "drivers": [
@@ -1342,6 +1355,7 @@
         "lan"
       ],
       "energy": {
+        "batteries": ["INTERNAL"],
         "homeBattery": true,
         "meterPowerImportedCapability": "meter_power.charged",
         "meterPowerExportedCapability": "meter_power.discharged"
@@ -1361,7 +1375,8 @@
         "storage_working_mode_settings",
         "storage_force_charge_discharge",
         "storage_excess_pv_energy_use_in_tou",
-        "remote_charge_discharge_control_mode"
+        "remote_charge_discharge_control_mode",
+        "measure_battery_modules"
       ],
       "capabilitiesOptions": {
         "measure_power": {
@@ -1460,6 +1475,13 @@
             "en": "Remote Dispatch Mode (overrides Working Mode)",
             "de": "Fernsteuerung (übersteuert Betriebsmodus)"
           }
+        },
+        "measure_battery_modules": {
+          "title": {
+            "en": "Battery Modules",
+            "de": "Batteriemodule"
+          },
+          "uiComponent": null
         }
       },
       "images": {
@@ -1667,6 +1689,7 @@
         "lan"
       ],
       "energy": {
+        "batteries": ["INTERNAL"],
         "homeBattery": true,
         "meterPowerImportedCapability": "meter_power.charged",
         "meterPowerExportedCapability": "meter_power.discharged"
@@ -2490,6 +2513,7 @@
       ],
       "connectivity": [],
       "energy": {
+        "batteries": ["INTERNAL"],
         "homeBattery": true
       },
       "capabilities": [

@@ -151,19 +151,20 @@ Direct Modbus TCP connection to the LUNA2000 battery via SUN2000 / SDongle.
 
 #### Readable Values
 
-| Capability                  | Description                                          |
-|-----------------------------|------------------------------------------------------|
+| Capability                  | Description                                              |
+|-----------------------------|----------------------------------------------------------|
 | Battery power               | Current: positive = charging, negative = discharging (W) |
-| State of charge             | SoC in percent (%)                                   |
-| Total charged energy        | Cumulative since commissioning (kWh)                 |
-| Total discharged energy     | Cumulative since commissioning (kWh)                 |
-| Battery charge power        | Current charge power (W)                             |
-| Battery discharge power     | Current discharge power (W)                          |
-| Max charge power            | Configured maximum (W)                               |
-| Max discharge power         | Configured maximum (W)                               |
-| Daily charged energy        | Energy charged today (kWh)                           |
-| Daily discharged energy     | Energy discharged today (kWh)                        |
-| Battery status              | Operating state as text (e.g. Running, Standby)      |
+| State of charge             | SoC in percent (%)                                       |
+| Total charged energy        | Cumulative since commissioning (kWh)                     |
+| Total discharged energy     | Cumulative since commissioning (kWh)                     |
+| Battery charge power        | Current charge power (W)                                 |
+| Battery discharge power     | Current discharge power (W)                              |
+| Max charge power            | Configured maximum (W)                                   |
+| Max discharge power         | Configured maximum (W)                                   |
+| Daily charged energy        | Energy charged today (kWh)                               |
+| Daily discharged energy     | Energy discharged today (kWh)                            |
+| Battery status              | Operating state as text (e.g. Running, Standby)          |
+| Installed battery modules   | Number of detected battery packs (read from registers 47750–47755) |
 
 #### Controllable Values
 
@@ -313,7 +314,36 @@ Reads EV charger data via the EMMA Energy Management Module.
 
 > Huawei rate-limits API requests. An interval below 10 minutes is not recommended.
 
-### Modbus (SUN2000 / LUNA2000 / DTSU666)
+### SUN2000 (Modbus)
+
+#### Connection
+
+| Setting              | Default | Description                                   |
+|----------------------|---------|-----------------------------------------------|
+| IP address           | –       | IP of the SUN2000 / SDongle                   |
+| Modbus port          | 502     | SDongle typically uses 6607                   |
+| Modbus unit ID       | 1       | Unit ID of the device (default: 1)            |
+| Update interval (s)  | 60      | How often data is polled (min. 10 s)          |
+
+#### Feed-in Power Control
+
+These values are read from the inverter on startup and kept in sync.
+
+| Setting                    | Default | Description                                                                          |
+|----------------------------|---------|--------------------------------------------------------------------------------------|
+| Max feed-in power (W)      | –       | Maximum grid feed-in power in watts (register 47416). Set to 0 to block all export. |
+| Max feed-in power (%)      | –       | Maximum grid feed-in power as % of rated power (register 47418).                    |
+
+#### Output Limit (without Smart Power Sensor)
+
+These registers derate the inverter AC output directly and work without a DTSU666.
+
+| Setting                   | Default | Description                                                                         |
+|---------------------------|---------|-------------------------------------------------------------------------------------|
+| Output limit (W)          | –       | Absolute output cap in watts (register 40126). Set to 0 for no limit.              |
+| Output limit (%)          | –       | Output cap as % of rated power (register 40125). Set to 100 for no limit.          |
+
+### LUNA2000 / DTSU666 (Modbus)
 
 | Setting              | Default | Description                                   |
 |----------------------|---------|-----------------------------------------------|
@@ -347,25 +377,68 @@ Reads EV charger data via the EMMA Energy Management Module.
 
 ### Triggers
 
-| Card                              | Device                          | Token          | Description                               |
-|-----------------------------------|---------------------------------|----------------|-------------------------------------------|
-| Power output changed              | Kiosk                           | `power` (W)    | Fires on every power change               |
-| Daily yield updated               | Kiosk                           | `daily_energy` | Fires when daily yield is updated         |
-| Power output changed (Modbus)     | Inverter SUN2000 Modbus/EMMA    | `power` (W)    | Fires on every power change               |
-| Power output changed (OpenAPI)    | Inverter SUN2000 OpenAPI        | `power` (W)    | Fires on every power change               |
-| Battery SoC changed               | LUNA2000 Modbus/EMMA            | `soc` (%)      | Fires on every SoC change                 |
-| Battery charging state changed    | LUNA2000 Modbus/EMMA            | `state`        | `charging` / `discharging` / `idle`      |
-| Battery SoC changed               | Battery OpenAPI                 | `soc` (%)      | Fires on every SoC change                 |
-| Battery charging state changed    | Battery OpenAPI                 | `state`        | `charging` / `discharging` / `idle`      |
-| Grid export started               | Power Meter Modbus/EMMA         | `power` (W)    | Fires when switching from import to export|
-| Grid import started               | Power Meter Modbus/EMMA         | `power` (W)    | Fires when switching from export to import|
+| Card                                     | Device                          | Token           | Description                                                              |
+|------------------------------------------|---------------------------------|-----------------|--------------------------------------------------------------------------|
+| Power output changed                     | Kiosk                           | `power` (W)     | Fires on every power change                                              |
+| Daily yield updated                      | Kiosk                           | `daily_energy`  | Fires when daily yield is updated                                        |
+| Power output changed                     | Inverter SUN2000 Modbus/EMMA    | `power` (W)     | Fires on every power change                                              |
+| Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)     | Fires on every power change                                              |
+| Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)       | Fires on every SoC change                                                |
+| Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`         | `charging` / `discharging` / `idle`                                     |
+| Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)       | Fires on every SoC change                                                |
+| Battery charging state changed           | Battery OpenAPI                 | `state`         | `charging` / `discharging` / `idle`                                     |
+| Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from import to export                               |
+| Grid import started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from export to import                               |
+| Inverter status changed                  | Inverter SUN2000 Modbus         | `status`        | Fires when the inverter operating state changes (timeline notification)  |
+| Battery status changed                   | LUNA2000 Modbus                 | `status`        | Fires when the battery state changes (timeline notification)             |
+| Meter status changed                     | Power Meter DTSU666 Modbus      | `status`        | Fires when the meter state changes (timeline notification)               |
 
 ### Conditions
 
-| Card                           | Device                         | Description                                    |
-|--------------------------------|--------------------------------|------------------------------------------------|
-| Is currently producing         | Kiosk                          | Checks if the plant is currently generating    |
-| Is currently producing (Modbus)| Inverter SUN2000 Modbus/EMMA   | Checks if the inverter is currently generating |
+| Card                                      | Device                          | Description                                                                         |
+|-------------------------------------------|---------------------------------|-------------------------------------------------------------------------------------|
+| Is currently producing                    | Kiosk                           | Checks if the plant is currently generating                                         |
+| Is currently producing                    | Inverter SUN2000 Modbus/EMMA    | Checks if the inverter is currently generating                                      |
+| Solar power above value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been above the threshold for at least N minutes             |
+| Solar power below value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been below the threshold for at least N minutes             |
+| Battery SoC is above threshold            | LUNA2000 Modbus/EMMA            | True if current SoC (%) is strictly above the configured value                     |
+| Battery SoC is below threshold            | LUNA2000 Modbus/EMMA            | True if current SoC (%) is strictly below the configured value                     |
+
+### Actions
+
+#### Inverter SUN2000 (Modbus)
+
+| Card                              | Description                                                                                        |
+|-----------------------------------|----------------------------------------------------------------------------------------------------|
+| Set active power control mode     | Sets the inverter feed-in mode (reg 40029): No limit · Feed-in limitation · Zero export · etc.    |
+| Set max feed-in power (W)         | Sets the maximum grid feed-in power in watts (reg 47416). Requires DTSU666.                        |
+| Set max feed-in power (%)         | Sets the maximum grid feed-in power as % of rated power (reg 47418). Requires DTSU666.             |
+| Set max charge power (W)          | Sets the maximum battery charge power in watts (reg 47075).                                         |
+| Set max discharge power (W)       | Sets the maximum battery discharge power in watts (reg 47077).                                      |
+| Set inverter output limit (W)     | Caps inverter AC output in watts (reg 40126). Works without DTSU666.                               |
+| Set inverter output limit (%)     | Caps inverter AC output as % of rated power (reg 40125). Works without DTSU666.                    |
+| Remove inverter output limit      | Resets regs 40125/40126 to disable the output limit (sets 40125 = 100%, 40126 = 0).               |
+
+#### Battery LUNA2000 (Modbus)
+
+| Card                              | Description                                                                                        |
+|-----------------------------------|----------------------------------------------------------------------------------------------------|
+| Set storage working mode          | Sets the battery operating mode (self-consumption / TOU / full feed-in / etc.)                    |
+| Force charge                      | Forces immediate battery charging at the specified power                                           |
+| Force discharge                   | Forces immediate battery discharging at the specified power                                        |
+| Set max charge power (W)          | Sets the maximum battery charge power (reg 47075)                                                  |
+| Set max discharge power (W)       | Sets the maximum battery discharge power (reg 47077)                                               |
+| Set grid charge power (W)         | Sets the active grid-to-battery charge power setpoint (reg 47242)                                  |
+| Set grid charge cutoff SoC (%)    | Sets the SoC at which grid charging stops (reg 47246)                                              |
+
+#### Battery LUNA2000 (EMMA Modbus)
+
+| Card                              | Description                                                                                        |
+|-----------------------------------|----------------------------------------------------------------------------------------------------|
+| Set storage working mode          | Sets the battery operating mode (self-consumption / TOU / full feed-in / etc.)                    |
+| Force charge                      | Forces immediate battery charging at the specified power                                           |
+| Force discharge                   | Forces immediate battery discharging at the specified power                                        |
+| Set max grid charging power (kW)  | Sets the max grid charge power on the EMMA (reg 40002)               |
 
 ---
 
@@ -385,6 +458,8 @@ The app is fully configured for the Homey Energy Dashboard:
 | Power Meter OpenAPI             | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
 | Power Meter Modbus              | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
 | Power Meter EMMA Modbus         | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
+
+All three LUNA2000 variants are declared with `"batteries": ["INTERNAL"]` so Homey correctly identifies them as built-in (AC-coupled) home batteries in the Energy dashboard.
 
 ---
 

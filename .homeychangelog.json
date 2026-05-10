@@ -103,5 +103,8 @@
   },
   "1.1.19": {
     "en": "SUN2000 (Modbus): inverter output limit via registers 40125/40126 — works without a Smart Power Sensor"
+  },
+  "1.1.20": {
+    "en": "LUNA2000 (Modbus): reads number of installed battery modules from registers 47750–47755 and dynamically updates the Homey energy batteries array."
   }
 }
