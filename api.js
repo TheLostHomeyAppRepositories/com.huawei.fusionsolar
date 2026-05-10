@@ -291,94 +291,144 @@ module.exports = {
     // Identification is based purely on register values — not on unit ID —
     // so users who change the default unit IDs are still recognised correctly.
     const PROBE_REGISTERS = {
-      modelName:       [30000, 15, 'STRING', 'Model Name (SUN2000)', 0],
-      emmaPvPower:     [30354,  2, 'UINT32', 'EMMA PV Power (W)', 0],
-      emmaSoc:         [30368,  1, 'UINT16', 'EMMA Battery SoC (%)', -2],
-      luna2000Type:    [47106,  1, 'UINT16', 'Battery type (2 = LUNA2000)', 0],
-      sdongleConnType: [37410,  1, 'UINT16', 'SDongle Connection Type', 0],
-      sdonglePvPower:  [37498,  2, 'UINT32', 'SDongle PV Input Power (W)', 0],
+      modelName:            [30000, 15, 'STRING', 'Model Name (SUN2000)', 0],
+      emmaPvPower:          [30354,  2, 'UINT32', 'EMMA PV Power (W)', 0],
+      emmaFeedInPower:      [30358,  2, 'INT32',  'EMMA Feed-in Power (W)', 0],     // powermeter_emma_modbus
+      emmaBatteryCapacity:  [30369,  2, 'UINT32', 'EMMA ESS Chargeable Capacity (kWh)', -3], // luna2000_emma_modbus
+      emmaChargerRatedPow:  [30076,  2, 'UINT32', 'Smart Charger Rated Power (W)', -1], // smartcharger_emma_modbus
+      luna2000Modules:      [47750,  1, 'UINT16', 'Battery modules unit 1 (> 0 = LUNA2000 present)', 0],
+      sdongleConnType:      [37410,  1, 'UINT16', 'SDongle Connection Type', 0],
+      sdongleLoadPower:     [37500,  2, 'UINT32', 'SDongle Load Power (W)', 0],  // house consumption — always present, day & night
+      dtsuMeterStatus:      [37100,  1, 'UINT16', 'DTSU666 Meter Status (1 = online)', 0],
     };
 
     const CONN_TYPE_LABEL = { 0: 'N/A', 2: 'WLAN', 3: '4G', 4: 'WLAN-FE', 5: 'WLAN-FE' };
 
-    // Priority: SUN2000 (model string) → EMMA (PV power at 30354) → SDongle (conn type at 37410).
-    // LUNA2000 is detected via register 47106 == 2 and is added to compatible drivers
-    // whenever present, either alongside a SUN2000 or as a standalone battery device.
+    // All 8 drivers are always checked and always included in the result.
+    // confirmed: true  → register proof found  (shown green  ⚡)
+    // confirmed: false → register not found     (shown yellow ⚠️ with Retry button)
     function identifyFromData(unitId, data) {
-      const hasLuna = data.luna2000Type === 2;
+      const name        = typeof data.modelName === 'string' ? data.modelName.replace(/\x00/g, '').trim() : '';
+      const lunaModules = data.luna2000Modules;
+      const dtsuStatus  = data.dtsuMeterStatus;
+      const emmaPvPow   = data.emmaPvPower;
+      const emmaBatCap  = data.emmaBatteryCapacity;
+      const emmaFeedIn  = data.emmaFeedInPower;
+      const chargerPow  = data.emmaChargerRatedPow;
+      const ct          = data.sdongleConnType;
 
-      // 1. SUN2000 / Inverter — non-empty model name string in register 30000
-      const name = typeof data.modelName === 'string' ? data.modelName.replace(/\x00/g, '').trim() : '';
-      if (name) {
-        const compatible = [
-          `sun2000_modbus (Unit ID ${unitId})`,
-          `dtsu666_modbus (Unit ID ${unitId})`,
-        ];
-        if (hasLuna) compatible.splice(1, 0, `luna2000_modbus (Unit ID ${unitId})`);
-        const detail = hasLuna ? `Model: ${name}  +  LUNA2000 battery` : `Model: ${name}`;
-        return { type: name, detail, compatible };
-      }
+      const lunaConf      = typeof lunaModules === 'number' && lunaModules > 0;
+      const dtsuConf      = dtsuStatus === 1;
+      const emmaConf      = emmaPvPow !== null && emmaPvPow !== undefined && emmaPvPow < 1e9;
+      const lunaEmmaConf  = typeof emmaBatCap === 'number' && emmaBatCap !== null;
+      const meterEmmaConf = emmaFeedIn !== null && emmaFeedIn !== undefined && Math.abs(emmaFeedIn) < 1e9;
+      const chargerConf   = typeof chargerPow === 'number' && chargerPow > 0 && chargerPow < 100000;
+      // SDongle: connection type must be an active type (≥ 2 = WLAN/4G/WLAN-FE),
+      // AND PV power register 37498 must return a plausible value.
+      // ct = 0 (N/A) is returned by many non-SDongle devices and is excluded.
+      // SDongle: connection type (37410) must be present AND load power (37500) must return a value.
+      // loadPower = house consumption — always defined on SDongle regardless of time of day,
+      // and not part of the SUN2000 register space (SUN2000 returns null/exception for 37500).
+      const sdongleLoadPow = data.sdongleLoadPower;
+      // ct must be an active connection type (2 = WLAN, 3 = 4G, 4/5 = WLAN-FE).
+      // ct = 0 means "N/A" and is returned by non-SDongle devices (e.g. SUN2000) — excluded.
+      // loadPower must be > 0: SUN2000 returns 0 for register 37500; a real SDongle always has house consumption.
+      const sdongleConf    = ct !== null && ct !== undefined && ct >= 2 && ct <= 5
+                          && sdongleLoadPow !== null && sdongleLoadPow !== undefined
+                          && sdongleLoadPow > 0 && sdongleLoadPow < 1e9;
 
-      // 1b. LUNA2000 standalone — register 47106 == 2 but no inverter model name
-      if (hasLuna) {
-        return {
-          type: 'LUNA2000',
-          detail: 'Battery detected via register 47106',
-          compatible: [`luna2000_modbus (Unit ID ${unitId})`],
-        };
-      }
+      const compatible = [
+        // ── Direct Modbus drivers ─────────────────────────────────────────────
+        {
+          driver:    `sun2000_modbus (Unit ID ${unitId})`,
+          confirmed: !!name,
+          detail:    name
+            ? `Register 30000 (model name) = "${name}"`
+            : `Register 30000 (model name) = ${data.modelName ?? 'null'} — not found`,
+        },
+        {
+          driver:    `luna2000_modbus (Unit ID ${unitId})`,
+          confirmed: lunaConf,
+          detail:    lunaConf
+            ? `Register 47750 (battery modules unit 1) = ${lunaModules}`
+            : `Register 47750 (battery modules unit 1) = ${lunaModules ?? 'null'} — not found`,
+        },
+        {
+          driver:    `dtsu666_modbus (Unit ID ${unitId})`,
+          confirmed: dtsuConf,
+          detail:    dtsuConf
+            ? `Register 37100 (meter status) = 1 (online)`
+            : `Register 37100 (meter status) = ${dtsuStatus ?? 'null'} — not found`,
+        },
+        {
+          driver:    `sdongle_a_modbus (Unit ID ${unitId})`,
+          confirmed: sdongleConf,
+          detail:    sdongleConf
+            ? `Register 37410 (connection type) = ${CONN_TYPE_LABEL[ct] ?? ct}, Register 37500 (load power) = ${sdongleLoadPow} W`
+            : `Register 37410 (connection type) = ${ct ?? 'null'}, Register 37500 (load power) = ${sdongleLoadPow ?? 'null'} — not confirmed`,
+        },
+        // ── EMMA gateway drivers ──────────────────────────────────────────────
+        {
+          driver:    `sun2000_emma_modbus (Unit ID ${unitId})`,
+          confirmed: emmaConf,
+          detail:    emmaConf
+            ? `Register 30354 (PV power) = ${emmaPvPow} W`
+            : `Register 30354 (PV power) = ${emmaPvPow ?? 'null'} — not found`,
+        },
+        {
+          driver:    `luna2000_emma_modbus (Unit ID ${unitId})`,
+          confirmed: lunaEmmaConf,
+          detail:    lunaEmmaConf
+            ? `Register 30369 (ESS chargeable capacity) = ${emmaBatCap} kWh`
+            : `Register 30369 (ESS chargeable capacity) = ${emmaBatCap ?? 'null'} — not found`,
+        },
+        {
+          driver:    `powermeter_emma_modbus (Unit ID ${unitId})`,
+          confirmed: meterEmmaConf,
+          detail:    meterEmmaConf
+            ? `Register 30358 (feed-in power) = ${emmaFeedIn} W`
+            : `Register 30358 (feed-in power) = ${emmaFeedIn ?? 'null'} — not found`,
+        },
+        {
+          driver:    `smartcharger_emma_modbus (Unit ID ${unitId})`,
+          confirmed: chargerConf,
+          detail:    chargerConf
+            ? `Register 30076 (charger rated power) = ${chargerPow} W`
+            : `Register 30076 (charger rated power) = ${chargerPow ?? 'null'} — not found`,
+        },
+      ];
 
-      // 2. EMMA — PV power register 30354 returns a plausible value (0 – 999 999 W)
-      if (data.emmaPvPower !== null && data.emmaPvPower !== undefined && data.emmaPvPower < 1e9) {
-        return {
-          type: 'EMMA',
-          detail: `PV: ${data.emmaPvPower} W  SoC: ${data.emmaSoc ?? '?'}%`,
-          compatible: [
-            `sun2000_emma_modbus (Unit ID ${unitId})`,
-            `luna2000_emma_modbus (Unit ID ${unitId})`,
-            `powermeter_emma_modbus (Unit ID ${unitId})`,
-            `smartcharger_emma_modbus (Unit ID ${unitId})`,
-          ],
-        };
-      }
+      // Build a display label from confirmed drivers only
+      const typeLabels = [];
+      if (name)          typeLabels.push(name);
+      if (lunaConf)      typeLabels.push('LUNA2000');
+      if (dtsuConf)      typeLabels.push('DTSU666');
+      if (sdongleConf)   typeLabels.push('SDongle A');
+      if (emmaConf)      typeLabels.push('EMMA');
+      if (lunaEmmaConf)  typeLabels.push('LUNA2000 (EMMA)');
+      if (meterEmmaConf) typeLabels.push('Meter (EMMA)');
+      if (chargerConf)   typeLabels.push('Smart Charger');
 
-      // 3. SDongle A — connection type register 37410 returns a known value (0–5)
-      const ct = data.sdongleConnType;
-      if (ct !== null && ct !== undefined && ct <= 5) {
-        return {
-          type: 'SDongle A',
-          detail: `Connection: ${CONN_TYPE_LABEL[ct] ?? ct}`,
-          compatible: [`sdongle_a_modbus (Unit ID ${unitId})`],
-        };
-      }
-
-      // Connected but no register pattern matched.
-      // This often means the unit ID is forwarded by a Modbus gateway (e.g. SDongle)
-      // but the RS485 slave didn't return the expected registers — either because the
-      // device uses a non-standard register layout, requires authentication, or the
-      // unit ID maps to a different device type.  Return a soft "possible" match so
-      // the user still gets actionable driver suggestions to try manually.
       return {
-        type: 'Unknown (gateway sub-device?)',
-        detail: 'Responded but no identifying registers matched — try drivers below manually',
-        unconfirmed: true,
-        compatible: [
-          `sun2000_modbus (Unit ID ${unitId})`,
-          `luna2000_modbus (Unit ID ${unitId})`,
-          `dtsu666_modbus (Unit ID ${unitId})`,
-        ],
+        type:         typeLabels.length ? typeLabels.join(' + ') : 'Unknown',
+        compatible,
+        anyConfirmed: typeLabels.length > 0,
       };
     }
 
     // ── Pause all Modbus device polling so the probe has exclusive TCP access ──
     // The finally block always restarts polling, even if the probe throws.
 
+    // Only pause devices that share the probe target's IP address.
+    // Devices on other hosts are unaffected and keep polling normally.
     const pausedDevices = [];
     for (const driverId of MODBUS_DRIVER_IDS) {
       let driver;
       try { driver = homey.drivers.getDriver(driverId); } catch { continue; }
       for (const device of driver.getDevices()) {
         try {
+          const devHost = (device.getSetting('address') || '').trim();
+          if (devHost !== host) continue;
           if (typeof device._stopPolling === 'function') {
             await device._stopPolling();
             pausedDevices.push(device);
@@ -422,14 +472,11 @@ module.exports = {
 
         const identified = identifyFromData(unitId, data);
 
-        if (identified && !identified.unconfirmed) {
-          log(`  Unit ${unitId}: ${identified.type} — ${identified.detail}`);
-          log(`    Compatible: ${identified.compatible.join(', ')}`);
-        } else if (identified && identified.unconfirmed) {
-          log(`  Unit ${unitId}: responded — unidentified (gateway sub-device?)`);
-          log(`    Raw registers: ${JSON.stringify(data)}`);
+        if (identified.anyConfirmed) {
+          log(`  Unit ${unitId}: ${identified.type}`);
+          log(`    Confirmed: ${identified.compatible.filter(c => c.confirmed).map(c => c.driver).join(', ')}`);
         } else {
-          log(`  Unit ${unitId}: responded — no pattern matched`);
+          log(`  Unit ${unitId}: responded — no driver confirmed`);
           log(`    Raw registers: ${JSON.stringify(data)}`);
         }
 
@@ -450,6 +497,112 @@ module.exports = {
     return { host, port, results, pausedCount: pausedDevices.length };
     } catch (err) {
       return { error: `Probe failed: ${err.message}` };
+    }
+  },
+
+  /**
+   * POST /scan/confirm
+   * Body: { host, port, unitId, driver }
+   * Re-reads only the confirmation registers for a specific driver.
+   * Used by the Device Tester retry button on unconfirmed compatible drivers.
+   */
+  async confirmDriver({ homey, body }) {
+    try {
+      const { host, port, unitId, driver } = body || {};
+      if (!host || port === undefined || unitId === undefined || !driver) {
+        return { error: 'Missing host, port, unitId or driver' };
+      }
+
+      // Map base driver name → the specific registers that confirm it
+      const CONN_TYPE_LABEL_C = { 0: 'N/A', 2: 'WLAN', 3: '4G', 4: 'WLAN-FE', 5: 'WLAN-FE' };
+      const DRIVER_CONFIRM = {
+        sun2000_modbus: {
+          registers: { modelName: [30000, 15, 'STRING', 'Model Name (SUN2000)', 0] },
+          check:  d => typeof d.modelName === 'string' && d.modelName.replace(/\x00/g, '').trim().length > 0,
+          detail: d => `Register 30000 (model name) = "${(d.modelName || '').replace(/\x00/g, '').trim()}"`,
+        },
+        luna2000_modbus: {
+          registers: { luna2000Modules: [47750, 1, 'UINT16', 'Battery modules unit 1', 0] },
+          check:  d => typeof d.luna2000Modules === 'number' && d.luna2000Modules > 0,
+          detail: d => `Register 47750 (battery modules unit 1) = ${d.luna2000Modules}`,
+        },
+        dtsu666_modbus: {
+          registers: { dtsuMeterStatus: [37100, 1, 'UINT16', 'DTSU666 Meter Status', 0] },
+          check:  d => d.dtsuMeterStatus === 1,
+          detail: d => `Register 37100 (meter status) = ${d.dtsuMeterStatus}`,
+        },
+        sdongle_a_modbus: {
+          registers: {
+            sdongleConnType:  [37410, 1, 'UINT16', 'SDongle Connection Type', 0],
+            sdongleLoadPower: [37500, 2, 'UINT32', 'SDongle Load Power (W)', 0],
+          },
+          // ct >= 2 = active connection (WLAN/4G/WLAN-FE). ct = 0 (N/A) is returned by SUN2000 — excluded.
+          // loadPower > 0: SUN2000 returns 0 for register 37500; a real SDongle always has house consumption.
+          check:  d => d.sdongleConnType !== null && d.sdongleConnType !== undefined
+                    && d.sdongleConnType >= 2 && d.sdongleConnType <= 5
+                    && d.sdongleLoadPower !== null && d.sdongleLoadPower !== undefined
+                    && d.sdongleLoadPower > 0 && d.sdongleLoadPower < 1e9,
+          detail: d => `Register 37410 (connection type) = ${CONN_TYPE_LABEL_C[d.sdongleConnType] ?? d.sdongleConnType}, Register 37500 (load power) = ${d.sdongleLoadPower} W`,
+        },
+        sun2000_emma_modbus: {
+          registers: { emmaPvPower: [30354, 2, 'UINT32', 'EMMA PV Power (W)', 0] },
+          check:  d => d.emmaPvPower !== null && d.emmaPvPower !== undefined && d.emmaPvPower < 1e9,
+          detail: d => `Register 30354 (PV power) = ${d.emmaPvPower} W`,
+        },
+        luna2000_emma_modbus: {
+          registers: { emmaBatteryCapacity: [30369, 2, 'UINT32', 'EMMA ESS Chargeable Capacity (kWh)', -3] },
+          check:  d => typeof d.emmaBatteryCapacity === 'number' && d.emmaBatteryCapacity !== null,
+          detail: d => `Register 30369 (ESS chargeable capacity) = ${d.emmaBatteryCapacity} kWh`,
+        },
+        powermeter_emma_modbus: {
+          registers: { emmaFeedInPower: [30358, 2, 'INT32', 'EMMA Feed-in Power (W)', 0] },
+          check:  d => d.emmaFeedInPower !== null && d.emmaFeedInPower !== undefined && Math.abs(d.emmaFeedInPower) < 1e9,
+          detail: d => `Register 30358 (feed-in power) = ${d.emmaFeedInPower} W`,
+        },
+        smartcharger_emma_modbus: {
+          registers: { emmaChargerRatedPow: [30076, 2, 'UINT32', 'Smart Charger Rated Power (W)', -1] },
+          check:  d => typeof d.emmaChargerRatedPow === 'number' && d.emmaChargerRatedPow > 0 && d.emmaChargerRatedPow < 100000,
+          detail: d => `Register 30076 (charger rated power) = ${d.emmaChargerRatedPow} W`,
+        },
+      };
+
+      // Strip the "(Unit ID X)" suffix the frontend appends to driver names
+      const baseDriver = driver.replace(/\s*\(Unit ID[^)]*\)/, '').trim();
+      const conf = DRIVER_CONFIRM[baseDriver];
+      if (!conf) return { error: `No confirmation logic for driver: ${baseDriver}` };
+
+      // Pause devices on this host only
+      const pausedDevices = [];
+      for (const driverId of MODBUS_DRIVER_IDS) {
+        let drv;
+        try { drv = homey.drivers.getDriver(driverId); } catch { continue; }
+        for (const device of drv.getDevices()) {
+          try {
+            if ((device.getSetting('address') || '').trim() !== host) continue;
+            if (typeof device._stopPolling === 'function') {
+              await device._stopPolling();
+              pausedDevices.push(device);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      let data;
+      try {
+        data = await probeModbusUnit(host, parseInt(port, 10), parseInt(unitId, 10), conf.registers, 4000);
+      } finally {
+        for (const device of pausedDevices) {
+          try { if (typeof device._startPolling === 'function') await device._startPolling(); } catch { /* ignore */ }
+        }
+      }
+
+      if (data === null) return { confirmed: false, detail: 'Connection failed or timed out' };
+
+      const confirmed = conf.check(data);
+      const detail    = conf.detail(data);
+      return { confirmed, detail };
+    } catch (err) {
+      return { error: `Confirm failed: ${err.message}` };
     }
   },
 
