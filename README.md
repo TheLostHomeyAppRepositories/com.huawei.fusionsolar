@@ -478,6 +478,14 @@ MIT License – see [LICENSE](LICENSE)
 
 ---
 
+## Support
+
+If this app saves you time or money, a small donation is always appreciated:
+
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/AndiWirz)
+
+---
+
 ## AI Development
 
 This app was developed entirely with the assistance of **Claude (Anthropic AI)**.
