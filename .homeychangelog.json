@@ -115,5 +115,8 @@
   },
   "1.1.23": {
     "en": "Device Tester improvements: subnet chips shown directly (no interface card step), single-select unit ID picker, retry loop with 5 s pause, compatible driver notes for pairing. Settings reorganised: Capabilities and Modbus Registers split into separate tabs, register table columns auto-sized and horizontally scrollable."
+  },
+  "1.1.24": {
+    "en": "better modbus probing"
   }
 }

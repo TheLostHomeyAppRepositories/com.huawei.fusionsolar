@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.23",
+  "version": "1.1.24",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -34,6 +34,10 @@
     "scanModbus": {
       "method": "POST",
       "path": "/scan/modbus"
+    },
+    "confirmDriver": {
+      "method": "POST",
+      "path": "/scan/confirm"
     }
   },
   "brandColor": "#CF0A2C",
@@ -1399,7 +1403,9 @@
         "lan"
       ],
       "energy": {
-        "batteries": ["INTERNAL"],
+        "batteries": [
+          "INTERNAL"
+        ],
         "homeBattery": true,
         "meterPowerImportedCapability": "meter_power.charged",
         "meterPowerExportedCapability": "meter_power.discharged"
@@ -1747,7 +1753,9 @@
         "lan"
       ],
       "energy": {
-        "batteries": ["INTERNAL"],
+        "batteries": [
+          "INTERNAL"
+        ],
         "homeBattery": true,
         "meterPowerImportedCapability": "meter_power.charged",
         "meterPowerExportedCapability": "meter_power.discharged"
@@ -2571,7 +2579,9 @@
       ],
       "connectivity": [],
       "energy": {
-        "batteries": ["INTERNAL"],
+        "batteries": [
+          "INTERNAL"
+        ],
         "homeBattery": true
       },
       "capabilities": [
@@ -4903,14 +4913,26 @@
           {
             "type": "number",
             "name": "power",
-            "title": { "en": "Power (W)", "de": "Leistung (W)" },
-            "placeholder": { "en": "e.g. 1000", "de": "z.B. 1000" }
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "placeholder": {
+              "en": "e.g. 1000",
+              "de": "z.B. 1000"
+            }
           },
           {
             "type": "number",
             "name": "duration",
-            "title": { "en": "Duration (min)", "de": "Dauer (Min)" },
-            "placeholder": { "en": "e.g. 10", "de": "z.B. 10" }
+            "title": {
+              "en": "Duration (min)",
+              "de": "Dauer (Min)"
+            },
+            "placeholder": {
+              "en": "e.g. 10",
+              "de": "z.B. 10"
+            }
           }
         ]
       },
@@ -4937,14 +4959,26 @@
           {
             "type": "number",
             "name": "power",
-            "title": { "en": "Power (W)", "de": "Leistung (W)" },
-            "placeholder": { "en": "e.g. 100", "de": "z.B. 100" }
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "placeholder": {
+              "en": "e.g. 100",
+              "de": "z.B. 100"
+            }
           },
           {
             "type": "number",
             "name": "duration",
-            "title": { "en": "Duration (min)", "de": "Dauer (Min)" },
-            "placeholder": { "en": "e.g. 10", "de": "z.B. 10" }
+            "title": {
+              "en": "Duration (min)",
+              "de": "Dauer (Min)"
+            },
+            "placeholder": {
+              "en": "e.g. 10",
+              "de": "z.B. 10"
+            }
           }
         ]
       },
