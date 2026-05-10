@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.20",
+  "version": "1.1.23",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -12,6 +12,28 @@
       "paypal": {
         "username": "AndiWirz"
       }
+    }
+  },
+  "api": {
+    "getDebugDevices": {
+      "method": "GET",
+      "path": "/debug/devices"
+    },
+    "readDebugRegisters": {
+      "method": "POST",
+      "path": "/debug/registers"
+    },
+    "getNetworkInfo": {
+      "method": "GET",
+      "path": "/scan/network"
+    },
+    "scanPorts": {
+      "method": "POST",
+      "path": "/scan/ports"
+    },
+    "scanModbus": {
+      "method": "POST",
+      "path": "/scan/modbus"
     }
   },
   "brandColor": "#CF0A2C",
@@ -632,6 +654,28 @@
       "uiComponent": "sensor",
       "insights": false,
       "icon": "/assets/capabilities/measure_battery_modules.svg"
+    },
+    "luna2000_unit1_installed": {
+      "type": "boolean",
+      "title": {
+        "en": "Battery Unit 1 installed",
+        "de": "Batterie-Unit 1 installiert"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false
+    },
+    "luna2000_unit2_installed": {
+      "type": "boolean",
+      "title": {
+        "en": "Battery Unit 2 installed",
+        "de": "Batterie-Unit 2 installiert"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false
     }
   },
   "drivers": [
@@ -1376,7 +1420,9 @@
         "storage_force_charge_discharge",
         "storage_excess_pv_energy_use_in_tou",
         "remote_charge_discharge_control_mode",
-        "measure_battery_modules"
+        "measure_battery_modules",
+        "luna2000_unit1_installed",
+        "luna2000_unit2_installed"
       ],
       "capabilitiesOptions": {
         "measure_power": {
@@ -1482,6 +1528,18 @@
             "de": "Batteriemodule"
           },
           "uiComponent": null
+        },
+        "luna2000_unit1_installed": {
+          "title": {
+            "en": "Battery Unit 1 installed",
+            "de": "Batterie-Unit 1 installiert"
+          }
+        },
+        "luna2000_unit2_installed": {
+          "title": {
+            "en": "Battery Unit 2 installed",
+            "de": "Batterie-Unit 2 installiert"
+          }
         }
       },
       "images": {

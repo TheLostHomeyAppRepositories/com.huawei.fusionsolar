@@ -106,5 +106,14 @@
   },
   "1.1.20": {
     "en": "LUNA2000 (Modbus): reads number of installed battery modules from registers 47750–47755 and dynamically updates the Homey energy batteries array."
+  },
+  "1.1.21": {
+    "en": "LUNA2000 (Modbus): new capabilities luna2000_unit1_installed and luna2000_unit2_installed — read from registers 47107/47108 to indicate whether each energy storage unit is present."
+  },
+  "1.1.22": {
+    "en": "New app settings page with three tabs: Capabilities (live capability values for all Modbus devices), Modbus Registers (live register read with Read Live button), and Device Tester. Device Tester scans the local subnet for Huawei devices on ports 502/6607, probes a selectable Modbus unit ID (default: 1) with up to 5 automatic retries, identifies device type from register values (SUN2000, LUNA2000, EMMA, SDongle A), and lists compatible drivers with IP, port and unit ID. Device polling is paused during the probe and automatically resumed. Detection is register-value-based so custom unit IDs are recognised correctly."
+  },
+  "1.1.23": {
+    "en": "Device Tester improvements: subnet chips shown directly (no interface card step), single-select unit ID picker, retry loop with 5 s pause, compatible driver notes for pairing. Settings reorganised: Capabilities and Modbus Registers split into separate tabs, register table columns auto-sized and horizontally scrollable."
   }
 }

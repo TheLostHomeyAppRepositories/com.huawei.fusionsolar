@@ -46,6 +46,8 @@ const REQUIRED_CAPABILITIES = [
   'storage_excess_pv_energy_use_in_tou',
   'remote_charge_discharge_control_mode',
   'measure_battery_modules',
+  'luna2000_unit1_installed',
+  'luna2000_unit2_installed',
 ];
 
 // Only the battery-related control registers
@@ -62,6 +64,8 @@ const STORAGE_CONTROL_REGISTERS = {
   storageGridChargeCutoffSoc:       CONTROL_REGISTERS.storageGridChargeCutoffSoc,
   storageGridChargePower:           CONTROL_REGISTERS.storageGridChargePower,
   storageBackupPowerSoc:            CONTROL_REGISTERS.storageBackupPowerSoc,
+  storageUnit1No:                   CONTROL_REGISTERS.storageUnit1No,
+  storageUnit2No:                   CONTROL_REGISTERS.storageUnit2No,
 };
 
 // Maps writable enum capability → Modbus register address (47xxx)
@@ -684,6 +688,9 @@ class LUNA2000ModbusDevice extends Device {
       await this._set('storage_excess_pv_energy_use_in_tou',  toEnum(ctrl.storageExcessPvEnergyUseInTou));
       await this._set('remote_charge_discharge_control_mode', toEnum(ctrl.remoteChargeDischargeControlMode));
       this._updatingFromModbus = false;
+
+      await this._set('luna2000_unit1_installed', ctrl.storageUnit1No !== null && ctrl.storageUnit1No !== undefined ? ctrl.storageUnit1No > 0 : null);
+      await this._set('luna2000_unit2_installed', ctrl.storageUnit2No !== null && ctrl.storageUnit2No !== undefined ? ctrl.storageUnit2No > 0 : null);
 
       // Sync settings from modbus if they differ
       const settingUpdates = {};

@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modbus Debugging</title>
+  <script src="/homey.js" data-origin="settings"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      padding: 16px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #last-update {
+      font-size: 11px;
+      color: #6e6e73;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #0071e3; color: #fff; }
+    .btn-primary:not(:disabled):hover { background: #0064cc; }
+    .btn-secondary { background: #e5e5ea; color: #1d1d1f; }
+    .btn-secondary:not(:disabled):hover { background: #d1d1d6; }
+    .btn-danger { background: #ff3b30; color: #fff; }
+
+    /* ── Device cards ────────────────────────────────────── */
+    .device-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #f9f9fb;
+      border-bottom: 1px solid #e5e5ea;
+      cursor: pointer;
+      user-select: none;
+    }
+    .card-header:hover { background: #f2f2f7; }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title h2 { font-size: 14px; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge-online  { background: #d1f2e0; color: #1a7a3a; }
+    .badge-offline { background: #ffe3e0; color: #c0392b; }
+    .driver-label {
+      font-size: 11px;
+      color: #6e6e73;
+      font-family: 'SF Mono', Menlo, monospace;
+    }
+    .chevron {
+      font-size: 12px;
+      color: #6e6e73;
+      transition: transform 0.2s;
+    }
+    .chevron.open { transform: rotate(90deg); }
+    .card-body { display: none; padding: 14px; overflow-x: auto; }
+    .card-body.open { display: block; }
+
+    /* ── Connection info ─────────────────────────────────── */
+    .conn-info {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .conn-item { font-size: 11px; color: #3a3a3c; }
+    .conn-item span { font-weight: 600; }
+
+    /* ── Section titles ──────────────────────────────────── */
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6e6e73;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── Tables ──────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      text-align: left;
+      padding: 5px 8px;
+      background: #f2f2f7;
+      color: #6e6e73;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      position: sticky;
+      top: 0;
+    }
+    td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #f2f2f7;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9f9fb; }
+
+    .key-cell {
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 11px;
+      color: #3a3a3c;
+      white-space: nowrap;
+    }
+    .label-cell { color: #3a3a3c; word-break: break-word; min-width: 160px; }
+    .addr-cell {
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 11px;
+      color: #6e6e73;
+      white-space: nowrap;
+    }
+    .type-cell {
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 10px;
+      color: #9e9ea5;
+      white-space: nowrap;
+    }
+
+    /* ── Value chips ─────────────────────────────────────── */
+    .val {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .val-null    { background: #f2f2f7; color: #9e9ea5; }
+    .val-bool-t  { background: #d1f2e0; color: #1a7a3a; }
+    .val-bool-f  { background: #ffe3e0; color: #c0392b; }
+    .val-number  { background: #e8f0fe; color: #1a56db; }
+    .val-string  { background: #fff3e0; color: #b35900; }
+    .val-error   { background: #ffe3e0; color: #c0392b; font-style: italic; }
+
+    /* ── Register section ────────────────────────────────── */
+    .reg-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e5ea;
+    }
+    .reg-status {
+      font-size: 11px;
+      color: #6e6e73;
+    }
+    .reg-body { margin-top: 12px; }
+    .reg-group-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0071e3;
+      padding: 4px 0;
+      margin-top: 10px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .reg-group-title:first-child { margin-top: 0; }
+    .reg-error {
+      color: #c0392b;
+      font-size: 11px;
+      padding: 4px 8px;
+      background: #ffe3e0;
+      border-radius: 4px;
+    }
+
+    /* ── Empty / loading state ───────────────────────────── */
+    .state-msg {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6e6e73;
+      font-size: 13px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid #d1d1d6;
+      border-top-color: #0071e3;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tab bar ─────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #e5e5ea;
+      padding-bottom: 0;
+    }
+    .tab {
+      padding: 7px 18px;
+      border: none;
+      background: none;
+      border-radius: 6px 6px 0 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6e6e73;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    .tab.active { color: #0071e3; border-bottom-color: #0071e3; background: #fff; }
+    .tab:hover:not(.active) { background: #f2f2f7; color: #1d1d1f; }
+
+    /* ── Tab toolbar (debugging tab) ─────────────────────── */
+    .tab-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      justify-content: flex-end;
+    }
+
+    /* ── Device Tester cards ─────────────────────────────── */
+    .tool-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      margin-bottom: 14px;
+      padding: 14px 16px;
+    }
+    .tool-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tool-hint {
+      font-size: 11px;
+      font-weight: 400;
+      color: #6e6e73;
+    }
+    .net-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      border: 1px solid #e5e5ea;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .net-row:hover { background: #f2f2f7; }
+    .net-row.selected { border-color: #0071e3; background: #e8f0fe; }
+    .net-addr { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 600; }
+    .net-detail { font-size: 11px; color: #6e6e73; }
+    .host-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #e5e5ea;
+      margin-bottom: 5px;
+    }
+    .host-row .host-ip { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 600; min-width: 130px; }
+    .port-badge { background: #e8f0fe; color: #1a56db; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .probe-btn { padding: 3px 10px; font-size: 11px; }
+
+    /* ── Unit ID selector ────────────────────────────────── */
+    .uid-config {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #f9f9fb;
+      border-radius: 7px;
+      border: 1px solid #e5e5ea;
+    }
+    .uid-config-label { font-size: 11px; font-weight: 600; color: #3a3a3c; margin-bottom: 6px; }
+    .uid-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .uid-chip {
+      padding: 3px 11px;
+      border-radius: 12px;
+      border: 2px solid #d1d1d6;
+      background: #f2f2f7;
+      font-family: 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #6e6e73;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .uid-manual { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .uid-manual input {
+      width: 80px; padding: 4px 8px;
+      border: 1px solid #d1d1d6; border-radius: 6px;
+      font-family: 'SF Mono', Menlo, monospace; font-size: 12px;
+      outline: none;
+    }
+
+    /* ── Modbus probe results ─────────────────────────────── */
+    .probe-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      border: 1px solid #e5e5ea;
+    }
+    .probe-row.ok    { border-color: #a8d5b5; background: #f0faf3; }
+    .probe-row.warn  { border-color: #f0c040; background: #fffbec; }
+    .probe-row.fail  { background: #f9f9fb; }
+    .unit-badge { min-width: 72px; font-family: 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 600; }
+    .probe-detail { font-size: 12px; color: #3a3a3c; }
+    .probe-err    { font-size: 11px; color: #9e9ea5; }
+
+    /* ── Compatible driver list ───────────────────────────── */
+    .compat-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #a8d5b5;
+      background: #f0faf3;
+      margin-bottom: 8px;
+    }
+    .compat-row.unconfirmed {
+      border-color: #f0c040;
+      background: #fffbec;
+    }
+    .compat-icon { font-size: 18px; }
+    .compat-info { flex: 1; }
+    .compat-driver { font-family: 'SF Mono', Menlo, monospace; font-size: 11px; color: #1a56db; }
+    .compat-conn { font-size: 11px; color: #3a3a3c; margin-top: 2px; }
+
+    /* ── Export modal ────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      width: 90vw;
+      max-width: 860px;
+      height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .modal-header h3 { font-size: 14px; font-weight: 600; }
+    .modal-actions { display: flex; gap: 8px; align-items: center; }
+    .modal-body { flex: 1; overflow: hidden; display: flex; }
+    .modal-body textarea {
+      flex: 1;
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 12px 16px;
+      font-family: 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #1d1d1f;
+      background: #f9f9fb;
+    }
+    .copy-hint { font-size: 11px; color: #6e6e73; }
+  </style>
+</head>
+<body>
+
+  <!-- Export modal -->
+  <div class="modal-overlay" id="export-modal" onclick="closeModal(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Debug Export</h3>
+        <div class="modal-actions">
+          <span class="copy-hint" id="copy-hint"></span>
+          <button class="btn-primary" onclick="copyToClipboard()">Copy all</button>
+          <button class="btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <textarea id="export-textarea" readonly spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab active" id="tab-btn-tool" onclick="showTab('tool')">Device Tester</button>
+    <button class="tab" id="tab-btn-cap" onclick="showTab('cap')">Capabilities</button>
+    <button class="tab" id="tab-btn-registers" onclick="showTab('registers')">Modbus Registers</button>
+  </div>
+
+  <!-- ── Tab: Capabilities ── -->
+  <div id="tab-cap" style="display:none">
+    <div class="tab-toolbar">
+      <span id="last-update"></span>
+      <button class="btn-secondary" onclick="downloadDebugText()" title="Export all values as text">⬇ Export text</button>
+      <button class="btn-primary" id="refresh-btn" onclick="loadDevices()">↻ Refresh</button>
+    </div>
+    <div id="cap-container">
+      <div class="state-msg"><span class="spinner"></span>Loading devices…</div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Modbus Registers ── -->
+  <div id="tab-registers" style="display:none">
+    <div class="tab-toolbar">
+      <span id="last-update-reg"></span>
+      <button class="btn-primary" id="refresh-reg-btn" onclick="loadDevices()">↻ Refresh</button>
+    </div>
+    <div id="reg-container">
+      <div class="state-msg"><span class="spinner"></span>Loading devices…</div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Device Tester ── -->
+  <div id="tab-tool">
+
+    <!-- Step 1: Network info -->
+    <div class="tool-card" id="step-network">
+      <div class="tool-card-title">Step 1 — Select network</div>
+      <div id="network-list"><div class="state-msg"><span class="spinner"></span>Loading…</div></div>
+
+      <!-- Manual override -->
+      <div id="manual-subnet" style="display:none;margin-top:10px">
+        <label style="font-size:12px;font-weight:600;color:#3a3a3c">Or enter base IP manually (first 3 octets):</label>
+        <div style="display:flex;gap:8px;margin-top:4px;align-items:center">
+          <input id="manual-base-ip" type="text" placeholder="e.g. 192.168.1"
+            style="font-family:'SF Mono',Menlo,monospace;font-size:12px;padding:5px 10px;border:1px solid #d1d1d6;border-radius:6px;width:180px;outline:none">
+          <button class="btn-secondary" onclick="applyManualIp()" style="font-size:11px;padding:4px 10px">Apply</button>
+          <span id="manual-ip-hint" style="font-size:11px;color:#6e6e73"></span>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="scan-network-btn" style="margin-top:14px;display:none" onclick="startPortScan()">▶ Scan Network</button>
+    </div>
+
+    <!-- Step 2: Port scan -->
+    <div class="tool-card" id="step-portscan" style="display:none">
+      <div class="tool-card-title">Step 2 — Port scan
+        <span class="tool-hint">Scanning for open ports 502 and 6607 in the subnet…</span>
+      </div>
+      <div id="portscan-status" class="state-msg"><span class="spinner"></span>Scanning…</div>
+      <div id="portscan-results"></div>
+    </div>
+
+    <!-- Step 3: Modbus unit ID check -->
+    <div class="tool-card" id="step-modbus" style="display:none">
+      <div class="tool-card-title">Step 3 — Modbus probe
+        <span class="tool-hint" id="probe-hint">Select a device above to start…</span>
+      </div>
+      <div id="modbus-status" class="state-msg"><span class="spinner"></span>Probing…</div>
+      <div id="modbus-results"></div>
+    </div>
+
+    <!-- Step 4: Compatible devices -->
+    <div class="tool-card" id="step-compatible" style="display:none">
+      <div class="tool-card-title">Step 4 — Compatible drivers</div>
+      <div id="compatible-results"></div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="background:#e8f0fe;border-left:3px solid #0071e3;border-radius:6px;padding:9px 12px;font-size:12px;color:#1d1d1f">
+          📋 <strong>Note down the IP address, Port and Unit ID</strong> shown above — you will need these values when adding the device in the Homey app.
+        </div>
+        <div style="background:#fff8e8;border-left:3px solid #f0a500;border-radius:6px;padding:9px 12px;font-size:12px;color:#1d1d1f">
+          ⚠️ <strong>Detection is not guaranteed.</strong> The identified driver is based on register values that may vary between device models, firmware versions, or custom configurations. Always verify the device behaves correctly after pairing.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let _H;         // Homey instance — set in onHomeyReady (avoids conflict with homey.js global)
+    let _devices;   // last getDebugDevices result
+    let _regValues = {}; // idx → last readDebugRegisters result
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    function fmtVal(val) {
+      if (val === null || val === undefined) return '<span class="val val-null">—</span>';
+      if (typeof val === 'boolean') {
+        return val
+          ? '<span class="val val-bool-t">true</span>'
+          : '<span class="val val-bool-f">false</span>';
+      }
+      if (typeof val === 'number') {
+        const display = Number.isInteger(val) ? val : val.toFixed(3).replace(/\.?0+$/, '');
+        return `<span class="val val-number">${display}</span>`;
+      }
+      return `<span class="val val-string">${escHtml(String(val))}</span>`;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Stable cell ID for a register value cell (used to fill values after live read)
+    function regCellId(idx, groupName, key) {
+      return `rv-${idx}-${groupName.replace(/\W/g, '_')}-${key}`;
+    }
+
+    function toggleCard(id) {
+      const body    = document.getElementById(`body-${id}`);
+      const chevron = document.getElementById(`chev-${id}`);
+      const open    = body.classList.toggle('open');
+      chevron.classList.toggle('open', open);
+    }
+
+    // ── Capability table ───────────────────────────────────────────────────────
+
+    function buildCapTable(capabilities) {
+      const entries = Object.entries(capabilities).sort((a, b) => a[0].localeCompare(b[0]));
+      if (!entries.length) return '<p style="color:#9e9ea5;font-size:12px;">No capabilities</p>';
+
+      let html = `<table>
+        <thead><tr>
+          <th style="width:40%">Capability ID</th>
+          <th>Value</th>
+        </tr></thead><tbody>`;
+
+      for (const [cap, val] of entries) {
+        html += `<tr>
+          <td class="key-cell">${escHtml(cap)}</td>
+          <td>${fmtVal(val)}</td>
+        </tr>`;
+      }
+      return html + '</tbody></table>';
+    }
+
+    // ── Register definitions table (static, always shown) ──────────────────────
+    // Value cells start empty; readRegisters() fills them in by cell ID.
+
+    function buildRegDefsTable(registerDefs, idx) {
+      if (!registerDefs || !Object.keys(registerDefs).length) return '';
+      let html = '';
+
+      for (const [groupName, rows] of Object.entries(registerDefs)) {
+        html += `<div class="reg-group-title">${escHtml(groupName)}</div>`;
+        html += `<table style="table-layout:auto"><thead><tr>
+          <th style="white-space:nowrap">Reg ID</th>
+          <th>Len</th>
+          <th>Type</th>
+          <th>Key</th>
+          <th style="min-width:160px">Label</th>
+          <th style="min-width:80px">Live Value</th>
+        </tr></thead><tbody>`;
+        for (const r of rows) {
+          const cid = regCellId(idx, groupName, r.key);
+          html += `<tr>
+            <td class="addr-cell">${r.address}</td>
+            <td class="addr-cell">${r.length}</td>
+            <td class="type-cell">${escHtml(r.type)}</td>
+            <td class="key-cell">${escHtml(r.key)}</td>
+            <td class="label-cell">${escHtml(r.label)}</td>
+            <td id="${cid}"><span class="val val-null">—</span></td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+      }
+      return html;
+    }
+
+    // ── Live register read — fills value cells in place ────────────────────────
+
+    function readRegisters(driverId, deviceId, idx) {
+      const btn    = document.getElementById(`reg-btn-${idx}`);
+      const status = document.getElementById(`reg-status-${idx}`);
+
+      btn.disabled     = true;
+      status.innerHTML = '<span class="spinner"></span>Reading…';
+
+      _H.api('POST', '/debug/registers', { driverId, deviceId }, (err, result) => {
+        btn.disabled = false;
+
+        if (err || !result || result.error) {
+          status.textContent = '✗ ' + (err ? err.message : (result ? result.error : 'No response from app'));
+          status.style.color = '#c0392b';
+          return;
+        }
+
+        status.textContent = `✓ ${new Date(result.timestamp).toLocaleTimeString()}`;
+        status.style.color = '#1a7a3a';
+        _regValues[idx]    = result; // store for download
+
+        // Fill each value cell by its stable ID
+        for (const [groupName, group] of Object.entries(result.groups)) {
+          if (!group.ok) {
+            // Mark all cells in this group as error
+            const errorHtml = `<span class="val val-error">${escHtml(group.error)}</span>`;
+            document.querySelectorAll(`[id^="rv-${idx}-${groupName.replace(/\W/g, '_')}-"]`)
+              .forEach(el => { el.innerHTML = errorHtml; });
+            continue;
+          }
+          for (const [key, r] of Object.entries(group.registers)) {
+            const cell = document.getElementById(regCellId(idx, groupName, key));
+            if (cell) cell.innerHTML = fmtVal(r.value);
+          }
+        }
+      });
+    }
+
+    // ── Shared card header ─────────────────────────────────────────────────────
+
+    function buildCardHeader(dev, id) {
+      const badge = dev.available
+        ? '<span class="badge badge-online">Online</span>'
+        : '<span class="badge badge-offline">Offline</span>';
+      return `
+        <div class="card-header" onclick="toggleCard('${id}')">
+          <div class="card-title">
+            <span class="chevron" id="chev-${id}">▶</span>
+            <h2>${escHtml(dev.name)}</h2>
+            ${badge}
+            <span class="driver-label">${escHtml(dev.driverId)}</span>
+          </div>
+        </div>`;
+    }
+
+    function buildConnFields(s) {
+      return [
+        s.address       ? `<div class="conn-item">IP <span>${escHtml(s.address)}</span></div>` : '',
+        s.port          ? `<div class="conn-item">Port <span>${s.port}</span></div>` : '',
+        s.modbus_id !== undefined ? `<div class="conn-item">Unit ID <span>${s.modbus_id}</span></div>` : '',
+        s.poll_interval ? `<div class="conn-item">Poll <span>${s.poll_interval}s</span></div>` : '',
+      ].join('');
+    }
+
+    // ── Capabilities card (Capabilities tab) ───────────────────────────────────
+
+    function buildCapCard(dev, idx) {
+      const id = `cap-${idx}`;
+      return `
+        <div class="device-card">
+          ${buildCardHeader(dev, id)}
+          <div class="card-body" id="body-${id}">
+            <div class="conn-info">${buildConnFields(dev.settings || {})}</div>
+            <div class="section-title">Capabilities</div>
+            ${buildCapTable(dev.capabilities)}
+          </div>
+        </div>`;
+    }
+
+    // ── Modbus Registers card (Modbus Registers tab) ───────────────────────────
+
+    function buildRegCard(dev, idx) {
+      const id          = `reg-${idx}`;
+      const regDefsHtml = buildRegDefsTable(dev.registerDefs, idx);
+      return `
+        <div class="device-card">
+          ${buildCardHeader(dev, id)}
+          <div class="card-body" id="body-${id}">
+            <div class="conn-info">${buildConnFields(dev.settings || {})}</div>
+            <div class="section-title" style="display:flex;align-items:center;gap:8px">
+              <span>Registers</span>
+              <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9e9ea5;font-size:11px">— may need multiple attempts if Modbus port is busy →</span>
+              <button class="btn-secondary" id="reg-btn-${idx}" style="padding:3px 10px;text-transform:none;letter-spacing:0;font-size:11px"
+                onclick="readRegisters('${escHtml(dev.driverId)}', '${escHtml(dev.deviceId)}', ${idx})">
+                ↻ Read Live
+              </button>
+            </div>
+            <div id="reg-status-${idx}" style="font-size:11px;margin-bottom:6px;min-height:14px"></div>
+            ${regDefsHtml}
+          </div>
+        </div>`;
+    }
+
+    // ── Main load ──────────────────────────────────────────────────────────────
+
+    function loadDevices() {
+      const capContainer = document.getElementById('cap-container');
+      const regContainer = document.getElementById('reg-container');
+      const btn          = document.getElementById('refresh-btn');
+      const btnReg       = document.getElementById('refresh-reg-btn');
+      const upd          = document.getElementById('last-update');
+      const updReg       = document.getElementById('last-update-reg');
+
+      btn.disabled        = true;
+      btnReg.disabled     = true;
+      capContainer.innerHTML = '<div class="state-msg"><span class="spinner"></span>Loading…</div>';
+      regContainer.innerHTML = '<div class="state-msg"><span class="spinner"></span>Loading…</div>';
+
+      _H.api('GET', '/debug/devices', null, (err, result) => {
+        btn.disabled    = false;
+        btnReg.disabled = false;
+
+        if (err || !result) {
+          const msg = `<div class="state-msg" style="color:#c0392b">✗ Failed to load: ${escHtml(err ? err.message : 'Unknown error')}</div>`;
+          capContainer.innerHTML = msg;
+          regContainer.innerHTML = msg;
+          return;
+        }
+
+        _devices   = result;
+        _regValues = {};
+        const ts = 'Updated ' + new Date(result.timestamp).toLocaleTimeString();
+        upd.textContent    = ts;
+        updReg.textContent = ts;
+
+        if (!result.devices || result.devices.length === 0) {
+          const empty = '<div class="state-msg">No Modbus devices found.</div>';
+          capContainer.innerHTML = empty;
+          regContainer.innerHTML = empty;
+          return;
+        }
+
+        capContainer.innerHTML = result.devices.map((dev, i) => buildCapCard(dev, i)).join('');
+        regContainer.innerHTML = result.devices.map((dev, i) => buildRegCard(dev, i)).join('');
+      });
+    }
+
+    // ── Download debug text ────────────────────────────────────────────────────
+
+    function fmtValText(val) {
+      if (val === null || val === undefined) return '—';
+      if (typeof val === 'boolean')  return val ? 'true' : 'false';
+      if (typeof val === 'number')   return Number.isInteger(val) ? String(val) : val.toFixed(3).replace(/\.?0+$/, '');
+      return String(val);
+    }
+
+    function pad(s, n) { return String(s).padEnd(n); }
+
+    function buildDebugText() {
+      if (!_devices || !_devices.devices) return null;
+
+      const lines = [];
+      const ts    = new Date().toLocaleString();
+      const sep   = '='.repeat(70);
+      const dash  = '-'.repeat(70);
+
+      lines.push('Huawei FusionSolar Manager — Modbus Debug Export');
+      lines.push(`App version: v${_devices.version || '?'}`);
+      lines.push(`Generated:   ${ts}`);
+      lines.push(sep);
+
+      _devices.devices.forEach((dev, idx) => {
+        const s = dev.settings || {};
+        lines.push('');
+        lines.push(`DEVICE: ${dev.name}`);
+        lines.push(`Driver:    ${dev.driverId}`);
+        lines.push(`Status:    ${dev.available ? 'Online' : 'Offline'}`);
+        if (s.address)             lines.push(`IP:        ${s.address}`);
+        if (s.port)                lines.push(`Port:      ${s.port}`);
+        if (s.modbus_id !== undefined) lines.push(`Unit ID:   ${s.modbus_id}`);
+        lines.push('');
+
+        // Capabilities
+        lines.push('  CAPABILITIES');
+        lines.push('  ' + dash);
+        const caps = Object.entries(dev.capabilities).sort((a, b) => a[0].localeCompare(b[0]));
+        for (const [cap, val] of caps) {
+          lines.push(`  ${pad(cap, 42)} ${fmtValText(val)}`);
+        }
+
+        // Registers
+        if (dev.registerDefs && Object.keys(dev.registerDefs).length) {
+          const liveData = _regValues[idx];
+          lines.push('');
+          lines.push('  MODBUS REGISTERS' + (liveData
+            ? ` (live read: ${liveData.timestamp})`
+            : ' (no live read — click ↻ Read Live first)'));
+
+          for (const [groupName, rows] of Object.entries(dev.registerDefs)) {
+            lines.push('');
+            lines.push(`  [${groupName}]`);
+            lines.push(`  ${pad('Reg ID', 8)} ${pad('Len', 5)} ${pad('Type', 8)} ${pad('Key', 36)} ${pad('Label', 36)} Value`);
+            lines.push('  ' + '-'.repeat(110));
+
+            for (const r of rows) {
+              let liveVal = '—';
+              if (liveData && liveData.groups && liveData.groups[groupName] && liveData.groups[groupName].ok) {
+                const reg = liveData.groups[groupName].registers[r.key];
+                if (reg) liveVal = fmtValText(reg.value);
+              }
+              lines.push(`  ${pad(r.address, 8)} ${pad(r.length, 5)} ${pad(r.type, 8)} ${pad(r.key, 36)} ${pad(r.label, 36)} ${liveVal}`);
+            }
+          }
+        }
+
+        lines.push('');
+        lines.push(sep);
+      });
+
+      return lines.join('\n');
+    }
+
+    function downloadDebugText() {
+      const text = buildDebugText();
+      if (!text) { alert('No data loaded yet. Press Refresh first.'); return; }
+
+      document.getElementById('export-textarea').value = text;
+      document.getElementById('copy-hint').textContent = '';
+      document.getElementById('export-modal').classList.add('open');
+      // Select all text for easy manual copy
+      setTimeout(() => {
+        const ta = document.getElementById('export-textarea');
+        ta.focus();
+        ta.select();
+      }, 50);
+    }
+
+    function closeModal(event) {
+      // Close on overlay click or explicit call (no event)
+      if (event && event.target !== document.getElementById('export-modal')) return;
+      document.getElementById('export-modal').classList.remove('open');
+    }
+
+    function copyToClipboard() {
+      const ta   = document.getElementById('export-textarea');
+      const hint = document.getElementById('copy-hint');
+      ta.select();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value)
+          .then(() => { hint.textContent = '✓ Copied!'; hint.style.color = '#1a7a3a'; })
+          .catch(() => fallbackCopy(ta, hint));
+      } else {
+        fallbackCopy(ta, hint);
+      }
+    }
+
+    function fallbackCopy(ta, hint) {
+      try {
+        document.execCommand('copy');
+        hint.textContent = '✓ Copied!';
+        hint.style.color = '#1a7a3a';
+      } catch {
+        hint.textContent = 'Select all + Ctrl/Cmd+C to copy';
+        hint.style.color = '#6e6e73';
+      }
+    }
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+
+    let _devicesLoaded = false;
+
+    function showTab(name) {
+      ['tool', 'cap', 'registers'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display     = t === name ? '' : 'none';
+        document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
+      });
+      if (name === 'tool' && !_networkLoaded) loadNetworkInfo();
+      if ((name === 'cap' || name === 'registers') && !_devicesLoaded) {
+        _devicesLoaded = true;
+        loadDevices();
+      }
+    }
+
+    // ── Device Tester ─────────────────────────────────────────────────────────
+
+    let _networkLoaded  = false;
+    let _selectedNet    = null; // { address, netmask }
+    let _scanResults    = [];   // [{ host, ports }]
+
+    function loadNetworkInfo() {
+      _networkLoaded = true;
+      _H.api('GET', '/scan/network', null, (err, res) => {
+        const el = document.getElementById('network-list');
+        if (err || !res || !res.networks || !res.networks.length) {
+          el.innerHTML = '<p style="color:#c0392b;font-size:12px;">Failed to load network info. Enter base IP manually below.</p>';
+          document.getElementById('manual-subnet').style.display = '';
+          document.getElementById('scan-network-btn').style.display = '';
+          return;
+        }
+
+        // Collect unique /24 blocks across all interfaces; track Homey's own address
+        const homeyAddress = res.networks[0].address;
+        const homeyBase    = homeyAddress.split('.').slice(0, 3).join('.');
+        const seen         = new Set();
+        const subnets      = [];
+        for (const n of res.networks) {
+          for (const s of getSubnets24(n.address, n.cidr || '')) {
+            if (!seen.has(s)) { seen.add(s); subnets.push(s); }
+          }
+        }
+        subnets.sort();
+
+        // Pre-select Homey's /24 block
+        _selectedNet = { address: homeyAddress, baseIp: homeyBase };
+
+        // Render subnet chips directly — no interface cards needed
+        el.innerHTML = `
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            ${subnets.map(s => `
+              <button class="btn-secondary subnet-btn"
+                style="font-family:'SF Mono',Menlo,monospace;font-size:12px;padding:4px 12px${s === homeyBase ? ';border:2px solid #0071e3;background:#e8f0fe;color:#0071e3' : ''}"
+                onclick="selectSubnet('${s}', this)">${s}.x</button>
+            `).join('')}
+          </div>
+          <div style="font-size:11px;color:#6e6e73">
+            ℹ️ Homey's IP is <strong>${escHtml(homeyAddress)}</strong> — its block
+            (<strong>${escHtml(homeyBase)}.x</strong>) is pre-selected.
+          </div>`;
+
+        document.getElementById('manual-subnet').style.display = '';
+        document.getElementById('scan-network-btn').style.display = '';
+      });
+    }
+
+    // Returns all /24 base-IP strings (first 3 octets) that fall within the given CIDR.
+    // E.g. "10.160.12.36/22" → ["10.160.12", "10.160.13", "10.160.14", "10.160.15"]
+    function getSubnets24(address, cidr) {
+      const prefix = parseInt((cidr || '').split('/')[1] || '24', 10);
+      if (prefix >= 24) {
+        return [address.split('.').slice(0, 3).join('.')];
+      }
+      const parts  = address.split('.').map(Number);
+      const ip32   = ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+      const mask   = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+      const net32  = (ip32 & mask) >>> 0;
+      const num24s = Math.min(1 << (24 - prefix), 32); // cap at 32 subnets
+      const result = [];
+      for (let i = 0; i < num24s; i++) {
+        const block = (net32 + i * 256) >>> 0;
+        result.push(`${(block >>> 24) & 0xFF}.${(block >>> 16) & 0xFF}.${(block >>> 8) & 0xFF}`);
+      }
+      return result;
+    }
+
+    function selectSubnet(baseIp, btn) {
+      if (_selectedNet) _selectedNet.baseIp = baseIp;
+      document.querySelectorAll('.subnet-btn').forEach(b => {
+        b.style.border     = '';
+        b.style.background = '';
+        b.style.color      = '';
+      });
+      btn.style.border     = '2px solid #0071e3';
+      btn.style.background = '#e8f0fe';
+      btn.style.color      = '#0071e3';
+      // Clear any manual IP hint
+      document.getElementById('manual-ip-hint').textContent = '';
+    }
+
+    function applyManualIp() {
+      const val = document.getElementById('manual-base-ip').value.trim();
+      const parts = val.split('.');
+      if (parts.length !== 3 || parts.some(p => isNaN(Number(p)) || Number(p) < 0 || Number(p) > 255)) {
+        document.getElementById('manual-ip-hint').textContent = '✗ Enter 3 octets, e.g. 192.168.1';
+        document.getElementById('manual-ip-hint').style.color = '#c0392b';
+        return;
+      }
+      _selectedNet = _selectedNet || {};
+      _selectedNet.baseIp = val;
+      // Deselect subnet chips
+      document.querySelectorAll('.subnet-btn').forEach(b => {
+        b.style.border = ''; b.style.background = ''; b.style.color = '';
+      });
+      const hint = document.getElementById('manual-ip-hint');
+      hint.textContent = `✓ Will scan ${val}.1–254`;
+      hint.style.color = '#1a7a3a';
+    }
+
+    function startPortScan() {
+      if (!_selectedNet || !_selectedNet.baseIp) { alert('Please select a network or apply a manual base IP first.'); return; }
+      const step = document.getElementById('step-portscan');
+      step.style.display = '';
+      document.getElementById('portscan-status').innerHTML =
+        `<span class="spinner"></span>Scanning ${escHtml(_selectedNet.baseIp)}.1–254 on ports 502 and 6607…`;
+      document.getElementById('portscan-results').innerHTML = '';
+      document.getElementById('step-modbus').style.display    = 'none';
+      document.getElementById('step-compatible').style.display = 'none';
+
+      _H.api('POST', '/scan/ports', { baseIp: _selectedNet.baseIp }, (err, res) => {
+        const status  = document.getElementById('portscan-status');
+        const results = document.getElementById('portscan-results');
+        if (err || !res) {
+          status.innerHTML = `<span style="color:#c0392b">✗ Scan failed: ${escHtml(err ? err.message : 'No response')}</span>`;
+          return;
+        }
+        _scanResults = res.hosts || [];
+        if (!_scanResults.length) {
+          status.innerHTML = '<span style="color:#6e6e73">No devices found on ports 502 or 6607.</span>';
+          return;
+        }
+        status.innerHTML = `Found <strong>${_scanResults.length}</strong> device(s). Select one to run Modbus probe:`;
+        results.innerHTML = _scanResults.map((h, i) => {
+          const safeHost = escHtml(h.host);
+          const cfgId    = `uid-cfg-${i}`;
+          return `
+          <div>
+            <div class="host-row">
+              <span class="host-ip">${safeHost}</span>
+              ${h.ports.map(p => `<span class="port-badge">${p}</span>`).join(' ')}
+              ${h.ports.map(p => `
+                <button class="btn-secondary probe-btn"
+                  onclick="showUidConfig('${cfgId}', '${safeHost}', ${p})">
+                  Probe :${p}
+                </button>`).join('')}
+            </div>
+            <div class="uid-config" id="${cfgId}" style="display:none"></div>
+          </div>`;
+        }).join('');
+      });
+    }
+
+    const DEFAULT_UNIT_IDS = [0, 1, 2, 3, 100];
+
+    // ── Chip styling via inline styles (reliable across Homey webview versions) ──
+
+    function chipSetActive(btn, active) {
+      btn.dataset.active = active ? '1' : '0';
+      btn.style.background   = active ? '#0071e3' : '#f2f2f7';
+      btn.style.borderColor  = active ? '#0071e3' : '#d1d1d6';
+      btn.style.color        = active ? '#ffffff' : '#6e6e73';
+    }
+
+    function selectUidChip(btn, cfgId) {
+      // Radio-button behaviour: deactivate all, activate only the clicked one
+      document.querySelectorAll(`#${cfgId}-chips .uid-chip`)
+        .forEach(b => chipSetActive(b, false));
+      chipSetActive(btn, true);
+    }
+
+    function getSelectedUids(cfgId) {
+      const active = Array.from(document.querySelectorAll(`#${cfgId}-chips .uid-chip`))
+        .find(b => b.dataset.active === '1');
+      return active ? [parseInt(active.dataset.uid, 10)] : [];
+    }
+
+    function makeChip(uid, cfgId, active = false) {
+      const btn = document.createElement('button');
+      btn.className     = 'uid-chip';
+      btn.dataset.uid   = uid;
+      btn.textContent   = uid;
+      btn.onclick       = () => selectUidChip(btn, cfgId);
+      chipSetActive(btn, active);
+      return btn;
+    }
+
+    function addCustomUid(cfgId) {
+      const input = document.getElementById(`${cfgId}-custom`);
+      const val   = parseInt(input.value, 10);
+      if (isNaN(val) || val < 0 || val > 255) { input.focus(); return; }
+      const chips = document.getElementById(`${cfgId}-chips`);
+      if (chips.querySelector(`[data-uid="${val}"]`)) { input.value = ''; return; }
+      const chip = makeChip(val, cfgId, false);
+      chips.appendChild(chip);
+      selectUidChip(chip, cfgId); // auto-select the newly added ID
+      input.value = '';
+    }
+
+    function showUidConfig(cfgId, host, port) {
+      // Collapse any other open config panels
+      document.querySelectorAll('.uid-config').forEach(el => {
+        if (el.id !== cfgId) { el.style.display = 'none'; el.innerHTML = ''; }
+      });
+      const el = document.getElementById(cfgId);
+      // Toggle: second click collapses
+      if (el.style.display !== 'none' && el.innerHTML) {
+        el.style.display = 'none'; el.innerHTML = ''; return;
+      }
+
+      // Build structure
+      el.innerHTML = `
+        <div class="uid-config-label">Select unit IDs to probe:</div>
+        <div class="uid-chips" id="${cfgId}-chips"></div>
+        <div class="uid-manual">
+          <input type="number" id="${cfgId}-custom" placeholder="Custom ID" min="0" max="255"
+            onkeydown="if(event.key==='Enter') addCustomUid('${cfgId}')">
+          <button class="btn-secondary" style="font-size:11px;padding:3px 10px"
+            onclick="addCustomUid('${cfgId}')">+ Add</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn-primary" style="font-size:12px"
+            onclick="startModbusScan('${escHtml(host)}', ${port}, '${cfgId}')">▶ Start Probe</button>
+        </div>`;
+
+      // Add default chips via JS so inline styles are applied immediately
+      const chipsEl = document.getElementById(`${cfgId}-chips`);
+      DEFAULT_UNIT_IDS.forEach(uid => chipsEl.appendChild(makeChip(uid, cfgId, uid === 1)));
+
+      el.style.display = '';
+    }
+
+    // ── Promisified Homey API call ─────────────────────────────────────────────
+    function apiPost(path, body) {
+      return new Promise((resolve, reject) => {
+        _H.api('POST', path, body, (err, data) => {
+          if (err) reject(err); else resolve(data);
+        });
+      });
+    }
+
+    // ── Render Modbus probe results into the DOM ───────────────────────────────
+    function renderModbusResults(res, host, port) {
+      const status = document.getElementById('modbus-status');
+
+      const responding = res.results.filter(r => r.responds);
+      const pauseNote  = res.pausedCount > 0
+        ? ` <span style="color:#6e6e73;font-size:11px">(${res.pausedCount} device poll${res.pausedCount > 1 ? 's' : ''} paused &amp; resumed)</span>`
+        : '';
+      status.innerHTML = responding.length
+        ? `<span style="color:#1a7a3a">✓ ${responding.length} unit ID(s) responded</span>${pauseNote}`
+        : `<span style="color:#6e6e73">No unit IDs responded.</span>${pauseNote}`;
+
+      // Build compatible device list (Step 4)
+      const allCompatible = [];
+      for (const r of res.results) {
+        if (r.responds && r.identified) {
+          for (const drv of r.identified.compatible) {
+            allCompatible.push({
+              driver:      drv,
+              host,
+              port,
+              unitId:      r.unitId,
+              type:        r.identified.type,
+              unconfirmed: r.identified.unconfirmed || false,
+            });
+          }
+        }
+      }
+
+      if (allCompatible.length) {
+        document.getElementById('step-compatible').style.display = '';
+        document.getElementById('compatible-results').innerHTML = allCompatible.map(c => `
+          <div class="compat-row${c.unconfirmed ? ' unconfirmed' : ''}">
+            <div class="compat-icon">${c.unconfirmed ? '⚠️' : '⚡'}</div>
+            <div class="compat-info">
+              <div class="compat-driver">${escHtml(c.driver)}</div>
+              <div class="compat-conn">
+                IP: <strong>${escHtml(c.host)}</strong> &nbsp;
+                Port: <strong>${c.port}</strong> &nbsp;
+                Unit ID: <strong>${c.unitId}</strong>
+                ${c.unconfirmed ? ' &nbsp;<span style="color:#b35900;font-size:10px">⚠ unconfirmed — registers did not match, try manually</span>' : ''}
+              </div>
+            </div>
+          </div>`).join('');
+        document.getElementById('step-compatible').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      return responding.length; // caller checks > 0 to decide whether to retry
+    }
+
+    async function startModbusScan(host, port, cfgId) {
+      const unitIds = cfgId ? getSelectedUids(cfgId) : DEFAULT_UNIT_IDS;
+      if (!unitIds.length) { alert('Please select at least one unit ID.'); return; }
+
+      const MAX_ATTEMPTS   = 5;
+      const RETRY_PAUSE_MS = 5000;
+      const idLabel        = `unit ID ${unitIds[0]}`;
+
+      // Update step 3 hint with the actual selection
+      const hintEl = document.getElementById('probe-hint');
+      if (hintEl) {
+        hintEl.textContent = `Testing ${idLabel} — up to ~4 s per attempt…`;
+      }
+
+      const stepModbus = document.getElementById('step-modbus');
+      stepModbus.style.display = '';
+      document.getElementById('step-compatible').style.display = 'none';
+      stepModbus.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        document.getElementById('modbus-status').innerHTML =
+          `<span class="spinner"></span>Attempt ${attempt}/${MAX_ATTEMPTS} — Probing ${escHtml(host)}:${port}, ${idLabel}…`;
+
+        let res;
+        try {
+          // unitIds sent as comma-separated string — avoids array serialization issues
+          res = await apiPost('/scan/modbus', { host, port, unitIds: unitIds.join(',') });
+        } catch (err) {
+          // API call itself failed (network error / Homey timeout)
+          if (attempt < MAX_ATTEMPTS) {
+            document.getElementById('modbus-status').innerHTML =
+              `<span style="color:#b35900">⚠ Attempt ${attempt}/${MAX_ATTEMPTS} — error: ${escHtml(err.message)}. Retrying in ${RETRY_PAUSE_MS / 1000} s…</span>`;
+            await new Promise(r => setTimeout(r, RETRY_PAUSE_MS)); // eslint-disable-line no-promise-executor-return
+            continue;
+          }
+          document.getElementById('modbus-status').innerHTML =
+            `<span style="color:#c0392b">✗ ${escHtml(err.message)}</span>`;
+          return;
+        }
+
+        if (!res || res.error) {
+          const msg = res && res.error ? res.error : 'No response from app — check Homey app logs';
+          if (attempt < MAX_ATTEMPTS) {
+            document.getElementById('modbus-status').innerHTML =
+              `<span style="color:#b35900">⚠ Attempt ${attempt}/${MAX_ATTEMPTS} — ${escHtml(msg)}. Retrying in ${RETRY_PAUSE_MS / 1000} s…</span>`;
+            await new Promise(r => setTimeout(r, RETRY_PAUSE_MS)); // eslint-disable-line no-promise-executor-return
+            continue;
+          }
+          document.getElementById('modbus-status').innerHTML =
+            `<span style="color:#c0392b">✗ ${escHtml(msg)}</span>`;
+          return;
+        }
+
+        // Render results and check if anything responded
+        const respondingCount = renderModbusResults(res, host, port);
+
+        if (respondingCount > 0) break; // success — at least one unit ID responded
+
+        // Nothing responded — retry unless this was the last attempt
+        if (attempt < MAX_ATTEMPTS) {
+          document.getElementById('modbus-status').innerHTML =
+            `<span style="color:#b35900">⚠ Attempt ${attempt}/${MAX_ATTEMPTS} — no unit IDs responded. Retrying in ${RETRY_PAUSE_MS / 1000} s…</span>`;
+          await new Promise(r => setTimeout(r, RETRY_PAUSE_MS)); // eslint-disable-line no-promise-executor-return
+            }
+      }
+    }
+
+    // ── Entry point ────────────────────────────────────────────────────────────
+
+    function onHomeyReady(H) {
+      _H = H;
+      loadNetworkInfo(); // Device Tester is the default tab
+      _H.ready();
+    }
+  </script>
+</body>
+</html>
