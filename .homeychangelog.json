@@ -118,5 +118,8 @@
   },
   "1.1.24": {
     "en": "better modbus probing"
+  },
+  "1.1.25": {
+    "en": "Modbus Unit ID minimum changed from 1 to 0 — allows pairing inverters and batteries configured with unit ID 0"
   }
 }

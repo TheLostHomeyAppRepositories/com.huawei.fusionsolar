@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.24",
+  "version": "1.1.25",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -893,7 +893,7 @@
             "de": "Modbus Geräte-ID"
           },
           "value": 1,
-          "min": 1,
+          "min": 0,
           "max": 247,
           "hint": {
             "en": "Modbus unit ID of the charger (default: 1).",
@@ -1105,7 +1105,7 @@
                 "de": "Modbus Geräte-ID"
               },
               "value": 1,
-              "min": 1,
+              "min": 0,
               "max": 247,
               "hint": {
                 "en": "Modbus unit ID of the inverter (default: 1).",
@@ -1596,7 +1596,7 @@
             "de": "Modbus Geräte-ID"
           },
           "value": 1,
-          "min": 1,
+          "min": 0,
           "max": 247,
           "hint": {
             "en": "Same Modbus unit ID as the SUN2000 inverter (default: 1).",
@@ -2125,7 +2125,7 @@
             "de": "Modbus Geräte-ID"
           },
           "value": 1,
-          "min": 1,
+          "min": 0,
           "max": 247,
           "hint": {
             "en": "Same Modbus unit ID as the SUN2000 inverter (default: 1).",
