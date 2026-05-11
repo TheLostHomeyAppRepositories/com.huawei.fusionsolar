@@ -5,7 +5,7 @@ const {
   POWER_METER_REGISTERS,
   isPowerMeterDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters } = require('../../lib/modbus-client');
+const { readModbusRegisters, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -129,7 +129,7 @@ class DTSU666ModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
 
     try {
       const meter = await readModbusRegisters(address, port, modbusId, POWER_METER_REGISTERS);

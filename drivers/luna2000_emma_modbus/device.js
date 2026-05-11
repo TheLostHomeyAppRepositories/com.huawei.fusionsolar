@@ -6,7 +6,7 @@ const {
   LUNA2000_EMMA_CONTROL_REGISTERS,
   isLuna2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, writeModbusRegister, writeModbusU32 } = require('../../lib/modbus-client');
+const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -69,7 +69,7 @@ class LUNA2000EmmaModbusDevice extends Device {
     if (changedKeys.includes('max_grid_charge_power') && !this._updatingSettingFromModbus) {
       const address  = this.getSetting('address');
       const port     = parseInt(this.getSetting('port'), 10) || 502;
-      const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 0;
+      const modbusId = parseIntSafe(this.getSetting('modbus_id'), 0);
       const kw       = parseFloat(newSettings.max_grid_charge_power) || 0;
       const raw      = Math.round(kw * 1000);
       this.log(`Write max grid charge power: ${kw} kW → reg 40002 raw=${raw}`);
@@ -92,7 +92,7 @@ class LUNA2000EmmaModbusDevice extends Device {
   _registerControlListeners() {
     const host   = () => this.getSetting('address');
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId = () => parseInt(this.getSetting('modbus_id'), 10) || 0;
+    const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 0);
 
     for (const [cap, regAddress] of Object.entries(CONTROL_WRITE_MAP)) {
       this.registerCapabilityListener(cap, (value) => {
@@ -124,7 +124,7 @@ class LUNA2000EmmaModbusDevice extends Device {
   _registerFlowActions() {
     const host   = () => this.getSetting('address');
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId = () => parseInt(this.getSetting('modbus_id'), 10) || 0;
+    const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 0);
 
     const writeEnum = async (cardId, regAddress, capabilityId, mode) => {
       const value = parseInt(mode, 10);
@@ -244,7 +244,7 @@ class LUNA2000EmmaModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 0;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 0);
     const abort    = () => this._writeInProgress;
 
     try {

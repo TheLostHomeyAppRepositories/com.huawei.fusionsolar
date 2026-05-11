@@ -121,5 +121,14 @@
   },
   "1.1.25": {
     "en": "Modbus Unit ID minimum changed from 1 to 0 — allows pairing inverters and batteries configured with unit ID 0"
+  },
+  "1.1.26": {
+    "en": "Pairing no longer times out when existing Modbus devices are polling — all drivers on the same host are paused during pairing and resumed after. Device Tester now shows unit ID in results, keeps confirmed rows visible when switching unit ID, and allows re-checking any driver with ↻ Re-check."
+  },
+  "1.1.27": {
+    "en": "Fixed: devices configured with Modbus Unit ID 0 were incorrectly polling Unit ID 1 due to a JavaScript falsiness bug. All Modbus drivers now correctly use unit ID 0 when configured."
+  },
+  "1.1.28": {
+    "en": "Device Tester: confirmed (green) driver rows now show the IP address, port, and Unit ID in bold — making it easy to note down the exact connection details needed for pairing."
   }
 }

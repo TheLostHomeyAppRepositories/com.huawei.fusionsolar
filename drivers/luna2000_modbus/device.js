@@ -7,7 +7,7 @@ const {
   CONTROL_REGISTERS,
   isBatteryDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, writeModbusRegister, writeModbusU32 } = require('../../lib/modbus-client');
+const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -113,7 +113,7 @@ class LUNA2000ModbusDevice extends Device {
     if (!this._updatingSettingFromModbus && this._settingsInitialized) {
       const address  = this.getSetting('address');
       const port     = parseInt(this.getSetting('port'), 10) || 502;
-      const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 1;
+      const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
 
       if (changedKeys.includes('charge_from_grid')) {
         const raw = newSettings.charge_from_grid ? 1 : 0;
@@ -199,7 +199,7 @@ class LUNA2000ModbusDevice extends Device {
   _registerControlListeners() {
     const host   = () => this.getSetting('address');
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId = () => parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 1);
 
     for (const [cap, regAddress] of Object.entries(CONTROL_WRITE_MAP)) {
       this.registerCapabilityListener(cap, (value) => {
@@ -233,7 +233,7 @@ class LUNA2000ModbusDevice extends Device {
   _registerFlowActions() {
     const host   = () => this.getSetting('address');
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId = () => parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 1);
 
     const writeEnum = async (cardId, capabilityId, mode) => {
       const reg   = CONTROL_WRITE_MAP[capabilityId];
@@ -584,7 +584,7 @@ class LUNA2000ModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
 
     const abort = () => this._writeInProgress;
 

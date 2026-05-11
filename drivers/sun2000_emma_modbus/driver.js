@@ -6,6 +6,7 @@ const {
   isSun2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
+const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
 class SUN2000EmmaModbusDriver extends Driver {
 
@@ -16,21 +17,28 @@ class SUN2000EmmaModbusDriver extends Driver {
   async onPair(session) {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
-      port     = parseInt(port, 10) || 502;
-      modbusId = parseInt(modbusId, 10) || 0;
+      port     = parseIntSafe(port, 502);
+      modbusId = parseIntSafe(modbusId, 0); // EMMA default unit ID is 0
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));
       }
 
       const probeRegisters = {
-        pvOutputPower:      SUN2000_EMMA_DATA_REGISTERS.pvOutputPower,
+        pvOutputPower:       SUN2000_EMMA_DATA_REGISTERS.pvOutputPower,
         inverterActivePower: SUN2000_EMMA_DATA_REGISTERS.inverterActivePower,
-        inverterTotalYield: SUN2000_EMMA_DATA_REGISTERS.inverterTotalYield,
-        inverterYieldToday: SUN2000_EMMA_DATA_REGISTERS.inverterYieldToday,
+        inverterTotalYield:  SUN2000_EMMA_DATA_REGISTERS.inverterTotalYield,
+        inverterYieldToday:  SUN2000_EMMA_DATA_REGISTERS.inverterYieldToday,
       };
 
-      const data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      // Pause all Modbus devices on this host so the pairing probe gets exclusive TCP access.
+      const paused = await pauseDevicesOnHost(this.homey, address);
+      let data;
+      try {
+        data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      } finally {
+        await resumePairedDevices(paused);
+      }
 
       if (!isSun2000EmmaDataValid(data)) {
         throw new Error(this.homey.__('modbus.pair.errors.inverterNotDetected'));

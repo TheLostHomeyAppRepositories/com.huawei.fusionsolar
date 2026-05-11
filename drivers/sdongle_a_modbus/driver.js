@@ -3,6 +3,7 @@
 const { Driver } = require('homey');
 const { SDONGLE_A_REGISTERS, isSdonglaADataValid } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
+const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
 class SdonglaAModbusDriver extends Driver {
 
@@ -13,8 +14,8 @@ class SdonglaAModbusDriver extends Driver {
   async onPair(session) {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
-      port     = parseInt(port, 10) || 502;
-      modbusId = parseInt(modbusId, 10) || 100;
+      port     = parseIntSafe(port, 502);
+      modbusId = parseIntSafe(modbusId, 100); // SDongle default is 100 — 0 is still valid
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));
@@ -26,7 +27,14 @@ class SdonglaAModbusDriver extends Driver {
         loadPower:       SDONGLE_A_REGISTERS.loadPower,
       };
 
-      const data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      // Pause all Modbus devices on this host so the pairing probe gets exclusive TCP access.
+      const paused = await pauseDevicesOnHost(this.homey, address);
+      let data;
+      try {
+        data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      } finally {
+        await resumePairedDevices(paused);
+      }
 
       if (!isSdonglaADataValid(data)) {
         throw new Error(this.homey.__('modbus.pair.errors.sdongleANotDetected'));

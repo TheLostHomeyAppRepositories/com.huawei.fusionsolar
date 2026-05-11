@@ -5,7 +5,7 @@ const {
   SUN2000_EMMA_DATA_REGISTERS,
   isSun2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters } = require('../../lib/modbus-client');
+const { readModbusRegisters, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -124,7 +124,7 @@ class SUN2000EmmaModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 0;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 0);
 
     try {
       const d = await readModbusRegisters(address, port, modbusId, SUN2000_EMMA_DATA_REGISTERS);

@@ -6,6 +6,7 @@ const {
   isLuna2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
+const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
 class LUNA2000EmmaModbusDriver extends Driver {
 
@@ -16,21 +17,28 @@ class LUNA2000EmmaModbusDriver extends Driver {
   async onPair(session) {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
-      port     = parseInt(port, 10) || 502;
-      modbusId = parseInt(modbusId, 10) || 0;
+      port     = parseIntSafe(port, 502);
+      modbusId = parseIntSafe(modbusId, 0); // EMMA default unit ID is 0
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));
       }
 
       const probeRegisters = {
-        soc:                   LUNA2000_EMMA_DATA_REGISTERS.soc,
-        batteryPower:          LUNA2000_EMMA_DATA_REGISTERS.batteryPower,
-        totalChargedEnergy:    LUNA2000_EMMA_DATA_REGISTERS.totalChargedEnergy,
-        chargedToday:          LUNA2000_EMMA_DATA_REGISTERS.chargedToday,
+        soc:                LUNA2000_EMMA_DATA_REGISTERS.soc,
+        batteryPower:       LUNA2000_EMMA_DATA_REGISTERS.batteryPower,
+        totalChargedEnergy: LUNA2000_EMMA_DATA_REGISTERS.totalChargedEnergy,
+        chargedToday:       LUNA2000_EMMA_DATA_REGISTERS.chargedToday,
       };
 
-      const data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      // Pause all Modbus devices on this host so the pairing probe gets exclusive TCP access.
+      const paused = await pauseDevicesOnHost(this.homey, address);
+      let data;
+      try {
+        data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      } finally {
+        await resumePairedDevices(paused);
+      }
 
       if (!isLuna2000EmmaDataValid(data)) {
         throw new Error(this.homey.__('modbus.pair.errors.batteryNotDetected'));

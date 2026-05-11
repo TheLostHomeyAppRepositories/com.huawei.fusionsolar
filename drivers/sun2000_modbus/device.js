@@ -8,7 +8,7 @@ const {
   isPowerMeterDataValid,
   statusLabel,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, writeModbusRegister, writeModbusU32 } = require('../../lib/modbus-client');
+const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -127,7 +127,7 @@ class SUN2000ModbusDevice extends Device {
     if (!this._updatingSettingFromModbus && this._settingsInitialized) {
       const address  = this.getSetting('address');
       const port     = parseInt(this.getSetting('port'), 10) || 502;
-      const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 1;
+      const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
 
       if (changedKeys.includes('max_feed_in_power')) {
         const raw = Math.round(parseFloat(newSettings.max_feed_in_power) || 0);
@@ -189,7 +189,7 @@ class SUN2000ModbusDevice extends Device {
   _registerControlListeners() {
     const host    = () => this.getSetting('address');
     const port    = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId  = () => parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const unitId  = () => parseIntSafe(this.getSetting('modbus_id'), 1);
 
     for (const [cap, regAddress] of Object.entries(CONTROL_WRITE_MAP)) {
       this.registerCapabilityListener(cap, (value) => {
@@ -231,7 +231,7 @@ class SUN2000ModbusDevice extends Device {
 
     const host   = () => this.getSetting('address');
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
-    const unitId = () => parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 1);
 
     this.homey.flow
       .getActionCard('sun2000_set_active_power_mode')
@@ -428,7 +428,7 @@ class SUN2000ModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 1;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
 
     const abort = () => this._writeInProgress;
 

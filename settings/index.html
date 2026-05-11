@@ -376,7 +376,9 @@
     .compat-info { flex: 1; min-width: 0; }
     .compat-driver { font-family: 'SF Mono', Menlo, monospace; font-size: 11px; color: #1a56db; }
     .compat-sub  { font-size: 11px; color: #6e6e73; margin-top: 1px; }
-    .compat-detail { font-size: 11px; color: #3a3a3c; margin-top: 3px; word-break: break-word; }
+    .compat-detail  { font-size: 11px; color: #3a3a3c; margin-top: 3px; word-break: break-word; }
+    .compat-connect { font-size: 12px; margin-top: 6px; padding-top: 6px;
+                      border-top: 1px solid rgba(0,0,0,0.08); word-break: break-all; }
 
     /* ── Export modal ────────────────────────────────────── */
     .modal-overlay {
@@ -1074,7 +1076,8 @@
       document.querySelectorAll(`#${cfgId}-chips .uid-chip`)
         .forEach(b => chipSetActive(b, false));
       chipSetActive(btn, true);
-      resetDriverRows(cfgId); // reset driver check state when unit ID changes
+      // Do NOT reset driver rows — results from a previous unit ID remain visible
+      // so the user can compare. Use ↻ or ⚡ Check All to re-check for the new ID.
     }
 
     function getSelectedUids(cfgId) {
@@ -1164,7 +1167,8 @@
 
     // ── Build HTML for one driver row ─────────────────────────────────────────
     // state: 'idle' | 'loading' | 'confirmed' | 'unconfirmed' | 'error'
-    function driverRowHtml(cfgId, host, port, d, state, detail) {
+    // unitId: pass when state is 'confirmed' to show the connection info block
+    function driverRowHtml(cfgId, host, port, d, state, detail, unitId) {
       const rowId = `${cfgId}-drv-${d.id}`;
       let icon, rowCls, btnHtml, detailHtml = '';
 
@@ -1174,11 +1178,15 @@
         btnHtml = `<button class="btn-secondary probe-btn" id="${rowId}-btn" disabled
                      style="white-space:nowrap;flex-shrink:0">…</button>`;
       } else if (state === 'confirmed') {
-        icon    = '⚡';
+        icon    = '✅';
         rowCls  = ' confirmed';
-        btnHtml = `<button class="btn-secondary probe-btn" id="${rowId}-btn" disabled
-                     style="white-space:nowrap;flex-shrink:0;opacity:0.35">✓</button>`;
+        btnHtml = `<button class="btn-secondary probe-btn" id="${rowId}-btn"
+                     style="white-space:nowrap;flex-shrink:0"
+                     onclick="checkDriver('${escHtml(host)}',${port},'${cfgId}','${d.id}')">↻ Re-check</button>`;
         if (detail) detailHtml = `<div class="compat-detail">${escHtml(detail)}</div>`;
+        if (unitId !== null && unitId !== undefined) {
+          detailHtml += `<div class="compat-connect"><strong>${escHtml(host)} : ${port} &nbsp;·&nbsp; Unit ID ${unitId}</strong></div>`;
+        }
       } else if (state === 'unconfirmed') {
         icon    = '⚠️';
         rowCls  = ' unconfirmed';
@@ -1222,8 +1230,7 @@
         row.className = 'compat-row';
         const icon = row.querySelector('.compat-icon');
         if (icon) icon.innerHTML = '<span style="color:#c7c7cc;font-size:14px">○</span>';
-        const detail = row.querySelector('.compat-detail');
-        if (detail) detail.remove();
+        row.querySelectorAll('.compat-detail, .compat-connect').forEach(el => el.remove());
         const btn = row.querySelector('button');
         if (btn) { btn.disabled = false; btn.textContent = 'Check'; }
       });
@@ -1260,8 +1267,7 @@
       rowEl.className = 'compat-row';
       rowEl.querySelector('.compat-icon').innerHTML =
         '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block"></span>';
-      const oldDetail = rowEl.querySelector('.compat-detail');
-      if (oldDetail) oldDetail.remove();
+      rowEl.querySelectorAll('.compat-detail, .compat-connect').forEach(el => el.remove());
       const btn = rowEl.querySelector('button');
       if (btn) {
         btn.disabled    = true;
@@ -1277,13 +1283,14 @@
           await new Promise(r => setTimeout(r, DRIVER_CHECK_RETRY_MS)); // eslint-disable-line no-promise-executor-return
           return checkDriver(host, port, cfgId, driverId, attempt + 1);
         }
-        rowEl.outerHTML = driverRowHtml(cfgId, host, port, d, 'error', err.message);
+        rowEl.outerHTML = driverRowHtml(cfgId, host, port, d, 'error',
+          `Unit ID ${unitId} — ${err.message}`);
         return;
       }
 
       if (!res || res.error) {
         rowEl.outerHTML = driverRowHtml(cfgId, host, port, d, 'error',
-          res ? res.error : 'No response from app');
+          `Unit ID ${unitId} — ${res ? res.error : 'No response from app'}`);
         return;
       }
 
@@ -1293,8 +1300,15 @@
         return checkDriver(host, port, cfgId, driverId, attempt + 1);
       }
 
-      rowEl.outerHTML = driverRowHtml(cfgId, host, port, d,
-        res.confirmed ? 'confirmed' : 'unconfirmed', res.detail || '');
+      if (res.confirmed) {
+        // Confirmed: show plain register detail + bold connection block at bottom
+        rowEl.outerHTML = driverRowHtml(cfgId, host, port, d, 'confirmed',
+          res.detail || '', unitId);
+      } else {
+        // Unconfirmed: keep unit ID in the detail text (no separate block)
+        rowEl.outerHTML = driverRowHtml(cfgId, host, port, d, 'unconfirmed',
+          `Unit ID ${unitId} — ${res.detail || ''}`);
+      }
 
       // Show notes once at least one check has completed
       const notes = document.getElementById(`${cfgId}-notes`);

@@ -6,6 +6,7 @@ const {
   isPowerMeterEmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
+const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
 class PowerMeterEmmaModbusDriver extends Driver {
 
@@ -16,14 +17,21 @@ class PowerMeterEmmaModbusDriver extends Driver {
   async onPair(session) {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
-      port     = parseInt(port, 10) || 502;
-      modbusId = parseInt(modbusId, 10) || 0;
+      port     = parseIntSafe(port, 502);
+      modbusId = parseIntSafe(modbusId, 0); // EMMA default unit ID is 0
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));
       }
 
-      const data = await readModbusRegisters(address, port, modbusId, POWERMETER_EMMA_DATA_REGISTERS);
+      // Pause all Modbus devices on this host so the pairing probe gets exclusive TCP access.
+      const paused = await pauseDevicesOnHost(this.homey, address);
+      let data;
+      try {
+        data = await readModbusRegisters(address, port, modbusId, POWERMETER_EMMA_DATA_REGISTERS);
+      } finally {
+        await resumePairedDevices(paused);
+      }
 
       if (!isPowerMeterEmmaDataValid(data)) {
         throw new Error(this.homey.__('modbus.pair.errors.meterNotDetected'));

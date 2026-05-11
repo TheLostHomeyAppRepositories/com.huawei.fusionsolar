@@ -3,6 +3,7 @@
 const { Driver } = require('homey');
 const { SMARTCHARGER_REGISTERS } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
+const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
 class SmartChargerModbusDriver extends Driver {
 
@@ -13,8 +14,8 @@ class SmartChargerModbusDriver extends Driver {
   async onPair(session) {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
-      port     = parseInt(port, 10) || 502;
-      modbusId = parseInt(modbusId, 10) || 1;
+      port     = parseIntSafe(port, 502);
+      modbusId = parseIntSafe(modbusId, 1); // 0 is a valid unit ID — avoid || 1
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));
@@ -28,7 +29,14 @@ class SmartChargerModbusDriver extends Driver {
         phaseAVoltage:      SMARTCHARGER_REGISTERS.phaseAVoltage,
       };
 
-      const data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      // Pause all Modbus devices on this host so the pairing probe gets exclusive TCP access.
+      const paused = await pauseDevicesOnHost(this.homey, address);
+      let data;
+      try {
+        data = await readModbusRegisters(address, port, modbusId, probeRegisters);
+      } finally {
+        await resumePairedDevices(paused);
+      }
 
       this.log(`Pairing SmartCharger at ${address}:${port} id=${modbusId}, name="${data.offeringName}", rated=${data.ratedPower}kW`);
 

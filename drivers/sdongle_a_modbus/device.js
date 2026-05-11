@@ -5,7 +5,7 @@ const {
   SDONGLE_A_REGISTERS,
   isSdonglaADataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters } = require('../../lib/modbus-client');
+const { readModbusRegisters, parseIntSafe } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -105,7 +105,7 @@ class SdonglaAModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseInt(this.getSetting('modbus_id'), 10) || 100;
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 100);
 
     try {
       const data = await readModbusRegisters(address, port, modbusId, SDONGLE_A_REGISTERS);
