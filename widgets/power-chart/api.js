@@ -58,7 +58,7 @@ module.exports = {
       } catch (e) {}
     }
 
-    // Add sample if interval elapsed, then persist
+    // Add sample if interval elapsed, then persist to settings
     if (now - _lastSample >= SAMPLE_MS) {
       _buf.push({ t: now, pv: pvPower, grid: gridPower, batt: battPower, house: housePower });
       _lastSample = now;
