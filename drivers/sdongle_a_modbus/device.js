@@ -131,6 +131,7 @@ class SdonglaAModbusDevice extends Device {
         await this._set('sdongle_type', typeLabel);
       }
 
+
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
 

@@ -130,5 +130,11 @@
   },
   "1.1.28": {
     "en": "Device Tester: confirmed (green) driver rows now show the IP address, port, and Unit ID in bold — making it easy to note down the exact connection details needed for pairing."
+  },
+  "1.1.29": {
+    "en": "SUN2000 (Modbus): added Software Version capability (register 30050). LUNA2000 (Modbus): added Software Version (register 37814) and Software Version Unit 2 (register 37799) capabilities — Unit 2 is only shown when the second battery unit responds."
+  },
+  "1.1.30": {
+    "en": "4 new dashboard widgets: Solar Power Flow (live PV / house / battery / grid), Battery Status (SoC bar, charge/discharge power, today's stats), Daily Yield (today's kWh, lifetime total, optimizer count), Energy Balance (PV today, grid export/import, self-consumption %)."
   }
 }

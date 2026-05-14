@@ -48,6 +48,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_battery_modules',
   'luna2000_unit1_installed',
   'luna2000_unit2_installed',
+  // software version capabilities are added/removed dynamically based on register response
 ];
 
 // Only the battery-related control registers
@@ -631,6 +632,9 @@ class LUNA2000ModbusDevice extends Device {
       await this._set('meter_power.today_batt_input',  batt.storageDayCharge ?? null);
       await this._set('meter_power.today_batt_output', batt.storageDayDischarge ?? null);
 
+      await this._syncStringCap('luna2000_unit1_software_version', batt.storageUnit1SoftwareVer);
+      await this._syncStringCap('luna2000_unit2_software_version', batt.storageUnit2SoftwareVer);
+
       // Read control registers every 5th poll — they change rarely and the read
       // adds ~1 s of connection time that delays pending writes.
       this._controlPollCounter = (this._controlPollCounter + 1) % 5;
@@ -673,6 +677,18 @@ class LUNA2000ModbusDevice extends Device {
       }
     } finally {
       this._fetchInProgress = false;
+    }
+  }
+
+  // Adds the capability and sets its value when present; removes it when absent.
+  // Used for optional string capabilities that only exist on some hardware configurations.
+  async _syncStringCap(capId, value) {
+    const hasValue = value && typeof value === 'string' && value.trim().length > 0;
+    if (hasValue) {
+      if (!this.hasCapability(capId)) await this.addCapability(capId);
+      await this._set(capId, value.trim());
+    } else if (this.hasCapability(capId)) {
+      await this.removeCapability(capId);
     }
   }
 

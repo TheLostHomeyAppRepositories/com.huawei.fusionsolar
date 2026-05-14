@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battery Status</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: transparent;
+    padding: 14px;
+  }
+
+  /* --- SoC row --- */
+  .soc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .soc-left {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 80px;
+  }
+
+  .soc-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .soc-number {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: var(--homey-text-color);
+  }
+
+  .soc-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .soc-track {
+    height: 14px;
+    border-radius: 8px;
+    background: var(--homey-line-color);
+    overflow: hidden;
+  }
+
+  .soc-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.4s ease;
+    background: #22C55E;
+  }
+
+  .soc-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .soc-status {
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+  }
+
+  .soc-remaining {
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+    font-weight: 500;
+  }
+
+  /* --- Power row --- */
+  .power-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .power-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .power-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+    color: var(--homey-text-color);
+  }
+
+  .power-label {
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+    margin-left: 2px;
+  }
+
+  /* --- Stats row --- */
+  .stats-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .row-tile {
+    flex: 1;
+    background: var(--homey-line-color);
+    border-radius: 12px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .stat-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+  }
+
+  .stat-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .stat-value {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--homey-text-color);
+  }
+
+  /* --- Skeleton --- */
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%       { opacity: 0.7; }
+  }
+  body.loading .soc-number,
+  body.loading .power-value,
+  body.loading .stat-value {
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  /* --- Power icon animation --- */
+  @keyframes glow-green {
+    0%, 100% { filter: drop-shadow(0 0 0px rgba(34,197,94,0)); }
+    50%       { filter: drop-shadow(0 0 4px rgba(34,197,94,0.9)); }
+  }
+  @keyframes glow-orange {
+    0%, 100% { filter: drop-shadow(0 0 0px rgba(249,115,22,0)); }
+    50%       { filter: drop-shadow(0 0 4px rgba(249,115,22,0.9)); }
+  }
+  .glow-green  { animation: glow-green  2s ease-in-out infinite; }
+  .glow-orange { animation: glow-orange 2s ease-in-out infinite; }
+</style>
+</head>
+<body class="loading">
+
+<div class="soc-row">
+  <div class="soc-left">
+    <svg class="soc-icon" id="soc-batt-icon" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="7" width="16" height="10" rx="2"/>
+      <line x1="22" y1="10" x2="22" y2="14"/>
+    </svg>
+    <div class="soc-number" id="soc-num">—</div>
+  </div>
+  <div class="soc-bar-wrap">
+    <div class="soc-track">
+      <div class="soc-fill" id="soc-fill" style="width:0%"></div>
+    </div>
+    <div class="soc-meta">
+      <div class="soc-status" id="batt-status">—</div>
+      <div class="soc-remaining" id="batt-remaining"></div>
+    </div>
+  </div>
+</div>
+
+<div class="power-row">
+  <svg class="power-icon" id="power-icon" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
+  </svg>
+  <span class="power-value" id="power-val">—</span>
+  <span class="power-label" id="power-dir"></span>
+</div>
+
+<div class="stats-row">
+  <div class="row-tile">
+    <div class="stat-label">
+      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"/>
+        <polyline points="5,12 12,5 19,12"/>
+      </svg>
+      Heute geladen
+    </div>
+    <div class="stat-value" id="charged-val">—</div>
+  </div>
+  <div class="row-tile">
+    <div class="stat-label">
+      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <polyline points="19,12 12,19 5,12"/>
+      </svg>
+      Heute entladen
+    </div>
+    <div class="stat-value" id="discharged-val">—</div>
+  </div>
+</div>
+
+<script>
+function fmtKwh(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(1) + ' kWh';
+}
+function fmtW(w) {
+  if (w === null || w === undefined) return '—';
+  const abs = Math.abs(w);
+  if (abs >= 1000) return (abs / 1000).toFixed(1) + ' kW';
+  return Math.round(abs) + ' W';
+}
+function fmtRemaining(hours) {
+  if (hours === null || !isFinite(hours) || hours <= 0) return '';
+  var h = Math.floor(hours);
+  var m = Math.round((hours - h) * 60);
+  if (m === 60) { h++; m = 0; }
+  if (h > 99) return '';  // unrealistically long
+  return h > 0 ? 'noch ' + h + 'h ' + m + 'min' : 'noch ' + m + 'min';
+}
+
+function onHomeyReady(Homey) {
+  Homey.ready({ height: 165 });
+  document.body.classList.add('loading');
+
+  var capacityKwh = 5; // default, overridden from settings below
+  try {
+    var settings = Homey.getSettings();
+    if (settings && settings.battery_capacity_kwh) {
+      capacityKwh = parseFloat(settings.battery_capacity_kwh) || 5;
+    }
+  } catch(e) {}
+
+  function render(data) {
+    document.body.classList.remove('loading');
+
+    // SoC
+    var soc = data.soc;
+    var socColor = '#22C55E';
+    if (soc !== null && soc !== undefined) {
+      document.getElementById('soc-num').textContent = Math.round(soc) + '%';
+      document.getElementById('soc-fill').style.width = Math.min(100, Math.max(0, soc)) + '%';
+      if      (soc < 20) socColor = '#EF4444';
+      else if (soc < 40) socColor = '#F97316';
+      else               socColor = '#22C55E';
+      document.getElementById('soc-fill').style.background = socColor;
+      document.getElementById('soc-batt-icon').setAttribute('stroke', socColor);
+    } else {
+      document.getElementById('soc-num').textContent = '—';
+    }
+
+    document.getElementById('batt-status').textContent = data.status || '—';
+
+    // Remaining time
+    var pw = data.powerW;
+    var remaining = '';
+    if (soc !== null && pw !== null) {
+      if (pw > 50) {
+        var remainKwh = (1 - soc / 100) * capacityKwh;
+        remaining = fmtRemaining(remainKwh / (pw / 1000));
+      } else if (pw < -50) {
+        var availKwh = (soc / 100) * capacityKwh;
+        remaining = fmtRemaining(availKwh / (Math.abs(pw) / 1000));
+      }
+    }
+    document.getElementById('batt-remaining').textContent = remaining;
+
+    // Power
+    document.getElementById('power-val').textContent = fmtW(pw);
+    var powerIcon = document.getElementById('power-icon');
+    var powerDir  = document.getElementById('power-dir');
+    if (pw > 50) {
+      powerIcon.setAttribute('stroke', '#22C55E');
+      powerIcon.setAttribute('class', 'power-icon glow-green');
+      powerDir.textContent = 'Laden';
+      powerDir.style.color = '#22C55E';
+    } else if (pw < -50) {
+      powerIcon.setAttribute('stroke', '#F97316');
+      powerIcon.setAttribute('class', 'power-icon glow-orange');
+      powerDir.textContent = 'Entladen';
+      powerDir.style.color = '#F97316';
+    } else {
+      powerIcon.setAttribute('stroke', '#9CA3AF');
+      powerIcon.setAttribute('class', 'power-icon');
+      powerDir.textContent = 'Standby';
+      powerDir.style.color = '';
+    }
+
+    document.getElementById('charged-val').textContent    = fmtKwh(data.todayChargedKwh);
+    document.getElementById('discharged-val').textContent = fmtKwh(data.todayDischargedKwh);
+  }
+
+  function load() {
+    Homey.api('GET', '/', {})
+      .then(function(data) { if (data) render(data); })
+      .catch(function(err) { console.error('widget load error:', err); });
+  }
+
+  load();
+  setInterval(load, 10000);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) load();
+  });
+}
+</script>
+</body>
+</html>

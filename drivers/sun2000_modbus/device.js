@@ -25,6 +25,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_current.pv1',
   'measure_current.pv2',
   'huawei_status',
+  'sun2000_software_version',
   'activepower_controlmode',
 ];
 
@@ -75,6 +76,7 @@ const DEPRECATED_CAPABILITIES = [
   'measure_power.dischargesetting',
   'meter_power.today_batt_input',
   'meter_power.today_batt_output',
+  'sun2000_firmware_version', // renamed to sun2000_software_version in 1.1.29
 ];
 
 // Only the inverter control register addresses (47xxx + 40125/40126)
@@ -463,6 +465,10 @@ class SUN2000ModbusDevice extends Device {
             .catch((err) => this.log('Timeline notification failed:', err.message));
         }
         this._prevDeviceStatus = label;
+      }
+
+      if (data.softwareVersion) {
+        await this._set('sun2000_software_version', data.softwareVersion);
       }
 
       await this._fetchPowerMeter(address, port, modbusId, abort);

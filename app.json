@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.28",
+  "version": "1.1.30",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -84,6 +84,42 @@
     "url": "https://github.com/andiwirz/com.huawei.fusionsolar/issues"
   },
   "capabilities": {
+    "luna2000_unit1_software_version": {
+      "type": "string",
+      "title": {
+        "en": "Software Version Unit 1",
+        "de": "Software-Version Unit 1"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/sun2000_software_version.svg"
+    },
+    "luna2000_unit2_software_version": {
+      "type": "string",
+      "title": {
+        "en": "Software Version Unit 2",
+        "de": "Software-Version Unit 2"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/sun2000_software_version.svg"
+    },
+    "sun2000_software_version": {
+      "type": "string",
+      "title": {
+        "en": "Software Version",
+        "de": "Software-Version"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/sun2000_software_version.svg"
+    },
     "huawei_status": {
       "type": "string",
       "title": {
@@ -948,6 +984,7 @@
         "measure_current.pv1",
         "measure_current.pv2",
         "huawei_status",
+        "sun2000_software_version",
         "activepower_controlmode"
       ],
       "capabilitiesOptions": {
@@ -1048,6 +1085,12 @@
             "de": "Online-Optimierer"
           },
           "insights": true
+        },
+        "sun2000_software_version": {
+          "title": {
+            "en": "Software Version",
+            "de": "Software-Version"
+          }
         }
       },
       "images": {
@@ -1428,7 +1471,9 @@
         "remote_charge_discharge_control_mode",
         "measure_battery_modules",
         "luna2000_unit1_installed",
-        "luna2000_unit2_installed"
+        "luna2000_unit2_installed",
+        "luna2000_unit1_software_version",
+        "luna2000_unit2_software_version"
       ],
       "capabilitiesOptions": {
         "measure_power": {
@@ -1539,12 +1584,26 @@
           "title": {
             "en": "Battery Unit 1 installed",
             "de": "Batterie-Unit 1 installiert"
-          }
+          },
+          "uiComponent": null
         },
         "luna2000_unit2_installed": {
           "title": {
             "en": "Battery Unit 2 installed",
             "de": "Batterie-Unit 2 installiert"
+          },
+          "uiComponent": null
+        },
+        "luna2000_unit1_software_version": {
+          "title": {
+            "en": "Software Version",
+            "de": "Software-Version"
+          }
+        },
+        "luna2000_unit2_software_version": {
+          "title": {
+            "en": "Software Version Unit 2",
+            "de": "Software-Version Unit 2"
           }
         }
       },
@@ -5488,5 +5547,109 @@
         ]
       }
     ]
+  },
+  "widgets": {
+    "solar-power-flow": {
+      "id": "solar-power-flow",
+      "name": { "en": "Solar Power Flow", "de": "Solar Energiefluss" },
+      "height": 185,
+      "settings": [],
+      "images": {
+        "light": "/widgets/solar-power-flow/preview-light.png",
+        "dark": "/widgets/solar-power-flow/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    },
+    "battery-status": {
+      "id": "battery-status",
+      "name": { "en": "Battery Status", "de": "Batteriestatus" },
+      "height": 165,
+      "settings": [
+        {
+          "id": "battery_capacity_kwh",
+          "type": "number",
+          "title": { "en": "Battery capacity (kWh)", "de": "Batteriekapazität (kWh)" },
+          "hint": { "en": "Usable capacity of your battery in kWh. Used to calculate the estimated time until full or empty.\n\nLUNA2000 examples:\n• 1 module (5 kWh) → enter 5\n• 2 modules (10 kWh) → enter 10\n• 3 modules (15 kWh) → enter 15", "de": "Nutzbare Kapazität deiner Batterie in kWh. Wird verwendet, um die verbleibende Lade- bzw. Entladezeit zu berechnen.\n\nLUNA2000 Beispiele:\n• 1 Modul (5 kWh) → 5 eingeben\n• 2 Module (10 kWh) → 10 eingeben\n• 3 Module (15 kWh) → 15 eingeben" },
+          "value": 5,
+          "min": 1,
+          "max": 200,
+          "step": 0.5
+        }
+      ],
+      "images": {
+        "light": "/widgets/battery-status/preview-light.png",
+        "dark": "/widgets/battery-status/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    },
+    "daily-yield": {
+      "id": "daily-yield",
+      "name": { "en": "Daily Yield", "de": "Tagesertrag" },
+      "height": 112,
+      "settings": [],
+      "images": {
+        "light": "/widgets/daily-yield/preview-light.png",
+        "dark": "/widgets/daily-yield/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    },
+    "energy-balance": {
+      "id": "energy-balance",
+      "name": { "en": "Energy Balance", "de": "Energiebilanz" },
+      "height": 220,
+      "settings": [],
+      "images": {
+        "light": "/widgets/energy-balance/preview-light.png",
+        "dark": "/widgets/energy-balance/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    },
+    "power-chart": {
+      "id": "power-chart",
+      "name": { "en": "Power Chart", "de": "Leistungsverlauf" },
+      "height": 235,
+      "settings": [
+        {
+          "id": "show_pv",
+          "type": "checkbox",
+          "title": { "en": "Show PV", "de": "PV anzeigen" },
+          "value": true
+        },
+        {
+          "id": "show_grid",
+          "type": "checkbox",
+          "title": { "en": "Show grid", "de": "Netz anzeigen" },
+          "value": true
+        },
+        {
+          "id": "show_battery",
+          "type": "checkbox",
+          "title": { "en": "Show battery", "de": "Batterie anzeigen" },
+          "value": false
+        },
+        {
+          "id": "show_house",
+          "type": "checkbox",
+          "title": { "en": "Show house consumption", "de": "Hausverbrauch anzeigen" },
+          "value": false
+        }
+      ],
+      "images": {
+        "light": "/widgets/power-chart/preview-light.png",
+        "dark": "/widgets/power-chart/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    },
+    "netzampel": {
+      "id": "netzampel",
+      "name": { "en": "Grid Status", "de": "Netzampel" },
+      "height": 132,
+      "settings": [],
+      "images": {
+        "light": "/widgets/netzampel/preview-light.png",
+        "dark": "/widgets/netzampel/preview-dark.png"
+      },
+      "api": { "getData": { "method": "GET", "path": "/" } }
+    }
   }
 }

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Balance</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: transparent;
+    padding: 12px 14px;
+  }
+
+  .bar-section {
+    margin-bottom: 7px;
+  }
+
+  .bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3px;
+  }
+
+  .bar-label {
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .bar-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .bar-value {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--homey-text-color);
+  }
+
+  .bar-track {
+    height: 7px;
+    border-radius: 4px;
+    background: var(--homey-line-color);
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+    min-width: 0;
+  }
+
+  /* Footer rows */
+  .footer {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .chip-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* Pct chips (Eigenverbrauch / Autarkie) */
+  .metric-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,0,0,0.06);
+    border-radius: 10px;
+    padding: 5px 9px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .metric-chip { background: rgba(255,255,255,0.08); }
+  }
+
+  .metric-label {
+    font-size: 10px;
+    color: var(--homey-text-color-light);
+  }
+
+  .metric-value {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+  }
+
+  /* Battery chips */
+  .batt-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 10px;
+    padding: 5px 9px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .batt-chip { background: rgba(255,255,255,0.08); }
+  }
+
+  .batt-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  .batt-label {
+    font-size: 10px;
+    color: var(--homey-text-color-light);
+    flex: 1;
+  }
+
+  .batt-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--homey-text-color);
+  }
+
+  /* Skeleton */
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%       { opacity: 0.7; }
+  }
+  body.loading .bar-value,
+  body.loading .metric-value,
+  body.loading .batt-value {
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+</style>
+</head>
+<body class="loading">
+
+<div class="bar-section">
+  <div class="bar-header">
+    <div class="bar-label">
+      <div class="bar-dot" style="background:#F59E0B"></div>
+      PV heute
+    </div>
+    <div class="bar-value" id="pv-val">—</div>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill" id="pv-fill" style="width:0%;background:#F59E0B"></div>
+  </div>
+</div>
+
+<div class="bar-section">
+  <div class="bar-header">
+    <div class="bar-label">
+      <div class="bar-dot" style="background:#22C55E"></div>
+      Einspeisung heute
+    </div>
+    <div class="bar-value" id="export-val">—</div>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill" id="export-fill" style="width:0%;background:#22C55E"></div>
+  </div>
+</div>
+
+<div class="bar-section">
+  <div class="bar-header">
+    <div class="bar-label">
+      <div class="bar-dot" style="background:#EF4444"></div>
+      Netzbezug heute
+    </div>
+    <div class="bar-value" id="import-val">—</div>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill" id="import-fill" style="width:0%;background:#EF4444"></div>
+  </div>
+</div>
+
+<div class="bar-section">
+  <div class="bar-header">
+    <div class="bar-label">
+      <div class="bar-dot" style="background:#3B82F6"></div>
+      Hausverbrauch heute
+    </div>
+    <div class="bar-value" id="house-val">—</div>
+  </div>
+  <div class="bar-track">
+    <div class="bar-fill" id="house-fill" style="width:0%;background:#3B82F6"></div>
+  </div>
+</div>
+
+<div class="footer">
+  <!-- Row 1: Eigenverbrauch / Autarkie -->
+  <div class="chip-row">
+    <div class="metric-chip">
+      <div class="metric-label">Eigenverbrauch</div>
+      <div class="metric-value" id="sc-val" style="color:#22C55E">—</div>
+    </div>
+    <div class="metric-chip">
+      <div class="metric-label">Autarkie</div>
+      <div class="metric-value" id="autarkie-val" style="color:#22C55E">—</div>
+    </div>
+  </div>
+  <!-- Row 2: Battery charged / discharged (hidden when no LUNA) -->
+  <div class="chip-row" id="batt-row" style="display:none">
+    <div class="batt-chip">
+      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"/>
+        <polyline points="5,12 12,5 19,12"/>
+      </svg>
+      <span class="batt-label">Geladen</span>
+      <span class="batt-value" id="batt-charged-val">—</span>
+    </div>
+    <div class="batt-chip">
+      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <polyline points="19,12 12,19 5,12"/>
+      </svg>
+      <span class="batt-label">Entladen</span>
+      <span class="batt-value" id="batt-discharged-val">—</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function fmtKwh(v) {
+  if (v === null || v === undefined) return '—';
+  return v.toFixed(1) + ' kWh';
+}
+
+function barPct(val, maxVal) {
+  if (maxVal <= 0) return 0;
+  return Math.min(100, Math.max(0, (val / maxVal) * 100));
+}
+
+function pctColor(pct) {
+  if (pct === null || pct === undefined) return '';
+  if (pct >= 80) return '#22C55E';
+  if (pct >= 50) return '#F59E0B';
+  return '#EF4444';
+}
+
+function onHomeyReady(Homey) {
+  Homey.ready({ height: 220 });
+  document.body.classList.add('loading');
+
+  function render(data) {
+    document.body.classList.remove('loading');
+
+    var pv    = data.pvTodayKwh;
+    var exp   = data.gridExportKwh;
+    var imp   = data.gridImportKwh;
+    var house = data.houseConsumptionKwh;
+    var sc    = data.selfConsumptionPct;
+    var aut   = data.selfSufficiencyPct;
+    var chg   = data.battChargedKwh;
+    var dchg  = data.battDischargedKwh;
+
+    // Bar scale: max of all four values
+    var vals   = [pv, exp, imp, house].filter(function(v) { return v !== null && v !== undefined; });
+    var maxVal = vals.length > 0 ? Math.max.apply(null, vals.concat([0.1])) : 1;
+
+    document.getElementById('pv-val').textContent     = fmtKwh(pv);
+    document.getElementById('pv-fill').style.width    = (pv    !== null ? barPct(pv,    maxVal) : 0) + '%';
+
+    document.getElementById('export-val').textContent  = fmtKwh(exp);
+    document.getElementById('export-fill').style.width = (exp   !== null ? barPct(exp,   maxVal) : 0) + '%';
+
+    document.getElementById('import-val').textContent  = fmtKwh(imp);
+    document.getElementById('import-fill').style.width = (imp   !== null ? barPct(imp,   maxVal) : 0) + '%';
+
+    document.getElementById('house-val').textContent   = fmtKwh(house);
+    document.getElementById('house-fill').style.width  = (house !== null ? barPct(house, maxVal) : 0) + '%';
+
+    // Eigenverbrauch %
+    var scEl = document.getElementById('sc-val');
+    if (sc !== null && sc !== undefined) {
+      scEl.textContent = sc + '%';
+      scEl.style.color = pctColor(sc);
+    } else {
+      scEl.textContent = '—';
+      scEl.style.color = '';
+    }
+
+    // Autarkie %
+    var autEl = document.getElementById('autarkie-val');
+    if (aut !== null && aut !== undefined) {
+      autEl.textContent = aut + '%';
+      autEl.style.color = pctColor(aut);
+    } else {
+      autEl.textContent = '—';
+      autEl.style.color = '';
+    }
+
+    // Battery row: only show when at least one value available
+    var battRow = document.getElementById('batt-row');
+    if (chg !== null || dchg !== null) {
+      battRow.style.display = '';
+      document.getElementById('batt-charged-val').textContent   = fmtKwh(chg);
+      document.getElementById('batt-discharged-val').textContent = fmtKwh(dchg);
+    } else {
+      battRow.style.display = 'none';
+    }
+  }
+
+  function load() {
+    Homey.api('GET', '/', {})
+      .then(function(data) { if (data) render(data); })
+      .catch(function(err) { console.error('widget load error:', err); });
+  }
+
+  load();
+  setInterval(load, 10000);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) load();
+  });
+}
+</script>
+</body>
+</html>
