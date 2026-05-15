@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.30",
+  "version": "1.1.32",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -1231,7 +1231,7 @@
               },
               "min": 0,
               "max": 100000,
-              "step": 100,
+              "step": 1,
               "hint": {
                 "en": "Maximum AC output of the inverter in watts (register 40126). This is a ceiling — actual production stays at the natural PV level when sun is weaker, and is throttled to this value only when sun would otherwise produce more. Set to 0 to fully shut down the inverter. Works WITHOUT a Smart Power Sensor. Set above rated power × 1.1 to effectively disable the limit. Synced from the inverter every 5 poll cycles.",
                 "de": "Maximale AC-Ausgangsleistung des Wechselrichters in Watt (Register 40126). Dies ist eine Obergrenze — die tatsächliche Erzeugung folgt der PV-Leistung wenn sie geringer ist, und wird nur auf diesen Wert begrenzt wenn die Sonne sonst mehr liefern würde. Auf 0 setzen schaltet den Wechselrichter komplett ab. Funktioniert OHNE Smart Power Sensor. Über Nennleistung × 1.1 setzen hebt die Begrenzung effektiv auf. Wird alle 5 Abfragezyklen synchronisiert."
