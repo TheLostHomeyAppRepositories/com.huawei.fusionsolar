@@ -15,33 +15,26 @@ function cap(device, id, fallback = null) {
 
 module.exports = {
   async getData({ homey }) {
-    // Try sdongle_a_modbus first — has all 4 values directly
-    const sdongle = getDevice(homey, 'sdongle_a_modbus');
-    if (sdongle) {
-      return {
-        pvPower:      cap(sdongle, 'measure_power.solar', 0),
-        gridPower:    cap(sdongle, 'measure_power.grid_active_power', 0),
-        batteryPower: cap(sdongle, 'measure_power.battery', 0),
-        housePower:   cap(sdongle, 'measure_power', 0),  // SDongle measure_power = load/house
-      };
-    }
-
-    // Fallback: assemble from individual drivers
     const sun2000    = getDevice(homey, 'sun2000_modbus');
     const sun2000em  = getDevice(homey, 'sun2000_emma_modbus');
     const luna2000   = getDevice(homey, 'luna2000_modbus');
     const luna2000em = getDevice(homey, 'luna2000_emma_modbus');
     const pmEmma     = getDevice(homey, 'powermeter_emma_modbus');
+    const sdongle    = getDevice(homey, 'sdongle_a_modbus');
 
-    const pvPower      = cap(sun2000, 'measure_power',                  null)
-                      ?? cap(sun2000em, 'measure_power',                 0);
-    const gridPower    = cap(sun2000, 'measure_power.grid_active_power', null)
-                      ?? cap(pmEmma,   'measure_power',                  0);
-    const batteryPower = cap(luna2000, 'measure_power',                  null)
-                      ?? cap(luna2000em, 'measure_power',                0);
-    // house = PV + grid_import − battery_charge  (grid+= import, battery+= charging)
-    const housePower   = Math.max(0, pvPower + gridPower - batteryPower);
+    const pvPower      = cap(sun2000,    'measure_power',                  null)
+                      ?? cap(sun2000em,  'measure_power',                  null)
+                      ?? cap(sdongle,    'measure_power.solar',             0);
+    const gridPower    = cap(sun2000,    'measure_power.grid_active_power', null)
+                      ?? cap(pmEmma,     'measure_power',                   null)
+                      ?? cap(sdongle,    'measure_power.grid_active_power', 0);
+    const batteryPower = cap(luna2000,   'measure_power',                  null)
+                      ?? cap(luna2000em, 'measure_power',                  null)
+                      ?? cap(sdongle,    'measure_power.battery',           null);
+    const batterySoc   = cap(luna2000,   'measure_battery',                null)
+                      ?? cap(luna2000em, 'measure_battery',                null);
+    const housePower   = Math.max(0, pvPower + gridPower - (batteryPower ?? 0));
 
-    return { pvPower, gridPower, batteryPower, housePower };
+    return { pvPower, gridPower, batteryPower, batterySoc, housePower };
   },
 };

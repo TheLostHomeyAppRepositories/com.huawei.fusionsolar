@@ -141,7 +141,7 @@
     </svg>
     <span class="stat-val" id="pv-stat">—</span>
   </div>
-  <div class="stat">
+  <div class="stat" id="batt-stat-wrap">
     <svg class="stat-icon" id="batt-stat-icon" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="7" width="16" height="10" rx="2"/>
       <line x1="22" y1="10" x2="22" y2="14"/>
@@ -169,6 +169,12 @@ function onHomeyReady(Homey) {
   Homey.ready({ height: 132 });
   document.body.classList.add('loading');
 
+  var thr = 50; // activity threshold in W
+  try {
+    var s = Homey.getSettings();
+    if (s && s.power_threshold_w) thr = parseFloat(s.power_threshold_w) || 50;
+  } catch(e) {}
+
   function render(data) {
     document.body.classList.remove('loading');
 
@@ -183,14 +189,14 @@ function onHomeyReady(Homey) {
     var sub    = document.getElementById('status-sub');
 
     // Grid status
-    if (grid < -50) {
+    if (grid < -thr) {
       // Exporting to grid
       circle.setAttribute('class', 'circle pulse-green');
       label.textContent = 'Einspeisung';
       value.textContent = fmt(-grid);
       value.style.color = '#22C55E';
       sub.textContent   = 'ins Netz';
-    } else if (grid > 50) {
+    } else if (grid > thr) {
       // Importing from grid
       circle.setAttribute('class', 'circle pulse-red');
       label.textContent = 'Netzbezug';
@@ -207,15 +213,26 @@ function onHomeyReady(Homey) {
     }
 
     // Stats
-    document.getElementById('pv-stat').textContent   = fmt(pv);
+    document.getElementById('pv-stat').textContent    = fmt(pv);
     document.getElementById('house-stat').textContent = fmt(house);
-    document.getElementById('batt-stat').textContent  = fmt(batt);
 
-    // Battery icon color
-    var battIcon = document.getElementById('batt-stat-icon');
-    if (batt > 50)       battIcon.setAttribute('stroke', '#22C55E');
-    else if (batt < -50) battIcon.setAttribute('stroke', '#F97316');
-    else                 battIcon.setAttribute('stroke', '#9CA3AF');
+    // Battery stat: hide entirely when no battery device
+    var battStatEl = document.getElementById('batt-stat-wrap');
+    if (batt === null && data.batterySoc === null) {
+      battStatEl.style.display = 'none';
+    } else {
+      battStatEl.style.display = '';
+      var socStr = (data.batterySoc !== null && data.batterySoc !== undefined)
+        ? Math.round(data.batterySoc) + '%' : '';
+      var battText = fmt(batt);
+      document.getElementById('batt-stat').textContent = socStr
+        ? battText + ' · ' + socStr : battText;
+      var battIcon = document.getElementById('batt-stat-icon');
+      if (batt === null || batt === undefined) battIcon.setAttribute('stroke', '#9CA3AF');
+      else if (batt > thr)                     battIcon.setAttribute('stroke', '#22C55E');
+      else if (batt < -thr)                    battIcon.setAttribute('stroke', '#F97316');
+      else                                     battIcon.setAttribute('stroke', '#9CA3AF');
+    }
   }
 
   function load() {

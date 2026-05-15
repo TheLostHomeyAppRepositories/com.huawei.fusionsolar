@@ -10,278 +10,376 @@
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: transparent;
-    padding: 14px;
+    padding: 13px 12px;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 8px;
-    height: 157px;
+  .flow-wrap {
+    position: relative;
+    width: 100%;
+    height: 174px;
   }
 
-  .tile {
-    background: var(--homey-line-color);
-    border-radius: 12px;
-    padding: 10px 12px;
+  /* ── Nodes ── */
+  .node {
+    position: absolute;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    align-items: center;
+    gap: 2px;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    transition: opacity 0.4s;
   }
 
-  .tile-header {
+  .node-icon { width: 22px; height: 22px; }
+
+  .node-value {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--homey-text-color);
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .node-label {
+    font-size: 9px;
+    color: var(--homey-text-color-light);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+
+  .node-sub {
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    min-height: 13px;
+    color: var(--homey-text-color-light);
+  }
+
+  /* ── Hub circle ── */
+  .hub {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--homey-line-color);
+    border: 2.5px solid transparent;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    transition: border-color 0.5s ease, box-shadow 0.5s ease;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
   }
 
-  .icon {
-    width: 16px;
-    height: 16px;
+  .hub-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+    transition: opacity 0.4s ease, stroke 0.4s ease;
     flex-shrink: 0;
   }
 
-  .label {
-    font-size: 11px;
-    color: var(--homey-text-color-light);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+  /* ── SVG connection lines ── */
+  .connections {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 1;
+    pointer-events: none;
   }
 
-  .value {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    line-height: 1;
-    color: var(--homey-text-color);
-  }
+  /* ── Flow animations ──
+     flow-fwd: dashes march from line-start toward line-end
+     flow-rev: dashes march from line-end toward line-start  */
+  @keyframes flow-fwd { to { stroke-dashoffset: -18; } }
+  @keyframes flow-rev { to { stroke-dashoffset:  18; } }
 
-  .direction {
-    font-size: 11px;
-    color: var(--homey-text-color-light);
-    margin-top: 2px;
-    min-height: 14px;
-  }
-
-  /* --- Skeleton --- */
+  /* ── Skeleton ── */
   @keyframes skeleton-pulse {
     0%, 100% { opacity: 0.35; }
-    50%       { opacity: 0.7;  }
+    50%       { opacity: 0.7; }
   }
-  body.loading .value {
+  body.loading .node-value {
     animation: skeleton-pulse 1.4s ease-in-out infinite;
   }
-
-  /* --- Flow animations --- */
-  @keyframes glow-amber {
-    0%, 100% { filter: drop-shadow(0 0 0px rgba(245,158,11,0)); }
-    50%       { filter: drop-shadow(0 0 5px rgba(245,158,11,0.9)); }
-  }
-  @keyframes glow-blue {
-    0%, 100% { filter: drop-shadow(0 0 0px rgba(59,130,246,0)); }
-    50%       { filter: drop-shadow(0 0 5px rgba(59,130,246,0.9)); }
-  }
-  @keyframes glow-green {
-    0%, 100% { filter: drop-shadow(0 0 0px rgba(34,197,94,0)); }
-    50%       { filter: drop-shadow(0 0 5px rgba(34,197,94,0.9)); }
-  }
-  @keyframes glow-orange {
-    0%, 100% { filter: drop-shadow(0 0 0px rgba(249,115,22,0)); }
-    50%       { filter: drop-shadow(0 0 5px rgba(249,115,22,0.9)); }
-  }
-  @keyframes glow-red {
-    0%, 100% { filter: drop-shadow(0 0 0px rgba(239,68,68,0)); }
-    50%       { filter: drop-shadow(0 0 5px rgba(239,68,68,0.9)); }
-  }
-  @keyframes float-up {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-2px); }
-  }
-  @keyframes float-down {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(2px); }
-  }
-
-  .glow-amber  { animation: glow-amber  2s ease-in-out infinite; }
-  .glow-blue   { animation: glow-blue   2s ease-in-out infinite; }
-  .glow-green  { animation: glow-green  2s ease-in-out infinite; }
-  .glow-orange { animation: glow-orange 2s ease-in-out infinite; }
-  .glow-red    { animation: glow-red    2s ease-in-out infinite; }
-
-  .dir-arrow {
-    display: inline-block;
-  }
-  .float-up   { animation: float-up   1.2s ease-in-out infinite; }
-  .float-down { animation: float-down 1.2s ease-in-out infinite; }
 </style>
 </head>
 <body class="loading">
-<div class="grid">
 
-  <!-- Solar PV -->
-  <div class="tile">
-    <div class="tile-header">
-      <svg class="icon" id="pv-icon" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4"/>
-        <line x1="12" y1="2"  x2="12" y2="5"/>
-        <line x1="12" y1="19" x2="12" y2="22"/>
-        <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"/>
-        <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
-        <line x1="2"  y1="12" x2="5"  y2="12"/>
-        <line x1="19" y1="12" x2="22" y2="12"/>
-        <line x1="4.22"  y1="19.78" x2="6.34"  y2="17.66"/>
-        <line x1="17.66" y1="6.34"  x2="19.78" y2="4.22"/>
-      </svg>
-      <span class="label">Solar PV</span>
-    </div>
-    <div>
-      <div class="value" id="pv-val">—</div>
-      <div class="direction" id="pv-dir"></div>
-    </div>
+<div class="flow-wrap" id="flow-wrap">
+
+  <!-- SVG — coordinates filled by JS after layout -->
+  <svg class="connections" id="svg-conn">
+    <line id="line-pv"    stroke-width="2" stroke-dasharray="5 4"/>
+    <line id="line-house" stroke-width="2" stroke-dasharray="5 4"/>
+    <line id="line-grid"  stroke-width="2" stroke-dasharray="5 4"/>
+    <line id="line-batt"  stroke-width="2" stroke-dasharray="5 4"/>
+  </svg>
+
+  <!-- Hub -->
+  <div class="hub" id="hub">
+    <svg class="hub-icon" id="hub-icon" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
+    </svg>
   </div>
 
-  <!-- Haus -->
-  <div class="tile">
-    <div class="tile-header">
-      <svg class="icon" id="house-icon" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-        <polyline points="9,22 9,12 15,12 15,22"/>
-      </svg>
-      <span class="label">Haus</span>
-    </div>
-    <div>
-      <div class="value" id="house-val">—</div>
-      <div class="direction" id="house-dir"></div>
-    </div>
+  <!-- PV (top center) -->
+  <div class="node" id="node-pv" style="left:50%;top:16%">
+    <svg class="node-icon" viewBox="0 0 24 24" fill="none"
+         stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <line x1="12" y1="2"  x2="12" y2="5"/>
+      <line x1="12" y1="19" x2="12" y2="22"/>
+      <line x1="4.22"  y1="4.22"  x2="6.34"  y2="6.34"/>
+      <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+      <line x1="2"  y1="12" x2="5"  y2="12"/>
+      <line x1="19" y1="12" x2="22" y2="12"/>
+      <line x1="4.22"  y1="19.78" x2="6.34"  y2="17.66"/>
+      <line x1="17.66" y1="6.34"  x2="19.78" y2="4.22"/>
+    </svg>
+    <div class="node-value" id="pv-val">—</div>
+    <div class="node-label">Solar PV</div>
   </div>
 
-  <!-- Batterie -->
-  <div class="tile">
-    <div class="tile-header">
-      <svg class="icon" id="batt-icon" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="7" width="16" height="10" rx="2"/>
-        <line x1="22" y1="10" x2="22" y2="14"/>
-        <line x1="6"  y1="12" x2="12" y2="12"/>
-        <line x1="9"  y1="9"  x2="9"  y2="15"/>
-      </svg>
-      <span class="label">Batterie</span>
-    </div>
-    <div>
-      <div class="value" id="batt-val">—</div>
-      <div class="direction" id="batt-dir"></div>
-    </div>
+  <!-- Grid (middle left) -->
+  <div class="node" id="node-grid" style="left:12%;top:50%">
+    <svg class="node-icon" id="grid-icon" viewBox="0 0 24 24" fill="none"
+         stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
+    </svg>
+    <div class="node-value" id="grid-val">—</div>
+    <div class="node-label">Netz</div>
+    <div class="node-sub"  id="grid-sub"></div>
   </div>
 
-  <!-- Netz -->
-  <div class="tile">
-    <div class="tile-header">
-      <svg class="icon" id="grid-icon" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
-      </svg>
-      <span class="label">Netz</span>
-    </div>
-    <div>
-      <div class="value" id="grid-val">—</div>
-      <div class="direction" id="grid-dir"></div>
-    </div>
+  <!-- Battery (middle right) -->
+  <div class="node" id="node-batt" style="left:88%;top:50%">
+    <svg class="node-icon" id="batt-icon" viewBox="0 0 24 24" fill="none"
+         stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="7" width="16" height="10" rx="2"/>
+      <line x1="22" y1="10" x2="22" y2="14"/>
+      <line x1="6"  y1="12" x2="12" y2="12"/>
+      <line x1="9"  y1="9"  x2="9"  y2="15"/>
+    </svg>
+    <div class="node-value" id="batt-val">—</div>
+    <div class="node-label">Batterie</div>
+    <div class="node-sub"  id="batt-soc"></div>
+  </div>
+
+  <!-- House (bottom center) -->
+  <div class="node" id="node-house" style="left:50%;top:84%">
+    <svg class="node-icon" viewBox="0 0 24 24" fill="none"
+         stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9,22 9,12 15,12 15,22"/>
+    </svg>
+    <div class="node-value" id="house-val">—</div>
+    <div class="node-label">Haus</div>
   </div>
 
 </div>
 
 <script>
+var C = {
+  pv:        '#F59E0B',
+  house:     '#3B82F6',
+  charge:    '#22C55E',
+  discharge: '#F97316',
+  export:    '#22C55E',
+  import:    '#EF4444',
+  idle:      'var(--homey-line-color)',
+};
+
 function fmt(w) {
   if (w === null || w === undefined) return '—';
-  const abs = Math.abs(w);
+  var abs = Math.abs(w);
   if (abs >= 1000) return (abs / 1000).toFixed(1) + ' kW';
   return Math.round(abs) + ' W';
 }
 
-function setIconGlow(id, cls) {
-  var el = document.getElementById(id);
-  // SVG className is SVGAnimatedString — must use setAttribute
-  el.setAttribute('class', 'icon' + (cls ? ' ' + cls : ''));
+/* ── Line coordinate calculation ── */
+function rel(el, wrap) {
+  var r = el.getBoundingClientRect();
+  var w = wrap.getBoundingClientRect();
+  return {
+    top:    r.top    - w.top,
+    bottom: r.bottom - w.top,
+    left:   r.left   - w.left,
+    right:  r.right  - w.left,
+    cx:     (r.left + r.right)  / 2 - w.left,
+    cy:     (r.top  + r.bottom) / 2 - w.top,
+  };
 }
 
-function setDir(id, arrow, text, color) {
+function setCoords(id, x1, y1, x2, y2) {
   var el = document.getElementById(id);
-  if (arrow) {
-    el.innerHTML = '<span class="dir-arrow ' + arrow + '">' + (arrow === 'float-up' ? '↑' : '↓') + '</span> ' + text;
-  } else {
-    el.textContent = text;
-  }
-  el.style.color = color || '';
+  if (!el) return;
+  el.setAttribute('x1', Math.round(x1));
+  el.setAttribute('y1', Math.round(y1));
+  el.setAttribute('x2', Math.round(x2));
+  el.setAttribute('y2', Math.round(y2));
+}
+
+function positionLines() {
+  var wrap  = document.getElementById('flow-wrap');
+  var hub   = rel(document.getElementById('hub'),       wrap);
+  var pv    = rel(document.getElementById('node-pv'),   wrap);
+  var house = rel(document.getElementById('node-house'),wrap);
+  var grid  = rel(document.getElementById('node-grid'), wrap);
+  var batt  = rel(document.getElementById('node-batt'), wrap);
+
+  // PV bottom-center → hub top-center
+  setCoords('line-pv',    pv.cx,    pv.bottom,  hub.cx,   hub.top);
+  // hub bottom-center → house top-center
+  setCoords('line-house', hub.cx,   hub.bottom, house.cx, house.top);
+  // grid right-center → hub left-center
+  setCoords('line-grid',  grid.right, grid.cy,  hub.left, hub.cy);
+  // hub right-center → batt left-center
+  setCoords('line-batt',  hub.right,  hub.cy,   batt.left, batt.cy);
+}
+
+/* ── Animate a line ── */
+function setLine(id, anim, color) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.stroke          = color;
+  el.style.strokeOpacity   = anim ? '1' : '0.35';
+  el.style.strokeDasharray = anim ? '5 4' : '3 7';
+  el.style.animation       = anim ? (anim + ' 0.5s linear infinite') : 'none';
 }
 
 function onHomeyReady(Homey) {
-  Homey.ready({ height: 185 });
+  Homey.ready({ height: 200 });
   document.body.classList.add('loading');
+
+  var thr = 50; // activity threshold in W
+  try {
+    var s = Homey.getSettings();
+    if (s && s.power_threshold_w) thr = parseFloat(s.power_threshold_w) || 50;
+  } catch(e) {}
 
   function render(data) {
     document.body.classList.remove('loading');
 
-    // Solar PV
-    document.getElementById('pv-val').textContent = fmt(data.pvPower);
-    if (data.pvPower > 50) {
-      setIconGlow('pv-icon', 'glow-amber');
-      setDir('pv-dir', 'float-up', 'Erzeugung', '#F59E0B');
-    } else {
-      setIconGlow('pv-icon', '');
-      setDir('pv-dir', null, '—', '');
-    }
+    var pv    = data.pvPower;
+    var batt  = data.batteryPower;
+    var grid  = data.gridPower;
+    var soc   = data.batterySoc;
+    var house = data.housePower;
 
-    // Haus
-    document.getElementById('house-val').textContent = fmt(data.housePower);
-    if (data.housePower > 50) {
-      setIconGlow('house-icon', 'glow-blue');
-      setDir('house-dir', 'float-down', 'Verbrauch', '#3B82F6');
-    } else {
-      setIconGlow('house-icon', '');
-      setDir('house-dir', null, 'Verbrauch', '');
-    }
+    // ── Values ──
+    document.getElementById('pv-val').textContent    = fmt(pv);
+    document.getElementById('house-val').textContent = fmt(house);
+    document.getElementById('batt-val').textContent  = fmt(batt);
+    document.getElementById('grid-val').textContent  = fmt(grid !== null ? Math.abs(grid) : null);
 
-    // Batterie
-    document.getElementById('batt-val').textContent = fmt(data.batteryPower);
-    if (data.batteryPower > 50) {
-      document.getElementById('batt-icon').setAttribute('stroke', '#22C55E');
-      setIconGlow('batt-icon', 'glow-green');
-      setDir('batt-dir', 'float-up', 'Laden', '#22C55E');
-    } else if (data.batteryPower < -50) {
-      document.getElementById('batt-icon').setAttribute('stroke', '#F97316');
-      setIconGlow('batt-icon', 'glow-orange');
-      setDir('batt-dir', 'float-down', 'Entladen', '#F97316');
-    } else {
+    document.getElementById('batt-soc').textContent =
+      (soc !== null && soc !== undefined) ? Math.round(soc) + '%' : '';
+
+    document.getElementById('grid-sub').textContent =
+      (grid !== null && grid < -50) ? 'Einspeisung' :
+      (grid !== null && grid >  50) ? 'Bezug' : '';
+
+    // ── Recalculate line positions (text may have changed width) ──
+    positionLines();
+
+    // ── PV line: PV→Hub top-down, fwd = producing ──
+    setLine('line-pv',
+      (pv !== null && pv > thr) ? 'flow-fwd' : null,
+      (pv !== null && pv > thr) ? C.pv : C.idle);
+
+    // ── House line: Hub→House top-down, fwd = consuming ──
+    setLine('line-house',
+      (house !== null && house > thr) ? 'flow-fwd' : null,
+      (house !== null && house > thr) ? C.house : C.idle);
+
+    // ── Battery line: Hub(left)→Battery(right)
+    //    fwd = charging (hub→batt) | rev = discharging (batt→hub) ──
+    var battNode = document.getElementById('node-batt');
+    if (batt === null || batt === undefined) {
+      setLine('line-batt', null, 'transparent');
+      battNode.style.opacity = '0.25';
       document.getElementById('batt-icon').setAttribute('stroke', '#9CA3AF');
-      setIconGlow('batt-icon', '');
-      setDir('batt-dir', null, '— Standby', '');
+    } else {
+      battNode.style.opacity = '1';
+      if (batt > thr) {
+        setLine('line-batt', 'flow-fwd', C.charge);
+        document.getElementById('batt-icon').setAttribute('stroke', C.charge);
+      } else if (batt < -thr) {
+        setLine('line-batt', 'flow-rev', C.discharge);
+        document.getElementById('batt-icon').setAttribute('stroke', C.discharge);
+      } else {
+        setLine('line-batt', null, C.idle);
+        document.getElementById('batt-icon').setAttribute('stroke', '#9CA3AF');
+      }
     }
 
-    // Netz
-    document.getElementById('grid-val').textContent = fmt(data.gridPower);
-    if (data.gridPower < -50) {
-      document.getElementById('grid-icon').setAttribute('stroke', '#22C55E');
-      setIconGlow('grid-icon', 'glow-green');
-      setDir('grid-dir', 'float-up', 'Einspeisung', '#22C55E');
-    } else if (data.gridPower > 50) {
-      document.getElementById('grid-icon').setAttribute('stroke', '#EF4444');
-      setIconGlow('grid-icon', 'glow-red');
-      setDir('grid-dir', 'float-down', 'Netzbezug', '#EF4444');
+    // ── Grid line: Grid(left)→Hub(right)
+    //    fwd = import (grid→hub) | rev = export (hub→grid) ──
+    if (grid !== null && grid < -thr) {
+      setLine('line-grid', 'flow-rev', C.export);
+      document.getElementById('grid-icon').setAttribute('stroke', C.export);
+    } else if (grid !== null && grid > thr) {
+      setLine('line-grid', 'flow-fwd', C.import);
+      document.getElementById('grid-icon').setAttribute('stroke', C.import);
     } else {
+      setLine('line-grid', null, C.idle);
       document.getElementById('grid-icon').setAttribute('stroke', '#9CA3AF');
-      setIconGlow('grid-icon', '');
-      setDir('grid-dir', null, '— Ausgeglichen', '');
+    }
+
+    // ── Hub border ──
+    // 🟢 Green:  PV producing AND no grid import
+    // 🟠 Orange: no PV, but battery discharging covers load (no import)
+    // 🔴 Red:    grid import active (battery empty or absent)
+    // ⬜ None:   night / standby
+    var hub     = document.getElementById('hub');
+    var hubIcon = document.getElementById('hub-icon');
+    var importing = grid !== null && grid > thr;
+    var pvOn      = pv   !== null && pv   > thr;
+    var battDisch = batt !== null && batt < -thr;
+
+    if (pvOn && !importing) {
+      hub.style.borderColor     = C.charge;
+      hub.style.boxShadow       = '0 0 6px rgba(34,197,94,0.4)';
+      hubIcon.style.stroke      = C.charge;
+      hubIcon.style.opacity     = '0.8';
+    } else if (!pvOn && battDisch && !importing) {
+      hub.style.borderColor     = C.pv;
+      hub.style.boxShadow       = '0 0 6px rgba(245,158,11,0.4)';
+      hubIcon.style.stroke      = C.pv;
+      hubIcon.style.opacity     = '0.8';
+    } else if (importing) {
+      hub.style.borderColor     = C.import;
+      hub.style.boxShadow       = '0 0 6px rgba(239,68,68,0.4)';
+      hubIcon.style.stroke      = C.import;
+      hubIcon.style.opacity     = '0.8';
+    } else {
+      hub.style.borderColor     = 'transparent';
+      hub.style.boxShadow       = 'none';
+      hubIcon.style.stroke      = 'currentColor';
+      hubIcon.style.opacity     = '0.35';
     }
   }
 
   function load() {
     Homey.api('GET', '/', {})
       .then(function(data) { if (data) render(data); })
-      .catch(function(err) { console.error('widget load error:', err); });
+      .catch(function(err) { console.error('widget error:', err); });
   }
 
+  // Initial line positioning once DOM is painted
+  requestAnimationFrame(function() {
+    requestAnimationFrame(positionLines);
+  });
+
   load();
-  setInterval(load, 10000);
+  setInterval(load, 5000);
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) load();
   });

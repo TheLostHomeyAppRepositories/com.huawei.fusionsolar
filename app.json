@@ -5552,8 +5552,19 @@
     "solar-power-flow": {
       "id": "solar-power-flow",
       "name": { "en": "Solar Power Flow", "de": "Solar Energiefluss" },
-      "height": 185,
-      "settings": [],
+      "height": 200,
+      "settings": [
+        {
+          "id": "power_threshold_w",
+          "type": "number",
+          "title": { "en": "Activity threshold (W)", "de": "Aktivitätsschwelle (W)" },
+          "hint": { "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W", "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W" },
+          "value": 50,
+          "min": 5,
+          "max": 500,
+          "step": 5
+        }
+      ],
       "images": {
         "light": "/widgets/solar-power-flow/preview-light.png",
         "dark": "/widgets/solar-power-flow/preview-dark.png"
@@ -5586,7 +5597,18 @@
       "id": "daily-yield",
       "name": { "en": "Daily Yield", "de": "Tagesertrag" },
       "height": 112,
-      "settings": [],
+      "settings": [
+        {
+          "id": "co2_factor_g_per_kwh",
+          "type": "number",
+          "title": { "en": "CO₂ factor (g/kWh)", "de": "CO₂-Faktor (g/kWh)" },
+          "hint": { "en": "CO₂ emissions factor of your electricity grid in grams per kWh.\n\nExamples:\n• Germany (DE) → 401 g/kWh\n• Switzerland (CH) → 29 g/kWh\n• Austria (AT) → 108 g/kWh\n• EU average → 255 g/kWh", "de": "CO₂-Emissionsfaktor deines Stromnetzes in Gramm pro kWh.\n\nBeispiele:\n• Deutschland (DE) → 401 g/kWh\n• Schweiz (CH) → 29 g/kWh\n• Österreich (AT) → 108 g/kWh\n• EU-Durchschnitt → 255 g/kWh" },
+          "value": 401,
+          "min": 1,
+          "max": 1000,
+          "step": 1
+        }
+      ],
       "images": {
         "light": "/widgets/daily-yield/preview-light.png",
         "dark": "/widgets/daily-yield/preview-dark.png"
@@ -5604,47 +5626,22 @@
       },
       "api": { "getData": { "method": "GET", "path": "/" } }
     },
-    "power-chart": {
-      "id": "power-chart",
-      "name": { "en": "Power Chart", "de": "Leistungsverlauf" },
-      "height": 235,
-      "settings": [
-        {
-          "id": "show_pv",
-          "type": "checkbox",
-          "title": { "en": "Show PV", "de": "PV anzeigen" },
-          "value": true
-        },
-        {
-          "id": "show_grid",
-          "type": "checkbox",
-          "title": { "en": "Show grid", "de": "Netz anzeigen" },
-          "value": true
-        },
-        {
-          "id": "show_battery",
-          "type": "checkbox",
-          "title": { "en": "Show battery", "de": "Batterie anzeigen" },
-          "value": false
-        },
-        {
-          "id": "show_house",
-          "type": "checkbox",
-          "title": { "en": "Show house consumption", "de": "Hausverbrauch anzeigen" },
-          "value": false
-        }
-      ],
-      "images": {
-        "light": "/widgets/power-chart/preview-light.png",
-        "dark": "/widgets/power-chart/preview-dark.png"
-      },
-      "api": { "getData": { "method": "GET", "path": "/" } }
-    },
     "netzampel": {
       "id": "netzampel",
       "name": { "en": "Grid Status", "de": "Netzampel" },
       "height": 132,
-      "settings": [],
+      "settings": [
+        {
+          "id": "power_threshold_w",
+          "type": "number",
+          "title": { "en": "Activity threshold (W)", "de": "Aktivitätsschwelle (W)" },
+          "hint": { "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W", "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W" },
+          "value": 50,
+          "min": 5,
+          "max": 500,
+          "step": 5
+        }
+      ],
       "images": {
         "light": "/widgets/netzampel/preview-light.png",
         "dark": "/widgets/netzampel/preview-dark.png"

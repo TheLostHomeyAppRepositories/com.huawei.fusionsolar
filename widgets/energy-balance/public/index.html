@@ -198,6 +198,10 @@
   </div>
 </div>
 
+<div id="baseline-hint" style="display:none;font-size:10px;color:var(--homey-text-color-light);margin-bottom:6px;text-align:center;">
+  Tageswerte werden ab Mitternacht berechnet
+</div>
+
 <div class="footer">
   <!-- Row 1: Eigenverbrauch / Autarkie -->
   <div class="chip-row">
@@ -233,7 +237,7 @@
 
 <script>
 function fmtKwh(v) {
-  if (v === null || v === undefined) return '—';
+  if (v === null || v === undefined) return '…';
   return v.toFixed(1) + ' kWh';
 }
 
@@ -268,6 +272,10 @@ function onHomeyReady(Homey) {
     // Bar scale: max of all four values
     var vals   = [pv, exp, imp, house].filter(function(v) { return v !== null && v !== undefined; });
     var maxVal = vals.length > 0 ? Math.max.apply(null, vals.concat([0.1])) : 1;
+
+    // Show hint when grid values are still being calculated (no baseline yet)
+    var needsBaseline = (exp === null || imp === null);
+    document.getElementById('baseline-hint').style.display = needsBaseline ? '' : 'none';
 
     document.getElementById('pv-val').textContent     = fmtKwh(pv);
     document.getElementById('pv-fill').style.width    = (pv    !== null ? barPct(pv,    maxVal) : 0) + '%';

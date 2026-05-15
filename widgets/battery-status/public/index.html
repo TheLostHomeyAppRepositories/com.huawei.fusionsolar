@@ -75,9 +75,9 @@
   }
 
   .soc-remaining {
-    font-size: 11px;
-    color: var(--homey-text-color-light);
-    font-weight: 500;
+    font-size: 12px;
+    color: var(--homey-text-color);
+    font-weight: 600;
   }
 
   /* --- Power row --- */
@@ -255,6 +255,19 @@ function onHomeyReady(Homey) {
 
   function render(data) {
     document.body.classList.remove('loading');
+
+    // No battery device
+    if (data.soc === null && data.powerW === null) {
+      document.getElementById('soc-num').textContent      = '—';
+      document.getElementById('soc-fill').style.width     = '0%';
+      document.getElementById('batt-status').textContent  = 'Keine Batterie';
+      document.getElementById('batt-remaining').textContent = '';
+      document.getElementById('power-val').textContent    = '—';
+      document.getElementById('power-dir').textContent    = '';
+      document.getElementById('charged-val').textContent  = '—';
+      document.getElementById('discharged-val').textContent = '—';
+      return;
+    }
 
     // SoC
     var soc = data.soc;

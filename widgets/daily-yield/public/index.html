@@ -175,6 +175,12 @@ function onHomeyReady(Homey) {
   Homey.ready({ height: 112 });
   document.body.classList.add('loading');
 
+  var co2Factor = 401; // default: DE Strommix g/kWh
+  try {
+    var s = Homey.getSettings();
+    if (s && s.co2_factor_g_per_kwh) co2Factor = parseFloat(s.co2_factor_g_per_kwh) || 401;
+  } catch(e) {}
+
   function render(data) {
     document.body.classList.remove('loading');
 
@@ -186,11 +192,12 @@ function onHomeyReady(Homey) {
     document.getElementById('total-val').textContent =
       (total.num !== '—') ? total.num + total.unit : '—';
 
-    // CO₂
+    // CO₂ — recalculate client-side using configured factor
     var co2Chip = document.getElementById('co2-chip');
-    if (data.co2SavedKg !== null && data.co2SavedKg !== undefined) {
+    if (data.dailyKwh !== null && data.dailyKwh !== undefined) {
+      var co2Kg = Math.round(data.dailyKwh * co2Factor) / 1000;
       co2Chip.style.display = 'flex';
-      document.getElementById('co2-val').textContent = data.co2SavedKg.toFixed(1) + ' kg';
+      document.getElementById('co2-val').textContent = co2Kg.toFixed(2) + ' kg';
     } else {
       co2Chip.style.display = 'none';
     }
