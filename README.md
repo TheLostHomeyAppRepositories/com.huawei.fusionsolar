@@ -463,6 +463,111 @@ All three LUNA2000 variants are declared with `"batteries": ["INTERNAL"]` so Hom
 
 ---
 
+## Dashboard Widgets
+
+The app includes 5 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
+
+All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
+
+---
+
+### Solar Power Flow
+
+A hub-layout widget showing real-time power flows between PV, house, grid and battery.
+
+```
+          ☀️  Solar PV
+               |
+  ⚡ Netz ────●──── 🔋 Batterie
+               |
+           🏠  Haus
+```
+
+- **Animated flow lines** — dashed lines move in the direction of actual energy flow, coloured by source (amber = PV, blue = house, green = charge/export, orange = discharge, red = import)
+- **Hub circle** — ⚡ icon with colour-coded border:
+  - 🟢 Green: PV producing, no grid import
+  - 🟠 Orange: no PV, battery discharging (covering load)
+  - 🔴 Red: grid import active
+  - No border: night / standby
+- **Battery node** shows SoC % below the power value; faded when no LUNA2000 is paired
+- Updates every **5 seconds**
+
+| Widget setting           | Default | Description                                              |
+|--------------------------|---------|----------------------------------------------------------|
+| Activity threshold (W)   | 50 W    | Minimum power to show a flow as active (reduce flickering) |
+
+---
+
+### Grid Status (Netzampel)
+
+A compact status widget with a pulsing colour circle indicating the current grid state.
+
+- 🟢 **Green pulse** — exporting to grid (Einspeisung)
+- 🔴 **Red pulse** — importing from grid (Netzbezug)
+- 🟡 **Yellow pulse** — self-sufficient (PV covers load exactly)
+- Stats row shows current PV power, battery power + SoC, and house consumption
+- Battery stat is hidden when no LUNA2000 is paired
+- Updates every **5 seconds**
+
+| Widget setting           | Default | Description                                              |
+|--------------------------|---------|----------------------------------------------------------|
+| Activity threshold (W)   | 50 W    | Minimum power for state changes (reduce flickering)      |
+
+---
+
+### Energy Balance (Energiebilanz)
+
+Daily energy totals shown as relative bars, plus self-consumption and self-sufficiency metrics.
+
+| Bar               | Source                                                                        |
+|-------------------|-------------------------------------------------------------------------------|
+| PV today          | `sun2000_modbus` → `meter_power.daily` (register 32114, resets at midnight)  |
+| Grid export today | `sun2000_modbus` → cumulative delta from midnight baseline                    |
+| Grid import today | `sun2000_modbus` → cumulative delta from midnight baseline                    |
+| House consumption | Calculated: self-consumed PV + grid import                                    |
+
+> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start. A hint is shown in the widget until the baseline is available.
+
+- **Eigenverbrauch %** — share of PV energy used on-site (not exported)
+- **Autarkie %** — share of total consumption covered by PV
+- Battery charged / discharged row is shown only when a LUNA2000 is paired
+- Updates every **10 seconds**
+
+---
+
+### Battery Status (Batteriestatus)
+
+Detailed battery state at a glance.
+
+- **SoC bar** — colour coded: green ≥ 40 %, orange 20–40 %, red < 20 %
+- **Charge / discharge power** with direction label and animated glow icon
+- **Time remaining** — estimated time to full (when charging) or empty (when discharging), shown prominently below the SoC bar
+- **Today's stats** — energy charged and discharged today (kWh)
+- Shows **"Keine Batterie"** when no LUNA2000 is paired
+- Updates every **10 seconds**
+
+| Widget setting             | Default | Description                                                   |
+|----------------------------|---------|---------------------------------------------------------------|
+| Battery capacity (kWh)     | 5 kWh   | Usable capacity used to calculate remaining time. LUNA2000 examples: 1 module = 5 kWh, 2 modules = 10 kWh |
+
+---
+
+### Daily Yield (Tagesertrag)
+
+At-a-glance summary of today's solar production.
+
+- **Today's yield** — large display in kWh (auto-scales to MWh above 1 000 kWh)
+- **Lifetime total** — cumulative yield since commissioning
+- **Optimizer count** — online / total (shown only when optimizers are detected)
+- **CO₂ saved** — calculated from today's yield × emission factor
+- Updates every **10 seconds**
+
+| Widget setting              | Default     | Description                                                        |
+|-----------------------------|-------------|--------------------------------------------------------------------|
+| CO₂ factor (g/kWh)          | 401 g/kWh   | Grid emission factor. DE = 401, CH = 29, AT = 108, EU avg = 255   |
+
+---
+
 ## Technical Background
 
 - **Kiosk:** HTTP polling of the public FusionSolar Kiosk API
