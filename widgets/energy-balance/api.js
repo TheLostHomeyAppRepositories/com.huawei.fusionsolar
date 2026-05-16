@@ -1,17 +1,6 @@
 'use strict';
 
-function getDevice(homey, driverId) {
-  try {
-    const driver = homey.drivers.getDriver(driverId);
-    const devices = driver.getDevices();
-    return devices.length > 0 ? devices[0] : null;
-  } catch { return null; }
-}
-
-function cap(device, id, fallback = null) {
-  if (!device) return fallback;
-  try { return device.getCapabilityValue(id) ?? fallback; } catch { return fallback; }
-}
+const { getDevice, cap } = require('../../lib/widget-data');
 
 function todayStr() {
   const d = new Date();
@@ -71,7 +60,7 @@ module.exports = {
       selfConsumptionPct = Math.max(0, Math.min(100, selfConsumptionPct));
     }
 
-    // Autarkie: how much of total consumption was covered by PV
+    // Self-sufficiency: how much of total consumption was covered by PV
     let selfSufficiencyPct = null;
     if (selfConsumedKwh !== null && gridImportKwh !== null) {
       const totalConsumption = selfConsumedKwh + gridImportKwh;

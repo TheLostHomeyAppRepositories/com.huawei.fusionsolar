@@ -198,7 +198,7 @@
   </div>
 </div>
 
-<div id="baseline-hint" style="display:none;font-size:10px;color:var(--homey-text-color-light);margin-bottom:6px;text-align:center;" id="label-baseline"></div>
+<div id="baseline-hint" style="display:none;font-size:10px;color:var(--homey-text-color-light);margin-bottom:6px;text-align:center;"></div>
 
 <div class="footer">
   <!-- Row 1: Self-consumption / Self-sufficiency -->
@@ -246,6 +246,17 @@ var T = (function() {
     charged:      'Geladen',
     discharged:   'Entladen',
   };
+  var nl = {
+    pvToday:      'PV vandaag',
+    exportToday:  'Teruglevering vandaag',
+    importToday:  'Netafname vandaag',
+    houseToday:   'Verbruik vandaag',
+    baseline:     'Dagwaarden worden berekend vanaf middernacht',
+    selfCons:     'Eigenverbruik',
+    selfSuff:     'Zelfvoorziening',
+    charged:      'Geladen',
+    discharged:   'Ontladen',
+  };
   var en = {
     pvToday:      'PV today',
     exportToday:  'Feed-in today',
@@ -257,7 +268,8 @@ var T = (function() {
     charged:      'Charged',
     discharged:   'Discharged',
   };
-  return navigator.language.startsWith('de') ? de : en;
+  var l = navigator.language;
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
 })();
 
 // Apply static labels
@@ -265,7 +277,7 @@ document.getElementById('label-pv-today').textContent     = T.pvToday;
 document.getElementById('label-export-today').textContent = T.exportToday;
 document.getElementById('label-import-today').textContent = T.importToday;
 document.getElementById('label-house-today').textContent  = T.houseToday;
-document.getElementById('label-baseline').textContent     = T.baseline;
+document.getElementById('baseline-hint').textContent      = T.baseline;
 document.getElementById('label-selfcons').textContent     = T.selfCons;
 document.getElementById('label-selfsuff').textContent     = T.selfSuff;
 document.getElementById('label-charged').textContent      = T.charged;

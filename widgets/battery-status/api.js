@@ -1,17 +1,6 @@
 'use strict';
 
-function getDevice(homey, driverId) {
-  try {
-    const driver = homey.drivers.getDriver(driverId);
-    const devices = driver.getDevices();
-    return devices.length > 0 ? devices[0] : null;
-  } catch { return null; }
-}
-
-function cap(device, id, fallback = null) {
-  if (!device) return fallback;
-  try { return device.getCapabilityValue(id) ?? fallback; } catch { return fallback; }
-}
+const { getDevice, cap } = require('../../lib/widget-data');
 
 module.exports = {
   async getData({ homey }) {
@@ -29,9 +18,9 @@ module.exports = {
     // Status: prefer luna2000_battery_status, derive from power if not available
     let status = cap(luna, 'luna2000_battery_status', null);
     if (status === null && powerW !== null) {
-      if (powerW > 50)       status = 'Laden';
-      else if (powerW < -50) status = 'Entladen';
-      else                   status = 'Standby';
+      if (powerW > 50)       status = 'charging';
+      else if (powerW < -50) status = 'discharging';
+      else                   status = 'standby';
     }
 
     return { soc, status, powerW, todayChargedKwh, todayDischargedKwh };

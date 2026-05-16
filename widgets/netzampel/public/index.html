@@ -164,12 +164,18 @@ var T = (function() {
     import: 'Netzbezug',   importSub: 'vom Netz',
     self:   'Eigenversorgung', selfSub: 'PV deckt Verbrauch',
   };
+  var nl = {
+    export: 'Teruglevering', exportSub: 'aan net',
+    import: 'Netafname',     importSub: 'van net',
+    self:   'Zelfvoorzienend', selfSub: 'PV dekt verbruik',
+  };
   var en = {
     export: 'Feed-in',      exportSub: 'to grid',
     import: 'Grid import',  importSub: 'from grid',
     self:   'Self-sufficient', selfSub: 'PV covers load',
   };
-  return navigator.language.startsWith('de') ? de : en;
+  var l = navigator.language;
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
 })();
 
 function fmt(w) {

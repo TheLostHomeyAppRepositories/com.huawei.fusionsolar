@@ -231,6 +231,17 @@ var T = (function() {
     remaining:   'noch ',
     chargedToday:    'Heute geladen',
     dischargedToday: 'Heute entladen',
+    statusMap: { charging: 'Laden', discharging: 'Entladen', standby: 'Standby' },
+  };
+  var nl = {
+    noBattery:   'Geen batterij',
+    charging:    'Laden',
+    discharging: 'Ontladen',
+    standby:     'Standby',
+    remaining:   'nog ',
+    chargedToday:    'Vandaag geladen',
+    dischargedToday: 'Vandaag ontladen',
+    statusMap: { charging: 'Laden', discharging: 'Ontladen', standby: 'Standby' },
   };
   var en = {
     noBattery:   'No battery',
@@ -240,8 +251,10 @@ var T = (function() {
     remaining:   '',
     chargedToday:    'Charged today',
     dischargedToday: 'Discharged today',
+    statusMap: { charging: 'Charging', discharging: 'Discharging', standby: 'Standby' },
   };
-  return navigator.language.startsWith('de') ? de : en;
+  var l = navigator.language;
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
 })();
 
 document.getElementById('label-charged-today').textContent    = T.chargedToday;
@@ -309,7 +322,7 @@ function onHomeyReady(Homey) {
       document.getElementById('soc-num').textContent = '—';
     }
 
-    document.getElementById('batt-status').textContent = data.status || '—';
+    document.getElementById('batt-status').textContent = (data.status && T.statusMap[data.status]) ? T.statusMap[data.status] : (data.status || '—');
 
     // Remaining time
     var pw = data.powerW;

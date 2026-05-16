@@ -134,9 +134,10 @@
   "1.1.29": {
     "en": "SUN2000 (Modbus): added Software Version capability (register 30050). LUNA2000 (Modbus): added Software Version (register 37814) and Software Version Unit 2 (register 37799) capabilities — Unit 2 is only shown when the second battery unit responds."
   },
-  "1.1.33": {
-    "en": "All 5 dashboard widgets are now bilingual (EN/DE) — language is detected from the browser locale. Previously all labels were hardcoded in German.",
-    "de": "Alle 5 Dashboard-Widgets sind jetzt zweisprachig (EN/DE) — die Sprache wird automatisch aus dem Browser-Locale erkannt."
+  "1.1.34": {
+    "en": "Full trilingual support (EN / DE / NL) across the entire app: all 5 dashboard widgets now auto-detect the browser language and display all labels in English, German or Dutch. Widget titles, setting titles and hints in app.json fully translated into NL. All 39 custom capability titles and their enum values (operating modes, charge/discharge modes, etc.) translated into Dutch. Shared widget data library (lib/widget-data.js) introduced — eliminates duplicated helper code across all 5 widget api.js files. Battery status now returns language-neutral keys so the widget can translate them correctly. permissions field added to app manifest.",
+    "de": "Vollständige Dreisprachigkeit (EN / DE / NL) in der gesamten App: Alle 5 Dashboard-Widgets erkennen automatisch die Browsersprache und zeigen alle Bezeichnungen auf Englisch, Deutsch oder Niederländisch an. Widget-Titel, Einstellungstitel und Hints in app.json vollständig auf NL übersetzt. Alle 39 benutzerdefinierten Capability-Titel und ihre Enum-Werte (Betriebsmodi, Lade-/Entlademodi usw.) auf Niederländisch übersetzt. Gemeinsame Widget-Datenbibliothek (lib/widget-data.js) eingeführt — eliminiert duplizierten Hilfscode in allen 5 Widget-api.js-Dateien. Permissions-Feld im App-Manifest ergänzt.",
+    "nl": "Volledige drietalige ondersteuning (EN / DE / NL) in de gehele app: alle 5 dashboard-widgets detecteren automatisch de browsertaal en tonen alle labels in het Engels, Duits of Nederlands. Widget-titels, instellingstitels en hints in app.json volledig vertaald naar NL. Alle 39 aangepaste capability-titels en hun enum-waarden (bedrijfsmodi, laad-/ontlaadmodi, enz.) vertaald naar het Nederlands. Gedeelde widget-databibliotheek (lib/widget-data.js) geïntroduceerd — elimineert gedupliceerde hulpcode in alle 5 widget-api.js-bestanden. Permissions-veld toegevoegd aan het app-manifest."
   },
   "1.1.32": {
     "en": "OpenAPI: improved error message when server returns non-JSON — now shows the first 120 characters of the raw response to help diagnose custom regional endpoints."

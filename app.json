@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.33",
+  "version": "1.1.34",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -43,11 +43,13 @@
   "brandColor": "#CF0A2C",
   "name": {
     "en": "Huawei FusionSolar Manager",
-    "de": "Huawei FusionSolar Manager"
+    "de": "Huawei FusionSolar Manager",
+    "nl": "Huawei FusionSolar Manager"
   },
   "description": {
     "en": "Take control of your solar energy — via Kiosk, OpenAPI or Modbus.",
-    "de": "Solarenergie im Griff – via Kiosk, OpenAPI oder Modbus."
+    "de": "Solarenergie im Griff – via Kiosk, OpenAPI oder Modbus.",
+    "nl": "Beheer je zonne-energie — via Kiosk, OpenAPI of Modbus."
   },
   "tags": {
     "en": [
@@ -67,6 +69,15 @@
       "fusionsolar",
       "energie",
       "wechselrichter"
+    ],
+    "nl": [
+      "solar",
+      "pv",
+      "fotovoltaïsch",
+      "huawei",
+      "fusionsolar",
+      "energie",
+      "omvormer"
     ]
   },
   "category": "energy",
@@ -88,7 +99,8 @@
       "type": "string",
       "title": {
         "en": "Software Version Unit 1",
-        "de": "Software-Version Unit 1"
+        "de": "Software-Version Unit 1",
+        "nl": "Software-versie unit 1"
       },
       "getable": true,
       "setable": false,
@@ -100,7 +112,8 @@
       "type": "string",
       "title": {
         "en": "Software Version Unit 2",
-        "de": "Software-Version Unit 2"
+        "de": "Software-Version Unit 2",
+        "nl": "Software-versie unit 2"
       },
       "getable": true,
       "setable": false,
@@ -112,7 +125,8 @@
       "type": "string",
       "title": {
         "en": "Software Version",
-        "de": "Software-Version"
+        "de": "Software-Version",
+        "nl": "Software-versie"
       },
       "getable": true,
       "setable": false,
@@ -124,7 +138,8 @@
       "type": "string",
       "title": {
         "en": "Inverter Status",
-        "de": "Status des Wechselrichters"
+        "de": "Status des Wechselrichters",
+        "nl": "Status omvormer"
       },
       "getable": true,
       "setable": false,
@@ -136,7 +151,8 @@
       "type": "string",
       "title": {
         "en": "Meter Status",
-        "de": "Zählerstatus"
+        "de": "Zählerstatus",
+        "nl": "Meterstatus"
       },
       "getable": true,
       "setable": false,
@@ -148,7 +164,8 @@
       "type": "string",
       "title": {
         "en": "Connection Type",
-        "de": "Verbindungstyp"
+        "de": "Verbindungstyp",
+        "nl": "Verbindingstype"
       },
       "getable": true,
       "setable": false,
@@ -160,7 +177,8 @@
       "type": "number",
       "title": {
         "en": "Rated Power",
-        "de": "Nennleistung"
+        "de": "Nennleistung",
+        "nl": "Nominaal vermogen"
       },
       "units": "kW",
       "decimals": 1,
@@ -173,7 +191,8 @@
       "type": "string",
       "title": {
         "en": "Product Name",
-        "de": "Produktname"
+        "de": "Produktname",
+        "nl": "Productnaam"
       },
       "getable": true,
       "setable": false,
@@ -184,7 +203,8 @@
       "type": "number",
       "title": {
         "en": "Total Optimizers",
-        "de": "Optimierer gesamt"
+        "de": "Optimierer gesamt",
+        "nl": "Totaal optimizers"
       },
       "decimals": 0,
       "getable": true,
@@ -197,7 +217,8 @@
       "type": "number",
       "title": {
         "en": "Online Optimizers",
-        "de": "Online-Optimierer"
+        "de": "Online-Optimierer",
+        "nl": "Online optimizers"
       },
       "decimals": 0,
       "getable": true,
@@ -210,7 +231,8 @@
       "type": "enum",
       "title": {
         "en": "Active Power Control Mode",
-        "de": "Wirkleistungs-Steuermodus"
+        "de": "Wirkleistungs-Steuermodus",
+        "nl": "Werkzaam-vermogen regelmodus"
       },
       "getable": true,
       "setable": true,
@@ -221,21 +243,24 @@
           "id": "0",
           "title": {
             "en": "Unlimited",
-            "de": "Unbegrenzt"
+            "de": "Unbegrenzt",
+            "nl": "Onbeperkt"
           }
         },
         {
           "id": "1",
           "title": {
             "en": "DI Active Scheduling",
-            "de": "DI Aktive Planung"
+            "de": "DI Aktive Planung",
+            "nl": "DI Actieve planning"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Zero Power Grid Connection",
-            "de": "Nulleinspeisung"
+            "de": "Nulleinspeisung",
+            "nl": "Nul-invoeding"
           }
         }
       ]
@@ -244,7 +269,8 @@
       "type": "enum",
       "title": {
         "en": "Storage Working Mode",
-        "de": "Speicher-Betriebsmodus"
+        "de": "Speicher-Betriebsmodus",
+        "nl": "Werkingsmodus opslag"
       },
       "getable": true,
       "setable": true,
@@ -255,49 +281,56 @@
           "id": "0",
           "title": {
             "en": "Adaptive",
-            "de": "Adaptiv"
+            "de": "Adaptiv",
+            "nl": "Adaptief"
           }
         },
         {
           "id": "1",
           "title": {
             "en": "Fixed Charge/Discharge",
-            "de": "Festes Laden/Entladen"
+            "de": "Festes Laden/Entladen",
+            "nl": "Vast laden/ontladen"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Maximise Self-Consumption",
-            "de": "Eigenverbrauch maximieren"
+            "de": "Eigenverbrauch maximieren",
+            "nl": "Eigenverbruik maximaliseren"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "Time of Use (LG)",
-            "de": "Zeitabhängige Nutzung (LG)"
+            "de": "Zeitabhängige Nutzung (LG)",
+            "nl": "Time of Use (LG)"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "Fully Fed to Grid",
-            "de": "Volleinspeisung"
+            "de": "Volleinspeisung",
+            "nl": "Volledig terugleveren"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Time of Use (LUNA2000)",
-            "de": "Zeitabhängige Nutzung (LUNA2000)"
+            "de": "Zeitabhängige Nutzung (LUNA2000)",
+            "nl": "Time of Use (LUNA2000)"
           }
         },
         {
           "id": "6",
           "title": {
             "en": "Third-party Scheduling",
-            "de": "Drittanbieter-Steuerung"
+            "de": "Drittanbieter-Steuerung",
+            "nl": "Derden-sturing"
           }
         }
       ]
@@ -306,7 +339,8 @@
       "type": "enum",
       "title": {
         "en": "Force Charge/Discharge",
-        "de": "Erzwungenes Laden/Entladen"
+        "de": "Erzwungenes Laden/Entladen",
+        "nl": "Geforceerd laden/ontladen"
       },
       "getable": true,
       "setable": true,
@@ -317,21 +351,24 @@
           "id": "0",
           "title": {
             "en": "Stop",
-            "de": "Stopp"
+            "de": "Stopp",
+            "nl": "Stop"
           }
         },
         {
           "id": "1",
           "title": {
             "en": "Charge",
-            "de": "Laden"
+            "de": "Laden",
+            "nl": "Laden"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Discharge",
-            "de": "Entladen"
+            "de": "Entladen",
+            "nl": "Ontladen"
           }
         }
       ]
@@ -340,7 +377,8 @@
       "type": "enum",
       "title": {
         "en": "Excess PV Energy (TOU)",
-        "de": "Überschuss-PV-Energie (TOU)"
+        "de": "Überschuss-PV-Energie (TOU)",
+        "nl": "Overschot PV-energie (TOU)"
       },
       "getable": true,
       "setable": true,
@@ -351,14 +389,16 @@
           "id": "0",
           "title": {
             "en": "Feed to Grid",
-            "de": "Ins Netz einspeisen"
+            "de": "Ins Netz einspeisen",
+            "nl": "Terugleveren aan net"
           }
         },
         {
           "id": "1",
           "title": {
             "en": "Charge Battery",
-            "de": "Batterie laden"
+            "de": "Batterie laden",
+            "nl": "Batterij laden"
           }
         }
       ]
@@ -367,7 +407,8 @@
       "type": "enum",
       "title": {
         "en": "Remote Charge/Discharge Mode",
-        "de": "Fernsteuerung Laden/Entladen"
+        "de": "Fernsteuerung Laden/Entladen",
+        "nl": "Afstandsbediening laden/ontladen"
       },
       "getable": true,
       "setable": true,
@@ -378,42 +419,48 @@
           "id": "0",
           "title": {
             "en": "Local Control",
-            "de": "Lokale Steuerung"
+            "de": "Lokale Steuerung",
+            "nl": "Lokale sturing"
           }
         },
         {
           "id": "1",
           "title": {
             "en": "Remote: Max Self-Consumption",
-            "de": "Fern: Max Eigenverbrauch"
+            "de": "Fern: Max Eigenverbrauch",
+            "nl": "Afstand: Max eigenverbruik"
           }
         },
         {
           "id": "2",
           "title": {
             "en": "Remote: Fully Fed to Grid",
-            "de": "Fern: Volleinspeisung"
+            "de": "Fern: Volleinspeisung",
+            "nl": "Afstand: Volledig terugleveren"
           }
         },
         {
           "id": "3",
           "title": {
             "en": "Remote: Time of Use",
-            "de": "Fern: Zeitabhängige Nutzung"
+            "de": "Fern: Zeitabhängige Nutzung",
+            "nl": "Afstand: Time of Use"
           }
         },
         {
           "id": "4",
           "title": {
             "en": "Remote: AI Control",
-            "de": "Fern: KI-Steuerung"
+            "de": "Fern: KI-Steuerung",
+            "nl": "Afstand: KI-sturing"
           }
         },
         {
           "id": "5",
           "title": {
             "en": "Remote: Three-party Scheduling",
-            "de": "Fern: Drittanbieter-Steuerung"
+            "de": "Fern: Drittanbieter-Steuerung",
+            "nl": "Afstand: Derden-sturing"
           }
         }
       ]
@@ -422,7 +469,8 @@
       "type": "number",
       "title": {
         "en": "Daily Energy (legacy)",
-        "de": "Tagesertrag (veraltet)"
+        "de": "Tagesertrag (veraltet)",
+        "nl": "Dagelijkse energie (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -435,7 +483,8 @@
       "type": "number",
       "title": {
         "en": "Total Energy (legacy)",
-        "de": "Gesamtertrag (veraltet)"
+        "de": "Gesamtertrag (veraltet)",
+        "nl": "Totale energie (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -448,7 +497,8 @@
       "type": "string",
       "title": {
         "en": "Inverter Status (legacy)",
-        "de": "Wechselrichterstatus (veraltet)"
+        "de": "Wechselrichterstatus (veraltet)",
+        "nl": "Status omvormer (verouderd)"
       },
       "getable": true,
       "setable": false,
@@ -459,7 +509,8 @@
       "type": "number",
       "title": {
         "en": "Battery Power (legacy)",
-        "de": "Batterieleistung (veraltet)"
+        "de": "Batterieleistung (veraltet)",
+        "nl": "Batterijvermogen (verouderd)"
       },
       "units": "W",
       "decimals": 0,
@@ -472,7 +523,8 @@
       "type": "number",
       "title": {
         "en": "Battery Charged Today (legacy)",
-        "de": "Heute geladen (veraltet)"
+        "de": "Heute geladen (veraltet)",
+        "nl": "Vandaag geladen (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -485,7 +537,8 @@
       "type": "number",
       "title": {
         "en": "Battery Discharged Today (legacy)",
-        "de": "Heute entladen (veraltet)"
+        "de": "Heute entladen (veraltet)",
+        "nl": "Vandaag ontladen (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -498,7 +551,8 @@
       "type": "number",
       "title": {
         "en": "Power Meter (legacy)",
-        "de": "Leistungszähler (veraltet)"
+        "de": "Leistungszähler (veraltet)",
+        "nl": "Vermogensmeter (verouderd)"
       },
       "units": "W",
       "decimals": 0,
@@ -511,7 +565,8 @@
       "type": "number",
       "title": {
         "en": "Grid Exported (legacy)",
-        "de": "Netzeinspeisung (veraltet)"
+        "de": "Netzeinspeisung (veraltet)",
+        "nl": "Netteruglevering (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -524,7 +579,8 @@
       "type": "number",
       "title": {
         "en": "Grid Accumulated (legacy)",
-        "de": "Netzbezug gesamt (veraltet)"
+        "de": "Netzbezug gesamt (veraltet)",
+        "nl": "Netafname totaal (verouderd)"
       },
       "units": "kWh",
       "decimals": 2,
@@ -537,7 +593,8 @@
       "type": "number",
       "title": {
         "en": "Monthly Energy",
-        "de": "Monatsertrag"
+        "de": "Monatsertrag",
+        "nl": "Maandelijkse energie"
       },
       "units": "kWh",
       "decimals": 2,
@@ -551,7 +608,8 @@
       "type": "number",
       "title": {
         "en": "Yearly Energy",
-        "de": "Jahresertrag"
+        "de": "Jahresertrag",
+        "nl": "Jaarlijkse energie"
       },
       "units": "kWh",
       "decimals": 2,
@@ -565,7 +623,8 @@
       "type": "number",
       "title": {
         "en": "Inverter Efficiency",
-        "de": "Wechselrichter-Wirkungsgrad"
+        "de": "Wechselrichter-Wirkungsgrad",
+        "nl": "Omvormer rendement"
       },
       "units": "%",
       "decimals": 1,
@@ -580,7 +639,8 @@
       "type": "number",
       "title": {
         "en": "Grid Frequency",
-        "de": "Netzfrequenz"
+        "de": "Netzfrequenz",
+        "nl": "Netfrequentie"
       },
       "units": "Hz",
       "decimals": 2,
@@ -593,7 +653,8 @@
       "type": "string",
       "title": {
         "en": "Battery Status",
-        "de": "Batteriestatus"
+        "de": "Batteriestatus",
+        "nl": "Batterijstatus"
       },
       "icon": "/assets/capabilities/huawei_status.svg",
       "getable": true,
@@ -605,7 +666,8 @@
       "type": "string",
       "title": {
         "en": "Battery Status",
-        "de": "Batteriestatus"
+        "de": "Batteriestatus",
+        "nl": "Batterijstatus"
       },
       "icon": "/assets/capabilities/huawei_status.svg",
       "getable": true,
@@ -617,7 +679,8 @@
       "type": "string",
       "title": {
         "en": "Charge/Discharge Mode",
-        "de": "Lade-/Entlademodus"
+        "de": "Lade-/Entlademodus",
+        "nl": "Laad-/ontlaadmodus"
       },
       "getable": true,
       "setable": false,
@@ -628,7 +691,8 @@
       "type": "string",
       "title": {
         "en": "Battery Run State",
-        "de": "Batterie Betriebszustand"
+        "de": "Batterie Betriebszustand",
+        "nl": "Batterij bedrijfsstatus"
       },
       "getable": true,
       "setable": false,
@@ -639,7 +703,8 @@
       "type": "string",
       "title": {
         "en": "Meter Status",
-        "de": "Zählerstatus"
+        "de": "Zählerstatus",
+        "nl": "Meterstatus"
       },
       "getable": true,
       "setable": false,
@@ -650,7 +715,8 @@
       "type": "string",
       "title": {
         "en": "Meter Run State",
-        "de": "Zähler Betriebszustand"
+        "de": "Zähler Betriebszustand",
+        "nl": "Meter bedrijfsstatus"
       },
       "getable": true,
       "setable": false,
@@ -661,7 +727,8 @@
       "type": "number",
       "title": {
         "en": "Reactive Power",
-        "de": "Blindleistung"
+        "de": "Blindleistung",
+        "nl": "Reactief vermogen"
       },
       "units": "Var",
       "decimals": 0,
@@ -674,7 +741,8 @@
       "type": "number",
       "title": {
         "en": "Power Factor",
-        "de": "Leistungsfaktor"
+        "de": "Leistungsfaktor",
+        "nl": "Vermogensfactor"
       },
       "decimals": 3,
       "getable": true,
@@ -686,7 +754,8 @@
       "type": "number",
       "title": {
         "en": "Battery Modules",
-        "de": "Batteriemodule"
+        "de": "Batteriemodule",
+        "nl": "Batterijmodules"
       },
       "decimals": 0,
       "getable": true,
@@ -699,7 +768,8 @@
       "type": "boolean",
       "title": {
         "en": "Battery Unit 1 installed",
-        "de": "Batterie-Unit 1 installiert"
+        "de": "Batterie-Unit 1 installiert",
+        "nl": "Batterij-unit 1 geïnstalleerd"
       },
       "getable": true,
       "setable": false,
@@ -710,7 +780,8 @@
       "type": "boolean",
       "title": {
         "en": "Battery Unit 2 installed",
-        "de": "Batterie-Unit 2 installiert"
+        "de": "Batterie-Unit 2 installiert",
+        "nl": "Batterij-unit 2 geïnstalleerd"
       },
       "getable": true,
       "setable": false,
@@ -5551,14 +5622,26 @@
   "widgets": {
     "solar-power-flow": {
       "id": "solar-power-flow",
-      "name": { "en": "Solar Power Flow", "de": "Solar Energiefluss" },
+      "name": {
+        "en": "Solar Power Flow",
+        "de": "Solar Energiefluss",
+        "nl": "Solar Energiestroom"
+      },
       "height": 200,
       "settings": [
         {
           "id": "power_threshold_w",
           "type": "number",
-          "title": { "en": "Activity threshold (W)", "de": "Aktivitätsschwelle (W)" },
-          "hint": { "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W", "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W" },
+          "title": {
+            "en": "Activity threshold (W)",
+            "de": "Aktivitätsschwelle (W)",
+            "nl": "Activiteitsdrempel (W)"
+          },
+          "hint": {
+            "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W",
+            "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W",
+            "nl": "Minimaal vermogen in watt om een stroom als actief te beschouwen. Lagere waarden verhogen de gevoeligheid, hogere waarden verminderen flikkering nabij nul.\n\nStandaard: 50 W"
+          },
           "value": 50,
           "min": 5,
           "max": 500,
@@ -5569,18 +5652,35 @@
         "light": "/widgets/solar-power-flow/preview-light.png",
         "dark": "/widgets/solar-power-flow/preview-dark.png"
       },
-      "api": { "getData": { "method": "GET", "path": "/" } }
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
     },
     "battery-status": {
       "id": "battery-status",
-      "name": { "en": "Battery Status", "de": "Batteriestatus" },
+      "name": {
+        "en": "Battery Status",
+        "de": "Batteriestatus",
+        "nl": "Batterijstatus"
+      },
       "height": 165,
       "settings": [
         {
           "id": "battery_capacity_kwh",
           "type": "number",
-          "title": { "en": "Battery capacity (kWh)", "de": "Batteriekapazität (kWh)" },
-          "hint": { "en": "Usable capacity of your battery in kWh. Used to calculate the estimated time until full or empty.\n\nLUNA2000 examples:\n• 1 module (5 kWh) → enter 5\n• 2 modules (10 kWh) → enter 10\n• 3 modules (15 kWh) → enter 15", "de": "Nutzbare Kapazität deiner Batterie in kWh. Wird verwendet, um die verbleibende Lade- bzw. Entladezeit zu berechnen.\n\nLUNA2000 Beispiele:\n• 1 Modul (5 kWh) → 5 eingeben\n• 2 Module (10 kWh) → 10 eingeben\n• 3 Module (15 kWh) → 15 eingeben" },
+          "title": {
+            "en": "Battery capacity (kWh)",
+            "de": "Batteriekapazität (kWh)",
+            "nl": "Batterijcapaciteit (kWh)"
+          },
+          "hint": {
+            "en": "Usable capacity of your battery in kWh. Used to calculate the estimated time until full or empty.\n\nLUNA2000 examples:\n• 1 module (5 kWh) → enter 5\n• 2 modules (10 kWh) → enter 10\n• 3 modules (15 kWh) → enter 15",
+            "de": "Nutzbare Kapazität deiner Batterie in kWh. Wird verwendet, um die verbleibende Lade- bzw. Entladezeit zu berechnen.\n\nLUNA2000 Beispiele:\n• 1 Modul (5 kWh) → 5 eingeben\n• 2 Module (10 kWh) → 10 eingeben\n• 3 Module (15 kWh) → 15 eingeben",
+            "nl": "Bruikbare capaciteit van je batterij in kWh. Wordt gebruikt om de geschatte tijd tot vol of leeg te berekenen.\n\nLUNA2000 voorbeelden:\n• 1 module (5 kWh) → voer 5 in\n• 2 modules (10 kWh) → voer 10 in\n• 3 modules (15 kWh) → voer 15 in"
+          },
           "value": 5,
           "min": 1,
           "max": 200,
@@ -5591,18 +5691,35 @@
         "light": "/widgets/battery-status/preview-light.png",
         "dark": "/widgets/battery-status/preview-dark.png"
       },
-      "api": { "getData": { "method": "GET", "path": "/" } }
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
     },
     "daily-yield": {
       "id": "daily-yield",
-      "name": { "en": "Daily Yield", "de": "Tagesertrag" },
+      "name": {
+        "en": "Daily Yield",
+        "de": "Tagesertrag",
+        "nl": "Dagopbrengst"
+      },
       "height": 112,
       "settings": [
         {
           "id": "co2_factor_g_per_kwh",
           "type": "number",
-          "title": { "en": "CO₂ factor (g/kWh)", "de": "CO₂-Faktor (g/kWh)" },
-          "hint": { "en": "CO₂ emissions factor of your electricity grid in grams per kWh.\n\nExamples:\n• Germany (DE) → 401 g/kWh\n• Switzerland (CH) → 29 g/kWh\n• Austria (AT) → 108 g/kWh\n• EU average → 255 g/kWh", "de": "CO₂-Emissionsfaktor deines Stromnetzes in Gramm pro kWh.\n\nBeispiele:\n• Deutschland (DE) → 401 g/kWh\n• Schweiz (CH) → 29 g/kWh\n• Österreich (AT) → 108 g/kWh\n• EU-Durchschnitt → 255 g/kWh" },
+          "title": {
+            "en": "CO₂ factor (g/kWh)",
+            "de": "CO₂-Faktor (g/kWh)",
+            "nl": "CO₂-factor (g/kWh)"
+          },
+          "hint": {
+            "en": "CO₂ emissions factor of your electricity grid in grams per kWh.\n\nExamples:\n• Germany (DE) → 401 g/kWh\n• Switzerland (CH) → 29 g/kWh\n• Austria (AT) → 108 g/kWh\n• EU average → 255 g/kWh",
+            "de": "CO₂-Emissionsfaktor deines Stromnetzes in Gramm pro kWh.\n\nBeispiele:\n• Deutschland (DE) → 401 g/kWh\n• Schweiz (CH) → 29 g/kWh\n• Österreich (AT) → 108 g/kWh\n• EU-Durchschnitt → 255 g/kWh",
+            "nl": "CO₂-emissiefactor van je elektriciteitsnet in gram per kWh.\n\nVoorbeelden:\n• Nederland (NL) → 283 g/kWh\n• België (BE) → 167 g/kWh\n• Zwitserland (CH) → 29 g/kWh\n• EU-gemiddelde → 255 g/kWh"
+          },
           "value": 401,
           "min": 1,
           "max": 1000,
@@ -5613,29 +5730,55 @@
         "light": "/widgets/daily-yield/preview-light.png",
         "dark": "/widgets/daily-yield/preview-dark.png"
       },
-      "api": { "getData": { "method": "GET", "path": "/" } }
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
     },
     "energy-balance": {
       "id": "energy-balance",
-      "name": { "en": "Energy Balance", "de": "Energiebilanz" },
+      "name": {
+        "en": "Energy Balance",
+        "de": "Energiebilanz",
+        "nl": "Energiebalans"
+      },
       "height": 220,
       "settings": [],
       "images": {
         "light": "/widgets/energy-balance/preview-light.png",
         "dark": "/widgets/energy-balance/preview-dark.png"
       },
-      "api": { "getData": { "method": "GET", "path": "/" } }
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
     },
     "netzampel": {
       "id": "netzampel",
-      "name": { "en": "Grid Status", "de": "Netzampel" },
+      "name": {
+        "en": "Grid Status",
+        "de": "Netzampel",
+        "nl": "Netstatus"
+      },
       "height": 132,
       "settings": [
         {
           "id": "power_threshold_w",
           "type": "number",
-          "title": { "en": "Activity threshold (W)", "de": "Aktivitätsschwelle (W)" },
-          "hint": { "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W", "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W" },
+          "title": {
+            "en": "Activity threshold (W)",
+            "de": "Aktivitätsschwelle (W)",
+            "nl": "Activiteitsdrempel (W)"
+          },
+          "hint": {
+            "en": "Minimum power in watts to consider a flow as active. Lower values increase sensitivity, higher values reduce flickering near zero.\n\nDefault: 50 W",
+            "de": "Mindestwert in Watt, ab dem ein Energiefluss als aktiv gilt. Niedrigere Werte erhöhen die Empfindlichkeit, höhere reduzieren Flackern nahe Null.\n\nStandard: 50 W",
+            "nl": "Minimaal vermogen in watt om een stroom als actief te beschouwen. Lagere waarden verhogen de gevoeligheid, hogere waarden verminderen flikkering nabij nul.\n\nStandaard: 50 W"
+          },
           "value": 50,
           "min": 5,
           "max": 500,
@@ -5646,7 +5789,13 @@
         "light": "/widgets/netzampel/preview-light.png",
         "dark": "/widgets/netzampel/preview-dark.png"
       },
-      "api": { "getData": { "method": "GET", "path": "/" } }
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
     }
-  }
+  },
+  "permissions": []
 }

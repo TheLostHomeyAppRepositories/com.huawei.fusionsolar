@@ -187,9 +187,11 @@
 
 <script>
 var T = (function() {
-  var de = { grid: 'Netz', batt: 'Batterie', house: 'Haus', export: 'Einspeisung', import: 'Bezug' };
-  var en = { grid: 'Grid', batt: 'Battery',  house: 'House', export: 'Export',     import: 'Import' };
-  return navigator.language.startsWith('de') ? de : en;
+  var de = { grid: 'Netz', batt: 'Batterie', house: 'Haus',  export: 'Einspeisung', import: 'Bezug'  };
+  var nl = { grid: 'Net',  batt: 'Batterij', house: 'Huis',  export: 'Teruglevering', import: 'Afname' };
+  var en = { grid: 'Grid', batt: 'Battery',  house: 'House', export: 'Export',       import: 'Import' };
+  var l = navigator.language;
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
 })();
 
 var C = {

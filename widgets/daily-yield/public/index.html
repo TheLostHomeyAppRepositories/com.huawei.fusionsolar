@@ -166,9 +166,11 @@
 
 <script>
 var T = (function() {
-  var de = { daily: 'Heute erzeugt', total: 'Gesamt', co2: 'CO₂ gespart', optimizers: 'Optimierer' };
-  var en = { daily: 'Generated today', total: 'Total', co2: 'CO₂ saved', optimizers: 'Optimizers' };
-  return navigator.language.startsWith('de') ? de : en;
+  var de = { daily: 'Heute erzeugt',   total: 'Gesamt', co2: 'CO₂ gespart',  optimizers: 'Optimierer'  };
+  var nl = { daily: 'Vandaag opgewekt', total: 'Totaal', co2: 'CO₂ bespaard', optimizers: 'Optimizers'  };
+  var en = { daily: 'Generated today',  total: 'Total',  co2: 'CO₂ saved',    optimizers: 'Optimizers'  };
+  var l = navigator.language;
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
 })();
 
 document.getElementById('label-daily').textContent = T.daily;
