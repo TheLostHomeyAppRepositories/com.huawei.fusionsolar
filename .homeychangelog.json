@@ -134,6 +134,10 @@
   "1.1.29": {
     "en": "SUN2000 (Modbus): added Software Version capability (register 30050). LUNA2000 (Modbus): added Software Version (register 37814) and Software Version Unit 2 (register 37799) capabilities — Unit 2 is only shown when the second battery unit responds."
   },
+  "1.1.33": {
+    "en": "All 5 dashboard widgets are now bilingual (EN/DE) — language is detected from the browser locale. Previously all labels were hardcoded in German.",
+    "de": "Alle 5 Dashboard-Widgets sind jetzt zweisprachig (EN/DE) — die Sprache wird automatisch aus dem Browser-Locale erkannt."
+  },
   "1.1.32": {
     "en": "OpenAPI: improved error message when server returns non-JSON — now shows the first 120 characters of the raw response to help diagnose custom regional endpoints."
   },

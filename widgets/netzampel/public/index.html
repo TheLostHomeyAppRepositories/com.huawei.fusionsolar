@@ -158,6 +158,20 @@
 </div>
 
 <script>
+var T = (function() {
+  var de = {
+    export: 'Einspeisung', exportSub: 'ins Netz',
+    import: 'Netzbezug',   importSub: 'vom Netz',
+    self:   'Eigenversorgung', selfSub: 'PV deckt Verbrauch',
+  };
+  var en = {
+    export: 'Feed-in',      exportSub: 'to grid',
+    import: 'Grid import',  importSub: 'from grid',
+    self:   'Self-sufficient', selfSub: 'PV covers load',
+  };
+  return navigator.language.startsWith('de') ? de : en;
+})();
+
 function fmt(w) {
   if (w === null || w === undefined) return '—';
   const abs = Math.abs(w);
@@ -192,24 +206,24 @@ function onHomeyReady(Homey) {
     if (grid < -thr) {
       // Exporting to grid
       circle.setAttribute('class', 'circle pulse-green');
-      label.textContent = 'Einspeisung';
+      label.textContent = T.export;
       value.textContent = fmt(-grid);
       value.style.color = '#22C55E';
-      sub.textContent   = 'ins Netz';
+      sub.textContent   = T.exportSub;
     } else if (grid > thr) {
       // Importing from grid
       circle.setAttribute('class', 'circle pulse-red');
-      label.textContent = 'Netzbezug';
+      label.textContent = T.import;
       value.textContent = fmt(grid);
       value.style.color = '#EF4444';
-      sub.textContent   = 'vom Netz';
+      sub.textContent   = T.importSub;
     } else {
       // Self-sufficient
       circle.setAttribute('class', 'circle pulse-yellow');
-      label.textContent = 'Eigenversorgung';
+      label.textContent = T.self;
       value.textContent = fmt(pv);
       value.style.color = '#F59E0B';
-      sub.textContent   = 'PV deckt Verbrauch';
+      sub.textContent   = T.selfSub;
     }
 
     // Stats

@@ -154,7 +154,7 @@
       <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
     </svg>
     <div class="node-value" id="grid-val">—</div>
-    <div class="node-label">Netz</div>
+    <div class="node-label" id="label-grid"></div>
     <div class="node-sub"  id="grid-sub"></div>
   </div>
 
@@ -168,7 +168,7 @@
       <line x1="9"  y1="9"  x2="9"  y2="15"/>
     </svg>
     <div class="node-value" id="batt-val">—</div>
-    <div class="node-label">Batterie</div>
+    <div class="node-label" id="label-batt"></div>
     <div class="node-sub"  id="batt-soc"></div>
   </div>
 
@@ -180,12 +180,18 @@
       <polyline points="9,22 9,12 15,12 15,22"/>
     </svg>
     <div class="node-value" id="house-val">—</div>
-    <div class="node-label">Haus</div>
+    <div class="node-label" id="label-house"></div>
   </div>
 
 </div>
 
 <script>
+var T = (function() {
+  var de = { grid: 'Netz', batt: 'Batterie', house: 'Haus', export: 'Einspeisung', import: 'Bezug' };
+  var en = { grid: 'Grid', batt: 'Battery',  house: 'House', export: 'Export',     import: 'Import' };
+  return navigator.language.startsWith('de') ? de : en;
+})();
+
 var C = {
   pv:        '#F59E0B',
   house:     '#3B82F6',
@@ -283,8 +289,8 @@ function onHomeyReady(Homey) {
       (soc !== null && soc !== undefined) ? Math.round(soc) + '%' : '';
 
     document.getElementById('grid-sub').textContent =
-      (grid !== null && grid < -50) ? 'Einspeisung' :
-      (grid !== null && grid >  50) ? 'Bezug' : '';
+      (grid !== null && grid < -50) ? T.export :
+      (grid !== null && grid >  50) ? T.import : '';
 
     // ── Recalculate line positions (text may have changed width) ──
     positionLines();
@@ -372,6 +378,11 @@ function onHomeyReady(Homey) {
       .then(function(data) { if (data) render(data); })
       .catch(function(err) { console.error('widget error:', err); });
   }
+
+  // Apply translated node labels
+  document.getElementById('label-grid').textContent  = T.grid;
+  document.getElementById('label-batt').textContent  = T.batt;
+  document.getElementById('label-house').textContent = T.house;
 
   // Initial line positioning once DOM is painted
   requestAnimationFrame(function() {

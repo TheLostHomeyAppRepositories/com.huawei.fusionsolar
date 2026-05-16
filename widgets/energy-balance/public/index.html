@@ -150,7 +150,7 @@
   <div class="bar-header">
     <div class="bar-label">
       <div class="bar-dot" style="background:#F59E0B"></div>
-      PV heute
+      <span id="label-pv-today"></span>
     </div>
     <div class="bar-value" id="pv-val">—</div>
   </div>
@@ -163,7 +163,7 @@
   <div class="bar-header">
     <div class="bar-label">
       <div class="bar-dot" style="background:#22C55E"></div>
-      Einspeisung heute
+      <span id="label-export-today"></span>
     </div>
     <div class="bar-value" id="export-val">—</div>
   </div>
@@ -176,7 +176,7 @@
   <div class="bar-header">
     <div class="bar-label">
       <div class="bar-dot" style="background:#EF4444"></div>
-      Netzbezug heute
+      <span id="label-import-today"></span>
     </div>
     <div class="bar-value" id="import-val">—</div>
   </div>
@@ -189,7 +189,7 @@
   <div class="bar-header">
     <div class="bar-label">
       <div class="bar-dot" style="background:#3B82F6"></div>
-      Hausverbrauch heute
+      <span id="label-house-today"></span>
     </div>
     <div class="bar-value" id="house-val">—</div>
   </div>
@@ -198,19 +198,17 @@
   </div>
 </div>
 
-<div id="baseline-hint" style="display:none;font-size:10px;color:var(--homey-text-color-light);margin-bottom:6px;text-align:center;">
-  Tageswerte werden ab Mitternacht berechnet
-</div>
+<div id="baseline-hint" style="display:none;font-size:10px;color:var(--homey-text-color-light);margin-bottom:6px;text-align:center;" id="label-baseline"></div>
 
 <div class="footer">
-  <!-- Row 1: Eigenverbrauch / Autarkie -->
+  <!-- Row 1: Self-consumption / Self-sufficiency -->
   <div class="chip-row">
     <div class="metric-chip">
-      <div class="metric-label">Eigenverbrauch</div>
+      <div class="metric-label" id="label-selfcons"></div>
       <div class="metric-value" id="sc-val" style="color:#22C55E">—</div>
     </div>
     <div class="metric-chip">
-      <div class="metric-label">Autarkie</div>
+      <div class="metric-label" id="label-selfsuff"></div>
       <div class="metric-value" id="autarkie-val" style="color:#22C55E">—</div>
     </div>
   </div>
@@ -221,7 +219,7 @@
         <line x1="12" y1="19" x2="12" y2="5"/>
         <polyline points="5,12 12,5 19,12"/>
       </svg>
-      <span class="batt-label">Geladen</span>
+      <span class="batt-label" id="label-charged"></span>
       <span class="batt-value" id="batt-charged-val">—</span>
     </div>
     <div class="batt-chip">
@@ -229,13 +227,50 @@
         <line x1="12" y1="5" x2="12" y2="19"/>
         <polyline points="19,12 12,19 5,12"/>
       </svg>
-      <span class="batt-label">Entladen</span>
+      <span class="batt-label" id="label-discharged"></span>
       <span class="batt-value" id="batt-discharged-val">—</span>
     </div>
   </div>
 </div>
 
 <script>
+var T = (function() {
+  var de = {
+    pvToday:      'PV heute',
+    exportToday:  'Einspeisung heute',
+    importToday:  'Netzbezug heute',
+    houseToday:   'Hausverbrauch heute',
+    baseline:     'Tageswerte werden ab Mitternacht berechnet',
+    selfCons:     'Eigenverbrauch',
+    selfSuff:     'Autarkie',
+    charged:      'Geladen',
+    discharged:   'Entladen',
+  };
+  var en = {
+    pvToday:      'PV today',
+    exportToday:  'Feed-in today',
+    importToday:  'Grid import today',
+    houseToday:   'Consumption today',
+    baseline:     'Daily values calculated from midnight',
+    selfCons:     'Self-consumption',
+    selfSuff:     'Self-sufficiency',
+    charged:      'Charged',
+    discharged:   'Discharged',
+  };
+  return navigator.language.startsWith('de') ? de : en;
+})();
+
+// Apply static labels
+document.getElementById('label-pv-today').textContent     = T.pvToday;
+document.getElementById('label-export-today').textContent = T.exportToday;
+document.getElementById('label-import-today').textContent = T.importToday;
+document.getElementById('label-house-today').textContent  = T.houseToday;
+document.getElementById('label-baseline').textContent     = T.baseline;
+document.getElementById('label-selfcons').textContent     = T.selfCons;
+document.getElementById('label-selfsuff').textContent     = T.selfSuff;
+document.getElementById('label-charged').textContent      = T.charged;
+document.getElementById('label-discharged').textContent   = T.discharged;
+
 function fmtKwh(v) {
   if (v === null || v === undefined) return '…';
   return v.toFixed(1) + ' kWh';

@@ -205,7 +205,7 @@
         <line x1="12" y1="19" x2="12" y2="5"/>
         <polyline points="5,12 12,5 19,12"/>
       </svg>
-      Heute geladen
+      <span id="label-charged-today"></span>
     </div>
     <div class="stat-value" id="charged-val">—</div>
   </div>
@@ -215,13 +215,38 @@
         <line x1="12" y1="5" x2="12" y2="19"/>
         <polyline points="19,12 12,19 5,12"/>
       </svg>
-      Heute entladen
+      <span id="label-discharged-today"></span>
     </div>
     <div class="stat-value" id="discharged-val">—</div>
   </div>
 </div>
 
 <script>
+var T = (function() {
+  var de = {
+    noBattery:   'Keine Batterie',
+    charging:    'Laden',
+    discharging: 'Entladen',
+    standby:     'Standby',
+    remaining:   'noch ',
+    chargedToday:    'Heute geladen',
+    dischargedToday: 'Heute entladen',
+  };
+  var en = {
+    noBattery:   'No battery',
+    charging:    'Charging',
+    discharging: 'Discharging',
+    standby:     'Standby',
+    remaining:   '',
+    chargedToday:    'Charged today',
+    dischargedToday: 'Discharged today',
+  };
+  return navigator.language.startsWith('de') ? de : en;
+})();
+
+document.getElementById('label-charged-today').textContent    = T.chargedToday;
+document.getElementById('label-discharged-today').textContent = T.dischargedToday;
+
 function fmtKwh(v) {
   if (v === null || v === undefined) return '—';
   return v.toFixed(1) + ' kWh';
@@ -238,7 +263,7 @@ function fmtRemaining(hours) {
   var m = Math.round((hours - h) * 60);
   if (m === 60) { h++; m = 0; }
   if (h > 99) return '';  // unrealistically long
-  return h > 0 ? 'noch ' + h + 'h ' + m + 'min' : 'noch ' + m + 'min';
+  return h > 0 ? T.remaining + h + 'h ' + m + 'min' : T.remaining + m + 'min';
 }
 
 function onHomeyReady(Homey) {
@@ -260,7 +285,7 @@ function onHomeyReady(Homey) {
     if (data.soc === null && data.powerW === null) {
       document.getElementById('soc-num').textContent      = '—';
       document.getElementById('soc-fill').style.width     = '0%';
-      document.getElementById('batt-status').textContent  = 'Keine Batterie';
+      document.getElementById('batt-status').textContent  = T.noBattery;
       document.getElementById('batt-remaining').textContent = '';
       document.getElementById('power-val').textContent    = '—';
       document.getElementById('power-dir').textContent    = '';
@@ -307,17 +332,17 @@ function onHomeyReady(Homey) {
     if (pw > 50) {
       powerIcon.setAttribute('stroke', '#22C55E');
       powerIcon.setAttribute('class', 'power-icon glow-green');
-      powerDir.textContent = 'Laden';
+      powerDir.textContent = T.charging;
       powerDir.style.color = '#22C55E';
     } else if (pw < -50) {
       powerIcon.setAttribute('stroke', '#F97316');
       powerIcon.setAttribute('class', 'power-icon glow-orange');
-      powerDir.textContent = 'Entladen';
+      powerDir.textContent = T.discharging;
       powerDir.style.color = '#F97316';
     } else {
       powerIcon.setAttribute('stroke', '#9CA3AF');
       powerIcon.setAttribute('class', 'power-icon');
-      powerDir.textContent = 'Standby';
+      powerDir.textContent = T.standby;
       powerDir.style.color = '';
     }
 
