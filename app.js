@@ -36,11 +36,11 @@ class FusionSolarKioskApp extends App {
   /**
    * Schedules a snapshot of cumulative grid counters every midnight.
    * Stored in homey.settings so the energy-balance widget can compute daily deltas.
+   * Uses the Homey timezone so midnight fires at local 00:00 regardless of the
+   * Node.js process timezone (which is UTC on Homey Pro).
    */
   _scheduleMidnightBaseline() {
-    const now     = new Date();
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
-    const msUntilMidnight = tomorrow - now;
+    const msUntilMidnight = this._msUntilLocalMidnight();
 
     this._midnightTimer = this.homey.setTimeout(() => {
       this._saveMidnightBaseline();
@@ -48,7 +48,34 @@ class FusionSolarKioskApp extends App {
       this._scheduleMidnightBaseline();
     }, msUntilMidnight);
 
-    this.log(`Midnight baseline scheduled in ${Math.round(msUntilMidnight / 60000)} min`);
+    this.log(`Midnight baseline scheduled in ${Math.round(msUntilMidnight / 60000)} min (tz: ${this._getHomeyTz()})`);
+  }
+
+  /** Returns the Homey timezone string (IANA), falling back to 'UTC'. */
+  _getHomeyTz() {
+    try { return this.homey.clock.getTimezone() || 'UTC'; } catch { return 'UTC'; }
+  }
+
+  /**
+   * Milliseconds until 00:00:05 of the next calendar day in the Homey timezone.
+   * Node.js runs UTC — we use Intl.DateTimeFormat to read the current wall-clock
+   * time in the local timezone and compute the offset to the next midnight.
+   */
+  _msUntilLocalMidnight() {
+    const tz  = this._getHomeyTz();
+    const now = new Date();
+
+    // Extract current time-of-day parts in the Homey timezone
+    const parts = new Intl.DateTimeFormat('en', {
+      timeZone: tz,
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+      hour12: false,
+    }).formatToParts(now);
+
+    const get = type => parseInt(parts.find(p => p.type === type)?.value ?? '0', 10);
+    const secsElapsed = get('hour') * 3600 + get('minute') * 60 + get('second');
+    // 5-second buffer past midnight
+    return (86400 - secsElapsed + 5) * 1000;
   }
 
   /**
@@ -103,9 +130,13 @@ class FusionSolarKioskApp extends App {
     try { return device.getCapabilityValue(id) ?? null; } catch { return null; }
   }
 
+  /** Returns today's date as "YYYY-MM-DD" in the Homey (local) timezone. */
   _todayStr() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // en-CA locale formats as YYYY-MM-DD which is exactly what we need
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: this._getHomeyTz(),
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
   }
 
   getCoordinator() {

@@ -1,152 +1,247 @@
 {
   "1.0.0": {
-    "en": "initial version"
+    "en": "initial version",
+    "de": "Erste Version",
+    "nl": "Eerste versie"
   },
   "1.0.1": {
-    "en": "extend OpenAPI device"
+    "en": "extend OpenAPI device",
+    "de": "OpenAPI-Gerät erweitert",
+    "nl": "OpenAPI-apparaat uitgebreid"
   },
   "1.0.2": {
-    "en": "cleanup OpenAPI devices"
+    "en": "cleanup OpenAPI devices",
+    "de": "OpenAPI-Geräte bereinigt",
+    "nl": "OpenAPI-apparaten opgeschoond"
   },
   "1.0.3": {
-    "en": "removed generic OpenAPI device"
+    "en": "removed generic OpenAPI device",
+    "de": "Generisches OpenAPI-Gerät entfernt",
+    "nl": "Generiek OpenAPI-apparaat verwijderd"
   },
   "1.0.4": {
-    "en": "fix modbus pairing issue with multiple devices"
+    "en": "fix modbus pairing issue with multiple devices",
+    "de": "Modbus-Koppelproblem bei mehreren Geräten behoben",
+    "nl": "Modbus-koppelingsprobleem bij meerdere apparaten opgelost"
   },
   "1.0.5": {
-    "en": "new icons, EMMA beta driver implementation"
+    "en": "new icons, EMMA beta driver implementation",
+    "de": "Neue Icons, EMMA Beta-Treiberimplementierung",
+    "nl": "Nieuwe pictogrammen, EMMA bèta-stuurprogramma geïmplementeerd"
   },
   "1.0.6": {
-    "en": "fix for Control registers written back on every app start"
+    "en": "fix for Control registers written back on every app start",
+    "de": "Steuerregister wurden bei jedem App-Start zurückgeschrieben – behoben",
+    "nl": "Fix: stuurregisters werden bij elke app-start teruggeschreven"
   },
   "1.0.7": {
-    "en": "remove invalid actions"
+    "en": "remove invalid actions",
+    "de": "Ungültige Aktionen entfernt",
+    "nl": "Ongeldige acties verwijderd"
   },
   "1.0.8": {
-    "en": "extend timeout on modbus writes"
+    "en": "extend timeout on modbus writes",
+    "de": "Timeout bei Modbus-Schreibzugriffen verlängert",
+    "nl": "Time-out bij Modbus-schrijfbewerkingen verlengd"
   },
   "1.0.9": {
-    "en": "increased write response timeout, increase write attempts, pause polling during writes"
+    "en": "increased write response timeout, increase write attempts, pause polling during writes",
+    "de": "Schreib-Antwort-Timeout erhöht, Schreibversuche erhöht, Polling während Schreibzugriffen pausiert",
+    "nl": "Schrijf-antwoordtime-out verhoogd, schrijfpogingen verhoogd, polling gepauzeerd tijdens schrijfbewerkingen"
   },
   "1.0.10": {
-    "en": "add Smart Charger"
+    "en": "add Smart Charger",
+    "de": "Smart Charger hinzugefügt",
+    "nl": "Smart Charger toegevoegd"
   },
   "1.0.11": {
-    "en": "extended timeout again and implemented logging for modbus write actions"
+    "en": "extended timeout again and implemented logging for modbus write actions",
+    "de": "Timeout erneut verlängert und Protokollierung für Modbus-Schreibaktionen implementiert",
+    "nl": "Time-out opnieuw verlengd en logboekregistratie voor Modbus-schrijfacties geïmplementeerd"
   },
   "1.0.12": {
-    "en": "rewrite EMMA integration"
+    "en": "rewrite EMMA integration",
+    "de": "EMMA-Integration neu geschrieben",
+    "nl": "EMMA-integratie herschreven"
   },
   "1.0.13": {
-    "en": "add action flows on luna2000 emma modbus device and fixed some translation issues"
+    "en": "add action flows on luna2000 emma modbus device and fixed some translation issues",
+    "de": "Aktionsflows für LUNA2000 EMMA Modbus-Gerät hinzugefügt und einige Übersetzungsprobleme behoben",
+    "nl": "Actieflows toegevoegd voor LUNA2000 EMMA Modbus-apparaat en enkele vertaalproblemen opgelost"
   },
   "1.0.14": {
-    "en": "additional flows"
+    "en": "additional flows",
+    "de": "Zusätzliche Flows",
+    "nl": "Extra flows"
   },
   "1.1.0": {
-    "en": "first public release"
+    "en": "first public release",
+    "de": "Erste öffentliche Veröffentlichung",
+    "nl": "Eerste publieke release"
   },
   "1.1.1": {
-    "en": "add capability optimizer_total_count and optimizer_online_count"
+    "en": "add capability optimizer_total_count and optimizer_online_count",
+    "de": "Capabilities optimizer_total_count und optimizer_online_count hinzugefügt",
+    "nl": "Capabilities optimizer_total_count en optimizer_online_count toegevoegd"
   },
   "1.1.2": {
-    "en": "fixes for certification"
+    "en": "fixes for certification",
+    "de": "Korrekturen für die Zertifizierung",
+    "nl": "Correcties voor certificering"
   },
   "1.1.3": {
-    "en": "fix sun2000 icon.svg"
+    "en": "fix sun2000 icon.svg",
+    "de": "sun2000 icon.svg korrigiert",
+    "nl": "sun2000 icon.svg gecorrigeerd"
   },
   "1.1.4": {
-    "en": "add settings on luna2000 and sun2000 modbus devices"
+    "en": "add settings on luna2000 and sun2000 modbus devices",
+    "de": "Einstellungen für LUNA2000- und SUN2000-Modbus-Geräte hinzugefügt",
+    "nl": "Instellingen toegevoegd voor LUNA2000- en SUN2000-Modbus-apparaten"
   },
   "1.1.5": {
-    "en": "new flow cards"
+    "en": "new flow cards",
+    "de": "Neue Flow-Karten",
+    "nl": "Nieuwe flowkaarten"
   },
   "1.1.6": {
-    "en": "add optimizer_count.svg"
+    "en": "add optimizer_count.svg",
+    "de": "optimizer_count.svg hinzugefügt",
+    "nl": "optimizer_count.svg toegevoegd"
   },
   "1.1.7": {
-    "en": "fix new flowcards if already in state charging or discharging"
+    "en": "fix new flowcards if already in state charging or discharging",
+    "de": "Neue Flow-Karten korrigiert wenn sich das Gerät bereits im Lade- oder Entladezustand befindet",
+    "nl": "Nieuwe flowkaarten gecorrigeerd als apparaat al in laad- of ontlaadstatus is"
   },
   "1.1.8": {
-    "en": "sun2000_emma_modbus now points meterPowerExportedCapability to meter_power.pv_total (register 30348 — cumulative PV yield). Homey will derive the daily delta from that counter, which matches what the FusionSolar portal reports as daily PV yield."
+    "en": "sun2000_emma_modbus now points meterPowerExportedCapability to meter_power.pv_total (register 30348 — cumulative PV yield). Homey will derive the daily delta from that counter, which matches what the FusionSolar portal reports as daily PV yield.",
+    "de": "sun2000_emma_modbus verweist meterPowerExportedCapability jetzt auf meter_power.pv_total (Register 30348 – kumulierter PV-Ertrag). Homey berechnet das Tagesdelta aus diesem Zähler, was dem vom FusionSolar-Portal gemeldeten Tagesertrag entspricht.",
+    "nl": "sun2000_emma_modbus wijst meterPowerExportedCapability nu naar meter_power.pv_total (register 30348 — cumulatieve PV-opbrengst). Homey berekent het dagelijkse delta uit die teller, wat overeenkomt met de dagelijkse PV-opbrengst die het FusionSolar-portaal rapporteert."
   },
   "1.1.9": {
-    "en": "new flow cards for Registers 47075 / 47077 — Max Charge / Max Discharge Power"
+    "en": "new flow cards for Registers 47075 / 47077 — Max Charge / Max Discharge Power",
+    "de": "Neue Flow-Karten für Register 47075 / 47077 — Max. Ladeleistung / Max. Entladeleistung",
+    "nl": "Nieuwe flowkaarten voor registers 47075 / 47077 — maximaal laadvermogen / maximaal ontlaadvermogen"
   },
   "1.1.10": {
-    "en": "Max grid charge power now reads and writes register 47242 (active set point, matches FusionSolar) instead of 47244 (hardware ceiling). The setting is only synced when \"Charge from grid\" is enabled to avoid the hardware maximum overwriting the configured value."
+    "en": "Max grid charge power now reads and writes register 47242 (active set point, matches FusionSolar) instead of 47244 (hardware ceiling). The setting is only synced when \"Charge from grid\" is enabled to avoid the hardware maximum overwriting the configured value.",
+    "de": "Max. Netz-Ladeleistung liest und schreibt jetzt Register 47242 (aktiver Sollwert, entspricht FusionSolar) statt 47244 (Hardware-Maximum). Die Einstellung wird nur synchronisiert wenn 'Laden aus dem Netz' aktiviert ist, um zu vermeiden dass das Hardware-Maximum den konfigurierten Wert überschreibt.",
+    "nl": "Maximaal netlaadvermogen leest en schrijft nu register 47242 (actief instelpunt, overeenkomend met FusionSolar) in plaats van 47244 (hardwaremaximum). De instelling wordt alleen gesynchroniseerd als 'Laden uit net' is ingeschakeld om te voorkomen dat het hardwaremaximum de geconfigureerde waarde overschrijft."
   },
   "1.1.11": {
-    "en": "fix issues with OpenAPI SUN2000 device and values"
+    "en": "fix issues with OpenAPI SUN2000 device and values",
+    "de": "Probleme mit OpenAPI-SUN2000-Gerät und Werten behoben",
+    "nl": "Problemen met OpenAPI SUN2000-apparaat en waarden opgelost"
   },
   "1.1.12": {
-    "en": "App failed to install on Homey Pro (Early 2019) with error incompatible_app_runtime_nodejs. Root cause was the \"runtime\": \"nodejs\" field in the app manifest, which is misinterpreted by the 2019 firmware as an unsupported runtime requirement. Removed the field — Node.js is the default runtime for SDK 3 apps and no explicit declaration is needed."
+    "en": "App failed to install on Homey Pro (Early 2019) with error incompatible_app_runtime_nodejs. Root cause was the \"runtime\": \"nodejs\" field in the app manifest, which is misinterpreted by the 2019 firmware as an unsupported runtime requirement. Removed the field — Node.js is the default runtime for SDK 3 apps and no explicit declaration is needed.",
+    "de": "App konnte auf Homey Pro (Early 2019) mit dem Fehler incompatible_app_runtime_nodejs nicht installiert werden. Ursache war das Feld \"runtime\": \"nodejs\" im App-Manifest, das von der 2019-Firmware als nicht unterstützte Runtime-Anforderung fehlinterpretiert wird. Feld entfernt — Node.js ist die Standard-Runtime für SDK 3 Apps und benötigt keine explizite Deklaration.",
+    "nl": "App kon niet worden geïnstalleerd op Homey Pro (Early 2019) met fout incompatible_app_runtime_nodejs. Oorzaak was het veld \"runtime\": \"nodejs\" in het app-manifest, dat door de 2019-firmware wordt geïnterpreteerd als een niet-ondersteunde runtime-vereiste. Veld verwijderd — Node.js is de standaard-runtime voor SDK 3-apps en vereist geen expliciete declaratie."
   },
   "1.1.13": {
-    "en": "new driver: SDongle A (modbus)"
+    "en": "new driver: SDongle A (modbus)",
+    "de": "Neuer Treiber: SDongle A (Modbus)",
+    "nl": "Nieuw stuurprogramma: SDongle A (Modbus)"
   },
   "1.1.14": {
-    "en": "README.md: Added SDongle A section and log errors on flow triggers"
+    "en": "README.md: Added SDongle A section and log errors on flow triggers",
+    "de": "README.md: SDongle-A-Abschnitt hinzugefügt und Fehler bei Flow-Triggern protokolliert",
+    "nl": "README.md: SDongle A-sectie toegevoegd en fouten bij flowtriggers geregistreerd"
   },
   "1.1.15": {
-    "en": "Timeline notifications on status changes for LUNA2000 (battery status), SUN2000 (inverter status) and DTSU666 (meter status)"
+    "en": "Timeline notifications on status changes for LUNA2000 (battery status), SUN2000 (inverter status) and DTSU666 (meter status)",
+    "de": "Timeline-Benachrichtigungen bei Statusänderungen für LUNA2000 (Batteriestatus), SUN2000 (Wechselrichterstatus) und DTSU666 (Zählerstatus)",
+    "nl": "Tijdlijnmeldingen bij statuswijzigingen voor LUNA2000 (batterijstatus), SUN2000 (omvormerstatus) en DTSU666 (meterstatus)"
   },
   "1.1.16": {
-    "en": "New flow triggers for all SUN2000 devices: solar power above/below a value for a specified duration (minutes)"
+    "en": "New flow triggers for all SUN2000 devices: solar power above/below a value for a specified duration (minutes)",
+    "de": "Neue Flow-Trigger für alle SUN2000-Geräte: Solarleistung über/unter einem Wert für eine bestimmte Dauer (Minuten)",
+    "nl": "Nieuwe flowtriggers voor alle SUN2000-apparaten: zonnestroom boven/onder een waarde gedurende een opgegeven duur (minuten)"
   },
   "1.1.17": {
-    "en": "New flow action cards for SUN2000 (Modbus): set max feed-in power in W and %"
+    "en": "New flow action cards for SUN2000 (Modbus): set max feed-in power in W and %",
+    "de": "Neue Flow-Aktionskarten für SUN2000 (Modbus): maximale Einspeiseleistung in W und % setzen",
+    "nl": "Nieuwe flowactiekaarten voor SUN2000 (Modbus): maximaal terugleververmogen instellen in W en %"
   },
   "1.1.18": {
-    "en": "LUNA2000 (Modbus): new flow action to set grid charge power, new SoC condition cards (above/below)"
+    "en": "LUNA2000 (Modbus): new flow action to set grid charge power, new SoC condition cards (above/below)",
+    "de": "LUNA2000 (Modbus): neue Flow-Aktion zum Einstellen der Netz-Ladeleistung, neue SoC-Bedingungskarten (über/unter)",
+    "nl": "LUNA2000 (Modbus): nieuwe flowactie voor instellen netlaadvermogen, nieuwe SoC-voorwaardekaarten (boven/onder)"
   },
   "1.1.19": {
-    "en": "SUN2000 (Modbus): inverter output limit via registers 40125/40126 — works without a Smart Power Sensor"
+    "en": "SUN2000 (Modbus): inverter output limit via registers 40125/40126 — works without a Smart Power Sensor",
+    "de": "SUN2000 (Modbus): Wechselrichter-Ausgangsbegrenzung über Register 40125/40126 — funktioniert ohne Smart Power Sensor",
+    "nl": "SUN2000 (Modbus): omvormeruitgangslimiet via registers 40125/40126 — werkt zonder Smart Power Sensor"
   },
   "1.1.20": {
-    "en": "LUNA2000 (Modbus): reads number of installed battery modules from registers 47750–47755 and dynamically updates the Homey energy batteries array."
+    "en": "LUNA2000 (Modbus): reads number of installed battery modules from registers 47750–47755 and dynamically updates the Homey energy batteries array.",
+    "de": "LUNA2000 (Modbus): Anzahl der installierten Batteriemodule aus Registern 47750–47755 gelesen und Homey-Energie-Batterien-Array dynamisch aktualisiert.",
+    "nl": "LUNA2000 (Modbus): leest het aantal geïnstalleerde batterijmodules uit registers 47750–47755 en werkt de Homey energie-batterijen-array dynamisch bij."
   },
   "1.1.21": {
-    "en": "LUNA2000 (Modbus): new capabilities luna2000_unit1_installed and luna2000_unit2_installed — read from registers 47107/47108 to indicate whether each energy storage unit is present."
+    "en": "LUNA2000 (Modbus): new capabilities luna2000_unit1_installed and luna2000_unit2_installed — read from registers 47107/47108 to indicate whether each energy storage unit is present.",
+    "de": "LUNA2000 (Modbus): neue Capabilities luna2000_unit1_installed und luna2000_unit2_installed — aus Registern 47107/47108 gelesen um anzuzeigen ob jede Energiespeichereinheit vorhanden ist.",
+    "nl": "LUNA2000 (Modbus): nieuwe capabilities luna2000_unit1_installed en luna2000_unit2_installed — gelezen uit registers 47107/47108 om aan te geven of elke energieopslageenheid aanwezig is."
   },
   "1.1.22": {
-    "en": "New app settings page with three tabs: Capabilities (live capability values for all Modbus devices), Modbus Registers (live register read with Read Live button), and Device Tester. Device Tester scans the local subnet for Huawei devices on ports 502/6607, probes a selectable Modbus unit ID (default: 1) with up to 5 automatic retries, identifies device type from register values (SUN2000, LUNA2000, EMMA, SDongle A), and lists compatible drivers with IP, port and unit ID. Device polling is paused during the probe and automatically resumed. Detection is register-value-based so custom unit IDs are recognised correctly."
+    "en": "New app settings page with three tabs: Capabilities (live capability values for all Modbus devices), Modbus Registers (live register read with Read Live button), and Device Tester. Device Tester scans the local subnet for Huawei devices on ports 502/6607, probes a selectable Modbus unit ID (default: 1) with up to 5 automatic retries, identifies device type from register values (SUN2000, LUNA2000, EMMA, SDongle A), and lists compatible drivers with IP, port and unit ID. Device polling is paused during the probe and automatically resumed. Detection is register-value-based so custom unit IDs are recognised correctly.",
+    "de": "Neue App-Einstellungsseite mit drei Tabs: Capabilities (Live-Capability-Werte aller Modbus-Geräte), Modbus-Register (Live-Register-Lesezugriff mit 'Live lesen'-Schaltfläche) und Geräte-Tester. Der Geräte-Tester scannt das lokale Subnetz nach Huawei-Geräten auf Ports 502/6607, prüft eine wählbare Modbus-Unit-ID (Standard: 1) mit bis zu 5 automatischen Wiederholungen, erkennt den Gerätetyp aus Registerwerten (SUN2000, LUNA2000, EMMA, SDongle A) und listet kompatible Treiber mit IP, Port und Unit-ID auf. Das Geräte-Polling wird während der Prüfung pausiert und automatisch wieder aufgenommen. Die Erkennung basiert auf Registerwerten sodass benutzerdefinierte Unit-IDs korrekt erkannt werden.",
+    "nl": "Nieuwe app-instellingspagina met drie tabbladen: Capabilities (live capabilitywaarden voor alle Modbus-apparaten), Modbus-registers (live register lezen met knop 'Live lezen') en Apparaattester. De apparaattester scant het lokale subnet op Huawei-apparaten op poorten 502/6607, test een instelbare Modbus-unit-ID (standaard: 1) met maximaal 5 automatische pogingen, identificeert het apparaattype op basis van registerwaarden (SUN2000, LUNA2000, EMMA, SDongle A) en toont compatibele stuurprogramma's met IP, poort en unit-ID. Apparaatpolling wordt gepauzeerd tijdens de test en automatisch hervat. Detectie is registerwaarde-gebaseerd zodat aangepaste unit-ID's correct worden herkend."
   },
   "1.1.23": {
-    "en": "Device Tester improvements: subnet chips shown directly (no interface card step), single-select unit ID picker, retry loop with 5 s pause, compatible driver notes for pairing. Settings reorganised: Capabilities and Modbus Registers split into separate tabs, register table columns auto-sized and horizontally scrollable."
+    "en": "Device Tester improvements: subnet chips shown directly (no interface card step), single-select unit ID picker, retry loop with 5 s pause, compatible driver notes for pairing. Settings reorganised: Capabilities and Modbus Registers split into separate tabs, register table columns auto-sized and horizontally scrollable.",
+    "de": "Geräte-Tester verbessert: Subnetz-Chips werden direkt angezeigt (kein Netzwerkkarten-Schritt), Einzel-Select für Unit-ID, Wiederholungsschleife mit 5-s-Pause, kompatible Treiber-Hinweise für die Kopplung. Einstellungen neu organisiert: Capabilities und Modbus-Register auf separate Tabs aufgeteilt, Registertabellen-Spalten automatisch skaliert und horizontal scrollbar.",
+    "nl": "Apparaattester verbeterd: subnetschijven direct weergegeven (geen netwerkkaart-stap), enkelvoudige unit-ID-selectie, herhalingslus met 5 s pauze, compatibele stuurprogramma-notities voor koppeling. Instellingen gereorganiseerd: Capabilities en Modbus-registers gesplitst in aparte tabbladen, registerkolommen automatisch geschaald en horizontaal scrollbaar."
   },
   "1.1.24": {
-    "en": "better modbus probing"
+    "en": "better modbus probing",
+    "de": "Verbesserte Modbus-Suche",
+    "nl": "Verbeterde Modbus-scan"
   },
   "1.1.25": {
-    "en": "Modbus Unit ID minimum changed from 1 to 0 — allows pairing inverters and batteries configured with unit ID 0"
+    "en": "Modbus Unit ID minimum changed from 1 to 0 — allows pairing inverters and batteries configured with unit ID 0",
+    "de": "Modbus-Unit-ID-Minimum von 1 auf 0 geändert — ermöglicht die Kopplung von Wechselrichtern und Batterien mit Unit-ID 0",
+    "nl": "Minimale Modbus-unit-ID gewijzigd van 1 naar 0 — maakt koppeling mogelijk van omvormers en batterijen geconfigureerd met unit-ID 0"
   },
   "1.1.26": {
-    "en": "Pairing no longer times out when existing Modbus devices are polling — all drivers on the same host are paused during pairing and resumed after. Device Tester now shows unit ID in results, keeps confirmed rows visible when switching unit ID, and allows re-checking any driver with ↻ Re-check."
+    "en": "Pairing no longer times out when existing Modbus devices are polling — all drivers on the same host are paused during pairing and resumed after. Device Tester now shows unit ID in results, keeps confirmed rows visible when switching unit ID, and allows re-checking any driver with ↻ Re-check.",
+    "de": "Kopplung läuft nicht mehr in Timeout wenn bestehende Modbus-Geräte Polling durchführen — alle Treiber auf demselben Host werden während der Kopplung pausiert und danach wieder aufgenommen. Geräte-Tester zeigt nun Unit-ID in Ergebnissen, behält bestätigte Zeilen beim Wechsel der Unit-ID sichtbar und ermöglicht die Neuprüfung eines Treibers mit ↻ Erneut prüfen.",
+    "nl": "Koppeling loopt niet meer vast als bestaande Modbus-apparaten pollen — alle stuurprogramma's op dezelfde host worden gepauzeerd tijdens koppelen en daarna hervat. Apparaattester toont nu unit-ID in resultaten, behoudt bevestigde rijen zichtbaar bij wisselen van unit-ID en maakt hercontrole van een stuurprogramma mogelijk met ↻ Opnieuw controleren."
   },
   "1.1.27": {
-    "en": "Fixed: devices configured with Modbus Unit ID 0 were incorrectly polling Unit ID 1 due to a JavaScript falsiness bug. All Modbus drivers now correctly use unit ID 0 when configured."
+    "en": "Fixed: devices configured with Modbus Unit ID 0 were incorrectly polling Unit ID 1 due to a JavaScript falsiness bug. All Modbus drivers now correctly use unit ID 0 when configured.",
+    "de": "Behoben: Geräte mit Modbus-Unit-ID 0 pollten fälschlicherweise Unit-ID 1 aufgrund eines JavaScript-Falsy-Bugs. Alle Modbus-Treiber verwenden nun korrekt Unit-ID 0 wenn konfiguriert.",
+    "nl": "Opgelost: apparaten geconfigureerd met Modbus-unit-ID 0 pollden ten onrechte unit-ID 1 door een JavaScript-falsiness-bug. Alle Modbus-stuurprogramma's gebruiken nu correct unit-ID 0 wanneer geconfigureerd."
   },
   "1.1.28": {
-    "en": "Device Tester: confirmed (green) driver rows now show the IP address, port, and Unit ID in bold — making it easy to note down the exact connection details needed for pairing."
+    "en": "Device Tester: confirmed (green) driver rows now show the IP address, port, and Unit ID in bold — making it easy to note down the exact connection details needed for pairing.",
+    "de": "Geräte-Tester: Bestätigte (grüne) Treiber-Zeilen zeigen jetzt IP-Adresse, Port und Unit-ID fett hervorgehoben — so lassen sich die genauen Verbindungsdetails für die Kopplung leicht notieren.",
+    "nl": "Apparaattester: bevestigde (groene) stuurprogrammarijen tonen nu het IP-adres, de poort en de unit-ID vetgedrukt — zodat de exacte verbindingsgegevens voor koppeling eenvoudig te noteren zijn."
   },
   "1.1.29": {
-    "en": "SUN2000 (Modbus): added Software Version capability (register 30050). LUNA2000 (Modbus): added Software Version (register 37814) and Software Version Unit 2 (register 37799) capabilities — Unit 2 is only shown when the second battery unit responds."
+    "en": "SUN2000 (Modbus): added Software Version capability (register 30050). LUNA2000 (Modbus): added Software Version (register 37814) and Software Version Unit 2 (register 37799) capabilities — Unit 2 is only shown when the second battery unit responds.",
+    "de": "SUN2000 (Modbus): Software-Version-Capability hinzugefügt (Register 30050). LUNA2000 (Modbus): Software-Version (Register 37814) und Software-Version Einheit 2 (Register 37799) hinzugefügt — Einheit 2 wird nur angezeigt wenn die zweite Batterieeinheit antwortet.",
+    "nl": "SUN2000 (Modbus): capability Softwareversie toegevoegd (register 30050). LUNA2000 (Modbus): Softwareversie (register 37814) en Softwareversie eenheid 2 (register 37799) toegevoegd — Eenheid 2 wordt alleen weergegeven als de tweede batterij-eenheid reageert."
+  },
+  "1.1.30": {
+    "en": "5 new dashboard widgets — Solar Power Flow: hub-layout with animated directional flow lines (PV → inverter → house / grid / battery), colour-coded flow arrows, SoC shown on battery node, ⚡ hub icon changes colour based on system state (green = self-sufficient, orange = battery covering load, red = grid import), configurable activity threshold. Netzampel (Grid Status): pulsing status circle with live grid power, SoC added to battery stat, battery stat hidden when no battery device is paired, configurable activity threshold. Energy Balance: daily PV yield, grid export/import and house consumption bars, self-consumption % and self-sufficiency %, battery charged/discharged row (hidden when no battery), daily grid values derived from midnight cumulative baseline (stored by app at 00:00 and on first start). Battery Status: SoC bar with colour coding, charge/discharge power with direction indicator, estimated time to full/empty, today's charged/discharged kWh, configurable battery capacity, graceful 'Keine Batterie' state when no LUNA2000 is paired. Daily Yield: today's kWh with MWh auto-scaling, lifetime total, optimizer online/total count, CO₂ saved with configurable grid emission factor (default 401 g/kWh DE, supports CH 29 g/kWh and others). All widgets: sun2000_modbus and luna2000_modbus are preferred data sources with EMMA and SDongle A as fallback; correct null handling when devices are absent.",
+    "de": "5 neue Dashboard-Widgets — Solar Energiefluss: Hub-Layout mit animierten Richtungspfeilen (PV → Wechselrichter → Haus / Netz / Batterie), farbkodierte Flusslinien, SoC am Batterie-Knoten, ⚡-Icon im Hub wechselt Farbe je nach Systemzustand (grün = autark, orange = Batterie deckt Last, rot = Netzbezug), konfigurierbare Aktivitätsschwelle. Netzampel: pulsierende Statusanzeige mit Netzleistung in Echtzeit, SoC in der Batteriestatistik, Batteriezeile wird ausgeblendet wenn kein LUNA2000 vorhanden, konfigurierbare Aktivitätsschwelle. Energiebilanz: Tagesbalken für PV, Einspeisung, Netzbezug und Hausverbrauch, Eigenverbrauch- und Autarkiegrad in %, Batterie-Zeile (wird ausgeblendet ohne Batterie), Tageswerte für Netzein-/ausspeisung werden aus Mitternachts-Baseline berechnet. Batteriestatus: SoC-Balken mit Farbkodierung, Lade-/Entladeleistung mit Richtungsanzeige, verbleibende Zeit bis voll/leer, heutige Lade-/Entlademengen, konfigurierbare Batteriekapazität, Anzeige 'Keine Batterie' wenn kein LUNA2000 vorhanden. Tagesertrag: heutige kWh mit automatischer MWh-Skalierung, Gesamtertrag, Optimierer online/gesamt, gespartes CO₂ mit konfigurierbarem Emissionsfaktor (Standard 401 g/kWh DE, unterstützt CH 29 g/kWh). Alle Widgets: sun2000_modbus und luna2000_modbus haben Priorität, EMMA- und SDongle-A-Geräte dienen als Fallback.",
+    "nl": "5 nieuwe dashboard-widgets — Solar Energiestroom: hub-lay-out met geanimeerde richtingsstroomlijnen (PV → omvormer → huis / net / batterij), kleurgecodeerde stroomlijnen, SoC op batterijknooppunt, ⚡-hub-pictogram wisselt van kleur op basis van systeemstatus (groen = zelfvoorzienend, oranje = batterij dekt last, rood = netimport), instelbare activiteitsdrempel. Netzampel (Netstatus): pulserend statuscirkel met live netvermogen, SoC toegevoegd aan batterijstatistiek, batterijrij verborgen als er geen LUNA2000 is gekoppeld, instelbare activiteitsdrempel. Energiebalans: dagelijkse PV-opbrengst, netteruglevering/netafname en huisverbruikbalken, eigenverbruik % en zelfvoorzieningsgraad %, batterij geladen/ontladen rij (verborgen zonder batterij), dagelijkse netwaarden afgeleid van middernacht-cumulatieve basislijn (opgeslagen door app om 00:00 en bij eerste start). Batterijstatus: SoC-balk met kleurcodering, laad-/ontlaadvermogen met richtingsindicator, geschatte tijd tot vol/leeg, vandaag geladen/ontladen kWh, instelbare batterijcapaciteit, nette 'Geen batterij'-staat als er geen LUNA2000 is gekoppeld. Dagelijkse opbrengst: kWh van vandaag met automatische MWh-schaling, levenslang totaal, optimizers online/totaal, bespaard CO₂ met instelbare netuitstootfactor (standaard 401 g/kWh DE, ondersteunt CH 29 g/kWh en anderen). Alle widgets: sun2000_modbus en luna2000_modbus zijn de voorkeursbronnen met EMMA en SDongle A als terugval; correcte null-afhandeling als apparaten ontbreken."
+  },
+  "1.1.31": {
+    "en": "SUN2000 (Modbus): output limit setting step changed from 100 W to 1 W — any watt value can now be entered, not just multiples of 100.",
+    "de": "SUN2000 (Modbus): Schrittweite der Ausgangsbegrenzungseinstellung von 100 W auf 1 W geändert — jetzt kann jeder Wattwert eingegeben werden, nicht nur Vielfache von 100.",
+    "nl": "SUN2000 (Modbus): stapgrootte voor uitgangslimietinstelling gewijzigd van 100 W naar 1 W — nu kan elke wattwaarde worden ingevoerd, niet alleen veelvouden van 100."
+  },
+  "1.1.32": {
+    "en": "OpenAPI: improved error message when server returns non-JSON — now shows the first 120 characters of the raw response to help diagnose custom regional endpoints.",
+    "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
+    "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
   "1.1.34": {
     "en": "Full trilingual support (EN / DE / NL) across the entire app: all 5 dashboard widgets now auto-detect the browser language and display all labels in English, German or Dutch. Widget titles, setting titles and hints in app.json fully translated into NL. All 39 custom capability titles and their enum values (operating modes, charge/discharge modes, etc.) translated into Dutch. Shared widget data library (lib/widget-data.js) introduced — eliminates duplicated helper code across all 5 widget api.js files. Battery status now returns language-neutral keys so the widget can translate them correctly. permissions field added to app manifest.",
     "de": "Vollständige Dreisprachigkeit (EN / DE / NL) in der gesamten App: Alle 5 Dashboard-Widgets erkennen automatisch die Browsersprache und zeigen alle Bezeichnungen auf Englisch, Deutsch oder Niederländisch an. Widget-Titel, Einstellungstitel und Hints in app.json vollständig auf NL übersetzt. Alle 39 benutzerdefinierten Capability-Titel und ihre Enum-Werte (Betriebsmodi, Lade-/Entlademodi usw.) auf Niederländisch übersetzt. Gemeinsame Widget-Datenbibliothek (lib/widget-data.js) eingeführt — eliminiert duplizierten Hilfscode in allen 5 Widget-api.js-Dateien. Permissions-Feld im App-Manifest ergänzt.",
     "nl": "Volledige drietalige ondersteuning (EN / DE / NL) in de gehele app: alle 5 dashboard-widgets detecteren automatisch de browsertaal en tonen alle labels in het Engels, Duits of Nederlands. Widget-titels, instellingstitels en hints in app.json volledig vertaald naar NL. Alle 39 aangepaste capability-titels en hun enum-waarden (bedrijfsmodi, laad-/ontlaadmodi, enz.) vertaald naar het Nederlands. Gedeelde widget-databibliotheek (lib/widget-data.js) geïntroduceerd — elimineert gedupliceerde hulpcode in alle 5 widget-api.js-bestanden. Permissions-veld toegevoegd aan het app-manifest."
-  },
-  "1.1.32": {
-    "en": "OpenAPI: improved error message when server returns non-JSON — now shows the first 120 characters of the raw response to help diagnose custom regional endpoints."
-  },
-  "1.1.31": {
-    "en": "SUN2000 (Modbus): output limit setting step changed from 100 W to 1 W — any watt value can now be entered, not just multiples of 100."
-  },
-  "1.1.30": {
-    "en": "5 new dashboard widgets — Solar Power Flow: hub-layout with animated directional flow lines (PV → inverter → house / grid / battery), colour-coded flow arrows, SoC shown on battery node, ⚡ hub icon changes colour based on system state (green = self-sufficient, orange = battery covering load, red = grid import), configurable activity threshold. Netzampel (Grid Status): pulsing status circle with live grid power, SoC added to battery stat, battery stat hidden when no battery device is paired, configurable activity threshold. Energy Balance: daily PV yield, grid export/import and house consumption bars, self-consumption % and self-sufficiency %, battery charged/discharged row (hidden when no battery), daily grid values derived from midnight cumulative baseline (stored by app at 00:00 and on first start). Battery Status: SoC bar with colour coding, charge/discharge power with direction indicator, estimated time to full/empty, today's charged/discharged kWh, configurable battery capacity, graceful 'Keine Batterie' state when no LUNA2000 is paired. Daily Yield: today's kWh with MWh auto-scaling, lifetime total, optimizer online/total count, CO₂ saved with configurable grid emission factor (default 401 g/kWh DE, supports CH 29 g/kWh and others). All widgets: sun2000_modbus and luna2000_modbus are preferred data sources with EMMA and SDongle A as fallback; correct null handling when devices are absent.",
-    "de": "5 neue Dashboard-Widgets — Solar Energiefluss: Hub-Layout mit animierten Richtungspfeilen (PV → Wechselrichter → Haus / Netz / Batterie), farbkodierte Flusslinien, SoC am Batterie-Knoten, ⚡-Icon im Hub wechselt Farbe je nach Systemzustand (grün = autark, orange = Batterie deckt Last, rot = Netzbezug), konfigurierbare Aktivitätsschwelle. Netzampel: pulsierende Statusanzeige mit Netzleistung in Echtzeit, SoC in der Batteriestatistik, Batteriezeile wird ausgeblendet wenn kein LUNA2000 vorhanden, konfigurierbare Aktivitätsschwelle. Energiebilanz: Tagesbalken für PV, Einspeisung, Netzbezug und Hausverbrauch, Eigenverbrauch- und Autarkiegrad in %, Batterie-Zeile (wird ausgeblendet ohne Batterie), Tageswerte für Netzein-/ausspeisung werden aus Mitternachts-Baseline berechnet. Batteriestatus: SoC-Balken mit Farbkodierung, Lade-/Entladeleistung mit Richtungsanzeige, verbleibende Zeit bis voll/leer, heutige Lade-/Entlademengen, konfigurierbare Batteriekapazität, Anzeige 'Keine Batterie' wenn kein LUNA2000 vorhanden. Tagesertrag: heutige kWh mit automatischer MWh-Skalierung, Gesamtertrag, Optimierer online/gesamt, gespartes CO₂ mit konfigurierbarem Emissionsfaktor (Standard 401 g/kWh DE, unterstützt CH 29 g/kWh). Alle Widgets: sun2000_modbus und luna2000_modbus haben Priorität, EMMA- und SDongle-A-Geräte dienen als Fallback."
   }
 }
