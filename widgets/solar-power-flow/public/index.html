@@ -242,14 +242,19 @@ function positionLines() {
   var grid  = rel(document.getElementById('node-grid'), wrap);
   var batt  = rel(document.getElementById('node-batt'), wrap);
 
-  // PV bottom-center → hub top-center
-  setCoords('line-pv',    pv.cx,    pv.bottom,  hub.cx,   hub.top);
-  // hub bottom-center → house top-center
-  setCoords('line-house', hub.cx,   hub.bottom, house.cx, house.top);
+  // PV, Hub and House are all at left:50% — use the wrapper's exact midpoint
+  // so both vertical lines share one pixel-perfect x-coordinate regardless of
+  // how wide the live value text happens to be in each node.
+  var midX = Math.round(wrap.getBoundingClientRect().width / 2);
+
+  // PV bottom-center → hub top-center  (perfectly vertical)
+  setCoords('line-pv',    midX,       pv.bottom,  midX,      hub.top);
+  // hub bottom-center → house top-center  (perfectly vertical)
+  setCoords('line-house', midX,       hub.bottom, midX,      house.top);
   // grid right-center → hub left-center
-  setCoords('line-grid',  grid.right, grid.cy,  hub.left, hub.cy);
+  setCoords('line-grid',  grid.right, grid.cy,    hub.left,  hub.cy);
   // hub right-center → batt left-center
-  setCoords('line-batt',  hub.right,  hub.cy,   batt.left, batt.cy);
+  setCoords('line-batt',  hub.right,  hub.cy,     batt.left, batt.cy);
 }
 
 /* ── Animate a line ── */
