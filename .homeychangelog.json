@@ -239,6 +239,11 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.35": {
+    "en": "Added preview images for all 5 dashboard widgets — required by the Homey App Store for app approval.",
+    "de": "Vorschaubilder für alle 5 Dashboard-Widgets hinzugefügt — für die Freigabe im Homey App Store erforderlich.",
+    "nl": "Voorbeeldafbeeldingen toegevoegd voor alle 5 dashboard-widgets — vereist door de Homey App Store voor app-goedkeuring."
+  },
   "1.1.34": {
     "en": "Full trilingual support (EN / DE / NL) across the entire app: all 5 dashboard widgets now auto-detect the browser language and display all labels in English, German or Dutch. Widget titles, setting titles and hints in app.json fully translated into NL. All 39 custom capability titles and their enum values (operating modes, charge/discharge modes, etc.) translated into Dutch. Shared widget data library (lib/widget-data.js) introduced — eliminates duplicated helper code across all 5 widget api.js files. Battery status now returns language-neutral keys so the widget can translate them correctly. permissions field added to app manifest.",
     "de": "Vollständige Dreisprachigkeit (EN / DE / NL) in der gesamten App: Alle 5 Dashboard-Widgets erkennen automatisch die Browsersprache und zeigen alle Bezeichnungen auf Englisch, Deutsch oder Niederländisch an. Widget-Titel, Einstellungstitel und Hints in app.json vollständig auf NL übersetzt. Alle 39 benutzerdefinierten Capability-Titel und ihre Enum-Werte (Betriebsmodi, Lade-/Entlademodi usw.) auf Niederländisch übersetzt. Gemeinsame Widget-Datenbibliothek (lib/widget-data.js) eingeführt — eliminiert duplizierten Hilfscode in allen 5 Widget-api.js-Dateien. Permissions-Feld im App-Manifest ergänzt.",
