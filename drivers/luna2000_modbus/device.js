@@ -83,7 +83,8 @@ class LUNA2000ModbusDevice extends Device {
     this.log(`Device initialised: ${this.getName()}`);
     this._prevChargingState         = null;
     this._prevBatteryStatus         = null;
-    this._batteryModuleCount        = null; // tracks last known module count for setEnergy
+    this._batteryModuleCount        = null;  // tracks last known module count for setEnergy
+    this._batteryModulesInitialized = false; // true once a non-zero module count has been read and locked
     this._failureCount              = 0;
     this._updatingFromModbus        = false;
     this._updatingSettingFromModbus = false;
@@ -282,7 +283,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW  = Math.round(Math.max(0, power));
         const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
         const already = this.getCapabilityValue('storage_force_charge_discharge') === '1';
-        this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already charging — skipping command]' : ''}`);
+        this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-charge mode — updating power/SoC only]' : ''}`);
         this._writeInProgress = true;
         try {
           await writeModbusU32(h, p, u, 47247, powerW);
@@ -304,7 +305,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW  = Math.round(Math.max(0, power));
         const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
         const already = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge: power=${powerW} W, stop at SoC=${target_soc}% (raw ${socRaw})${already ? ' [already discharging — skipping command]' : ''}`);
+        this.log(`Force discharge: power=${powerW} W, stop at SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-discharge mode — updating power/SoC only]' : ''}`);
         this._writeInProgress = true;
         try {
           await writeModbusU32(h, p, u, 47247, powerW);
@@ -326,7 +327,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW     = Math.round(Math.max(0, power));
         const durationMs = Math.round(Math.max(1, duration) * 60 * 1000);
         const already    = this.getCapabilityValue('storage_force_charge_discharge') === '1';
-        this.log(`Force charge for ${duration} min: power=${powerW} W${already ? ' [already charging — skipping command]' : ''}`);
+        this.log(`Force charge for ${duration} min: power=${powerW} W${already ? ' [already in force-charge mode — updating power only]' : ''}`);
         if (this._forceTimer) { this.homey.clearTimeout(this._forceTimer); this._forceTimer = null; }
         this._writeInProgress = true;
         try {
@@ -357,7 +358,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW     = Math.round(Math.max(0, power));
         const durationMs = Math.round(Math.max(1, duration) * 60 * 1000);
         const already    = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge for ${duration} min: power=${powerW} W${already ? ' [already discharging — skipping command]' : ''}`);
+        this.log(`Force discharge for ${duration} min: power=${powerW} W${already ? ' [already in force-discharge mode — updating power only]' : ''}`);
         if (this._forceTimer) { this.homey.clearTimeout(this._forceTimer); this._forceTimer = null; }
         this._writeInProgress = true;
         try {
@@ -747,27 +748,33 @@ class LUNA2000ModbusDevice extends Device {
         this._updatingSettingFromModbus = false;
       }
 
-      // Battery module count — read once per control-poll cycle (regs 47750–47755)
-      // Each register holds the pack-ID of the installed module; 0 = empty slot.
-      // Updates the capability AND the Homey energy batteries array dynamically.
-      try {
-        const mods  = await readModbusRegisters(address, port, modbusId, BATTERY_MODULE_REGISTERS, () => this._writeInProgress);
-        const count = BATTERY_MODULE_KEYS.filter((k) => mods[k] !== null && mods[k] !== undefined && mods[k] !== 0).length;
-        await this._set('measure_battery_modules', count);
+      // Battery module count — read once at startup, then locked permanently.
+      // Registers 47750–47755 are unreliable during operation (return transient 0 or
+      // wrong counts) and battery modules are never added/removed during normal use.
+      // Retries automatically on each control-poll cycle until a non-zero count is seen.
+      if (!this._batteryModulesInitialized) {
+        try {
+          const mods  = await readModbusRegisters(address, port, modbusId, BATTERY_MODULE_REGISTERS, () => this._writeInProgress);
+          const count = BATTERY_MODULE_KEYS.filter((k) => mods[k] !== null && mods[k] !== undefined && mods[k] !== 0).length;
+          await this._set('measure_battery_modules', count);
 
-        if (count !== this._batteryModuleCount) {
-          this._batteryModuleCount = count;
-          const batteries = Array(Math.max(count, 1)).fill('INTERNAL');
-          await this.setEnergy({
-            batteries,
-            homeBattery:                    true,
-            meterPowerImportedCapability:   'meter_power.charged',
-            meterPowerExportedCapability:   'meter_power.discharged',
-          }).catch((err) => this.log('setEnergy failed:', err.message));
-          this.log(`Battery modules: ${count} → energy.batteries updated to ${JSON.stringify(batteries)}`);
+          if (count > 0) {
+            this._batteryModulesInitialized = true;
+            this._batteryModuleCount        = count;
+            const batteries = Array(count).fill('INTERNAL');
+            await this.setEnergy({
+              batteries,
+              homeBattery:                    true,
+              meterPowerImportedCapability:   'meter_power.charged',
+              meterPowerExportedCapability:   'meter_power.discharged',
+            }).catch((err) => this.log('setEnergy failed:', err.message));
+            this.log(`Battery modules: ${count} → energy.batteries locked to ${JSON.stringify(batteries)}`);
+          } else {
+            this.log('Battery modules: read returned 0 — will retry on next control poll');
+          }
+        } catch (err) {
+          this.log('Battery module register read skipped:', err.message);
         }
-      } catch (err) {
-        this.log('Battery module register read skipped:', err.message);
       }
 
       // Mark settings as initialised — onSettings writes are now safe
