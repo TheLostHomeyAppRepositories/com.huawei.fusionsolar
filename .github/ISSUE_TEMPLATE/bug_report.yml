@@ -38,10 +38,7 @@ body:
     attributes:
       label: Steps to Reproduce
       description: How can we reproduce the issue?
-      placeholder: |
-        1.
-        2.
-        3.
+      placeholder: "1.\n2.\n3."
     validations:
       required: true
 
@@ -105,9 +102,9 @@ body:
   - type: input
     id: modbus-ip
     attributes:
-      label: Modbus IP, Port & Unit ID
+      label: Modbus IP, Port and Unit ID
       description: Only needed for Modbus connections. Do not share passwords or API keys.
-      placeholder: e.g. 192.168.1.10 : 502, Unit ID 1
+      placeholder: e.g. 192.168.1.10 port 502 Unit ID 1
 
   - type: input
     id: inverter-firmware
@@ -123,7 +120,7 @@ body:
     id: log-id
     attributes:
       label: Log ID
-      description: "In the Homey app: More → Apps → FusionSolar OpenAPI → ··· → Submit App Logs. Paste the Log ID here."
+      description: In the Homey app go to More > Apps > FusionSolar OpenAPI > Submit App Logs. Paste the Log ID here.
       placeholder: e.g. cd664f8b-7e2a-4a38-8726-55331ff52115
 
   - type: textarea
@@ -136,4 +133,4 @@ body:
     id: context
     attributes:
       label: Additional Context
-      description: Anything else that might be relevant — flow cards involved, time of day, etc.
+      description: Anything else that might be relevant - flow cards involved, time of day, etc.
