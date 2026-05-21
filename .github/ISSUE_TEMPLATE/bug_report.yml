@@ -1,0 +1,139 @@
+name: Bug Report
+description: Something is not working correctly
+title: "[BUG] "
+labels: ["bug"]
+body:
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the problem is.
+      placeholder: When I do X, Y happens instead of Z...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: driver
+    attributes:
+      label: Affected Driver / Area
+      description: Check all that apply.
+      options:
+        - label: SUN2000 (Modbus)
+        - label: SUN2000 (OpenAPI / FusionSolar)
+        - label: SUN2000 (EMMA Modbus)
+        - label: LUNA2000 (Modbus)
+        - label: LUNA2000 (OpenAPI / FusionSolar)
+        - label: LUNA2000 (EMMA Modbus)
+        - label: EMMA (Modbus)
+        - label: DTSU666 / Power Meter (Modbus)
+        - label: SDongle A (Modbus)
+        - label: Smart Charger (EMMA)
+        - label: Dashboard Widget
+        - label: Flow Cards
+        - label: App Settings / Device Tester
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behaviour
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behaviour
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "## App & System Info"
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App Version
+      placeholder: e.g. 1.1.35
+    validations:
+      required: true
+
+  - type: dropdown
+    id: homey-model
+    attributes:
+      label: Homey Model
+      options:
+        - Homey Pro (2023)
+        - Homey Pro (Early 2019)
+        - Homey Pro (Early 2016)
+        - Homey Bridge
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: homey-firmware
+    attributes:
+      label: Homey Firmware Version
+      placeholder: e.g. 12.3.1
+
+  - type: dropdown
+    id: connection-type
+    attributes:
+      label: Connection Type
+      options:
+        - Modbus (local network)
+        - OpenAPI / FusionSolar Cloud
+    validations:
+      required: true
+
+  - type: input
+    id: modbus-ip
+    attributes:
+      label: Modbus IP, Port & Unit ID
+      description: Only needed for Modbus connections. Do not share passwords or API keys.
+      placeholder: e.g. 192.168.1.10 : 502, Unit ID 1
+
+  - type: input
+    id: inverter-firmware
+    attributes:
+      label: Inverter / Device Firmware
+      placeholder: e.g. V300R001C00SPC124
+
+  - type: markdown
+    attributes:
+      value: "## Logs"
+
+  - type: input
+    id: log-id
+    attributes:
+      label: Log ID
+      description: "In the Homey app: More → Apps → FusionSolar OpenAPI → ··· → Submit App Logs. Paste the Log ID here."
+      placeholder: e.g. cd664f8b-7e2a-4a38-8726-55331ff52115
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag and drop screenshots here if applicable.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Anything else that might be relevant — flow cards involved, time of day, etc.
