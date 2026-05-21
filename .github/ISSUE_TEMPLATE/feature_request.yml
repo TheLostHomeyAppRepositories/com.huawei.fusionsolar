@@ -1,0 +1,56 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A short description of the feature you'd like to see.
+      placeholder: I would like...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this solve? Why would this be useful?
+      placeholder: Currently I have to... / It is not possible to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you imagine the feature working.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you tried any workarounds? Are there other ways to solve this?
+
+  - type: checkboxes
+    id: area
+    attributes:
+      label: Affected Area
+      options:
+        - label: New driver / device support
+        - label: Flow cards (trigger / condition / action)
+        - label: Dashboard widget
+        - label: Device settings
+        - label: App settings / Device Tester
+        - label: Energy dashboard integration
+        - label: Other
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, links to Huawei register documentation, or any other context.
