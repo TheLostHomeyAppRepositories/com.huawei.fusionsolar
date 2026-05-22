@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.35",
+  "version": "1.1.36",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -5788,6 +5788,121 @@
       "images": {
         "light": "/widgets/netzampel/preview-light.png",
         "dark": "/widgets/netzampel/preview-dark.png"
+      },
+      "api": {
+        "getData": {
+          "method": "GET",
+          "path": "/"
+        }
+      }
+    },
+    "sensor-chart": {
+      "id": "sensor-chart",
+      "name": {
+        "en": "Sensor Chart",
+        "de": "Sensor-Verlauf",
+        "nl": "Sensordiagram"
+      },
+      "height": 260,
+      "settings": [
+        {
+          "id": "series1",
+          "type": "autocomplete",
+          "title": {
+            "en": "Series 1 – PV output (SUN2000)",
+            "de": "Reihe 1 – PV-Ausgabe (SUN2000)",
+            "nl": "Reeks 1 – PV-uitvoer (SUN2000)"
+          }
+        },
+        {
+          "id": "series2",
+          "type": "autocomplete",
+          "title": {
+            "en": "Series 2 – Battery (LUNA2000)",
+            "de": "Reihe 2 – Batterie (LUNA2000)",
+            "nl": "Reeks 2 – Batterij (LUNA2000)"
+          }
+        },
+        {
+          "id": "series3",
+          "type": "autocomplete",
+          "title": {
+            "en": "Series 3 – Grid (DTSU666 / Power Meter)",
+            "de": "Reihe 3 – Netz (DTSU666 / Stromzähler)",
+            "nl": "Reeks 3 – Net (DTSU666 / Energiemeter)"
+          }
+        },
+        {
+          "id": "series4",
+          "type": "autocomplete",
+          "title": {
+            "en": "Series 4 – Power consumption (household)",
+            "de": "Reihe 4 – Leistungsaufnahme (Haushalt)",
+            "nl": "Reeks 4 – Stroomverbruik (huishouden)"
+          }
+        },
+        {
+          "id": "label1",
+          "type": "text",
+          "title": {
+            "en": "Series 1 – label",
+            "de": "Reihe 1 – Bezeichnung",
+            "nl": "Reeks 1 – naam"
+          },
+          "value": ""
+        },
+        {
+          "id": "label2",
+          "type": "text",
+          "title": {
+            "en": "Series 2 – label",
+            "de": "Reihe 2 – Bezeichnung",
+            "nl": "Reeks 2 – naam"
+          },
+          "value": ""
+        },
+        {
+          "id": "label3",
+          "type": "text",
+          "title": {
+            "en": "Series 3 – label",
+            "de": "Reihe 3 – Bezeichnung",
+            "nl": "Reeks 3 – naam"
+          },
+          "value": ""
+        },
+        {
+          "id": "label4",
+          "type": "text",
+          "title": {
+            "en": "Series 4 – label",
+            "de": "Reihe 4 – Bezeichnung",
+            "nl": "Reeks 4 – naam"
+          },
+          "value": ""
+        },
+        {
+          "id": "range_hours",
+          "type": "number",
+          "title": {
+            "en": "Time range (hours)",
+            "de": "Zeitbereich (Stunden)",
+            "nl": "Tijdsbereik (uren)"
+          },
+          "hint": {
+            "en": "How many hours of history to display. Default: 24 h, max: 168 h (7 days).",
+            "de": "Wie viele Stunden Verlauf angezeigt werden. Standard: 24 h, max: 168 h (7 Tage).",
+            "nl": "Hoeveel uur geschiedenis weergeven. Standaard: 24 uur, max: 168 uur (7 dagen)."
+          },
+          "value": 24,
+          "min": 1,
+          "max": 168,
+          "step": 1
+        }
+      ],
+      "images": {
+        "light": "/widgets/sensor-chart/preview-light.png",
+        "dark": "/widgets/sensor-chart/preview-dark.png"
       },
       "api": {
         "getData": {

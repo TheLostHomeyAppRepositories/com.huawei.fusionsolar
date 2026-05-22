@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensor Chart</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: transparent;
+    padding: 12px 14px 6px;
+    overflow: hidden;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-bottom: 8px;
+    min-height: 18px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .legend-line {
+    width: 14px;
+    height: 2.5px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .legend-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--homey-text-color-light);
+    white-space: nowrap;
+  }
+  .legend-val {
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ── Chart ── */
+  #chart-wrap { width: 100%; }
+  #chart-wrap svg { display: block; overflow: visible; }
+
+  .no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 210px;
+    font-size: 11px;
+    color: var(--homey-text-color-light);
+  }
+
+  /* ── Loading skeleton ── */
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.25; }
+    50%       { opacity: 0.55; }
+  }
+  body.loading #chart-wrap,
+  body.loading .legend { animation: shimmer 1.6s ease-in-out infinite; }
+</style>
+</head>
+<body class="loading">
+
+<div class="legend" id="legend"></div>
+<div id="chart-wrap"></div>
+
+<script>
+/* ── Translations ────────────────────────────────────── */
+var T = (function() {
+  var de = {
+    label1:    'PV-Ausgabe',
+    label2:    'Batterie',
+    label3:    'Netz',
+    label4:    'Leistungsaufnahme',
+    noData:    'Noch keine Daten – wird gesammelt…',
+    noSetting: 'Bitte Gerät in den Widget-Einstellungen auswählen',
+  };
+  var nl = {
+    label1:    'PV-uitvoer',
+    label2:    'Batterij',
+    label3:    'Net',
+    label4:    'Stroomverbruik',
+    noData:    'Nog geen gegevens – wordt verzameld…',
+    noSetting: 'Selecteer een apparaat in de widget-instellingen',
+  };
+  var en = {
+    label1:    'PV Output',
+    label2:    'Battery',
+    label3:    'Grid',
+    label4:    'Power Consumption',
+    noData:    'No data yet – collecting…',
+    noSetting: 'Select a device in widget settings',
+  };
+  var l = navigator.language || '';
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+})();
+
+/* ── Config ──────────────────────────────────────────── */
+var COLORS  = ['#22C55E', '#3B82F6', '#8B5CF6', '#EF4444'];
+//              PV          Batterie   Netz        Verbrauch
+
+var CHART_H = 210;
+var M       = { top: 6, right: 8, bottom: 20, left: 36 };
+var MAX_PTS = 250; /* render resolution */
+
+/* ── Helpers ─────────────────────────────────────────── */
+
+function fmt(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  var a = Math.abs(v);
+  if (a >= 1000) return (v / 1000).toFixed(1) + ' kW';
+  return Math.round(v) + ' W';
+}
+
+function fmtTime(ts, hours) {
+  var d = new Date(ts);
+  var hh = d.getHours().toString().padStart(2, '0');
+  var mm = d.getMinutes().toString().padStart(2, '0');
+  if (hours > 48) return (d.getMonth() + 1) + '.' + d.getDate() + ' ' + hh + ':' + mm;
+  return hh + ':' + mm;
+}
+
+/* Largest-Triangle-Three-Buckets downsampling */
+function downsample(pts, max) {
+  if (pts.length <= max) return pts;
+  var out  = [pts[0]];
+  var size = (pts.length - 2) / (max - 2);
+  for (var i = 0; i < max - 2; i++) {
+    var idx = Math.round((i + 1) * size);
+    if (idx < pts.length) out.push(pts[idx]);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+function niceStep(range, n) {
+  var r = range / n;
+  var m = Math.pow(10, Math.floor(Math.log(r) / Math.LN10));
+  var s = r / m;
+  return (s < 1.5 ? 1 : s < 3.5 ? 2 : s < 7.5 ? 5 : 10) * m;
+}
+
+/* Monotone cubic interpolation (Fritsch-Carlson).
+   Unlike Catmull-Rom, this never overshoots the actual data values —
+   important for time-series charts with sharp transitions. */
+function smoothPath(coords) {
+  var n = coords.length;
+  if (n === 0) return '';
+  if (n === 1) return 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1);
+  if (n === 2) {
+    return 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1)
+         + ' L ' + coords[1][0].toFixed(1) + ',' + coords[1][1].toFixed(1);
+  }
+
+  /* 1. Secant slopes */
+  var d = [];
+  for (var i = 0; i < n - 1; i++) {
+    var dx = coords[i + 1][0] - coords[i][0];
+    d.push(dx !== 0 ? (coords[i + 1][1] - coords[i][1]) / dx : 0);
+  }
+
+  /* 2. Tangent initialisation (average of neighbouring secants) */
+  var m = [d[0]];
+  for (var i = 1; i < n - 1; i++) {
+    m.push(d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2);
+  }
+  m.push(d[n - 2]);
+
+  /* 3. Fritsch-Carlson monotonicity constraint */
+  for (var i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    var a = m[i]     / d[i];
+    var b = m[i + 1] / d[i];
+    var h = Math.sqrt(a * a + b * b);
+    if (h > 3) { m[i] = 3 * a / h * d[i]; m[i + 1] = 3 * b / h * d[i]; }
+  }
+
+  /* 4. Build cubic bezier path */
+  var path = 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1);
+  for (var i = 0; i < n - 1; i++) {
+    var w    = (coords[i + 1][0] - coords[i][0]) / 3;
+    var cp1x = coords[i][0]     + w;
+    var cp1y = coords[i][1]     + m[i]     * w;
+    var cp2x = coords[i + 1][0] - w;
+    var cp2y = coords[i + 1][1] - m[i + 1] * w;
+    path += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1)
+          + ' '   + cp2x.toFixed(1) + ',' + cp2y.toFixed(1)
+          + ' '   + coords[i + 1][0].toFixed(1) + ',' + coords[i + 1][1].toFixed(1);
+  }
+  return path;
+}
+
+/* ── Legend update ───────────────────────────────────── */
+
+function updateLegend(series, names) {
+  var el = document.getElementById('legend');
+  el.innerHTML = '';
+  series.forEach(function(s, i) {
+    if (!s || !s.points || !s.points.length) return;
+    var last = s.points[s.points.length - 1];
+    var item = document.createElement('div');
+    item.className = 'legend-item';
+
+    var line = document.createElement('div');
+    line.className = 'legend-line';
+    line.style.background = COLORS[i];
+
+    var name = document.createElement('span');
+    name.className = 'legend-name';
+    name.textContent = names[i] || ('S' + (i + 1));
+
+    var val = document.createElement('span');
+    val.className = 'legend-val';
+    val.style.color = COLORS[i];
+    val.textContent = last ? fmt(last.v) : '—';
+
+    item.appendChild(line);
+    item.appendChild(name);
+    item.appendChild(val);
+    el.appendChild(item);
+  });
+}
+
+/* ── Chart render ────────────────────────────────────── */
+
+function renderChart(series, hours) {
+  var wrap   = document.getElementById('chart-wrap');
+  var W      = wrap.clientWidth || 260;
+  var innerW = W - M.left - M.right;
+  var innerH = CHART_H - M.top - M.bottom;
+
+  /* global range */
+  var allPts = [];
+  series.forEach(function(s) { if (s && s.points) allPts = allPts.concat(s.points); });
+
+  if (!allPts.length) {
+    wrap.innerHTML = '<div class="no-data">' + T.noData + '</div>';
+    return;
+  }
+
+  var tMin = Infinity, tMax = -Infinity, vMin = Infinity, vMax = -Infinity;
+  allPts.forEach(function(p) {
+    var t = new Date(p.t).getTime();
+    if (t < tMin) tMin = t; if (t > tMax) tMax = t;
+    if (p.v < vMin) vMin = p.v; if (p.v > vMax) vMax = p.v;
+  });
+
+  /* nice Y axis */
+  var vRange = vMax - vMin || Math.max(1, Math.abs(vMax) * 0.1);
+  var pad    = vRange * 0.12;
+  vMin -= pad; vMax += pad;
+  var step   = niceStep(vMax - vMin, 4);
+  var yStart = Math.floor(vMin / step) * step;
+  var yEnd   = Math.ceil(vMax  / step) * step;
+  if (yEnd === yStart) yEnd = yStart + step;
+
+  var tRange = tMax - tMin || 1;
+
+  function tx(t) { return M.left + (t - tMin) / tRange * innerW; }
+  function ty(v) { return M.top  + (1 - (v - yStart) / (yEnd - yStart)) * innerH; }
+
+  var svg = '<svg width="' + W + '" height="' + CHART_H + '">';
+
+  /* ── defs: gradients + clip ── */
+  svg += '<defs>';
+  svg += '<clipPath id="cc"><rect x="' + M.left + '" y="' + M.top
+       + '" width="' + innerW + '" height="' + (innerH + 2) + '"/></clipPath>';
+  series.forEach(function(s, i) {
+    if (!s || !s.points || !s.points.length) return;
+    var c = COLORS[i];
+    svg += '<linearGradient id="grd' + i + '" x1="0" y1="0" x2="0" y2="1">'
+         + '<stop offset="0%"   stop-color="' + c + '" stop-opacity="0.22"/>'
+         + '<stop offset="85%"  stop-color="' + c + '" stop-opacity="0.04"/>'
+         + '<stop offset="100%" stop-color="' + c + '" stop-opacity="0"/>'
+         + '</linearGradient>';
+  });
+  svg += '</defs>';
+
+  /* ── Y gridlines + labels ── */
+  for (var yv = yStart; yv <= yEnd + step * 0.001; yv += step) {
+    var yy = ty(yv);
+    if (yy < M.top - 3 || yy > M.top + innerH + 3) continue;
+    svg += '<line x1="' + M.left + '" y1="' + yy.toFixed(1)
+         + '" x2="' + (M.left + innerW) + '" y2="' + yy.toFixed(1)
+         + '" stroke="currentColor" stroke-opacity="0.07" stroke-width="1"'
+         + (yv === 0 ? ' stroke-dasharray="none" stroke-opacity="0.18"' : '') + '/>';
+    var lbl = Math.abs(yv) >= 1000 ? (yv / 1000).toFixed(1) + 'k' : Math.round(yv).toString();
+    svg += '<text x="' + (M.left - 5) + '" y="' + (yy + 3.5).toFixed(1)
+         + '" text-anchor="end" font-size="8" fill="currentColor" opacity="0.35">' + lbl + '</text>';
+  }
+
+  /* ── X time labels ── */
+  for (var j = 0; j <= 4; j++) {
+    var xt = tMin + tRange * j / 4;
+    svg += '<text x="' + tx(xt).toFixed(1) + '" y="' + (CHART_H - 5)
+         + '" text-anchor="middle" font-size="8" fill="currentColor" opacity="0.35">'
+         + fmtTime(xt, hours) + '</text>';
+  }
+
+  /* ── Series: area + line + end dot ── */
+  series.forEach(function(s, i) {
+    if (!s || !s.points || s.points.length < 2) return;
+
+    var sorted = s.points.slice().sort(function(a, b) {
+      return new Date(a.t).getTime() - new Date(b.t).getTime();
+    });
+    var ds     = downsample(sorted, MAX_PTS);
+    var coords = ds.map(function(p) {
+      return [tx(new Date(p.t).getTime()), ty(p.v)];
+    });
+
+    var line = smoothPath(coords);
+    var base = (M.top + innerH).toFixed(1);
+
+    /* gradient fill */
+    var area = line
+             + ' L ' + coords[coords.length - 1][0].toFixed(1) + ',' + base
+             + ' L ' + coords[0][0].toFixed(1) + ',' + base + ' Z';
+    svg += '<path d="' + area + '" fill="url(#grd' + i + ')" clip-path="url(#cc)"/>';
+
+    /* line */
+    svg += '<path d="' + line + '" fill="none" stroke="' + COLORS[i]
+         + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
+         + ' clip-path="url(#cc)"/>';
+
+    /* end dot with halo — no clip-path so the dot is never cut off at the edge */
+    var lp = coords[coords.length - 1];
+    svg += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1)
+         + '" r="5.5" fill="' + COLORS[i] + '" opacity="0.18"/>';
+    svg += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1)
+         + '" r="2.8" fill="' + COLORS[i] + '"/>';
+  });
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+}
+
+/* ── Homey entry point ───────────────────────────────── */
+
+function onHomeyReady(Homey) {
+  Homey.ready({ height: 260 });
+
+  var settings = {};
+  try { settings = Homey.getSettings() || {}; } catch (e) {}
+
+  function resolve(val) {
+    if (!val) return { id: null, name: '' };
+    if (typeof val === 'object' && val.id) return { id: val.id, name: val.name || '' };
+    if (typeof val === 'string' && val.length) return { id: val, name: val };
+    return { id: null, name: '' };
+  }
+
+  var s = [resolve(settings.series1), resolve(settings.series2),
+           resolve(settings.series3), resolve(settings.series4)];
+  var hours  = parseFloat(settings.range_hours) || 24;
+  var defaultLabels = [T.label1, T.label2, T.label3, T.label4];
+  var labels = ['label1','label2','label3','label4'].map(function(k, i) {
+    var custom = settings[k];
+    return (custom && custom.trim()) ? custom.trim() : (s[i].name || defaultLabels[i]);
+  });
+
+  if (!s[0].id) {
+    document.body.classList.remove('loading');
+    document.getElementById('chart-wrap').innerHTML =
+      '<div class="no-data">' + T.noSetting + '</div>';
+    return;
+  }
+
+  var url = '/?hours=' + hours + '&s1=' + encodeURIComponent(s[0].id);
+  if (s[1].id) url += '&s2=' + encodeURIComponent(s[1].id);
+  if (s[2].id) url += '&s3=' + encodeURIComponent(s[2].id);
+  if (s[3].id) url += '&s4=' + encodeURIComponent(s[3].id);
+
+  function load() {
+    Homey.api('GET', url, {})
+      .then(function(data) {
+        document.body.classList.remove('loading');
+        if (!data || !data.series) return;
+        updateLegend(data.series, labels);
+        renderChart(data.series, hours);
+      })
+      .catch(function(e) {
+        document.body.classList.remove('loading');
+        console.error('sensor-chart:', e);
+      });
+  }
+
+  load();
+  setInterval(load, 60000);
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) load();
+  });
+}
+</script>
+</body>
+</html>

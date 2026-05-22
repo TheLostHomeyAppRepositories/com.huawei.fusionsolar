@@ -239,6 +239,11 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.36": {
+    "en": "New dashboard widget: Sensor Chart — displays up to 4 measure_power series as a smooth line chart with gradient fill. History is persisted across app restarts. Fully localised in English, German and Dutch.",
+    "de": "Neues Dashboard-Widget: Sensor-Verlauf — zeigt bis zu 4 measure_power-Reihen als geglättetes Liniendiagramm mit Farbverlauf. Verlauf bleibt nach App-Neustart erhalten. Vollständig auf Deutsch, Englisch und Niederländisch lokalisiert.",
+    "nl": "Nieuw dashboard-widget: Sensordiagram — toont tot 4 measure_power-reeksen als vloeiend lijndiagram met kleurverloop. Geschiedenis blijft bewaard na het herstarten van de app. Volledig gelokaliseerd in het Engels, Duits en Nederlands."
+  },
   "1.1.35": {
     "en": "Added preview images for all 5 dashboard widgets — required by the Homey App Store for app approval.",
     "de": "Vorschaubilder für alle 5 Dashboard-Widgets hinzugefügt — für die Freigabe im Homey App Store erforderlich.",

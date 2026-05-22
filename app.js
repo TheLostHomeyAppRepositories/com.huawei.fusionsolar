@@ -26,11 +26,19 @@ class FusionSolarKioskApp extends App {
 
     this._scheduleMidnightBaseline();
     this._ensureTodayBaseline();
+
+    // Sensor-chart: initialise in-memory rolling history after drivers are ready
+    this._capHistory       = new Map();
+    this._capHistoryInited = false;
+    this._registerSensorChartAutocomplete();
+    this.homey.setTimeout(() => this._initCapHistory(), 5000);
   }
 
   async onUninit() {
     this.log('FusionSolar app is stopping...');
-    if (this._midnightTimer) this.homey.clearTimeout(this._midnightTimer);
+    if (this._midnightTimer)       this.homey.clearTimeout(this._midnightTimer);
+    if (this._capHistoryPollTimer) this.homey.clearInterval(this._capHistoryPollTimer);
+    this._saveCapHistory(); // persist before shutdown
   }
 
   /**
@@ -141,6 +149,217 @@ class FusionSolarKioskApp extends App {
 
   getCoordinator() {
     return this._coordinator;
+  }
+
+  // ── Sensor-chart: capability history ──────────────────────────────────────
+
+  /**
+   * Returns true for capabilities that are meaningful to chart.
+   * Limits the list to measure_*, meter_* and target_* — excludes alarm booleans,
+   * status enums, module counts, etc.
+   */
+  /** Only the root measure_power capability — no sub-capabilities (no .pv, .grid …). */
+  static _isMeaningfulCap(capId) {
+    return capId === 'measure_power';
+  }
+
+  /**
+   * Register autocomplete listeners for the sensor-chart widget's series1–4 settings.
+   * Called once from onInit() — safe to call before any device is ready.
+   */
+  _registerSensorChartAutocomplete() {
+    try {
+      const widget = this.homey.dashboards.getWidget('sensor-chart');
+
+      const handler = async (query) => {
+        const results = [];
+        try {
+          const drivers = this.homey.drivers.getDrivers();
+          for (const driver of Object.values(drivers)) {
+            try {
+              for (const device of driver.getDevices()) {
+                const deviceId   = device.getData().id;
+                const deviceName = device.getName();
+                if (!deviceId) continue;
+
+                for (const capId of device.getCapabilities()) {
+                  if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+                  const val = device.getCapabilityValue(capId);
+                  if (typeof val !== 'number') continue;
+
+                  const id   = `${deviceId}::${capId}`;
+                  const name = deviceName; // device name as label suggestion
+
+                  if (!query || query.length === 0
+                      || name.toLowerCase().includes(query.toLowerCase())) {
+                    results.push({ id, name, description: `${fmtVal(val)} W` });
+                  }
+                }
+              }
+            } catch (e) { /* skip unavailable driver */ }
+          }
+        } catch (e) {
+          this.error('sensor-chart autocomplete error:', e.message);
+        }
+        return results;
+      };
+
+      for (const s of ['series1', 'series2', 'series3', 'series4']) {
+        widget.registerSettingAutocompleteListener(s, handler);
+      }
+      this.log('sensor-chart: autocomplete registered (series1–4)');
+    } catch (e) {
+      this.error('sensor-chart: autocomplete registration failed:', e.message);
+    }
+
+    /** Small inline helper — format a numeric value compactly */
+    function fmtVal(v) {
+      if (v === null || v === undefined) return '—';
+      const a = Math.abs(v);
+      if (a >= 1000) return (v / 1000).toFixed(1) + ' kW';
+      return v.toFixed(1);
+    }
+  }
+
+  // Max data points kept per series in RAM and persisted to settings.
+  // 1 500 pts × 60 s = 25 h; compact JSON ≈ 40 KB — well within the settings limit.
+  static get CAP_HISTORY_MAX() { return 1500; }
+
+  /**
+   * Initialise rolling capability history and start the 60 s polling timer.
+   * Called 5 s after app start so drivers have completed their first poll.
+   * Guarded by _capHistoryInited — safe to call multiple times.
+   */
+  _initCapHistory() {
+    if (this._capHistoryInited) return;
+    this._capHistoryInited = true;
+
+    // Restore persisted history from settings before taking the first snapshot
+    this._loadCapHistory();
+
+    // Snapshot current values immediately, then every 60 s
+    this._snapshotAllCaps();
+    this.log(`sensor-chart: ${this._capHistory.size} series in history`);
+
+    this._capHistoryPollCount  = 0;
+    this._capHistoryPollTimer  = this.homey.setInterval(() => {
+      this._snapshotAllCaps();
+      // Persist every 5 minutes (5 × 60 s ticks)
+      this._capHistoryPollCount++;
+      if (this._capHistoryPollCount % 5 === 0) this._saveCapHistory();
+    }, 60 * 1000);
+  }
+
+  /**
+   * Load persisted history from homey.settings into _capHistory.
+   * Settings key format: sch_hist_<logId>
+   * Stored value:        [[timestamp_ms, value], ...]
+   */
+  _loadCapHistory() {
+    let loaded = 0;
+    try {
+      const drivers = this.homey.drivers.getDrivers();
+      for (const driver of Object.values(drivers)) {
+        try {
+          for (const device of driver.getDevices()) {
+            const deviceId = device.getData().id;
+            if (!deviceId) continue;
+
+            for (const capId of device.getCapabilities()) {
+              if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+
+              const logId = `${deviceId}::${capId}`;
+              const raw   = this.homey.settings.get(`sch_hist_${logId}`);
+              if (!Array.isArray(raw) || raw.length === 0) continue;
+
+              const points = raw.map(([t, v]) => ({ t: new Date(t).toISOString(), v }));
+              this._capHistory.set(logId, points);
+              loaded++;
+            }
+          }
+        } catch (e) { /* skip */ }
+      }
+      if (loaded > 0) this.log(`sensor-chart: restored ${loaded} series from settings`);
+    } catch (e) {
+      this.error('sensor-chart: _loadCapHistory error:', e.message);
+    }
+  }
+
+  /**
+   * Persist all series from _capHistory to homey.settings.
+   * Each series is stored as compact [[timestamp_ms, value], ...] array.
+   */
+  _saveCapHistory() {
+    if (!this._capHistory || this._capHistory.size === 0) return;
+    try {
+      for (const [logId, points] of this._capHistory.entries()) {
+        const compact = points.map((p) => [new Date(p.t).getTime(), Math.round(p.v * 100) / 100]);
+        this.homey.settings.set(`sch_hist_${logId}`, compact);
+      }
+      this.log(`sensor-chart: saved ${this._capHistory.size} series to settings`);
+    } catch (e) {
+      this.error('sensor-chart: _saveCapHistory error:', e.message);
+    }
+  }
+
+  /**
+   * Snapshot the current value of every tracked capability and append it to
+   * the rolling buffer.  Also auto-discovers devices added after app start.
+   */
+  _snapshotAllCaps() {
+    if (!this._capHistory) return;
+    const now = new Date().toISOString();
+    const max = FusionSolarKioskApp.CAP_HISTORY_MAX;
+    try {
+      const drivers = this.homey.drivers.getDrivers();
+      for (const driver of Object.values(drivers)) {
+        try {
+          for (const device of driver.getDevices()) {
+            const deviceId = device.getData().id;
+            if (!deviceId) continue;
+
+            for (const capId of device.getCapabilities()) {
+              if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+              const val = device.getCapabilityValue(capId);
+              if (typeof val !== 'number') continue;
+
+              const logId = `${deviceId}::${capId}`;
+              let pts = this._capHistory.get(logId);
+              if (!pts) { pts = []; this._capHistory.set(logId, pts); }
+
+              pts.push({ t: now, v: val });
+              if (pts.length > max) pts.splice(0, pts.length - max);
+            }
+          }
+        } catch (e) { /* skip unavailable driver */ }
+      }
+    } catch (e) {
+      this.error('sensor-chart: _snapshotAllCaps error:', e.message);
+    }
+  }
+
+  /**
+   * Called by widgets/sensor-chart/api.js — returns filtered history for up
+   * to four capability series.
+   *
+   * @param {object} query  URL query params: s1–s4 (autocomplete ids), hours
+   * @returns {{ series: Array<{id, points}> }}
+   */
+  getSensorChartData(query) {
+    const hours  = Math.max(1, parseFloat(query.hours) || 24);
+    const cutoff = Date.now() - hours * 3600 * 1000;
+    const series = [];
+
+    for (const key of ['s1', 's2', 's3', 's4']) {
+      const id = query[key];
+      if (!id) continue;
+
+      const points   = this._capHistory ? (this._capHistory.get(id) || []) : [];
+      const filtered = points.filter((p) => new Date(p.t).getTime() >= cutoff);
+      series.push({ id, points: filtered });
+    }
+
+    return { series };
   }
 
 }
