@@ -158,9 +158,10 @@ class FusionSolarKioskApp extends App {
    * Limits the list to measure_*, meter_* and target_* — excludes alarm booleans,
    * status enums, module counts, etc.
    */
-  /** Only the root measure_power capability — no sub-capabilities (no .pv, .grid …). */
+  /** Capabilities tracked and offered in the Sensor Chart autocomplete. */
   static _isMeaningfulCap(capId) {
-    return capId === 'measure_power';
+    return capId === 'measure_power'
+        || capId === 'measure_power.load';
   }
 
   /**

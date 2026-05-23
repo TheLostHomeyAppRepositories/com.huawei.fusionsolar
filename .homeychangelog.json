@@ -239,6 +239,11 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.37": {
+    "en": "Sensor Chart widget: added measure_power.load (house consumption) as selectable and tracked series — available on devices with Power Meter EMMA.",
+    "de": "Sensor-Verlauf-Widget: measure_power.load (Hausverbrauch) als auswählbare und aufgezeichnete Reihe hinzugefügt — verfügbar bei Geräten mit Power Meter EMMA.",
+    "nl": "Sensordiagram-widget: measure_power.load (huisverbruik) toegevoegd als selecteerbare en bijgehouden reeks — beschikbaar op apparaten met Power Meter EMMA."
+  },
   "1.1.36": {
     "en": "New dashboard widget: Sensor Chart — displays up to 4 measure_power series as a smooth line chart with gradient fill. History is persisted across app restarts. Fully localised in English, German and Dutch.",
     "de": "Neues Dashboard-Widget: Sensor-Verlauf — zeigt bis zu 4 measure_power-Reihen als geglättetes Liniendiagramm mit Farbverlauf. Verlauf bleibt nach App-Neustart erhalten. Vollständig auf Deutsch, Englisch und Niederländisch lokalisiert.",
