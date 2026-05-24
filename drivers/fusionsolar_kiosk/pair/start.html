@@ -50,6 +50,56 @@
 
     .hint { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.4; }
 
+    details.how-to {
+      margin-top: 8px;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    details.how-to summary {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #CF0A2C;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    details.how-to summary::before {
+      content: '▶';
+      font-size: 9px;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    details[open].how-to summary::before { transform: rotate(90deg); }
+
+    details.how-to summary::-webkit-details-marker { display: none; }
+
+    .how-to-body {
+      padding: 0 12px 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .how-to-body ol {
+      margin: 8px 0 0 16px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    .how-to-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #F59E0B;
+      font-weight: 600;
+    }
+
     .status {
       padding: 12px 14px;
       border-radius: 8px;
@@ -123,6 +173,13 @@
     <input type="url" id="url"
       placeholder="https://region.fusionsolar.huawei.com/...#/kiosk?kk=..." />
     <p class="hint" id="hint-url">Found in FusionSolar under Share → Kiosk URL.</p>
+    <details class="how-to" id="how-to">
+      <summary id="how-to-toggle">How to find the URL</summary>
+      <div class="how-to-body">
+        <ol id="how-to-steps"></ol>
+        <p class="how-to-note" id="how-to-note"></p>
+      </div>
+    </details>
   </div>
 
   <div class="status" id="status">
@@ -163,6 +220,14 @@
         labelName: 'Plant name',
         labelUrl: 'Kiosk URL',
         hintUrl: 'Found in FusionSolar under Share → Kiosk URL.',
+        howToToggle: 'How to find the URL',
+        howToSteps: [
+          'Open FusionSolar and go to Monitoring → Monitoring.',
+          'Select your PV plant in the left navigation tree.',
+          'Click Kiosk View in the top-right corner of the Overview page.',
+          'Configure the view as prompted, then click Copy to copy the URL.',
+        ],
+        howToNote: '⚠ The Kiosk URL is valid for 1 year — renew it before it expires.',
         btnTest: 'Connect',
         btnConnecting: 'Connecting…',
         btnAdding: 'Adding device…',
@@ -180,6 +245,14 @@
         labelName: 'Anlagenname',
         labelUrl: 'Kiosk URL',
         hintUrl: 'Zu finden in FusionSolar unter Teilen → Kiosk URL.',
+        howToToggle: 'So findest du die URL',
+        howToSteps: [
+          'Öffne FusionSolar und wähle Überwachung → Überwachung.',
+          'Klicke im linken Navigationsbaum auf deine PV-Anlage.',
+          'Klicke oben rechts auf der Seite Überblick auf Kiosk-Ansicht.',
+          'Konfiguriere die Ansicht wie angegeben und klicke dann auf Kopieren.',
+        ],
+        howToNote: '⚠ Die Kiosk URL ist 1 Jahr gültig — erneuere sie rechtzeitig vor dem Ablauf.',
         btnTest: 'Verbinden',
         btnConnecting: 'Verbinde…',
         btnAdding: 'Gerät wird hinzugefügt…',
@@ -201,6 +274,12 @@
     document.getElementById('label-name').textContent      = t.labelName;
     document.getElementById('label-url').textContent       = t.labelUrl;
     document.getElementById('hint-url').textContent        = t.hintUrl;
+    document.getElementById('how-to-toggle').textContent   = t.howToToggle;
+    document.getElementById('how-to-note').textContent     = t.howToNote;
+    var stepsEl = document.getElementById('how-to-steps');
+    t.howToSteps.forEach(function(s) {
+      var li = document.createElement('li'); li.textContent = s; stepsEl.appendChild(li);
+    });
     document.getElementById('btn-label').textContent       = t.btnTest;
     document.getElementById('name').value                  = t.defaultName;
     document.getElementById('kpi-label-power').textContent = t.labelPower;

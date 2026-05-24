@@ -10,95 +10,188 @@
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: transparent;
-    padding: 12px 14px 6px;
+    padding: 12px 14px 8px;
     overflow: hidden;
   }
 
-  /* ── Legend ── */
+  /* ── Header row ── */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    min-height: 20px;
+  }
+
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 14px;
-    margin-bottom: 8px;
-    min-height: 18px;
+    gap: 4px 12px;
+    flex: 1;
+    min-width: 0;
   }
+
   .legend-item {
     display: flex;
     align-items: center;
     gap: 5px;
     min-width: 0;
   }
+
   .legend-line {
     width: 14px;
     height: 2.5px;
     border-radius: 2px;
     flex-shrink: 0;
   }
+
   .legend-name {
     font-size: 10px;
     font-weight: 500;
     color: var(--homey-text-color-light);
     white-space: nowrap;
   }
+
   .legend-val {
     font-size: 10px;
     font-weight: 700;
     white-space: nowrap;
   }
 
-  /* ── Chart ── */
-  #chart-wrap { width: 100%; }
+  /* ── Stepper ── */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .step-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--homey-line-color, rgba(128,128,128,0.35));
+    background: transparent;
+    color: var(--homey-text-color);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    flex-shrink: 0;
+    transition: background 0.12s, opacity 0.12s;
+    padding: 0;
+  }
+
+  .step-btn:hover:not(:disabled) { background: rgba(128,128,128,0.15); }
+  .step-btn:disabled { opacity: 0.25; cursor: default; }
+
+  .step-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--homey-text-color-light);
+    min-width: 26px;
+    text-align: center;
+  }
+
+  /* ── Chart wrapper ── */
+  #chart-wrap {
+    width: 100%;
+    position: relative;
+  }
+
   #chart-wrap svg { display: block; overflow: visible; }
 
+  /* ── Crosshair ── */
+  #xhair {
+    position: absolute;
+    width: 1px;
+    background: currentColor;
+    opacity: 0.2;
+    pointer-events: none;
+    display: none;
+  }
+
+  /* ── Tooltip ── */
+  #tip {
+    position: absolute;
+    background: var(--homey-background-color, rgba(18,18,18,0.92));
+    border: 1px solid var(--homey-line-color, rgba(128,128,128,0.25));
+    border-radius: 7px;
+    padding: 5px 9px;
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+    white-space: nowrap;
+  }
+
+  .tt-time {
+    font-size: 9px;
+    color: var(--homey-text-color-light);
+    margin-bottom: 3px;
+  }
+
+  .tt-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+  }
+
+  .tt-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tt-name { font-size: 9px; color: var(--homey-text-color-light); flex: 1; }
+  .tt-val  { font-size: 10px; font-weight: 700; }
+
+  /* ── No-data ── */
   .no-data {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 210px;
+    height: 200px;
     font-size: 11px;
     color: var(--homey-text-color-light);
   }
 
-  /* ── Loading skeleton ── */
-  @keyframes shimmer {
-    0%, 100% { opacity: 0.25; }
-    50%       { opacity: 0.55; }
-  }
+  /* ── Loading shimmer ── */
+  @keyframes shimmer { 0%,100%{opacity:.25} 50%{opacity:.55} }
   body.loading #chart-wrap,
   body.loading .legend { animation: shimmer 1.6s ease-in-out infinite; }
 </style>
 </head>
 <body class="loading">
 
-<div class="legend" id="legend"></div>
-<div id="chart-wrap"></div>
+<div class="header">
+  <div class="legend" id="legend"></div>
+  <div class="stepper">
+    <button class="step-btn" id="btnDown">−</button>
+    <span class="step-label" id="stepLabel">24H</span>
+    <button class="step-btn" id="btnUp">+</button>
+  </div>
+</div>
+<div id="chart-wrap">
+  <div id="xhair"></div>
+  <div id="tip"></div>
+</div>
 
 <script>
 /* ── Translations ────────────────────────────────────── */
 var T = (function() {
   var de = {
-    label1:    'PV-Ausgabe',
-    label2:    'Batterie',
-    label3:    'Netz',
-    label4:    'Leistungsaufnahme',
-    noData:    'Noch keine Daten – wird gesammelt…',
-    noSetting: 'Bitte Gerät in den Widget-Einstellungen auswählen',
+    label1:'PV-Ausgabe', label2:'Batterie', label3:'Netz', label4:'Leistungsaufnahme',
+    noData:'Noch keine Daten – wird gesammelt…',
+    noSetting:'Bitte Gerät in den Widget-Einstellungen auswählen',
   };
   var nl = {
-    label1:    'PV-uitvoer',
-    label2:    'Batterij',
-    label3:    'Net',
-    label4:    'Stroomverbruik',
-    noData:    'Nog geen gegevens – wordt verzameld…',
-    noSetting: 'Selecteer een apparaat in de widget-instellingen',
+    label1:'PV-uitvoer', label2:'Batterij', label3:'Net', label4:'Stroomverbruik',
+    noData:'Nog geen gegevens – wordt verzameld…',
+    noSetting:'Selecteer een apparaat in de widget-instellingen',
   };
   var en = {
-    label1:    'PV Output',
-    label2:    'Battery',
-    label3:    'Grid',
-    label4:    'Power Consumption',
-    noData:    'No data yet – collecting…',
-    noSetting: 'Select a device in widget settings',
+    label1:'PV Output', label2:'Battery', label3:'Grid', label4:'Power Consumption',
+    noData:'No data yet – collecting…',
+    noSetting:'Select a device in widget settings',
   };
   var l = navigator.language || '';
   return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
@@ -106,14 +199,13 @@ var T = (function() {
 
 /* ── Config ──────────────────────────────────────────── */
 var COLORS  = ['#22C55E', '#3B82F6', '#8B5CF6', '#EF4444'];
-//              PV          Batterie   Netz        Verbrauch
-
-var CHART_H = 210;
+var CHART_H = 200;
 var M       = { top: 6, right: 8, bottom: 20, left: 36 };
-var MAX_PTS = 250; /* render resolution */
+var MAX_PTS = 250;
+/* Preset time-range steps in hours */
+var STEPS   = [6, 12, 24, 48, 72, 168];
 
 /* ── Helpers ─────────────────────────────────────────── */
-
 function fmt(v) {
   if (v === null || v === undefined || isNaN(v)) return '—';
   var a = Math.abs(v);
@@ -122,22 +214,24 @@ function fmt(v) {
 }
 
 function fmtTime(ts, hours) {
-  var d = new Date(ts);
+  var d  = new Date(ts);
   var hh = d.getHours().toString().padStart(2, '0');
   var mm = d.getMinutes().toString().padStart(2, '0');
   if (hours > 48) return (d.getMonth() + 1) + '.' + d.getDate() + ' ' + hh + ':' + mm;
   return hh + ':' + mm;
 }
 
-/* Largest-Triangle-Three-Buckets downsampling */
+function labelFor(h) {
+  if (h < 24)   return h + 'H';
+  if (h === 24) return '24H';
+  return (h / 24) + 'D';
+}
+
 function downsample(pts, max) {
   if (pts.length <= max) return pts;
   var out  = [pts[0]];
-  var size = (pts.length - 2) / (max - 2);
-  for (var i = 0; i < max - 2; i++) {
-    var idx = Math.round((i + 1) * size);
-    if (idx < pts.length) out.push(pts[idx]);
-  }
+  var step = (pts.length - 2) / (max - 2);
+  for (var i = 0; i < max - 2; i++) out.push(pts[Math.round((i + 1) * step)]);
   out.push(pts[pts.length - 1]);
   return out;
 }
@@ -149,58 +243,43 @@ function niceStep(range, n) {
   return (s < 1.5 ? 1 : s < 3.5 ? 2 : s < 7.5 ? 5 : 10) * m;
 }
 
-/* Monotone cubic interpolation (Fritsch-Carlson).
-   Unlike Catmull-Rom, this never overshoots the actual data values —
-   important for time-series charts with sharp transitions. */
+/* Monotone cubic interpolation — prevents bezier overshoot */
 function smoothPath(coords) {
   var n = coords.length;
   if (n === 0) return '';
   if (n === 1) return 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1);
-  if (n === 2) {
-    return 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1)
-         + ' L ' + coords[1][0].toFixed(1) + ',' + coords[1][1].toFixed(1);
-  }
-
-  /* 1. Secant slopes */
+  if (n === 2) return 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1)
+                    + ' L ' + coords[1][0].toFixed(1) + ',' + coords[1][1].toFixed(1);
   var d = [];
   for (var i = 0; i < n - 1; i++) {
-    var dx = coords[i + 1][0] - coords[i][0];
-    d.push(dx !== 0 ? (coords[i + 1][1] - coords[i][1]) / dx : 0);
+    var dx = coords[i+1][0] - coords[i][0];
+    d.push(dx !== 0 ? (coords[i+1][1] - coords[i][1]) / dx : 0);
   }
-
-  /* 2. Tangent initialisation (average of neighbouring secants) */
   var m = [d[0]];
-  for (var i = 1; i < n - 1; i++) {
-    m.push(d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2);
-  }
+  for (var i = 1; i < n - 1; i++) m.push(d[i-1] * d[i] <= 0 ? 0 : (d[i-1] + d[i]) / 2);
   m.push(d[n - 2]);
-
-  /* 3. Fritsch-Carlson monotonicity constraint */
   for (var i = 0; i < n - 1; i++) {
-    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
-    var a = m[i]     / d[i];
-    var b = m[i + 1] / d[i];
-    var h = Math.sqrt(a * a + b * b);
-    if (h > 3) { m[i] = 3 * a / h * d[i]; m[i + 1] = 3 * b / h * d[i]; }
+    if (d[i] === 0) { m[i] = 0; m[i+1] = 0; continue; }
+    var a = m[i] / d[i], b = m[i+1] / d[i], h = Math.sqrt(a*a + b*b);
+    if (h > 3) { m[i] = 3*a/h*d[i]; m[i+1] = 3*b/h*d[i]; }
   }
-
-  /* 4. Build cubic bezier path */
   var path = 'M ' + coords[0][0].toFixed(1) + ',' + coords[0][1].toFixed(1);
   for (var i = 0; i < n - 1; i++) {
-    var w    = (coords[i + 1][0] - coords[i][0]) / 3;
-    var cp1x = coords[i][0]     + w;
-    var cp1y = coords[i][1]     + m[i]     * w;
-    var cp2x = coords[i + 1][0] - w;
-    var cp2y = coords[i + 1][1] - m[i + 1] * w;
-    path += ' C ' + cp1x.toFixed(1) + ',' + cp1y.toFixed(1)
-          + ' '   + cp2x.toFixed(1) + ',' + cp2y.toFixed(1)
-          + ' '   + coords[i + 1][0].toFixed(1) + ',' + coords[i + 1][1].toFixed(1);
+    var w = (coords[i+1][0] - coords[i][0]) / 3;
+    path += ' C ' + (coords[i][0]+w).toFixed(1)   + ',' + (coords[i][1]+m[i]*w).toFixed(1)
+          + ' '   + (coords[i+1][0]-w).toFixed(1) + ',' + (coords[i+1][1]-m[i+1]*w).toFixed(1)
+          + ' '   + coords[i+1][0].toFixed(1)     + ',' + coords[i+1][1].toFixed(1);
   }
   return path;
 }
 
-/* ── Legend update ───────────────────────────────────── */
+/* ── Global chart state (shared with hover handler) ─── */
+var G = { ready: false };
 
+/* ── Cached bounding rect (change 5) ─────────────────── */
+var _wrapRect = null;
+
+/* ── Legend ──────────────────────────────────────────── */
 function updateLegend(series, names) {
   var el = document.getElementById('legend');
   el.innerHTML = '';
@@ -209,42 +288,40 @@ function updateLegend(series, names) {
     var last = s.points[s.points.length - 1];
     var item = document.createElement('div');
     item.className = 'legend-item';
-
     var line = document.createElement('div');
-    line.className = 'legend-line';
-    line.style.background = COLORS[i];
-
+    line.className = 'legend-line'; line.style.background = COLORS[i];
     var name = document.createElement('span');
-    name.className = 'legend-name';
-    name.textContent = names[i] || ('S' + (i + 1));
-
+    name.className = 'legend-name'; name.textContent = names[i] || ('S' + (i+1));
     var val = document.createElement('span');
-    val.className = 'legend-val';
-    val.style.color = COLORS[i];
+    val.className = 'legend-val'; val.style.color = COLORS[i];
+    val.setAttribute('data-series-idx', i);
     val.textContent = last ? fmt(last.v) : '—';
-
-    item.appendChild(line);
-    item.appendChild(name);
-    item.appendChild(val);
+    item.appendChild(line); item.appendChild(name); item.appendChild(val);
     el.appendChild(item);
   });
 }
 
 /* ── Chart render ────────────────────────────────────── */
-
 function renderChart(series, hours) {
   var wrap   = document.getElementById('chart-wrap');
   var W      = wrap.clientWidth || 260;
   var innerW = W - M.left - M.right;
   var innerH = CHART_H - M.top - M.bottom;
 
-  /* global range */
+  /* crosshair geometry */
+  var xhairEl = document.getElementById('xhair');
+  xhairEl.style.top    = M.top + 'px';
+  xhairEl.style.height = innerH + 'px';
+
   var allPts = [];
   series.forEach(function(s) { if (s && s.points) allPts = allPts.concat(s.points); });
 
   if (!allPts.length) {
-    wrap.innerHTML = '<div class="no-data">' + T.noData + '</div>';
-    return;
+    var old = wrap.querySelector('svg'); if (old) old.remove();
+    var nd  = wrap.querySelector('.no-data') || document.createElement('div');
+    nd.className = 'no-data'; nd.textContent = T.noData;
+    if (!nd.parentNode) wrap.insertAdjacentElement('afterbegin', nd);
+    G.ready = false; return;
   }
 
   var tMin = Infinity, tMax = -Infinity, vMin = Infinity, vMax = -Infinity;
@@ -254,7 +331,6 @@ function renderChart(series, hours) {
     if (p.v < vMin) vMin = p.v; if (p.v > vMax) vMax = p.v;
   });
 
-  /* nice Y axis */
   var vRange = vMax - vMin || Math.max(1, Math.abs(vMax) * 0.1);
   var pad    = vRange * 0.12;
   vMin -= pad; vMax += pad;
@@ -262,15 +338,19 @@ function renderChart(series, hours) {
   var yStart = Math.floor(vMin / step) * step;
   var yEnd   = Math.ceil(vMax  / step) * step;
   if (yEnd === yStart) yEnd = yStart + step;
-
   var tRange = tMax - tMin || 1;
 
   function tx(t) { return M.left + (t - tMin) / tRange * innerW; }
   function ty(v) { return M.top  + (1 - (v - yStart) / (yEnd - yStart)) * innerH; }
 
+  /* expose to hover handler (names added by caller after renderChart) */
+  G = { ready: true, series: series, tMin: tMin, tRange: tRange,
+        innerW: innerW, innerH: innerH, tx: tx, ty: ty, hours: hours, W: W };
+
+  /* ── Build SVG ── */
   var svg = '<svg width="' + W + '" height="' + CHART_H + '">';
 
-  /* ── defs: gradients + clip ── */
+  /* defs */
   svg += '<defs>';
   svg += '<clipPath id="cc"><rect x="' + M.left + '" y="' + M.top
        + '" width="' + innerW + '" height="' + (innerH + 2) + '"/></clipPath>';
@@ -285,20 +365,20 @@ function renderChart(series, hours) {
   });
   svg += '</defs>';
 
-  /* ── Y gridlines + labels ── */
+  /* Y gridlines + labels */
   for (var yv = yStart; yv <= yEnd + step * 0.001; yv += step) {
     var yy = ty(yv);
     if (yy < M.top - 3 || yy > M.top + innerH + 3) continue;
+    var op = (yv === 0) ? '0.18' : '0.07';
     svg += '<line x1="' + M.left + '" y1="' + yy.toFixed(1)
          + '" x2="' + (M.left + innerW) + '" y2="' + yy.toFixed(1)
-         + '" stroke="currentColor" stroke-opacity="0.07" stroke-width="1"'
-         + (yv === 0 ? ' stroke-dasharray="none" stroke-opacity="0.18"' : '') + '/>';
-    var lbl = Math.abs(yv) >= 1000 ? (yv / 1000).toFixed(1) + 'k' : Math.round(yv).toString();
-    svg += '<text x="' + (M.left - 5) + '" y="' + (yy + 3.5).toFixed(1)
+         + '" stroke="currentColor" stroke-opacity="' + op + '" stroke-width="1"/>';
+    var lbl = Math.abs(yv) >= 1000 ? (yv/1000).toFixed(1)+'k' : Math.round(yv).toString();
+    svg += '<text x="' + (M.left-5) + '" y="' + (yy+3.5).toFixed(1)
          + '" text-anchor="end" font-size="8" fill="currentColor" opacity="0.35">' + lbl + '</text>';
   }
 
-  /* ── X time labels ── */
+  /* X time labels */
   for (var j = 0; j <= 4; j++) {
     var xt = tMin + tRange * j / 4;
     svg += '<text x="' + tx(xt).toFixed(1) + '" y="' + (CHART_H - 5)
@@ -306,33 +386,36 @@ function renderChart(series, hours) {
          + fmtTime(xt, hours) + '</text>';
   }
 
-  /* ── Series: area + line + end dot ── */
+  /* Midnight separators for multi-day views (change 2) */
+  if (hours > 24) {
+    var md = new Date(tMin);
+    md.setHours(0, 0, 0, 0);
+    md.setDate(md.getDate() + 1);
+    while (md.getTime() < tMax) {
+      var mx = tx(md.getTime());
+      svg += '<line x1="' + mx.toFixed(1) + '" y1="' + M.top
+           + '" x2="' + mx.toFixed(1) + '" y2="' + (M.top + innerH).toFixed(1)
+           + '" stroke="currentColor" stroke-opacity="0.2" stroke-width="1" stroke-dasharray="3,3"/>';
+      var mdLbl = md.getDate() + '.' + (md.getMonth() + 1) + '.';
+      svg += '<text x="' + (mx + 3).toFixed(1) + '" y="' + (M.top + 9)
+           + '" font-size="7" fill="currentColor" opacity="0.3">' + mdLbl + '</text>';
+      md.setDate(md.getDate() + 1);
+    }
+  }
+
+  /* Series: area fill + line + end dot */
   series.forEach(function(s, i) {
     if (!s || !s.points || s.points.length < 2) return;
-
-    var sorted = s.points.slice().sort(function(a, b) {
-      return new Date(a.t).getTime() - new Date(b.t).getTime();
-    });
+    var sorted = s.points.slice().sort(function(a,b) { return new Date(a.t).getTime()-new Date(b.t).getTime(); });
     var ds     = downsample(sorted, MAX_PTS);
-    var coords = ds.map(function(p) {
-      return [tx(new Date(p.t).getTime()), ty(p.v)];
-    });
-
-    var line = smoothPath(coords);
-    var base = (M.top + innerH).toFixed(1);
-
-    /* gradient fill */
-    var area = line
-             + ' L ' + coords[coords.length - 1][0].toFixed(1) + ',' + base
-             + ' L ' + coords[0][0].toFixed(1) + ',' + base + ' Z';
+    var coords = ds.map(function(p) { return [tx(new Date(p.t).getTime()), ty(p.v)]; });
+    var line   = smoothPath(coords);
+    var base   = (M.top + innerH).toFixed(1);
+    var area   = line + ' L' + coords[coords.length-1][0].toFixed(1) + ',' + base
+               + ' L' + coords[0][0].toFixed(1) + ',' + base + ' Z';
     svg += '<path d="' + area + '" fill="url(#grd' + i + ')" clip-path="url(#cc)"/>';
-
-    /* line */
     svg += '<path d="' + line + '" fill="none" stroke="' + COLORS[i]
-         + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
-         + ' clip-path="url(#cc)"/>';
-
-    /* end dot with halo — no clip-path so the dot is never cut off at the edge */
+         + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#cc)"/>';
     var lp = coords[coords.length - 1];
     svg += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1)
          + '" r="5.5" fill="' + COLORS[i] + '" opacity="0.18"/>';
@@ -341,11 +424,89 @@ function renderChart(series, hours) {
   });
 
   svg += '</svg>';
-  wrap.innerHTML = svg;
+
+  /* replace old SVG (keep #xhair and #tip) */
+  var oldSvg = wrap.querySelector('svg');
+  var oldNd  = wrap.querySelector('.no-data');
+  if (oldSvg) oldSvg.remove();
+  if (oldNd)  oldNd.remove();
+  wrap.insertAdjacentHTML('afterbegin', svg);
+}
+
+/* ── Hover: crosshair + tooltip ──────────────────────── */
+var xhairEl = document.getElementById('xhair');
+var tipEl   = document.getElementById('tip');
+
+function findNearest(pts, tMs) {
+  var best = null, bestD = Infinity;
+  pts.forEach(function(p) {
+    var d = Math.abs(new Date(p.t).getTime() - tMs);
+    if (d < bestD) { bestD = d; best = p; }
+  });
+  return best;
+}
+
+function showHover(mouseX) {
+  if (!G.ready) return;
+  if (mouseX < M.left || mouseX > M.left + G.innerW) { hideHover(); return; }
+
+  var tMs   = G.tMin + (mouseX - M.left) / G.innerW * G.tRange;
+  var names = G.names || [];
+
+  /* crosshair */
+  xhairEl.style.left    = mouseX.toFixed(0) + 'px';
+  xhairEl.style.display = 'block';
+
+  /* tooltip content + legend live update (change 3) */
+  var html = '<div class="tt-time">' + fmtTime(tMs, G.hours) + '</div>';
+  var rows = 0;
+  G.series.forEach(function(s, i) {
+    if (!s || !s.points || !s.points.length) return;
+    var pt = findNearest(s.points, tMs);
+    if (!pt) return;
+    rows++;
+    html += '<div class="tt-row">'
+          + '<span class="tt-dot" style="background:' + COLORS[i] + '"></span>'
+          + '<span class="tt-name">' + (names[i] || 'S'+(i+1)) + '</span>'
+          + '<span class="tt-val" style="color:' + COLORS[i] + '">' + fmt(pt.v) + '</span>'
+          + '</div>';
+    /* update legend value to reflect hovered position */
+    var el = document.querySelector('.legend-val[data-series-idx="' + i + '"]');
+    if (el) el.textContent = fmt(pt.v);
+  });
+
+  if (!rows) { hideHover(); return; }
+
+  tipEl.innerHTML     = html;
+  tipEl.style.display = 'block';
+
+  /* position: prefer right of cursor, flip left if too close to edge */
+  var tipW  = tipEl.offsetWidth  || 100;
+  var tipH  = tipEl.offsetHeight || 60;
+  var wrapW = document.getElementById('chart-wrap').clientWidth;
+  var left  = mouseX + 12;
+  var top   = M.top + 4;
+  if (left + tipW > wrapW - 4) left = mouseX - tipW - 8;
+  if (top  + tipH > CHART_H - M.bottom) top = CHART_H - M.bottom - tipH;
+  tipEl.style.left = left + 'px';
+  tipEl.style.top  = top  + 'px';
+}
+
+function hideHover() {
+  xhairEl.style.display = 'none';
+  tipEl.style.display   = 'none';
+  /* restore legend to last-known values (change 3) */
+  if (G.ready && G.series) {
+    G.series.forEach(function(s, i) {
+      if (!s || !s.points || !s.points.length) return;
+      var last = s.points[s.points.length - 1];
+      var el   = document.querySelector('.legend-val[data-series-idx="' + i + '"]');
+      if (el) el.textContent = last ? fmt(last.v) : '—';
+    });
+  }
 }
 
 /* ── Homey entry point ───────────────────────────────── */
-
 function onHomeyReady(Homey) {
   Homey.ready({ height: 260 });
 
@@ -361,11 +522,11 @@ function onHomeyReady(Homey) {
 
   var s = [resolve(settings.series1), resolve(settings.series2),
            resolve(settings.series3), resolve(settings.series4)];
-  var hours  = parseFloat(settings.range_hours) || 24;
+
   var defaultLabels = [T.label1, T.label2, T.label3, T.label4];
-  var labels = ['label1','label2','label3','label4'].map(function(k, i) {
-    var custom = settings[k];
-    return (custom && custom.trim()) ? custom.trim() : (s[i].name || defaultLabels[i]);
+  var names = ['label1','label2','label3','label4'].map(function(k, i) {
+    var c = settings[k];
+    return (c && c.trim()) ? c.trim() : (s[i].name || defaultLabels[i]);
   });
 
   if (!s[0].id) {
@@ -375,18 +536,44 @@ function onHomeyReady(Homey) {
     return;
   }
 
-  var url = '/?hours=' + hours + '&s1=' + encodeURIComponent(s[0].id);
-  if (s[1].id) url += '&s2=' + encodeURIComponent(s[1].id);
-  if (s[2].id) url += '&s3=' + encodeURIComponent(s[2].id);
-  if (s[3].id) url += '&s4=' + encodeURIComponent(s[3].id);
+  /* ── Stepper ── */
+  var initHours = parseFloat(settings.range_hours) || 24;
+  var stepIdx   = 2; // default: index of 24h
+  STEPS.forEach(function(h, i) {
+    if (Math.abs(h - initHours) < Math.abs(STEPS[stepIdx] - initHours)) stepIdx = i;
+  });
+
+  var btnDown   = document.getElementById('btnDown');
+  var btnUp     = document.getElementById('btnUp');
+  var stepLabel = document.getElementById('stepLabel');
+
+  function updateStepper() {
+    stepLabel.textContent = labelFor(STEPS[stepIdx]);
+    btnDown.disabled = stepIdx <= 0;
+    btnUp.disabled   = stepIdx >= STEPS.length - 1;
+  }
+  updateStepper();
+
+  /* ── Load ── */
+  var pollTimer = null;
+
+  function buildUrl() {
+    var h   = STEPS[stepIdx];
+    var url = '/?hours=' + h + '&s1=' + encodeURIComponent(s[0].id);
+    if (s[1].id) url += '&s2=' + encodeURIComponent(s[1].id);
+    if (s[2].id) url += '&s3=' + encodeURIComponent(s[2].id);
+    if (s[3].id) url += '&s4=' + encodeURIComponent(s[3].id);
+    return url;
+  }
 
   function load() {
-    Homey.api('GET', url, {})
+    Homey.api('GET', buildUrl(), {})
       .then(function(data) {
         document.body.classList.remove('loading');
         if (!data || !data.series) return;
-        updateLegend(data.series, labels);
-        renderChart(data.series, hours);
+        updateLegend(data.series, names);
+        renderChart(data.series, STEPS[stepIdx]);
+        G.names = names; // used by showHover / hideHover (change 3)
       })
       .catch(function(e) {
         document.body.classList.remove('loading');
@@ -394,8 +581,71 @@ function onHomeyReady(Homey) {
       });
   }
 
+  function resetPoll() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(load, 60000);
+  }
+
+  /* stepper click */
+  function applyStep(dir) {
+    var next = stepIdx + dir;
+    if (next < 0 || next >= STEPS.length) return;
+    stepIdx = next;
+    updateStepper();
+    hideHover();
+    load();
+    resetPoll();
+  }
+
+  btnDown.addEventListener('click', function() { applyStep(-1); });
+  btnUp.addEventListener('click',   function() { applyStep(+1); });
+
+  /* hold to repeat */
+  var holdT = null, holdI = null;
+  function startHold(dir) {
+    holdT = setTimeout(function() {
+      holdI = setInterval(function() { applyStep(dir); }, 150);
+    }, 400);
+  }
+  function stopHold() { clearTimeout(holdT); clearInterval(holdI); }
+
+  [btnDown, btnUp].forEach(function(btn) {
+    var dir = (btn === btnUp) ? 1 : -1;
+    btn.addEventListener('mousedown',  function() { startHold(dir); });
+    btn.addEventListener('touchstart', function() { startHold(dir); }, { passive: true });
+    btn.addEventListener('mouseup',    stopHold);
+    btn.addEventListener('mouseleave', stopHold);
+    btn.addEventListener('touchend',   stopHold);
+  });
+
+  /* ── Hover events (change 5: cache getBoundingClientRect) ── */
+  var wrap = document.getElementById('chart-wrap');
+
+  wrap.addEventListener('mousemove', function(e) {
+    if (!_wrapRect) _wrapRect = wrap.getBoundingClientRect();
+    showHover(e.clientX - _wrapRect.left);
+  });
+  wrap.addEventListener('mouseleave', function() {
+    _wrapRect = null; // invalidate on leave so next entry is fresh
+    hideHover();
+  });
+
+  wrap.addEventListener('touchmove', function(e) {
+    if (!e.touches.length) return;
+    if (!_wrapRect) _wrapRect = wrap.getBoundingClientRect();
+    showHover(e.touches[0].clientX - _wrapRect.left);
+  }, { passive: true });
+  wrap.addEventListener('touchend', function() {
+    _wrapRect = null;
+    hideHover();
+  });
+
+  window.addEventListener('resize', function() { _wrapRect = null; });
+
+  /* ── Start ── */
   load();
-  setInterval(load, 60000);
+  resetPoll();
+
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) load();
   });

@@ -5,14 +5,17 @@ const { getDevice, cap } = require('../../lib/widget-data');
 module.exports = {
   async getData({ homey }) {
 
-    // Try sun2000_modbus then sun2000_emma_modbus
+    // Try sun2000_modbus → sun2000_emma_modbus → fusionsolar_kiosk
     const sun2000     = getDevice(homey, 'sun2000_modbus');
     const sun2000emma = getDevice(homey, 'sun2000_emma_modbus');
+    const kiosk       = getDevice(homey, 'fusionsolar_kiosk');
 
-    const dailyKwh        = cap(sun2000, 'meter_power.daily', null)
-                         ?? cap(sun2000emma, 'meter_power.daily', null);
-    const totalKwh        = cap(sun2000, 'meter_power', null)
-                         ?? cap(sun2000emma, 'meter_power', null);
+    const dailyKwh        = cap(sun2000,     'meter_power.daily', null)
+                         ?? cap(sun2000emma, 'meter_power.daily', null)
+                         ?? cap(kiosk,       'meter_power.daily', null);
+    const totalKwh        = cap(sun2000,     'meter_power', null)
+                         ?? cap(sun2000emma, 'meter_power', null)
+                         ?? cap(kiosk,       'meter_power', null);
     const optimizerTotal  = cap(sun2000, 'optimizer_total_count', null);
     const optimizerOnline = cap(sun2000, 'optimizer_online_count', null);
 

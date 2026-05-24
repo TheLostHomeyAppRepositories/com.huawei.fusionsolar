@@ -239,6 +239,16 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.39": {
+    "en": "Daily Yield widget now works with the Kiosk driver (fusionsolar_kiosk) as fallback when no SUN2000 Modbus device is paired. Kiosk pairing: added step-by-step guide on how to find the Kiosk URL. Kiosk URL setting hint now mentions the 1-year validity and how to renew.",
+    "de": "Daily-Yield-Widget funktioniert jetzt auch mit dem Kiosk-Treiber (fusionsolar_kiosk) als Fallback, wenn kein SUN2000 Modbus-Gerät gekoppelt ist. Kiosk-Kopplung: Schritt-für-Schritt-Anleitung zum Finden der Kiosk-URL hinzugefügt. Hinweis im Kiosk-URL-Feld erklärt nun die 1-jährige Gültigkeit und die Erneuerung.",
+    "nl": "Daily Yield-widget werkt nu ook met de Kiosk-driver (fusionsolar_kiosk) als terugval wanneer er geen SUN2000 Modbus-apparaat is gekoppeld. Kiosk-koppeling: stapsgewijze handleiding toegevoegd voor het vinden van de Kiosk-URL. Hint bij het Kiosk-URL-veld vermeldt nu de geldigheid van 1 jaar en hoe te vernieuwen."
+  },
+  "1.1.38": {
+    "en": "Sensor Chart widget: midnight separator lines for multi-day views, legend values now follow the hover crosshair and restore on mouse-leave, cached getBoundingClientRect for smoother hover on touch devices.",
+    "de": "Sensor-Verlauf-Widget: Mitternachts-Trennlinien in Mehrtagesansichten, Legendenwerte folgen dem Hover-Cursor und werden beim Verlassen wiederhergestellt, getBoundingClientRect gecacht für flüssigeres Hover auf Touch-Geräten.",
+    "nl": "Sensordiagram-widget: middernachtscheidingslijnen in meerdaagse weergaven, legenda-waarden volgen de zweefcursor en herstellen bij verlaten, getBoundingClientRect gecached voor vloeiendere zweefinteractie op touchapparaten."
+  },
   "1.1.37": {
     "en": "Sensor Chart widget: added measure_power.load (house consumption) as selectable and tracked series — available on devices with Power Meter EMMA.",
     "de": "Sensor-Verlauf-Widget: measure_power.load (Hausverbrauch) als auswählbare und aufgezeichnete Reihe hinzugefügt — verfügbar bei Geräten mit Power Meter EMMA.",

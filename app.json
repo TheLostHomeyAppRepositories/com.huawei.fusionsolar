@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.37",
+  "version": "1.1.39",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -854,8 +854,8 @@
           },
           "value": "",
           "hint": {
-            "en": "The full FusionSolar Kiosk URL ending in ?kk=...",
-            "de": "Die vollständige FusionSolar Kiosk URL mit ?kk=..."
+            "en": "The full FusionSolar Kiosk URL ending in ?kk=... — valid for 1 year. To renew: Monitoring → select plant → Kiosk View → copy URL.",
+            "de": "Die vollständige FusionSolar Kiosk URL mit ?kk=... — gültig für 1 Jahr. Erneuern: Überwachung → Anlage wählen → Kiosk-Ansicht → URL kopieren."
           },
           "highlight": true
         },
