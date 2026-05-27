@@ -6,6 +6,7 @@ const {
   BATTERY_MODULE_REGISTERS,
   CONTROL_REGISTERS,
   isBatteryDataValid,
+  isBatteryAbsent,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe } = require('../../lib/modbus-client');
 
@@ -596,7 +597,10 @@ class LUNA2000ModbusDevice extends Device {
       if (!isBatteryDataValid(batt)) {
         this._failureCount += 1;
         if (this._failureCount >= 3) {
-          await this.setUnavailable(this.homey.__('modbus.errors.batteryNotDetected'));
+          const msg = isBatteryAbsent(batt)
+            ? this.homey.__('modbus.errors.batteryNotOnRS485')
+            : this.homey.__('modbus.errors.batteryNotDetected');
+          await this.setUnavailable(msg);
         }
         this._fetchInProgress = false;
         return;

@@ -30,6 +30,7 @@
         "noAddress": "Voer een IP-adres in.",
         "connectionFailed": "Verbinding mislukt",
         "batteryNotDetected": "Geen LUNA2000 batterij gedetecteerd. Controleer het IP-adres en Modbus-eenheid ID.",
+        "batteryNotOnRS485": "SUN2000 bereikbaar maar geen batterij gevonden op de RS485-bus. Gebruik dezelfde eenheid-ID als de SUN2000-omvormer en controleer de RS485-kabel tussen omvormer en batterij.",
         "meterNotDetected": "Geen DTSU666 energiemeter gedetecteerd. Controleer het IP-adres en Modbus-eenheid ID.",
         "inverterNotDetected": "Geen SUN2000 omvormer gedetecteerd via EMMA. Controleer het IP-adres en Modbus-eenheid ID.",
         "sdongleANotDetected": "Geen SDongle A gedetecteerd. Controleer het IP-adres en Modbus-eenheid ID."
@@ -39,6 +40,7 @@
       "noAddress": "Geen IP-adres geconfigureerd. Controleer de apparaatinstellingen.",
       "fetchFailed": "Modbus-uitlezing mislukt",
       "batteryNotDetected": "LUNA2000 batterij niet gedetecteerd.",
+      "batteryNotOnRS485": "Geen batterij op RS485-bus van SUN2000. Controleer de RS485-kabel tussen omvormer en LUNA2000.",
       "meterNotDetected": "DTSU666 energiemeter niet gedetecteerd.",
       "chargerNotDetected": "Smart Charger niet gedetecteerd.",
       "emmaNotDetected": "EMMA-module niet gedetecteerd.",

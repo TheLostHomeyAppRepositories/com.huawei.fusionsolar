@@ -1,7 +1,7 @@
 'use strict';
 
 const { Driver } = require('homey');
-const { BATTERY_REGISTERS, isBatteryDataValid } = require('../../lib/modbus-registers');
+const { BATTERY_REGISTERS, isBatteryDataValid, isBatteryAbsent } = require('../../lib/modbus-registers');
 const { readModbusRegisters } = require('../../lib/modbus-client');
 const { pauseDevicesOnHost, resumePairedDevices, parseIntSafe } = require('../../lib/pairing-helper');
 
@@ -40,7 +40,10 @@ class LUNA2000ModbusDriver extends Driver {
       }
 
       if (!isBatteryDataValid(data)) {
-        throw new Error(this.homey.__('modbus.pair.errors.batteryNotDetected'));
+        const msg = isBatteryAbsent(data)
+          ? this.homey.__('modbus.pair.errors.batteryNotOnRS485')
+          : this.homey.__('modbus.pair.errors.batteryNotDetected');
+        throw new Error(msg);
       }
 
       this.log(`Pairing LUNA2000 at ${address}:${port} id=${modbusId}, SOC=${data.storageSOC}%`);

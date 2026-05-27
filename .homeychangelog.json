@@ -239,6 +239,11 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.40": {
+    "en": "LUNA2000 (Modbus): improved error messages when battery is not detected — now distinguishes between 'SUN2000 reachable but no LUNA2000 on the RS485 bus' and 'connection failure', with targeted guidance to check the RS485 cable in the first case.",
+    "de": "LUNA2000 (Modbus): Fehlermeldungen bei nicht erkannter Batterie verbessert — unterscheidet jetzt zwischen 'SUN2000 erreichbar, aber kein LUNA2000 am RS485-Bus' und 'Verbindungsfehler', mit gezieltem Hinweis auf das RS485-Kabel im ersten Fall.",
+    "nl": "LUNA2000 (Modbus): foutmeldingen bij niet-gedetecteerde batterij verbeterd — onderscheidt nu 'SUN2000 bereikbaar maar geen LUNA2000 op de RS485-bus' van 'verbindingsfout', met gerichte melding om de RS485-kabel te controleren in het eerste geval."
+  },
   "1.1.39": {
     "en": "Daily Yield widget now works with the Kiosk driver (fusionsolar_kiosk) as fallback when no SUN2000 Modbus device is paired. Kiosk pairing: added step-by-step guide on how to find the Kiosk URL. Kiosk URL setting hint now mentions the 1-year validity and how to renew.",
     "de": "Daily-Yield-Widget funktioniert jetzt auch mit dem Kiosk-Treiber (fusionsolar_kiosk) als Fallback, wenn kein SUN2000 Modbus-Gerät gekoppelt ist. Kiosk-Kopplung: Schritt-für-Schritt-Anleitung zum Finden der Kiosk-URL hinzugefügt. Hinweis im Kiosk-URL-Feld erklärt nun die 1-jährige Gültigkeit und die Erneuerung.",

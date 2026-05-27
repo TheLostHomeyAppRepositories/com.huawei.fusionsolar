@@ -30,6 +30,7 @@
         "noAddress": "Please enter an IP address.",
         "connectionFailed": "Connection failed",
         "batteryNotDetected": "No LUNA2000 battery detected. Please check the IP address and Modbus unit ID.",
+        "batteryNotOnRS485": "SUN2000 reachable but no battery found on its RS485 bus. Use the same Unit ID as the SUN2000 inverter and verify the RS485 cable between inverter and battery.",
         "meterNotDetected": "No DTSU666 power meter detected. Please check the IP address and Modbus unit ID.",
         "inverterNotDetected": "No SUN2000 inverter detected via EMMA. Please check the IP address and Modbus unit ID.",
         "sdongleANotDetected": "No SDongle A detected. Please check the IP address and Modbus unit ID."
@@ -39,6 +40,7 @@
       "noAddress": "No IP address configured. Please check the device settings.",
       "fetchFailed": "Modbus read failed",
       "batteryNotDetected": "LUNA2000 battery not detected.",
+      "batteryNotOnRS485": "No battery on SUN2000 RS485 bus. Check the RS485 cable between inverter and LUNA2000.",
       "meterNotDetected": "DTSU666 power meter not detected.",
       "chargerNotDetected": "Smart Charger not detected.",
       "emmaNotDetected": "EMMA module not detected.",
