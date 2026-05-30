@@ -239,6 +239,11 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.44": {
+    "en": "Battery State Indicator: charging/discharging now shown as 🔺/🔻 emojis (language-neutral). At 0 W idle, only SoC percentage is shown without any emoji. Full/Empty states remain as translated text.",
+    "de": "Batteriestatus Indikator: Laden/Entladen wird jetzt als 🔺/🔻 Emoji dargestellt (sprachneutral). Bei 0 W im Leerlauf wird nur der Ladezustand in % angezeigt, ohne Emoji. Voll/Leer bleiben als übersetzter Text erhalten.",
+    "nl": "Batteriestatus Indicator: laden/ontladen wordt nu weergegeven als 🔺/🔻 emoji (taalneutraal). Bij 0 W in ruststand wordt alleen het laadpercentage getoond zonder emoji. Vol/Leeg blijven als vertaalde tekst behouden."
+  },
   "1.1.43": {
     "en": "Battery State Indicator: hides watt value when 0 W, shows 'Full' at 100% SoC and 'Empty' below 5% SoC when idle. Grid State Indicator: hides Export/Import label when 0 W.",
     "de": "Batteriestatus Indikator: Watt-Wert wird bei 0 W ausgeblendet, zeigt 'Voll' bei 100% SoC und 'Leer' unter 5% SoC im Leerlauf. Netzzustand Indikator: Export/Import-Bezeichnung wird bei 0 W ausgeblendet.",

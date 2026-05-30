@@ -619,18 +619,19 @@ class LUNA2000ModbusDevice extends Device {
       await this._set('measure_power',                power);  // Homey home battery convention
       await this._set('measure_battery',              soc);
       let battLabel;
+      let battLabelAlways = false; // show label even at 0 W
       if (soc >= 100) {
         battLabel = this.homey.__('modbus.battery.state.full');
+        battLabelAlways = true;
       } else if (soc < 5 && Math.abs(power) <= IDLE_THRESHOLD_W) {
         battLabel = this.homey.__('modbus.battery.state.empty');
+        battLabelAlways = true;
       } else {
-        battLabel = power < 0
-          ? this.homey.__('modbus.battery.state.discharging')
-          : this.homey.__('modbus.battery.state.charging');
+        battLabel = power < 0 ? '🔻' : '🔺';
       }
       const battWatts = Math.round(Math.abs(power));
       const battStr = battWatts === 0
-        ? `${battLabel} (${Math.round(soc)}%)`
+        ? battLabelAlways ? `${battLabel} (${Math.round(soc)}%)` : `(${Math.round(soc)}%)`
         : `${battWatts} W ${battLabel} (${Math.round(soc)}%)`;
       await this._set('battery_state_string', battStr);
       await this._set('meter_power.charged',          batt.storageTotalCharge ?? null);
