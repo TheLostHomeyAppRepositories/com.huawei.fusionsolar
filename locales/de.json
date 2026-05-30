@@ -50,7 +50,9 @@
       "state": {
         "charging": "Lädt",
         "discharging": "Entlädt",
-        "idle": "Bereit"
+        "idle": "Bereit",
+        "full": "Voll",
+        "empty": "Leer"
       }
     }
   }

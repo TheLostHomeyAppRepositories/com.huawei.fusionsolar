@@ -29,6 +29,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_power.phase2',
   'measure_power.phase3',
   'dtsu666_meter_status',
+  'powermeter_state_string',
 ];
 
 class DTSU666ModbusDevice extends Device {
@@ -161,6 +162,12 @@ class DTSU666ModbusDevice extends Device {
 
       const gridPower = negate(meter.powerMeterActivePower);
       await this._set('measure_power', gridPower);
+      if (gridPower !== null) {
+        const gridWatts = Math.round(Math.abs(gridPower));
+        const label = gridPower < 0 ? 'Export' : 'Import';
+        const gridStr = gridWatts === 0 ? '0 W' : `${gridWatts} W ${label}`;
+        await this._set('powermeter_state_string', gridStr);
+      }
 
       // Fire export/import transition triggers (null = first run, skip)
       if (gridPower !== null && this._prevExporting !== null) {

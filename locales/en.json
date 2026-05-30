@@ -50,7 +50,9 @@
       "state": {
         "charging": "Charging",
         "discharging": "Discharging",
-        "idle": "Idle"
+        "idle": "Idle",
+        "full": "Full",
+        "empty": "Empty"
       }
     }
   }

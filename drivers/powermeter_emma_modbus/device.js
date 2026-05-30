@@ -28,6 +28,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_power.phase1',            // Phase A Active Power (W)
   'measure_power.phase2',            // Phase B Active Power (W)
   'measure_power.phase3',            // Phase C Active Power (W)
+  'powermeter_state_string',         // Human-readable grid state: "Export 1234 W" / "Import 1234 W"
 ];
 
 class PowerMeterEmmaModbusDevice extends Device {
@@ -131,6 +132,12 @@ class PowerMeterEmmaModbusDevice extends Device {
       const gridPower = d.feedInPower ?? null;
 
       await this._set('measure_power',                 gridPower);
+      if (gridPower !== null) {
+        const gridWatts = Math.round(Math.abs(gridPower));
+        const label = gridPower < 0 ? 'Export' : 'Import';
+        const gridStr = gridWatts === 0 ? '0 W' : `${gridWatts} W ${label}`;
+        await this._set('powermeter_state_string', gridStr);
+      }
       await this._set('meter_power',                   d.totalSupplyFromGrid  ?? null);
       await this._set('meter_power.exported',          d.totalFeedInToGrid    ?? null);
       await this._set('meter_power.imported_today',    d.supplyFromGridToday  ?? null);

@@ -239,6 +239,21 @@
     "de": "OpenAPI: Fehlermeldung verbessert wenn der Server kein JSON zurückgibt — zeigt jetzt die ersten 120 Zeichen der Rohausgabe zur Diagnose benutzerdefinierter regionaler Endpunkte.",
     "nl": "OpenAPI: foutmelding verbeterd wanneer de server geen JSON retourneert — toont nu de eerste 120 tekens van het onbewerkte antwoord om aangepaste regionale eindpunten te diagnosticeren."
   },
+  "1.1.43": {
+    "en": "Battery State Indicator: hides watt value when 0 W, shows 'Full' at 100% SoC and 'Empty' below 5% SoC when idle. Grid State Indicator: hides Export/Import label when 0 W.",
+    "de": "Batteriestatus Indikator: Watt-Wert wird bei 0 W ausgeblendet, zeigt 'Voll' bei 100% SoC und 'Leer' unter 5% SoC im Leerlauf. Netzzustand Indikator: Export/Import-Bezeichnung wird bei 0 W ausgeblendet.",
+    "nl": "Batteriestatus Indicator: wattwaarde verborgen bij 0 W, toont 'Vol' bij 100% SoC en 'Leeg' onder 5% SoC bij inactiviteit. Netstatus Indicator: Export/Import-label verborgen bij 0 W."
+  },
+  "1.1.42": {
+    "en": "Renamed capability titles to include 'Indicator' suffix (Grid State Indicator, Battery State Indicator) and moved both indicator capabilities to the top of the capability list for quicker access in flows and dashboards.",
+    "de": "Capability-Titel um den Suffix 'Indikator' ergänzt (Netzzustand Indikator, Batteriestatus Indikator) und beide Indicator-Capabilities an den Anfang der Capability-Liste verschoben für schnelleren Zugriff in Flows und Dashboards.",
+    "nl": "Capability-titels aangevuld met het suffix 'Indicator' (Netstatus Indicator, Batteriestatus Indicator) en beide indicator-capabilities bovenaan de capability-lijst geplaatst voor snellere toegang in flows en dashboards."
+  },
+  "1.1.41": {
+    "en": "New hidden capabilities on power meter and battery drivers: powermeter_state_string (e.g. '1234 W Import' / '1234 W Export') on DTSU666 and Power Meter EMMA, and battery_state_string (e.g. '1234 W Charging (73%)') on LUNA2000 Modbus and LUNA2000 EMMA Modbus. Both are fully localised and not shown in the app UI — intended for use in flows and dashboards.",
+    "de": "Neue versteckte Capabilities auf Energiezähler- und Batterie-Treibern: powermeter_state_string (z. B. '1234 W Import' / '1234 W Export') auf DTSU666 und Power Meter EMMA, sowie battery_state_string (z. B. '1234 W Lädt (73%)') auf LUNA2000 Modbus und LUNA2000 EMMA Modbus. Beide sind vollständig lokalisiert und werden in der App nicht angezeigt — für die Verwendung in Flows und Dashboards.",
+    "nl": "Nieuwe verborgen capabilities op energiemeter- en batterijstuurprogramma's: powermeter_state_string (bijv. '1234 W Import' / '1234 W Export') op DTSU666 en Power Meter EMMA, en battery_state_string (bijv. '1234 W Laden (73%)') op LUNA2000 Modbus en LUNA2000 EMMA Modbus. Beide zijn volledig gelokaliseerd en niet zichtbaar in de app — bedoeld voor gebruik in flows en dashboards."
+  },
   "1.1.40": {
     "en": "LUNA2000 (Modbus): improved error messages when battery is not detected — now distinguishes between 'SUN2000 reachable but no LUNA2000 on the RS485 bus' and 'connection failure', with targeted guidance to check the RS485 cable in the first case.",
     "de": "LUNA2000 (Modbus): Fehlermeldungen bei nicht erkannter Batterie verbessert — unterscheidet jetzt zwischen 'SUN2000 erreichbar, aber kein LUNA2000 am RS485-Bus' und 'Verbindungsfehler', mit gezieltem Hinweis auf das RS485-Kabel im ersten Fall.",

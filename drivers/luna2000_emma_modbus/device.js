@@ -28,6 +28,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_battery.backup',              // Backup power SOC (%)
   'meter_power.chargeable_capacity',     // ESS chargeable capacity (kWh)
   'meter_power.dischargeable_capacity',  // ESS dischargeable capacity (kWh)
+  'battery_state_string',                // human-readable state: "1234 W Laden (73%)" — hidden in UI
 ];
 
 // Maps writable enum capability → EMMA Modbus register address (40xxx)
@@ -271,6 +272,21 @@ class LUNA2000EmmaModbusDevice extends Device {
 
       await this._set('measure_power',                    power);
       await this._set('measure_battery',                  soc);
+      let battLabel;
+      if (soc >= 100) {
+        battLabel = this.homey.__('modbus.battery.state.full');
+      } else if (soc < 5 && Math.abs(power) <= IDLE_THRESHOLD_W) {
+        battLabel = this.homey.__('modbus.battery.state.empty');
+      } else {
+        battLabel = power < 0
+          ? this.homey.__('modbus.battery.state.discharging')
+          : this.homey.__('modbus.battery.state.charging');
+      }
+      const battWatts = Math.round(Math.abs(power));
+      const battStr = battWatts === 0
+        ? `${battLabel} (${Math.round(soc)}%)`
+        : `${battWatts} W ${battLabel} (${Math.round(soc)}%)`;
+      await this._set('battery_state_string', battStr);
       await this._set('meter_power.charged',              d.totalChargedEnergy      ?? null);
       await this._set('meter_power.discharged',           d.totalDischargedEnergy   ?? null);
       await this._set('measure_power.batt_charge',        Math.max(0,  power));

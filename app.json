@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.40",
+  "version": "1.1.43",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -95,6 +95,30 @@
     "url": "https://github.com/andiwirz/com.huawei.fusionsolar/issues"
   },
   "capabilities": {
+    "powermeter_state_string": {
+      "type": "string",
+      "title": {
+        "en": "Grid State Indicator",
+        "de": "Netzzustand Indikator",
+        "nl": "Netstatus Indicator"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": null,
+      "insights": false
+    },
+    "battery_state_string": {
+      "type": "string",
+      "title": {
+        "en": "Battery State Indicator",
+        "de": "Batteriestatus Indikator",
+        "nl": "Batteriestatus Indicator"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": null,
+      "insights": false
+    },
     "luna2000_unit1_software_version": {
       "type": "string",
       "title": {
@@ -1543,6 +1567,7 @@
         "measure_battery_modules",
         "luna2000_unit1_installed",
         "luna2000_unit2_installed",
+        "battery_state_string",
         "luna2000_unit1_software_version",
         "luna2000_unit2_software_version"
       ],
@@ -1902,6 +1927,7 @@
         "storage_working_mode_settings",
         "storage_excess_pv_energy_use_in_tou",
         "measure_battery.backup",
+        "battery_state_string",
         "meter_power.chargeable_capacity",
         "meter_power.dischargeable_capacity"
       ],
@@ -2107,6 +2133,7 @@
         "cumulativeExportedCapability": "meter_power.exported"
       },
       "capabilities": [
+        "powermeter_state_string",
         "measure_power",
         "meter_power",
         "meter_power.exported",
@@ -2302,6 +2329,7 @@
         "cumulativeExportedCapability": "meter_power.exported"
       },
       "capabilities": [
+        "powermeter_state_string",
         "measure_power",
         "meter_power",
         "meter_power.exported",
