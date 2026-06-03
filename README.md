@@ -147,12 +147,13 @@ Reads inverter data via the EMMA Energy Management Module (unit ID 0). No SDongl
 
 ### Battery LUNA2000 (Modbus)
 
-Direct Modbus TCP connection to the LUNA2000 battery via SUN2000 / SDongle.
+Direct Modbus TCP connection to the LUNA2000 battery via SUN2000 / SDongle. If no LUNA2000 is detected on the RS485 bus, the device shows a targeted error distinguishing between "SUN2000 reachable but no LUNA2000 on RS485" (check the RS485 cable) and a general connection failure.
 
 #### Readable Values
 
 | Capability                  | Description                                              |
 |-----------------------------|----------------------------------------------------------|
+| Battery State Indicator     | Human-readable battery state: `850 W 🔺 (67%)` charging / `1200 W 🔻 (45%)` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
 | Battery power               | Current: positive = charging, negative = discharging (W) |
 | State of charge             | SoC in percent (%)                                       |
 | Total charged energy        | Cumulative since commissioning (kWh)                     |
@@ -185,6 +186,7 @@ Reads battery data via the EMMA Energy Management Module (unit ID 0).
 
 | Capability               | Description                                          |
 |--------------------------|------------------------------------------------------|
+| Battery State Indicator  | Human-readable battery state: `850 W 🔺 (67%)` charging / `1200 W 🔻 (45%)` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
 | Battery power            | Current: positive = charging, negative = discharging (W) |
 | State of charge          | SoC in percent (%)                                   |
 | Backup SoC               | Reserved emergency SoC (%)                           |
@@ -216,6 +218,7 @@ Direct Modbus TCP connection to the DTSU666 smart meter via SUN2000 / SDongle. R
 
 | Capability              | Description                                               |
 |-------------------------|-----------------------------------------------------------|
+| Grid State Indicator    | Human-readable grid state: `1234 W Import` / `1234 W Export` / `0 W` — hidden in UI, available in flows |
 | Grid active power       | Current: positive = import, negative = export (W)         |
 | Total grid import       | Cumulative total energy imported (kWh)                    |
 | Total grid export       | Cumulative total energy exported (kWh)                    |
@@ -231,6 +234,7 @@ Reads grid data via the EMMA Energy Management Module (unit ID 0). Registered as
 
 | Capability              | Description                                               |
 |-------------------------|-----------------------------------------------------------|
+| Grid State Indicator    | Human-readable grid state: `1234 W Import` / `1234 W Export` / `0 W` — hidden in UI, available in flows |
 | Grid active power       | Current: positive = import, negative = export (W)         |
 | Total grid import       | Cumulative total energy imported (kWh)                    |
 | Total grid export       | Cumulative total energy exported (kWh)                    |
