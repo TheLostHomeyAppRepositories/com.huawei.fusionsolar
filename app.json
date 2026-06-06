@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.44",
+  "version": "1.1.45",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -3913,6 +3913,99 @@
         ]
       },
       {
+        "id": "luna2000_working_mode_changed",
+        "title": {
+          "en": "Battery working mode changed",
+          "de": "Batterie-Betriebsmodus hat sich geändert",
+          "nl": "Werkingsmodus batterij is gewijzigd"
+        },
+        "hint": {
+          "en": "Fires when the storage working mode changes — e.g. switched by an external grid balancing service.",
+          "de": "Wird ausgelöst, wenn sich der Speicher-Betriebsmodus ändert — z. B. durch einen externen Regelenergie-Dienst.",
+          "nl": "Wordt geactiveerd wanneer de werkingsmodus van de opslag wijzigt — bijv. door een externe netsaldodienst."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_excess_pv_changed",
+        "title": {
+          "en": "Excess PV energy use changed",
+          "de": "PV-Überschuss-Nutzung hat sich geändert",
+          "nl": "Gebruik van PV-overschot is gewijzigd"
+        },
+        "hint": {
+          "en": "Fires when the excess PV energy setting changes between 'Feed to Grid' and 'Charge Battery'.",
+          "de": "Wird ausgelöst, wenn sich die PV-Überschuss-Einstellung zwischen 'Ins Netz einspeisen' und 'Batterie laden' ändert.",
+          "nl": "Wordt geactiveerd wanneer de instelling voor PV-overschot wisselt tussen 'Terugleveren aan net' en 'Batterij laden'."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_remote_mode_changed",
+        "title": {
+          "en": "Remote dispatch mode changed",
+          "de": "Fernsteuerungsmodus hat sich geändert",
+          "nl": "Afstandsbedieningsmodus is gewijzigd"
+        },
+        "hint": {
+          "en": "Fires when the remote charge/discharge control mode changes (e.g. switched by a third-party scheduling service).",
+          "de": "Wird ausgelöst, wenn sich der Fernsteuerungsmodus ändert (z. B. durch einen Drittanbieter-Regelenergie-Dienst).",
+          "nl": "Wordt geactiveerd wanneer de afstandsbedieningsmodus wijzigt (bijv. door een derden-planningsdienst)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            }
+          }
+        ]
+      },
+      {
         "id": "smartcharger_charging_started",
         "title": {
           "en": "EV charging started",
@@ -5377,6 +5470,129 @@
                   "de": "Schlafmodus"
                 }
               }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "luna2000_working_mode_is",
+        "title": {
+          "en": "Battery working mode !{{is|is not}}",
+          "de": "Batterie-Betriebsmodus !{{ist|ist nicht}}",
+          "nl": "Werkingsmodus batterij !{{is|is niet}}"
+        },
+        "hint": {
+          "en": "Checks the current storage working mode of the LUNA2000 battery.",
+          "de": "Prüft den aktuellen Speicher-Betriebsmodus der LUNA2000-Batterie.",
+          "nl": "Controleert de huidige werkingsmodus van de LUNA2000-batterij."
+        },
+        "titleFormatted": {
+          "en": "Battery working mode !{{is|is not}} [[mode]]",
+          "de": "Batterie-Betriebsmodus !{{ist|ist nicht}} [[mode]]",
+          "nl": "Werkingsmodus batterij !{{is|is niet}} [[mode]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            },
+            "values": [
+              { "id": "0", "label": { "en": "Adaptive", "de": "Adaptiv", "nl": "Adaptief" } },
+              { "id": "1", "label": { "en": "Fixed Charge/Discharge", "de": "Festes Laden/Entladen", "nl": "Vast laden/ontladen" } },
+              { "id": "2", "label": { "en": "Maximise Self-Consumption", "de": "Eigenverbrauch maximieren", "nl": "Eigenverbruik maximaliseren" } },
+              { "id": "3", "label": { "en": "Time of Use (LG)", "de": "Zeitabhängige Nutzung (LG)", "nl": "Time of Use (LG)" } },
+              { "id": "4", "label": { "en": "Fully Fed to Grid", "de": "Volleinspeisung", "nl": "Volledig terugleveren" } },
+              { "id": "5", "label": { "en": "Time of Use (LUNA2000)", "de": "Zeitabhängige Nutzung (LUNA2000)", "nl": "Time of Use (LUNA2000)" } },
+              { "id": "6", "label": { "en": "Third-party Scheduling", "de": "Drittanbieter-Steuerung", "nl": "Derden-sturing" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "luna2000_excess_pv_is",
+        "title": {
+          "en": "Excess PV energy use !{{is|is not}}",
+          "de": "PV-Überschuss-Nutzung !{{ist|ist nicht}}",
+          "nl": "Gebruik PV-overschot !{{is|is niet}}"
+        },
+        "hint": {
+          "en": "Checks how excess PV energy is currently used (feed to grid or charge battery).",
+          "de": "Prüft, wie PV-Überschussenergie aktuell genutzt wird (Einspeisung oder Batterieladen).",
+          "nl": "Controleert hoe overtollige PV-energie momenteel wordt gebruikt (terugleveren of batterij laden)."
+        },
+        "titleFormatted": {
+          "en": "Excess PV energy use !{{is|is not}} [[mode]]",
+          "de": "PV-Überschuss-Nutzung !{{ist|ist nicht}} [[mode]]",
+          "nl": "Gebruik PV-overschot !{{is|is niet}} [[mode]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            },
+            "values": [
+              { "id": "0", "label": { "en": "Feed to Grid", "de": "Ins Netz einspeisen", "nl": "Terugleveren aan net" } },
+              { "id": "1", "label": { "en": "Charge Battery", "de": "Batterie laden", "nl": "Batterij laden" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "luna2000_remote_mode_is",
+        "title": {
+          "en": "Remote dispatch mode !{{is|is not}}",
+          "de": "Fernsteuerungsmodus !{{ist|ist nicht}}",
+          "nl": "Afstandsbedieningsmodus !{{is|is niet}}"
+        },
+        "hint": {
+          "en": "Checks the current remote charge/discharge control mode of the LUNA2000 battery.",
+          "de": "Prüft den aktuellen Fernsteuerungsmodus der LUNA2000-Batterie.",
+          "nl": "Controleert de huidige afstandsbedieningsmodus van de LUNA2000-batterij."
+        },
+        "titleFormatted": {
+          "en": "Remote dispatch mode !{{is|is not}} [[mode]]",
+          "de": "Fernsteuerungsmodus !{{ist|ist nicht}} [[mode]]",
+          "nl": "Afstandsbedieningsmodus !{{is|is niet}} [[mode]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            },
+            "values": [
+              { "id": "0", "label": { "en": "Local Control", "de": "Lokale Steuerung", "nl": "Lokale sturing" } },
+              { "id": "1", "label": { "en": "Remote: Max Self-Consumption", "de": "Fern: Max Eigenverbrauch", "nl": "Afstand: Max eigenverbruik" } },
+              { "id": "2", "label": { "en": "Remote: Fully Fed to Grid", "de": "Fern: Volleinspeisung", "nl": "Afstand: Volledig terugleveren" } },
+              { "id": "3", "label": { "en": "Remote: Time of Use", "de": "Fern: Zeitabhängige Nutzung", "nl": "Afstand: Time of Use" } },
+              { "id": "4", "label": { "en": "Remote: AI Control", "de": "Fern: KI-Steuerung", "nl": "Afstand: KI-sturing" } },
+              { "id": "5", "label": { "en": "Remote: Three-party Scheduling", "de": "Fern: Drittanbieter-Steuerung", "nl": "Afstand: Derden-sturing" } }
             ]
           }
         ]

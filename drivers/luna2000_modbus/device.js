@@ -29,6 +29,31 @@ const UNIT1_STATUS_MAP = {
 // Battery module slot keys — used to count installed packs from BATTERY_MODULE_REGISTERS
 const BATTERY_MODULE_KEYS = ['unit1Pack1', 'unit1Pack2', 'unit1Pack3', 'unit2Pack1', 'unit2Pack2', 'unit2Pack3'];
 
+// Maps storage working mode register value → human-readable label (used as flow trigger token)
+const STORAGE_WORKING_MODE_LABELS = {
+  '0': 'Adaptive',
+  '1': 'Fixed Charge/Discharge',
+  '2': 'Maximise Self-Consumption',
+  '3': 'Time of Use (LG)',
+  '4': 'Fully Fed to Grid',
+  '5': 'Time of Use (LUNA2000)',
+  '6': 'Third-party Scheduling',
+};
+
+const EXCESS_PV_LABELS = {
+  '0': 'Feed to Grid',
+  '1': 'Charge Battery',
+};
+
+const REMOTE_MODE_LABELS = {
+  '0': 'Local Control',
+  '1': 'Remote: Max Self-Consumption',
+  '2': 'Remote: Fully Fed to Grid',
+  '3': 'Remote: Time of Use',
+  '4': 'Remote: AI Control',
+  '5': 'Remote: Three-party Scheduling',
+};
+
 // All battery capabilities are always present (device IS a LUNA2000)
 const REQUIRED_CAPABILITIES = [
   'measure_power',           // combined W: positive = charging, negative = discharging
@@ -85,6 +110,9 @@ class LUNA2000ModbusDevice extends Device {
     this.log(`Device initialised: ${this.getName()}`);
     this._prevChargingState         = null;
     this._prevBatteryStatus         = null;
+    this._prevWorkingMode           = null;
+    this._prevExcessPv              = null;
+    this._prevRemoteMode            = null;
     this._batteryModuleCount        = null;  // tracks last known module count for setEnergy
     this._batteryModulesInitialized = false; // true once a non-zero module count has been read and locked
     this._failureCount              = 0;
@@ -547,6 +575,18 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getConditionCard('luna2000_battery_status_is')
       .registerRunListener((args) => this.getCapabilityValue('luna2000_battery_status') === args.status);
+
+    this.homey.flow
+      .getConditionCard('luna2000_working_mode_is')
+      .registerRunListener((args) => this.getCapabilityValue('storage_working_mode_settings') === args.mode);
+
+    this.homey.flow
+      .getConditionCard('luna2000_excess_pv_is')
+      .registerRunListener((args) => this.getCapabilityValue('storage_excess_pv_energy_use_in_tou') === args.mode);
+
+    this.homey.flow
+      .getConditionCard('luna2000_remote_mode_is')
+      .registerRunListener((args) => this.getCapabilityValue('remote_charge_discharge_control_mode') === args.mode);
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
@@ -721,11 +761,47 @@ class LUNA2000ModbusDevice extends Device {
       const toEnum = (v) => (v !== null && v !== undefined) ? String(v) : null;
 
       this._updatingFromModbus = true;
-      await this._set('storage_working_mode_settings',        toEnum(ctrl.storageWorkingMode));
+      const newMode = toEnum(ctrl.storageWorkingMode);
+      await this._set('storage_working_mode_settings',        newMode);
       await this._set('storage_force_charge_discharge',       toEnum(ctrl.storageForceChargeDischarge));
       await this._set('storage_excess_pv_energy_use_in_tou',  toEnum(ctrl.storageExcessPvEnergyUseInTou));
       await this._set('remote_charge_discharge_control_mode', toEnum(ctrl.remoteChargeDischargeControlMode));
       this._updatingFromModbus = false;
+
+      // Fire working mode changed trigger when mode changes (skip on first read)
+      if (newMode !== null) {
+        if (this._prevWorkingMode !== null && newMode !== this._prevWorkingMode) {
+          const modeLabel = STORAGE_WORKING_MODE_LABELS[newMode] ?? `Mode ${newMode}`;
+          this.homey.flow.getDeviceTriggerCard('luna2000_working_mode_changed')
+            .trigger(this, { mode: modeLabel })
+            .catch((err) => this.log('Flow trigger luna2000_working_mode_changed failed:', err.message));
+        }
+        this._prevWorkingMode = newMode;
+      }
+
+      // Fire excess PV changed trigger
+      const newExcessPv = toEnum(ctrl.storageExcessPvEnergyUseInTou);
+      if (newExcessPv !== null) {
+        if (this._prevExcessPv !== null && newExcessPv !== this._prevExcessPv) {
+          const label = EXCESS_PV_LABELS[newExcessPv] ?? `Mode ${newExcessPv}`;
+          this.homey.flow.getDeviceTriggerCard('luna2000_excess_pv_changed')
+            .trigger(this, { mode: label })
+            .catch((err) => this.log('Flow trigger luna2000_excess_pv_changed failed:', err.message));
+        }
+        this._prevExcessPv = newExcessPv;
+      }
+
+      // Fire remote mode changed trigger
+      const newRemoteMode = toEnum(ctrl.remoteChargeDischargeControlMode);
+      if (newRemoteMode !== null) {
+        if (this._prevRemoteMode !== null && newRemoteMode !== this._prevRemoteMode) {
+          const label = REMOTE_MODE_LABELS[newRemoteMode] ?? `Mode ${newRemoteMode}`;
+          this.homey.flow.getDeviceTriggerCard('luna2000_remote_mode_changed')
+            .trigger(this, { mode: label })
+            .catch((err) => this.log('Flow trigger luna2000_remote_mode_changed failed:', err.message));
+        }
+        this._prevRemoteMode = newRemoteMode;
+      }
 
       await this._set('luna2000_unit1_installed', ctrl.storageUnit1No !== null && ctrl.storageUnit1No !== undefined ? ctrl.storageUnit1No > 0 : null);
       await this._set('luna2000_unit2_installed', ctrl.storageUnit2No !== null && ctrl.storageUnit2No !== undefined ? ctrl.storageUnit2No > 0 : null);

@@ -31,6 +31,22 @@ const REQUIRED_CAPABILITIES = [
   'battery_state_string',                // human-readable state: "1234 W Laden (73%)" — hidden in UI
 ];
 
+// Maps storage working mode register value → human-readable label (used as flow trigger token)
+const STORAGE_WORKING_MODE_LABELS = {
+  '0': 'Adaptive',
+  '1': 'Fixed Charge/Discharge',
+  '2': 'Maximise Self-Consumption',
+  '3': 'Time of Use (LG)',
+  '4': 'Fully Fed to Grid',
+  '5': 'Time of Use (LUNA2000)',
+  '6': 'Third-party Scheduling',
+};
+
+const EXCESS_PV_LABELS = {
+  '0': 'Feed to Grid',
+  '1': 'Charge Battery',
+};
+
 // Maps writable enum capability → EMMA Modbus register address (40xxx)
 const CONTROL_WRITE_MAP = {
   storage_working_mode_settings:       40000, // valid EMMA values: 2, 4, 5, 6 (1/3 reserved)
@@ -42,6 +58,8 @@ class LUNA2000EmmaModbusDevice extends Device {
   async onInit() {
     this.log(`Device initialised: ${this.getName()}`);
     this._prevChargingState          = null;
+    this._prevWorkingMode            = null;
+    this._prevExcessPv               = null;
     this._failureCount               = 0;
     this._updatingFromModbus         = false;
     this._updatingSettingFromModbus  = false;
@@ -205,6 +223,14 @@ class LUNA2000EmmaModbusDevice extends Device {
         const soc = args.device.getCapabilityValue('measure_battery');
         return soc !== null && soc !== undefined && soc < args.soc;
       });
+
+    this.homey.flow
+      .getConditionCard('luna2000_working_mode_is')
+      .registerRunListener((args) => this.getCapabilityValue('storage_working_mode_settings') === args.mode);
+
+    this.homey.flow
+      .getConditionCard('luna2000_excess_pv_is')
+      .registerRunListener((args) => this.getCapabilityValue('storage_excess_pv_energy_use_in_tou') === args.mode);
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
@@ -355,9 +381,33 @@ class LUNA2000EmmaModbusDevice extends Device {
       const toEnum = (v) => (v !== null && v !== undefined) ? String(v) : null;
 
       this._updatingFromModbus = true;
-      await this._set('storage_working_mode_settings',       toEnum(ctrl.essControlMode));
+      const newMode = toEnum(ctrl.essControlMode);
+      await this._set('storage_working_mode_settings',       newMode);
       await this._set('storage_excess_pv_energy_use_in_tou', toEnum(ctrl.preferredUseSurplusPv));
       this._updatingFromModbus = false;
+
+      // Fire working mode changed trigger when mode changes (skip on first read)
+      if (newMode !== null) {
+        if (this._prevWorkingMode !== null && newMode !== this._prevWorkingMode) {
+          const modeLabel = STORAGE_WORKING_MODE_LABELS[newMode] ?? `Mode ${newMode}`;
+          this.homey.flow.getDeviceTriggerCard('luna2000_working_mode_changed')
+            .trigger(this, { mode: modeLabel })
+            .catch((err) => this.log('Flow trigger luna2000_working_mode_changed failed:', err.message));
+        }
+        this._prevWorkingMode = newMode;
+      }
+
+      // Fire excess PV changed trigger
+      const newExcessPv = toEnum(ctrl.preferredUseSurplusPv);
+      if (newExcessPv !== null) {
+        if (this._prevExcessPv !== null && newExcessPv !== this._prevExcessPv) {
+          const label = EXCESS_PV_LABELS[newExcessPv] ?? `Mode ${newExcessPv}`;
+          this.homey.flow.getDeviceTriggerCard('luna2000_excess_pv_changed')
+            .trigger(this, { mode: label })
+            .catch((err) => this.log('Flow trigger luna2000_excess_pv_changed failed:', err.message));
+        }
+        this._prevExcessPv = newExcessPv;
+      }
 
       // Sync max grid charging power setting if it differs from what the EMMA reports
       if (ctrl.maxGridChargingPower !== null && ctrl.maxGridChargingPower !== undefined) {

@@ -389,6 +389,9 @@ These registers derate the inverter AC output directly and work without a DTSU66
 | Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)     | Fires on every power change                                              |
 | Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)       | Fires on every SoC change                                                |
 | Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`         | `charging` / `discharging` / `idle`                                     |
+| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when the storage working mode changes (e.g. switched by a grid balancing service) |
+| Excess PV energy use changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when switching between Feed to Grid / Charge Battery                              |
+| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`          | Fires when the remote charge/discharge control mode changes                             |
 | Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)       | Fires on every SoC change                                                |
 | Battery charging state changed           | Battery OpenAPI                 | `state`         | `charging` / `discharging` / `idle`                                     |
 | Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from import to export                               |
