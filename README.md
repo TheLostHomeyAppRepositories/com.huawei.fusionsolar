@@ -153,7 +153,7 @@ Direct Modbus TCP connection to the LUNA2000 battery via SUN2000 / SDongle. If n
 
 | Capability                  | Description                                              |
 |-----------------------------|----------------------------------------------------------|
-| Battery State Indicator     | Human-readable battery state: `850 W 🔺 (67%)` charging / `1200 W 🔻 (45%)` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
+| Battery State Indicator     | Human-readable battery state: `850 W 🔺 67%` charging / `1200 W 🔻 45%` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
 | Battery power               | Current: positive = charging, negative = discharging (W) |
 | State of charge             | SoC in percent (%)                                       |
 | Total charged energy        | Cumulative since commissioning (kWh)                     |
