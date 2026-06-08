@@ -676,7 +676,7 @@ class LUNA2000ModbusDevice extends Device {
       const battWatts = Math.round(Math.abs(power));
       const battStr = battWatts === 0
         ? battLabelAlways ? `${battLabel} (${Math.round(soc)}%)` : `(${Math.round(soc)}%)`
-        : `${battWatts} W ${battLabel} (${Math.round(soc)}%)`;
+        : `${battWatts} W ${battLabel} ${Math.round(soc)}%`;
       await this._set('battery_state_string', battStr);
       await this._set('meter_power.charged',          batt.storageTotalCharge ?? null);
       await this._set('meter_power.discharged',       batt.storageTotalDischarge ?? null);
