@@ -509,7 +509,13 @@ class SUN2000ModbusDevice extends Device {
 
     if (hasOptimizers) {
       for (const cap of OPTIMIZER_CAPABILITIES) {
-        if (!this.hasCapability(cap)) await this.addCapability(cap);
+        if (!this.hasCapability(cap)) {
+        try {
+          await this.addCapability(cap);
+        } catch (err) {
+          this.error("addCapability(" + cap + ") failed:", err.message);
+        }
+      }
       }
       await this._set('optimizer_total_count',  total);
       await this._set('optimizer_online_count', online ?? null);
@@ -532,7 +538,13 @@ class SUN2000ModbusDevice extends Device {
       }
 
       for (const cap of POWER_METER_CAPABILITIES) {
-        if (!this.hasCapability(cap)) await this.addCapability(cap);
+        if (!this.hasCapability(cap)) {
+        try {
+          await this.addCapability(cap);
+        } catch (err) {
+          this.error("addCapability(" + cap + ") failed:", err.message);
+        }
+      }
       }
 
       const negate = (v) => (v !== null && v !== undefined) ? -v : null;

@@ -87,7 +87,11 @@ class DTSU666ModbusDevice extends Device {
   async _ensureCapabilities() {
     for (const cap of REQUIRED_CAPABILITIES) {
       if (!this.hasCapability(cap)) {
-        await this.addCapability(cap);
+        try {
+          await this.addCapability(cap);
+        } catch (err) {
+          this.error("addCapability(" + cap + ") failed:", err.message);
+        }
       }
     }
   }

@@ -208,7 +208,13 @@ class FusionSolarInverterDevice extends Device {
       }
     }
     for (const cap of REQUIRED_CAPABILITIES) {
-      if (!this.hasCapability(cap)) await this.addCapability(cap);
+      if (!this.hasCapability(cap)) {
+        try {
+          await this.addCapability(cap);
+        } catch (err) {
+          this.error("addCapability(" + cap + ") failed:", err.message);
+        }
+      }
     }
   }
 

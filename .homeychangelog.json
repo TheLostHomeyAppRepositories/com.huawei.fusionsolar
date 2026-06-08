@@ -1,4 +1,9 @@
 {
+  "1.1.46": {
+    "en": "Stability fix: addCapability() calls in all 12 drivers are now wrapped in try/catch — a transient API error during startup no longer crashes device initialisation. The capability is logged and skipped; polling starts normally.",
+    "de": "Stabilitätsfix: addCapability()-Aufrufe in allen 12 Treibern sind jetzt in try/catch eingebettet — ein kurzzeitiger API-Fehler beim Start führt nicht mehr zum Absturz der Geräteinitialisierung. Die Capability wird protokolliert und übersprungen; das Polling startet normal.",
+    "nl": "Stabiliteitsherstel: addCapability()-aanroepen in alle 12 stuurprogramma's zijn nu ingesloten in try/catch — een tijdelijke API-fout bij het opstarten veroorzaakt geen crash meer bij apparaatinitialisatie. De capability wordt gelogd en overgeslagen; polling start normaal."
+  },
   "1.1.45": {
     "en": "New flow triggers for LUNA2000 Modbus and EMMA Modbus: 'Battery working mode changed', 'Excess PV energy use changed', 'Remote dispatch mode changed' (Modbus only) — each carries the new mode name as a token. New condition cards (AND): 'Battery working mode is', 'Excess PV energy use is', 'Remote dispatch mode is' (Modbus only) — all with !{{is|is not}} toggle. Useful for tracking mode changes from grid balancing or third-party services.",
     "de": "Neue Flow-Trigger für LUNA2000 Modbus und EMMA Modbus: 'Batterie-Betriebsmodus hat sich geändert', 'PV-Überschuss-Nutzung hat sich geändert', 'Fernsteuerungsmodus hat sich geändert' (nur Modbus) — jeweils mit dem neuen Modusnamen als Token. Neue Bedingungskarten (UND): 'Batterie-Betriebsmodus ist', 'PV-Überschuss-Nutzung ist', 'Fernsteuerungsmodus ist' (nur Modbus) — alle mit !{{ist|ist nicht}}-Umschalter. Nützlich zur Nachverfolgung von Modusänderungen durch Regelenergie- oder Drittanbieter-Dienste.",
