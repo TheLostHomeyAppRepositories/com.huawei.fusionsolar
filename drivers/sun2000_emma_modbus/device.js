@@ -33,6 +33,7 @@ class SUN2000EmmaModbusDevice extends Device {
     this._failureCount    = 0;
     this._fetchInProgress = false;
     this._powerHistory    = [];
+    this._lastPollStart   = 0;
     await this._ensureCapabilities();
     this._registerPowerThresholdListeners();
     await this._startPolling();
@@ -107,12 +108,25 @@ class SUN2000EmmaModbusDevice extends Device {
         this.error('Poll failed:', err.message);
       });
     }, this._intervalMs());
+    this._watchdogTimer = this.homey.setInterval(() => {
+      if (this._fetchInProgress) {
+        const staleSec = Math.round((Date.now() - this._lastPollStart) / 1000);
+        if (staleSec > 120) {
+          this.error('Watchdog: _fetchInProgress stuck for ' + staleSec + 's — resetting');
+          this._fetchInProgress = false;
+        }
+      }
+    }, 60_000);
   }
 
   async _stopPolling() {
     if (this._timer) {
       this.homey.clearInterval(this._timer);
       this._timer = null;
+    }
+    if (this._watchdogTimer) {
+      this.homey.clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
     }
   }
 
@@ -121,6 +135,7 @@ class SUN2000EmmaModbusDevice extends Device {
   async _fetchAndUpdate() {
     if (this._fetchInProgress) return;
     this._fetchInProgress = true;
+    this._lastPollStart = Date.now();
 
     const address = this.getSetting('address');
     if (!address) {
@@ -171,6 +186,7 @@ class SUN2000EmmaModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
+      this.log('Poll OK: PV=' + Math.round(newPower) + 'W');
 
     } catch (err) {
       this._failureCount += 1;

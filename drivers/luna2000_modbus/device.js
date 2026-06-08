@@ -122,6 +122,7 @@ class LUNA2000ModbusDevice extends Device {
     this._settingsInitialized       = false; // true after first successful _fetchControl
     this._controlPollCounter        = 4;     // start at 4 so first poll immediately reads control registers
     this._forceTimer                = null;  // pending auto-stop timer for timed force charge/discharge
+    this._lastPollStart             = 0;
     await this._ensureCapabilities();
     this._registerControlListeners();
     this._registerFlowActions();
@@ -607,12 +608,25 @@ class LUNA2000ModbusDevice extends Device {
         this.error('Poll failed:', err.message);
       });
     }, this._intervalMs());
+    this._watchdogTimer = this.homey.setInterval(() => {
+      if (this._fetchInProgress) {
+        const staleSec = Math.round((Date.now() - this._lastPollStart) / 1000);
+        if (staleSec > 120) {
+          this.error('Watchdog: _fetchInProgress stuck for ' + staleSec + 's — resetting');
+          this._fetchInProgress = false;
+        }
+      }
+    }, 60_000);
   }
 
   async _stopPolling() {
     if (this._timer) {
       this.homey.clearInterval(this._timer);
       this._timer = null;
+    }
+    if (this._watchdogTimer) {
+      this.homey.clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
     }
   }
 
@@ -622,6 +636,7 @@ class LUNA2000ModbusDevice extends Device {
     if (this._fetchInProgress) return;
     if (this._writeInProgress) return; // pause poll while a write is queued/running
     this._fetchInProgress = true;
+    this._lastPollStart = Date.now();
 
     const address = this.getSetting('address');
 
@@ -732,6 +747,7 @@ class LUNA2000ModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
+      this.log('Poll OK: SoC=' + Math.round(soc) + '% P=' + Math.round(power) + 'W');
 
     } catch (err) {
       this._failureCount += 1;

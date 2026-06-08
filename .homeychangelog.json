@@ -1,4 +1,9 @@
 {
+  "1.1.47": {
+    "en": "Improved diagnostics: all 8 Modbus drivers now log a 'Poll OK' line with key values (SoC, power, grid, etc.) after every successful poll — makes it easy to confirm data is flowing from the log. Added a watchdog in each driver that detects and resets a stuck _fetchInProgress flag after 2 minutes, preventing silent polling stalls when a TCP connection hangs.",
+    "de": "Verbesserte Diagnose: Alle 8 Modbus-Treiber protokollieren nach jedem erfolgreichen Poll eine 'Poll OK'-Zeile mit Schlüsselwerten (SoC, Leistung, Netz, usw.) — so lässt sich im Log sofort erkennen, ob Daten fliessen. Ein Watchdog in jedem Treiber erkennt ein hängendes _fetchInProgress-Flag nach 2 Minuten und setzt es zurück, wodurch stille Poll-Unterbrechungen bei hängenden TCP-Verbindungen verhindert werden.",
+    "nl": "Verbeterde diagnostiek: alle 8 Modbus-stuurprogramma's loggen na elke succesvolle poll een 'Poll OK'-regel met sleutelwaarden (SoC, vermogen, net, enz.) — zo is direct uit het log te zien of data doorstroomt. Een watchdog in elk stuurprogramma detecteert een vastgelopen _fetchInProgress-vlag na 2 minuten en reset deze, waardoor stille pollinonderbrekingen bij hangende TCP-verbindingen worden voorkomen."
+  },
   "1.1.46": {
     "en": "Stability fix: addCapability() calls in all 12 drivers are now wrapped in try/catch — a transient API error during startup no longer crashes device initialisation. The capability is logged and skipped; polling starts normally.",
     "de": "Stabilitätsfix: addCapability()-Aufrufe in allen 12 Treibern sind jetzt in try/catch eingebettet — ein kurzzeitiger API-Fehler beim Start führt nicht mehr zum Absturz der Geräteinitialisierung. Die Capability wird protokolliert und übersprungen; das Polling startet normal.",
