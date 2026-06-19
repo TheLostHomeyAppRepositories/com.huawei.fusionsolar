@@ -705,8 +705,10 @@ class LUNA2000ModbusDevice extends Device {
         if (this._prevBatteryStatus !== null && statusLabel !== this._prevBatteryStatus) {
           this.homey.flow.getDeviceTriggerCard('luna2000_battery_status_changed')
             .trigger(this, { status: statusLabel }, { status: statusLabel }).catch((err) => this.log('Flow trigger luna2000_battery_status_changed failed:', err.message));
-          this.homey.notifications.createNotification({ excerpt: `${this.getName()}: ${statusLabel}` })
-            .catch((err) => this.log('Timeline notification failed:', err.message));
+          if (this.getSetting('enable_timeline_notifications') !== false) {
+            this.homey.notifications.createNotification({ excerpt: `${this.getName()}: ${statusLabel}` })
+              .catch((err) => this.log('Timeline notification failed:', err.message));
+          }
         }
         this._prevBatteryStatus = statusLabel;
       }

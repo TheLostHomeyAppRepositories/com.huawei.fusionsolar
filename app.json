@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.47",
+  "version": "1.1.48",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -1348,6 +1348,31 @@
               }
             }
           ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Notifications",
+            "de": "Benachrichtigungen",
+            "nl": "Meldingen"
+          },
+          "children": [
+            {
+              "id": "enable_timeline_notifications",
+              "type": "checkbox",
+              "label": {
+                "en": "Timeline notifications",
+                "de": "Timeline-Benachrichtigungen",
+                "nl": "Tijdlijnmeldingen"
+              },
+              "value": true,
+              "hint": {
+                "en": "Show a timeline notification when the inverter status changes.",
+                "de": "Zeigt eine Timeline-Benachrichtigung wenn sich der Inverterstatus ändert.",
+                "nl": "Toont een tijdlijnmelding wanneer de inverterstatus verandert."
+              }
+            }
+          ]
         }
       ]
     },
@@ -1891,6 +1916,21 @@
             "en": "Minimum SoC reserved for backup power during grid outages (register 47102). Range: 0–100 %, default 0 %.",
             "de": "Mindest-SoC, der für den Stromausfall-Betrieb reserviert wird (Register 47102). Bereich: 0–100 %, Standard 0 %."
           }
+        },
+        {
+          "id": "enable_timeline_notifications",
+          "type": "checkbox",
+          "label": {
+            "en": "Timeline notifications",
+            "de": "Timeline-Benachrichtigungen",
+            "nl": "Tijdlijnmeldingen"
+          },
+          "value": true,
+          "hint": {
+            "en": "Show a timeline notification when the battery status changes.",
+            "de": "Zeigt eine Timeline-Benachrichtigung wenn sich der Batteriestatus ändert.",
+            "nl": "Toont een tijdlijnmelding wanneer de batterijstatus verandert."
+          }
         }
       ]
     },
@@ -2111,6 +2151,21 @@
             "en": "Maximum power for charging the battery from the grid (0–50 kW). Written to EMMA register 40002.",
             "de": "Maximale Ladeleistung der Batterie aus dem Netz (0–50 kW). Wird in EMMA-Register 40002 geschrieben."
           }
+        },
+        {
+          "id": "enable_timeline_notifications",
+          "type": "checkbox",
+          "label": {
+            "en": "Timeline notifications",
+            "de": "Timeline-Benachrichtigungen",
+            "nl": "Tijdlijnmeldingen"
+          },
+          "value": true,
+          "hint": {
+            "en": "Show a timeline notification when the battery charging state changes.",
+            "de": "Zeigt eine Timeline-Benachrichtigung wenn sich der Ladezustand ändert.",
+            "nl": "Toont een tijdlijnmelding wanneer de laadstatus verandert."
+          }
         }
       ]
     },
@@ -2306,6 +2361,21 @@
           "hint": {
             "en": "How often to read data from the power meter.",
             "de": "Wie oft Daten vom Energiezähler abgerufen werden."
+          }
+        },
+        {
+          "id": "enable_timeline_notifications",
+          "type": "checkbox",
+          "label": {
+            "en": "Timeline notifications",
+            "de": "Timeline-Benachrichtigungen",
+            "nl": "Tijdlijnmeldingen"
+          },
+          "value": true,
+          "hint": {
+            "en": "Show a timeline notification when the meter status changes.",
+            "de": "Zeigt eine Timeline-Benachrichtigung wenn sich der Zählerstatus ändert.",
+            "nl": "Toont een tijdlijnmelding wanneer de meterstatus verandert."
           }
         }
       ]
