@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.48",
+  "version": "1.1.49",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -285,6 +285,14 @@
             "en": "Zero Power Grid Connection",
             "de": "Nulleinspeisung",
             "nl": "Nul-invoeding"
+          }
+        },
+        {
+          "id": "6",
+          "title": {
+            "en": "Limited by Power",
+            "de": "Leistungsbegrenzt",
+            "nl": "Vermogensbegrensd"
           }
         }
       ]
