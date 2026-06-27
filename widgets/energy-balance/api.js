@@ -2,9 +2,13 @@
 
 const { getDevice, cap } = require('../../lib/widget-data');
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function todayStr(homey) {
+  let tz = 'UTC';
+  try { tz = homey.clock.getTimezone() || 'UTC'; } catch {}
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
 }
 
 /**
@@ -18,7 +22,7 @@ function dailyDelta(homey, rawValue, settingKey) {
   let stored = null;
   try { stored = homey.settings.get(settingKey); } catch {}
 
-  if (!stored || stored.date !== todayStr()) return null;
+  if (!stored || stored.date !== todayStr(homey)) return null;
 
   return Math.max(0, rawValue - stored.baseline);
 }
@@ -37,19 +41,23 @@ module.exports = {
                     ?? cap(sun2000emma, 'meter_power.pv_daily', null)
                     ?? cap(sun2000emma, 'meter_power.daily', null);
 
-    // Grid export today: prefer sun2000 cumulative delta, fall back to EMMA daily counter
-    const rawExport = cap(sun2000, 'meter_power.grid_export', null);
+    // Grid export today: prefer sun2000 cumulative delta, fall back to EMMA inverter or EMMA meter
+    const rawExport = cap(sun2000, 'meter_power.grid_export', null)
+                   ?? cap(sun2000emma, 'meter_power.grid_export', null);
     let gridExportKwh = dailyDelta(homey, rawExport, 'eb_grid_export_baseline')
                      ?? cap(pmEmma, 'meter_power.exported_today', null);
 
-    // Grid import today: prefer sun2000 cumulative delta, fall back to EMMA daily counter
-    const rawImport = cap(sun2000, 'meter_power.grid_import', null);
+    // Grid import today: prefer sun2000 cumulative delta, fall back to EMMA inverter or EMMA meter
+    const rawImport = cap(sun2000, 'meter_power.grid_import', null)
+                   ?? cap(sun2000emma, 'meter_power.grid_import', null);
     let gridImportKwh = dailyDelta(homey, rawImport, 'eb_grid_import_baseline')
                      ?? cap(pmEmma, 'meter_power.imported_today', null);
 
     // Battery today
-    const battChargedKwh    = cap(luna, 'meter_power.today_batt_input',  null);
-    const battDischargedKwh = cap(luna, 'meter_power.today_batt_output', null);
+    const battChargedKwh    = cap(luna, 'meter_power.today_batt_input',  null)
+                           ?? cap(lunaEmma, 'meter_power.today_batt_input',  null);
+    const battDischargedKwh = cap(luna, 'meter_power.today_batt_output', null)
+                           ?? cap(lunaEmma, 'meter_power.today_batt_output', null);
 
     // Self-consumption: PV energy used on-site (not exported)
     let selfConsumptionPct = null;

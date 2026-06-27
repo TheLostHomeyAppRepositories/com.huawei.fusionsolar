@@ -12,8 +12,10 @@ module.exports = {
 
     const soc                = cap(device, 'measure_battery', null);
     const powerW             = cap(device, 'measure_power', null);
-    const todayChargedKwh    = cap(luna, 'meter_power.today_batt_input', null);
-    const todayDischargedKwh = cap(luna, 'meter_power.today_batt_output', null);
+    const todayChargedKwh    = cap(luna, 'meter_power.today_batt_input', null)
+                            ?? cap(lunaEmma, 'meter_power.today_batt_input', null);
+    const todayDischargedKwh = cap(luna, 'meter_power.today_batt_output', null)
+                            ?? cap(lunaEmma, 'meter_power.today_batt_output', null);
 
     // Status: prefer luna2000_battery_status, derive from power if not available
     let status = cap(luna, 'luna2000_battery_status', null);
