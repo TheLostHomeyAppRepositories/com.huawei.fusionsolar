@@ -2,9 +2,10 @@
 
 const { Device } = require('homey');
 
-const DEV_TYPE_INVERTER     = 1;
-const DEV_TYPE_METER        = 17; // Grid meter (DTSU666)
-const DEV_TYPE_POWER_SENSOR = 47; // Power sensor
+const DEV_TYPE_INVERTER             = 1;
+const DEV_TYPE_RESIDENTIAL_INVERTER = 38;
+const DEV_TYPE_METER                = 17; // Grid meter (DTSU666)
+const DEV_TYPE_POWER_SENSOR         = 47; // Power sensor
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',                // AC active power (W) — primary for Homey Energy dashboard
@@ -19,10 +20,14 @@ const REQUIRED_CAPABILITIES = [
 ];
 
 const EXTRA_CAPABILITIES = [
-  'measure_voltage.pv1',      // PV1 voltage (V)
-  'measure_voltage.pv2',      // PV2 voltage (V)
-  'measure_current.pv1',      // PV1 current (A)
-  'measure_current.pv2',      // PV2 current (A)
+  'measure_voltage.pv1',             // PV1 voltage (V)
+  'measure_voltage.pv2',             // PV2 voltage (V)
+  'measure_current.pv1',             // PV1 current (A)
+  'measure_current.pv2',             // PV2 current (A)
+  'huawei_status',                   // inverter state string
+  'measure_frequency',               // grid frequency (Hz)
+  'openapi_inverter_efficiency',     // inverter efficiency (%)
+  'openapi_active_power_control',    // setable picker: unlimited / limited feed-in
 ];
 
 // Removed capabilities — stripped from already-paired devices on init
@@ -42,50 +47,49 @@ const DEPRECATED_CAPABILITIES = [
   'measure_current.c_i',
 ];
 
+// OpenAPI inverter_state values (different from Modbus register 32089!)
 const INVERTER_STATE_MAP = {
-  0:    'Standby: initializing',
-  256:  'Standby: detecting insulation resistance',
-  512:  'Standby: detecting irradiation',
-  513:  'Standby: grid detecting',
-  514:  'Normal: on-grid',
-  515:  'Normal: power limited',
-  516:  'Normal: self-derating',
-  517:  'Shutdown: fault',
-  518:  'Shutdown: command',
-  519:  'Shutdown: OVGR',
-  521:  'Shutdown: reactive power over-limit',
-  522:  'Shutdown: output over-current',
-  523:  'Shutdown: SOP protection',
-  524:  'Shutdown: grid-side SOP',
-  527:  'Shutdown: PV under-voltage',
-  528:  'Shutdown: PV over-current',
-  529:  'Shutdown: event caused',
-  533:  'Shutdown: manual',
-  534:  'Shutdown: temperature',
-  535:  'Shutdown: frequency',
-  536:  'Grid scheduling: cosφ-P curve',
-  537:  'Grid scheduling: Q-U curve',
-  538:  'Spot-check ready',
-  539:  'Spot-checking',
-  541:  'Inspection: PV string',
-  768:  'Low voltage ride-through',
-  769:  'High voltage ride-through',
-  770:  'Low frequency ride-through',
-  771:  'High frequency ride-through',
-  776:  'Shutdown: off-grid',
-  777:  'Off-grid: initializing',
-  778:  'Off-grid: grid-tied',
-  1025: 'Reactive compensation',
-  1026: 'Idle',
+  0:     'Standby: initializing',
+  1:     'Standby: insulation resistance detecting',
+  2:     'Standby: irradiation detecting',
+  3:     'Standby: grid detecting',
+  256:   'Start',
+  512:   'Grid-connected',
+  513:   'Grid-connected: power limited',
+  514:   'Grid-connected: self-derating',
+  768:   'Shutdown: on fault',
+  769:   'Shutdown: on command',
+  770:   'Shutdown: OVGR',
+  771:   'Shutdown: communication interrupted',
+  772:   'Shutdown: power limited',
+  773:   'Shutdown: manual startup required',
+  774:   'Shutdown: DC switch disconnected',
+  1025:  'Grid scheduling: cosψ-P curve',
+  1026:  'Grid scheduling: Q-U curve',
+  1280:  'Ready for terminal test',
+  1281:  'Terminal testing',
+  1536:  'Inspection in progress',
+  1792:  'AFCI self-check',
+  2048:  'I-V scanning',
+  2304:  'DC input detection',
+  40960: 'Standby: no irradiation',
+  45056: 'Communication interrupted',
+  49152: 'Loading',
 };
 
 class FusionSolarInverterDevice extends Device {
 
   async onInit() {
     this.log(`Inverter device initialised: ${this.getName()}`);
-    this._powerHistory = [];
+    this._powerHistory      = [];
+    this._updatingFromApi   = false;
     await this._ensureCapabilities();
+    if (this.hasCapability('openapi_active_power_control') && this.getCapabilityValue('openapi_active_power_control') === null) {
+      await this.setCapabilityValue('openapi_active_power_control', '0').catch(() => {});
+    }
     this._registerPowerThresholdListeners();
+    this._registerActionListeners();
+    this._registerCapabilityListeners();
     this.homey.app.getCoordinator().register(this);
   }
 
@@ -103,17 +107,51 @@ class FusionSolarInverterDevice extends Device {
   async onUninit()  { this.homey.app.getCoordinator().unregister(this); }
   async onDeleted() { this.homey.app.getCoordinator().unregister(this); }
 
+  _registerCapabilityListeners() {
+    this.registerCapabilityListener('openapi_active_power_control', async (value) => {
+      if (this._updatingFromApi) return;
+      this.log(`UI: Set active power control to ${value}`);
+      await this.homey.app.getCoordinator().sendActivePowerTask(this, parseInt(value, 10));
+    });
+  }
+
+  _registerActionListeners() {
+    const coord = () => this.homey.app.getCoordinator();
+
+    this.homey.flow.getActionCard('openapi_set_active_power_unlimited')
+      .registerRunListener(async () => {
+        this.log('OpenAPI: Set active power control to unlimited');
+        await coord().sendActivePowerTask(this, 0);
+        this._updatingFromApi = true;
+        await this._set('openapi_active_power_control', '0');
+        this._updatingFromApi = false;
+      });
+
+    this.homey.flow.getActionCard('openapi_set_max_feed_in_power')
+      .registerRunListener(async ({ power }) => {
+        const kw = Math.round(power) / 1000;
+        this.log(`OpenAPI: Set max feed-in power to ${kw} kW`);
+        await coord().sendActivePowerTask(this, 6, { maxGridFeedInPower: kw });
+        this._updatingFromApi = true;
+        await this._set('openapi_active_power_control', '6');
+        this._updatingFromApi = false;
+      });
+  }
+
   // ─── Coordinator interface ─────────────────────────────────────────────────
 
-  getDevTypes() { return [DEV_TYPE_INVERTER, DEV_TYPE_METER, DEV_TYPE_POWER_SENSOR]; }
+  getDevTypes() { return [DEV_TYPE_INVERTER, DEV_TYPE_RESIDENTIAL_INVERTER, DEV_TYPE_METER, DEV_TYPE_POWER_SENSOR]; }
 
   async onPollData({ stationKpi, kpiByType }) {
     // Station-level KPI
     // stationKpi retained for future use
 
 
-    // Inverter device KPI
-    const maps = kpiByType[DEV_TYPE_INVERTER] || [];
+    // Inverter device KPI (type 1 = string inverter, type 38 = residential inverter)
+    const maps = [
+      ...(kpiByType[DEV_TYPE_INVERTER] || []),
+      ...(kpiByType[DEV_TYPE_RESIDENTIAL_INVERTER] || []),
+    ];
     if (!maps.length) return;
 
     const num  = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
@@ -148,6 +186,14 @@ class FusionSolarInverterDevice extends Device {
     await this._set('meter_power.inv_daily',   sumKwh('day_cap'));
     await this._set('meter_power.inv_total',   sumKwh('total_cap'));
     await this._set('measure_power.mppt',      sumW('mppt_power'));
+    await this._set('openapi_inverter_efficiency', avg('efficiency'));
+    await this._set('measure_frequency',       avg('elec_freq'));
+
+    const stateVal = maps[0]?.inverter_state;
+    if (stateVal !== undefined && stateVal !== null) {
+      const stateNum = parseInt(stateVal, 10);
+      await this._set('huawei_status', INVERTER_STATE_MAP[stateNum] ?? `State ${stateNum}`);
+    }
 
     // Grid import/export — from power sensor (type 47) or grid meter (type 17)
     const gridMaps = (kpiByType[DEV_TYPE_POWER_SENSOR] || []).length

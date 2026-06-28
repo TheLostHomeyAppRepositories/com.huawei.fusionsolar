@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.50",
+  "version": "1.1.59",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -38,6 +38,14 @@
     "confirmDriver": {
       "method": "POST",
       "path": "/scan/confirm"
+    },
+    "getOpenapiCredentials": {
+      "method": "GET",
+      "path": "/debug/openapi-credentials"
+    },
+    "fetchOpenapiDebug": {
+      "method": "POST",
+      "path": "/debug/openapi"
     }
   },
   "brandColor": "#CF0A2C",
@@ -679,6 +687,65 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
+      "icon": "/assets/capabilities/measure_frequency.svg",
+      "insights": false
+    },
+    "openapi_inverter_efficiency": {
+      "type": "number",
+      "title": {
+        "en": "Inverter Efficiency",
+        "de": "Wechselrichter-Wirkungsgrad",
+        "nl": "Omvormer-efficiëntie"
+      },
+      "units": "%",
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/openapi_inverter_efficiency.svg",
+      "insights": true
+    },
+    "isitepower_remaining_backup_time": {
+      "type": "number",
+      "title": {
+        "en": "Remaining Backup Time",
+        "de": "Verbleibende Backup-Zeit",
+        "nl": "Resterende back-uptijd"
+      },
+      "units": "h",
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/isitepower_remaining_backup_time.svg",
+      "insights": true
+    },
+    "isitepower_total_capacity": {
+      "type": "number",
+      "title": {
+        "en": "Total Capacity",
+        "de": "Gesamtkapazität",
+        "nl": "Totale capaciteit"
+      },
+      "units": "kWh",
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/isitepower_total_capacity.svg",
+      "insights": false
+    },
+    "isitepower_discharge_cycles": {
+      "type": "number",
+      "title": {
+        "en": "Discharge Cycles",
+        "de": "Entladezyklen",
+        "nl": "Ontlaadcycli"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/isitepower_discharge_cycles.svg",
       "insights": false
     },
     "luna2000_battery_status": {
@@ -717,6 +784,7 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
+      "icon": "/assets/capabilities/openapi_battery_mode.svg",
       "insights": false
     },
     "openapi_battery_run_state": {
@@ -730,6 +798,76 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false
+    },
+    "openapi_working_mode_control": {
+      "type": "enum",
+      "title": {
+        "en": "Working Mode",
+        "de": "Betriebsmodus",
+        "nl": "Werkingsmodus"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "picker",
+      "icon": "/assets/capabilities/openapi_battery_mode.svg",
+      "insights": false,
+      "values": [
+        {
+          "id": "maximumSelfConsumption",
+          "title": {
+            "en": "Maximum Self-Consumption",
+            "de": "Eigenverbrauch maximieren",
+            "nl": "Maximaal eigenverbruik"
+          }
+        },
+        {
+          "id": "TOU",
+          "title": {
+            "en": "Time of Use",
+            "de": "Zeitabhängige Nutzung",
+            "nl": "Time of Use"
+          }
+        },
+        {
+          "id": "thirdPartyDispatch",
+          "title": {
+            "en": "Third-party Dispatch",
+            "de": "Drittanbieter-Steuerung",
+            "nl": "Derden-sturing"
+          }
+        }
+      ]
+    },
+    "openapi_active_power_control": {
+      "type": "enum",
+      "title": {
+        "en": "Active Power Control",
+        "de": "Wirkleistungs-Steuerung",
+        "nl": "Werkzaam-vermogen regeling"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "picker",
+      "icon": "/assets/capabilities/openapi_inverter_efficiency.svg",
+      "insights": false,
+      "values": [
+        {
+          "id": "0",
+          "title": {
+            "en": "Unlimited",
+            "de": "Unbegrenzt",
+            "nl": "Onbeperkt"
+          }
+        },
+        {
+          "id": "6",
+          "title": {
+            "en": "Limited Feed-in (kW)",
+            "de": "Einspeisebegrenzung (kW)",
+            "nl": "Beperkte teruglevering (kW)"
+          }
+        }
+      ]
     },
     "openapi_meter_status": {
       "type": "string",
@@ -2728,6 +2866,32 @@
             "de": "Solarleistung"
           },
           "insights": true
+        },
+        "huawei_status": {
+          "title": {
+            "en": "Inverter Status",
+            "de": "Wechselrichter-Status"
+          }
+        },
+        "measure_frequency": {
+          "title": {
+            "en": "Grid Frequency",
+            "de": "Netzfrequenz"
+          },
+          "insights": true
+        },
+        "openapi_inverter_efficiency": {
+          "title": {
+            "en": "Efficiency",
+            "de": "Wirkungsgrad"
+          },
+          "insights": true
+        },
+        "openapi_active_power_control": {
+          "title": {
+            "en": "Active Power Control",
+            "de": "Wirkleistungs-Steuerung"
+          }
         }
       },
       "images": {
@@ -2793,12 +2957,12 @@
             "en": "minutes",
             "de": "Minuten"
           },
-          "value": 10,
-          "min": 10,
+          "value": 5,
+          "min": 5,
           "max": 60,
           "hint": {
-            "en": "How often to fetch data. Huawei caches data for ~30 minutes.",
-            "de": "Wie oft Daten abgerufen werden. Huawei cached Daten ~30 Minuten."
+            "en": "How often to fetch data (minutes). Huawei updates data approximately every 5 minutes.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Huawei aktualisiert Daten ca. alle 5 Minuten."
           }
         }
       ]
@@ -2899,6 +3063,39 @@
             "en": "Battery Status",
             "de": "Batteriestatus"
           }
+        },
+        "openapi_battery_mode": {
+          "title": {
+            "en": "Working Mode",
+            "de": "Betriebsmodus"
+          }
+        },
+        "measure_voltage.battery": {
+          "title": {
+            "en": "Battery Voltage",
+            "de": "Batteriespannung"
+          },
+          "insights": true
+        },
+        "openapi_working_mode_control": {
+          "title": {
+            "en": "Working Mode",
+            "de": "Betriebsmodus"
+          }
+        },
+        "meter_power.charged": {
+          "title": {
+            "en": "Total Charged",
+            "de": "Gesamtladung"
+          },
+          "insights": true
+        },
+        "meter_power.discharged": {
+          "title": {
+            "en": "Total Discharged",
+            "de": "Gesamtentladung"
+          },
+          "insights": true
         }
       },
       "images": {
@@ -2964,12 +3161,12 @@
             "en": "minutes",
             "de": "Minuten"
           },
-          "value": 10,
-          "min": 10,
+          "value": 5,
+          "min": 5,
           "max": 60,
           "hint": {
-            "en": "How often to fetch data. Huawei caches data for ~30 minutes.",
-            "de": "Wie oft Daten abgerufen werden. Huawei cached Daten ~30 Minuten."
+            "en": "How often to fetch data (minutes). Huawei updates data approximately every 5 minutes.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Huawei aktualisiert Daten ca. alle 5 Minuten."
           }
         }
       ]
@@ -3079,6 +3276,13 @@
             "de": "Leistung Phase C"
           },
           "insights": true
+        },
+        "measure_frequency": {
+          "title": {
+            "en": "Grid Frequency",
+            "de": "Netzfrequenz"
+          },
+          "insights": true
         }
       },
       "images": {
@@ -3144,14 +3348,142 @@
             "en": "minutes",
             "de": "Minuten"
           },
-          "value": 10,
-          "min": 10,
+          "value": 5,
+          "min": 5,
           "max": 60,
           "hint": {
-            "en": "How often to fetch data. Huawei caches data for ~30 minutes.",
-            "de": "Wie oft Daten abgerufen werden. Huawei cached Daten ~30 Minuten."
+            "en": "How often to fetch data (minutes). Huawei updates data approximately every 5 minutes.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Huawei aktualisiert Daten ca. alle 5 Minuten."
           }
         }
+      ]
+    },
+    {
+      "id": "isitepower_solar_openapi_fusionsolar",
+      "name": {
+        "en": "iSitePower-M Solar (OpenAPI)",
+        "de": "iSitePower-M Solar (OpenAPI)"
+      },
+      "class": "solarpanel",
+      "platforms": ["local"],
+      "connectivity": [],
+      "energy": {
+        "meterPowerExportedCapability": "meter_power"
+      },
+      "capabilities": ["measure_power", "meter_power"],
+      "capabilitiesOptions": {
+        "measure_power": { "title": { "en": "Solar Power", "de": "Solarleistung" }, "insights": true },
+        "meter_power": { "title": { "en": "Total Yield", "de": "Gesamtertrag" }, "insights": true }
+      },
+      "images": {
+        "small": "/drivers/isitepower_solar_openapi_fusionsolar/assets/images/small.png",
+        "large": "/drivers/isitepower_solar_openapi_fusionsolar/assets/images/large.png"
+      },
+      "pair": [{ "id": "start" }],
+      "settings": [
+        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
+        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
+        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
+        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+      ]
+    },
+    {
+      "id": "isitepower_battery_openapi_fusionsolar",
+      "name": {
+        "en": "iSitePower-M Battery (OpenAPI)",
+        "de": "iSitePower-M Batterie (OpenAPI)"
+      },
+      "class": "battery",
+      "platforms": ["local"],
+      "connectivity": [],
+      "energy": {
+        "batteries": ["INTERNAL"],
+        "homeBattery": true,
+        "meterPowerImportedCapability": "meter_power.charged",
+        "meterPowerExportedCapability": "meter_power.discharged"
+      },
+      "capabilities": ["measure_power", "measure_battery", "measure_power.batt_charge", "measure_power.batt_discharge", "meter_power.charged", "meter_power.discharged", "measure_voltage.battery", "battery_state_string"],
+      "capabilitiesOptions": {
+        "measure_power": { "title": { "en": "Battery Power", "de": "Batterieleistung" }, "insights": true },
+        "measure_battery": { "title": { "en": "State of Charge", "de": "Ladezustand" }, "insights": true },
+        "measure_power.batt_charge": { "title": { "en": "Charge Power", "de": "Ladeleistung" }, "insights": true },
+        "measure_power.batt_discharge": { "title": { "en": "Discharge Power", "de": "Entladeleistung" }, "insights": true },
+        "meter_power.discharged": { "title": { "en": "Total Discharged", "de": "Gesamtentladung" }, "insights": true },
+        "measure_voltage.battery": { "title": { "en": "Battery Voltage", "de": "Batteriespannung" }, "insights": true },
+        "measure_current.battery": { "title": { "en": "Battery Current", "de": "Batteriestrom" }, "insights": true },
+        "isitepower_remaining_backup_time": { "title": { "en": "Remaining Backup", "de": "Backup-Restzeit" }, "insights": true },
+        "isitepower_total_capacity": { "title": { "en": "Total Capacity", "de": "Gesamtkapazität" } },
+        "isitepower_discharge_cycles": { "title": { "en": "Discharge Cycles", "de": "Entladezyklen" } }
+      },
+      "images": {
+        "small": "/drivers/isitepower_battery_openapi_fusionsolar/assets/images/small.png",
+        "large": "/drivers/isitepower_battery_openapi_fusionsolar/assets/images/large.png"
+      },
+      "pair": [{ "id": "start" }],
+      "settings": [
+        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
+        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
+        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
+        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+      ]
+    },
+    {
+      "id": "isitepower_grid_openapi_fusionsolar",
+      "name": {
+        "en": "iSitePower-M Grid (OpenAPI)",
+        "de": "iSitePower-M Netz (OpenAPI)"
+      },
+      "class": "sensor",
+      "platforms": ["local"],
+      "connectivity": [],
+      "capabilities": ["measure_power", "meter_power", "measure_voltage.phase1", "measure_current.phase1", "measure_frequency"],
+      "capabilitiesOptions": {
+        "measure_power": { "title": { "en": "Grid Power", "de": "Netzleistung" }, "insights": true },
+        "meter_power": { "title": { "en": "Grid Import", "de": "Netzbezug gesamt" }, "insights": true },
+        "measure_voltage.phase1": { "title": { "en": "AC Voltage", "de": "AC Spannung" }, "insights": true },
+        "measure_current.phase1": { "title": { "en": "AC Current", "de": "AC Strom" }, "insights": true },
+        "measure_frequency": { "title": { "en": "Grid Frequency", "de": "Netzfrequenz" }, "insights": true }
+      },
+      "images": {
+        "small": "/drivers/isitepower_grid_openapi_fusionsolar/assets/images/small.png",
+        "large": "/drivers/isitepower_grid_openapi_fusionsolar/assets/images/large.png"
+      },
+      "pair": [{ "id": "start" }],
+      "settings": [
+        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
+        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
+        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
+        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+      ]
+    },
+    {
+      "id": "isitepower_home_openapi_fusionsolar",
+      "name": {
+        "en": "iSitePower-M Home (OpenAPI)",
+        "de": "iSitePower-M Haus (OpenAPI)"
+      },
+      "class": "sensor",
+      "platforms": ["local"],
+      "connectivity": [],
+      "capabilities": ["measure_power", "meter_power"],
+      "capabilitiesOptions": {
+        "measure_power": { "title": { "en": "Home Consumption", "de": "Hausverbrauch" }, "insights": true },
+        "meter_power": { "title": { "en": "Total Consumption", "de": "Gesamtverbrauch" }, "insights": true }
+      },
+      "images": {
+        "small": "/drivers/isitepower_home_openapi_fusionsolar/assets/images/small.png",
+        "large": "/drivers/isitepower_home_openapi_fusionsolar/assets/images/large.png"
+      },
+      "pair": [{ "id": "start" }],
+      "settings": [
+        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
+        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
+        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
+        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
       ]
     },
     {
@@ -3659,7 +3991,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ],
         "tokens": [
@@ -3940,7 +4272,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ],
         "tokens": [
@@ -3968,7 +4300,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ]
       },
@@ -3986,7 +4318,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ]
       },
@@ -4006,7 +4338,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ],
         "tokens": [
@@ -5216,6 +5548,158 @@
             }
           }
         ]
+      },
+      {
+        "id": "openapi_set_working_mode",
+        "title": {
+          "en": "Set battery working mode (OpenAPI)",
+          "de": "Batterie-Betriebsmodus setzen (OpenAPI)"
+        },
+        "titleFormatted": {
+          "en": "Set battery working mode to [[mode]]",
+          "de": "Batterie-Betriebsmodus auf [[mode]] setzen"
+        },
+        "hint": {
+          "en": "Sets the battery working mode via the FusionSolar cloud API. The mode change is permanent until changed again.",
+          "de": "Setzt den Batterie-Betriebsmodus über die FusionSolar Cloud-API. Die Modusänderung ist dauerhaft bis zur nächsten Änderung."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_openapi_fusionsolar"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": { "en": "Mode", "de": "Modus" },
+            "values": [
+              { "id": "maximumSelfConsumption", "label": { "en": "Maximum Self-Consumption", "de": "Eigenverbrauch maximieren" } },
+              { "id": "TOU", "label": { "en": "Time of Use", "de": "Zeitabhängige Nutzung" } },
+              { "id": "thirdPartyDispatch", "label": { "en": "Third-party Dispatch", "de": "Drittanbieter-Steuerung" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "openapi_dispatch_battery_power",
+        "title": { "en": "Dispatch battery power (OpenAPI)", "de": "Batterieleistung dispatchen (OpenAPI)" },
+        "titleFormatted": { "en": "Dispatch battery to [[power]] W", "de": "Batterie auf [[power]] W dispatchen" },
+        "hint": { "en": "Sets the battery charge/discharge power in third-party dispatch mode via the FusionSolar cloud API. Positive = charge, negative = discharge, 0 = stop. Requires the working mode to be set to 'Third-party Dispatch' first.", "de": "Setzt die Lade-/Entladeleistung der Batterie im Drittanbieter-Steuerungsmodus über die FusionSolar Cloud-API. Positiv = laden, negativ = entladen, 0 = stopp. Erfordert vorher den Betriebsmodus 'Drittanbieter-Steuerung'." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Power (W)", "de": "Leistung (W)" }, "min": -100000, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 2500 (charge) or -2500 (discharge)", "de": "z.B. 2500 (laden) oder -2500 (entladen)" } }
+        ]
+      },
+      {
+        "id": "openapi_start_force_charge",
+        "title": { "en": "Start charging until SoC % (OpenAPI)", "de": "Laden bis SoC % starten (OpenAPI)" },
+        "titleFormatted": { "en": "Start charging with [[power]] W until [[target_soc]] %", "de": "Laden mit [[power]] W bis [[target_soc]] % starten" },
+        "hint": { "en": "Starts force charging via the FusionSolar cloud API. The battery returns to its normal mode after the target SoC is reached.", "de": "Startet das Zwangsladen über die FusionSolar Cloud-API. Die Batterie kehrt nach Erreichen des Ziel-SoC in den normalen Modus zurück." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Charge Power (W)", "de": "Ladeleistung (W)" }, "min": 0, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 2500", "de": "z.B. 2500" } },
+          { "type": "number", "name": "target_soc", "title": { "en": "Target SoC (%)", "de": "Ziel-Ladezustand (%)" }, "min": 0, "max": 100, "step": 1, "placeholder": { "en": "e.g. 100", "de": "z.B. 100" } }
+        ]
+      },
+      {
+        "id": "openapi_start_force_discharge",
+        "title": { "en": "Start discharging until SoC % (OpenAPI)", "de": "Entladen bis SoC % starten (OpenAPI)" },
+        "titleFormatted": { "en": "Start discharging with [[power]] W until [[target_soc]] %", "de": "Entladen mit [[power]] W bis [[target_soc]] % starten" },
+        "hint": { "en": "Starts force discharging via the FusionSolar cloud API. The battery returns to its normal mode after the target SoC is reached.", "de": "Startet das Zwangsentladen über die FusionSolar Cloud-API. Die Batterie kehrt nach Erreichen des Ziel-SoC in den normalen Modus zurück." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Discharge Power (W)", "de": "Entladeleistung (W)" }, "min": 0, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 2500", "de": "z.B. 2500" } },
+          { "type": "number", "name": "target_soc", "title": { "en": "Stop at SoC (%)", "de": "Stoppen bei SoC (%)" }, "min": 0, "max": 100, "step": 1, "placeholder": { "en": "e.g. 10", "de": "z.B. 10" } }
+        ]
+      },
+      {
+        "id": "openapi_start_force_charge_duration",
+        "title": { "en": "Start charging for minutes (OpenAPI)", "de": "Laden für Minuten starten (OpenAPI)" },
+        "titleFormatted": { "en": "Start charging with [[power]] W for [[duration]] minutes", "de": "Laden mit [[power]] W für [[duration]] Minuten starten" },
+        "hint": { "en": "Starts force charging via the FusionSolar cloud API and stops after the specified duration.", "de": "Startet das Zwangsladen über die FusionSolar Cloud-API und stoppt nach der angegebenen Dauer." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Charge Power (W)", "de": "Ladeleistung (W)" }, "min": 0, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 2500", "de": "z.B. 2500" } },
+          { "type": "number", "name": "duration", "title": { "en": "Duration (minutes)", "de": "Dauer (Minuten)" }, "min": 1, "max": 1440, "step": 1, "placeholder": { "en": "e.g. 60", "de": "z.B. 60" } }
+        ]
+      },
+      {
+        "id": "openapi_start_force_discharge_duration",
+        "title": { "en": "Start discharging for minutes (OpenAPI)", "de": "Entladen für Minuten starten (OpenAPI)" },
+        "titleFormatted": { "en": "Start discharging with [[power]] W for [[duration]] minutes", "de": "Entladen mit [[power]] W für [[duration]] Minuten starten" },
+        "hint": { "en": "Starts force discharging via the FusionSolar cloud API and stops after the specified duration.", "de": "Startet das Zwangsentladen über die FusionSolar Cloud-API und stoppt nach der angegebenen Dauer." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Discharge Power (W)", "de": "Entladeleistung (W)" }, "min": 0, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 2500", "de": "z.B. 2500" } },
+          { "type": "number", "name": "duration", "title": { "en": "Duration (minutes)", "de": "Dauer (Minuten)" }, "min": 1, "max": 1440, "step": 1, "placeholder": { "en": "e.g. 60", "de": "z.B. 60" } }
+        ]
+      },
+      {
+        "id": "openapi_stop_force_charge_discharge",
+        "title": { "en": "Stop force charge/discharge (OpenAPI)", "de": "Zwangsladen/Entladen stoppen (OpenAPI)" },
+        "hint": { "en": "Stops the current force charge/discharge task via the FusionSolar cloud API. The battery returns to its normal working mode.", "de": "Stoppt den aktuellen Zwangsladen/Entladen-Task über die FusionSolar Cloud-API. Die Batterie kehrt in den normalen Betriebsmodus zurück." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" }
+        ]
+      },
+      {
+        "id": "openapi_set_max_charge_power",
+        "title": { "en": "Set max charge power (OpenAPI)", "de": "Maximale Ladeleistung setzen (OpenAPI)" },
+        "titleFormatted": { "en": "Set max charge power to [[power]] W", "de": "Maximale Ladeleistung auf [[power]] W setzen" },
+        "hint": { "en": "Sets the maximum battery charge power via the FusionSolar cloud API.", "de": "Setzt die maximale Batterieladeleistung über die FusionSolar Cloud-API." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Power (W)", "de": "Leistung (W)" }, "min": 200, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 5000", "de": "z.B. 5000" } }
+        ]
+      },
+      {
+        "id": "openapi_set_max_discharge_power",
+        "title": { "en": "Set max discharge power (OpenAPI)", "de": "Maximale Entladeleistung setzen (OpenAPI)" },
+        "titleFormatted": { "en": "Set max discharge power to [[power]] W", "de": "Maximale Entladeleistung auf [[power]] W setzen" },
+        "hint": { "en": "Sets the maximum battery discharge power via the FusionSolar cloud API.", "de": "Setzt die maximale Batterieentladeleistung über die FusionSolar Cloud-API." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Power (W)", "de": "Leistung (W)" }, "min": 200, "max": 100000, "step": 100, "placeholder": { "en": "e.g. 5000", "de": "z.B. 5000" } }
+        ]
+      },
+      {
+        "id": "openapi_set_end_of_charge_soc",
+        "title": { "en": "Set end-of-charge SoC (OpenAPI)", "de": "Maximalen Ladezustand setzen (OpenAPI)" },
+        "titleFormatted": { "en": "Set end-of-charge SoC to [[soc]] %", "de": "Maximalen Ladezustand auf [[soc]] % setzen" },
+        "hint": { "en": "Sets the SoC at which charging stops via the FusionSolar cloud API. Range: 90–100%.", "de": "Setzt den Ladezustand, bei dem das Laden stoppt, über die FusionSolar Cloud-API. Bereich: 90–100%." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "soc", "title": { "en": "SoC (%)", "de": "Ladezustand (%)" }, "min": 90, "max": 100, "step": 1, "placeholder": { "en": "e.g. 100", "de": "z.B. 100" } }
+        ]
+      },
+      {
+        "id": "openapi_set_end_of_discharge_soc",
+        "title": { "en": "Set end-of-discharge SoC (OpenAPI)", "de": "Minimalen Entladezustand setzen (OpenAPI)" },
+        "titleFormatted": { "en": "Set end-of-discharge SoC to [[soc]] %", "de": "Minimalen Entladezustand auf [[soc]] % setzen" },
+        "hint": { "en": "Sets the SoC at which discharging stops via the FusionSolar cloud API. Range: 0–20%.", "de": "Setzt den Ladezustand, bei dem das Entladen stoppt, über die FusionSolar Cloud-API. Bereich: 0–20%." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=luna2000_openapi_fusionsolar" },
+          { "type": "number", "name": "soc", "title": { "en": "SoC (%)", "de": "Ladezustand (%)" }, "min": 0, "max": 20, "step": 1, "placeholder": { "en": "e.g. 10", "de": "z.B. 10" } }
+        ]
+      },
+      {
+        "id": "openapi_set_active_power_unlimited",
+        "title": { "en": "Set active power to unlimited (OpenAPI)", "de": "Wirkleistung auf unbegrenzt setzen (OpenAPI)" },
+        "hint": { "en": "Removes any feed-in power limit via the FusionSolar cloud API. The inverter can connect to the grid at rated power.", "de": "Hebt die Einspeiseleistungsbegrenzung über die FusionSolar Cloud-API auf. Der Wechselrichter kann mit Nennleistung einspeisen." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=sun2000_openapi_fusionsolar" }
+        ]
+      },
+      {
+        "id": "openapi_set_max_feed_in_power",
+        "title": { "en": "Set max feed-in power (OpenAPI)", "de": "Maximale Einspeiseleistung setzen (OpenAPI)" },
+        "titleFormatted": { "en": "Set max feed-in power to [[power]] W", "de": "Maximale Einspeiseleistung auf [[power]] W setzen" },
+        "hint": { "en": "Sets the maximum power fed into the grid via the FusionSolar cloud API. Set to 0 to block all export.", "de": "Setzt die maximale Einspeiseleistung über die FusionSolar Cloud-API. Auf 0 setzen um die Einspeisung zu blockieren." },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=sun2000_openapi_fusionsolar" },
+          { "type": "number", "name": "power", "title": { "en": "Power (W)", "de": "Leistung (W)" }, "min": 0, "max": 5000000, "step": 100, "placeholder": { "en": "e.g. 5000", "de": "z.B. 5000" } }
+        ]
       }
     ],
     "conditions": [
@@ -5325,7 +5809,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ]
       },
@@ -5343,7 +5827,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           }
         ]
       },
@@ -5365,7 +5849,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           },
           {
             "type": "number",
@@ -5402,7 +5886,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus||driver_id=luna2000_openapi_fusionsolar||driver_id=isitepower_battery_openapi_fusionsolar"
           },
           {
             "type": "number",

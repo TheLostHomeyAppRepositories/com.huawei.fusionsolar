@@ -5,10 +5,11 @@ const { getDevice, cap } = require('../../lib/widget-data');
 module.exports = {
   async getData({ homey }) {
 
-    // Try luna2000_modbus first, fall back to luna2000_emma_modbus
+    // Try luna2000_modbus → luna2000_emma_modbus → isitepower_battery
     const luna     = getDevice(homey, 'luna2000_modbus');
     const lunaEmma = getDevice(homey, 'luna2000_emma_modbus');
-    const device   = luna || lunaEmma;
+    const ispBatt  = getDevice(homey, 'isitepower_battery_openapi_fusionsolar');
+    const device   = luna || lunaEmma || ispBatt;
 
     const soc                = cap(device, 'measure_battery', null);
     const powerW             = cap(device, 'measure_power', null);
@@ -18,7 +19,8 @@ module.exports = {
                             ?? cap(lunaEmma, 'meter_power.today_batt_output', null);
 
     // Status: prefer luna2000_battery_status, derive from power if not available
-    let status = cap(luna, 'luna2000_battery_status', null);
+    let status = cap(luna, 'luna2000_battery_status', null)
+              ?? cap(ispBatt, 'openapi_battery_status', null);
     if (status === null && powerW !== null) {
       if (powerW > 50)       status = 'charging';
       else if (powerW < -50) status = 'discharging';

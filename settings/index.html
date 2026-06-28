@@ -448,9 +448,10 @@
   </div>
   <!-- Tab bar -->
   <div class="tab-bar">
-    <button class="tab active" id="tab-btn-tool" onclick="showTab('tool')">Device Tester</button>
-    <button class="tab" id="tab-btn-cap" onclick="showTab('cap')">Capabilities</button>
-    <button class="tab" id="tab-btn-registers" onclick="showTab('registers')">Modbus Registers</button>
+    <button class="tab active" id="tab-btn-tool" onclick="showTab('tool')">Tester</button>
+    <button class="tab" id="tab-btn-cap" onclick="showTab('cap')">Values</button>
+    <button class="tab" id="tab-btn-registers" onclick="showTab('registers')">Registers</button>
+    <button class="tab" id="tab-btn-openapi" onclick="showTab('openapi')">OpenAPI</button>
   </div>
 
   <!-- ── Tab: Capabilities ── -->
@@ -473,6 +474,33 @@
     </div>
     <div id="reg-container">
       <div class="state-msg"><span class="spinner"></span>Loading devices…</div>
+    </div>
+  </div>
+
+  <!-- ── Tab: OpenAPI Debugger ── -->
+  <div id="tab-openapi" style="display:none">
+    <div class="tool-card">
+      <div class="tool-card-title">OpenAPI Credentials</div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:420px">
+        <label style="font-size:11px;font-weight:600;color:#3a3a3c">Server URL</label>
+        <input id="oa-url" type="text" value="https://eu5.fusionsolar.huawei.com"
+          style="padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+        <label style="font-size:11px;font-weight:600;color:#3a3a3c">Username</label>
+        <input id="oa-user" type="text" placeholder="Northbound API username"
+          style="padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+        <label style="font-size:11px;font-weight:600;color:#3a3a3c">System Code</label>
+        <input id="oa-code" type="password" placeholder="System code (password)"
+          style="padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+        <button class="btn-primary" id="oa-fetch-btn" onclick="fetchOpenApi()">Fetch All</button>
+        <button class="btn-secondary" id="oa-prefill-btn" onclick="prefillOpenApi()">Pre-fill from device</button>
+        <span id="oa-status" style="font-size:11px;color:#6e6e73"></span>
+      </div>
+    </div>
+    <div id="oa-results"></div>
+    <div id="oa-export-bar" style="display:none;margin-top:10px;display:none">
+      <button class="btn-secondary" onclick="exportOpenApi()">Copy full JSON</button>
     </div>
   </div>
 
@@ -873,7 +901,7 @@
     let _devicesLoaded = false;
 
     function showTab(name) {
-      ['tool', 'cap', 'registers'].forEach(t => {
+      ['tool', 'cap', 'registers', 'openapi'].forEach(t => {
         document.getElementById(`tab-${t}`).style.display     = t === name ? '' : 'none';
         document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
       });
@@ -882,6 +910,166 @@
         _devicesLoaded = true;
         loadDevices();
       }
+    }
+
+    // ── OpenAPI Debugger ──────────────────────────────────────────────────────
+
+    let _oaResult = null;
+
+    const DEV_TYPE_NAMES = {
+      1: 'String Inverter', 2: 'SmartLogger', 8: 'Transformer', 10: 'EMI',
+      13: 'Protocol Converter', 16: 'General Device', 17: 'Grid Meter',
+      22: 'PID', 37: 'Pinnet Data Logger', 38: 'Residential Inverter',
+      39: 'Battery (LUNA2000)', 40: 'Backup Box', 41: 'ESS (C&I/Utility)',
+      45: 'PLC', 46: 'Optimizer', 47: 'Power Sensor', 62: 'Dongle',
+      63: 'Distributed SmartLogger', 70: 'Safety Box',
+      60001: 'Mains', 60003: 'Genset', 60010: 'AC Output Distribution',
+      60014: 'Lithium Battery Rack', 60043: 'SSU Group', 60044: 'SSU',
+      60092: 'Power Converter', 23070: 'SmartAssistant',
+    };
+
+    function prefillOpenApi() {
+      const status = document.getElementById('oa-status');
+      status.innerHTML = '<span class="spinner"></span>Loading…';
+      _H.api('GET', '/debug/openapi-credentials', null, (err, res) => {
+        if (err || !res) {
+          status.textContent = 'No OpenAPI devices found.';
+          status.style.color = '#c0392b';
+          return;
+        }
+        if (res.baseUrl) document.getElementById('oa-url').value = res.baseUrl;
+        if (res.username) document.getElementById('oa-user').value = res.username;
+        if (res.systemCode) document.getElementById('oa-code').value = res.systemCode;
+        status.textContent = res.username ? 'Pre-filled from existing device.' : 'No credentials found on devices.';
+        status.style.color = res.username ? '#1a7a3a' : '#6e6e73';
+      });
+    }
+
+    function fetchOpenApi() {
+      const baseUrl    = document.getElementById('oa-url').value.trim().replace(/\/$/, '');
+      const username   = document.getElementById('oa-user').value.trim();
+      const systemCode = document.getElementById('oa-code').value.trim();
+
+      if (!username || !systemCode) {
+        document.getElementById('oa-status').textContent = 'Please enter username and system code.';
+        document.getElementById('oa-status').style.color = '#c0392b';
+        return;
+      }
+
+      const btn    = document.getElementById('oa-fetch-btn');
+      const status = document.getElementById('oa-status');
+      const results = document.getElementById('oa-results');
+
+      btn.disabled     = true;
+      status.innerHTML = '<span class="spinner"></span>Fetching… this may take a minute.';
+      status.style.color = '#6e6e73';
+      results.innerHTML  = '';
+
+      _H.api('POST', '/debug/openapi', { baseUrl, username, systemCode }, (err, res) => {
+        btn.disabled = false;
+
+        if (err) {
+          status.textContent = 'Request failed: ' + err.message;
+          status.style.color = '#c0392b';
+          return;
+        }
+
+        if (res.error) {
+          status.textContent = 'API error: ' + res.error;
+          status.style.color = '#c0392b';
+          return;
+        }
+
+        _oaResult = res;
+        status.textContent = 'Done — ' + (res.stationDetails || []).length + ' station(s) fetched.';
+        status.style.color = '#1a7a3a';
+        document.getElementById('oa-export-bar').style.display = '';
+        renderOpenApiResults(res);
+      });
+    }
+
+    function renderOpenApiResults(res) {
+      const el = document.getElementById('oa-results');
+      let html = '';
+
+      // Steps log
+      html += '<div class="tool-card" style="margin-top:14px">';
+      html += '<div class="tool-card-title">API Call Log</div>';
+      html += '<table><thead><tr><th>Step</th><th>Status</th><th>Detail</th></tr></thead><tbody>';
+      for (const s of (res.steps || [])) {
+        const icon = s.ok ? '<span style="color:#1a7a3a">✓</span>' : '<span style="color:#c0392b">✗</span>';
+        html += '<tr><td class="key-cell">' + escHtml(s.step) + '</td><td>' + icon + '</td><td style="font-size:11px;color:#3a3a3c;word-break:break-word">' + escHtml(String(s.data ?? '')) + '</td></tr>';
+      }
+      html += '</tbody></table></div>';
+
+      // Station details
+      for (const station of (res.stationDetails || [])) {
+        html += '<div class="tool-card" style="margin-top:14px">';
+        html += '<div class="tool-card-title">Station: ' + escHtml(station.stationName) + ' <span class="driver-label">' + escHtml(station.stationCode) + '</span></div>';
+
+        // Station KPI
+        if (station.stationKpi) {
+          html += '<div class="section-title">Station KPI</div>';
+          html += '<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+          for (const [k, v] of Object.entries(station.stationKpi)) {
+            if (v !== null && v !== undefined) html += '<tr><td class="key-cell">' + escHtml(k) + '</td><td>' + fmtVal(v) + '</td></tr>';
+          }
+          html += '</tbody></table>';
+        }
+
+        // Device list
+        html += '<div class="section-title">Devices (' + (station.devices || []).length + ')</div>';
+        html += '<table><thead><tr><th>ID</th><th>Name</th><th>Type</th><th>ESN</th></tr></thead><tbody>';
+        for (const d of (station.devices || [])) {
+          const typeName = DEV_TYPE_NAMES[d.devTypeId] || ('Type ' + d.devTypeId);
+          html += '<tr><td class="addr-cell">' + escHtml(String(d.id)) + '</td>'
+            + '<td>' + escHtml(d.devName || '') + '</td>'
+            + '<td><span class="badge badge-online" style="background:#e8f0fe;color:#1a56db">' + escHtml(typeName) + ' (' + d.devTypeId + ')</span></td>'
+            + '<td class="addr-cell">' + escHtml(d.esnCode || '') + '</td></tr>';
+        }
+        html += '</tbody></table>';
+
+        // KPI per type
+        for (const [typeId, kpiData] of Object.entries(station.kpiByType || {})) {
+          const typeName = DEV_TYPE_NAMES[typeId] || ('Type ' + typeId);
+          html += '<div class="section-title" style="margin-top:16px">' + escHtml(typeName) + ' (devTypeId=' + typeId + ') — Real-time KPI</div>';
+
+          if (kpiData.error) {
+            html += '<div class="reg-error">' + escHtml(kpiData.error) + '</div>';
+            continue;
+          }
+
+          const devices = Array.isArray(kpiData) ? kpiData : [];
+          for (const dev of devices) {
+            const map = dev.dataItemMap || {};
+            const keys = Object.keys(map).sort();
+            if (dev.devId) html += '<div style="font-size:11px;color:#6e6e73;margin-bottom:4px">Device ID: ' + escHtml(String(dev.devId)) + '</div>';
+            html += '<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+            for (const k of keys) {
+              html += '<tr><td class="key-cell">' + escHtml(k) + '</td><td>' + fmtVal(map[k]) + '</td></tr>';
+            }
+            html += '</tbody></table>';
+          }
+          if (!devices.length) html += '<div style="font-size:11px;color:#9e9ea5;padding:4px 0">No data returned</div>';
+        }
+
+        html += '</div>';
+      }
+
+      el.innerHTML = html;
+    }
+
+    function exportOpenApi() {
+      if (!_oaResult) return;
+      const text = JSON.stringify(_oaResult, null, 2);
+      document.getElementById('export-textarea').value = text;
+      document.getElementById('copy-hint').textContent = '';
+      document.getElementById('export-modal').classList.add('open');
+      setTimeout(() => {
+        const ta = document.getElementById('export-textarea');
+        ta.focus();
+        ta.select();
+      }, 50);
     }
 
     // ── Device Tester ─────────────────────────────────────────────────────────
@@ -1337,13 +1525,17 @@
       if (statusEl) statusEl.textContent = '✓ Done';
     }
 
-    // ── Promisified Homey API call ─────────────────────────────────────────────
+    // ── Promisified Homey API calls ────────────────────────────────────────────
     function apiPost(path, body) {
       return new Promise((resolve, reject) => {
         _H.api('POST', path, body, (err, data) => {
           if (err) reject(err); else resolve(data);
         });
       });
+    }
+
+    function apiPostLong(path, body, timeoutMs) {
+      return apiPost(path, body);
     }
 
     // ── Entry point ────────────────────────────────────────────────────────────

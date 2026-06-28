@@ -4,6 +4,14 @@ const net = require('net');
 const os  = require('os');
 
 const {
+  login:               openapiLogin,
+  getStationList:      openapiGetStationList,
+  getStationRealKpiRaw: openapiGetStationRealKpiRaw,
+  getDevList:          openapiGetDevList,
+  getDevRealKpi:       openapiGetDevRealKpi,
+} = require('./lib/openapi-client');
+
+const {
   REGISTERS,
   POWER_METER_REGISTERS,
   BATTERY_REGISTERS,
@@ -604,6 +612,111 @@ module.exports = {
     } catch (err) {
       return { error: `Confirm failed: ${err.message}` };
     }
+  },
+
+  // ─── OpenAPI Debugger ──────────────────────────────────────────────────────
+
+  async getOpenapiCredentials({ homey }) {
+    const OPENAPI_DRIVER_IDS = [
+      'sun2000_openapi_fusionsolar',
+      'luna2000_openapi_fusionsolar',
+      'powermeter_openapi_fusionsolar',
+    ];
+    for (const driverId of OPENAPI_DRIVER_IDS) {
+      let driver;
+      try { driver = homey.drivers.getDriver(driverId); } catch { continue; }
+      for (const device of driver.getDevices()) {
+        const s = device.getSettings();
+        if (s.username && s.system_code) {
+          return {
+            baseUrl:     s.base_url || 'https://eu5.fusionsolar.huawei.com',
+            username:    s.username,
+            systemCode:  s.system_code,
+            stationCode: s.station_code || '',
+          };
+        }
+      }
+    }
+    return { baseUrl: 'https://eu5.fusionsolar.huawei.com', username: '', systemCode: '', stationCode: '' };
+  },
+
+  async fetchOpenapiDebug({ body }) {
+    const { baseUrl, username, systemCode } = body || {};
+    if (!baseUrl || !username || !systemCode) {
+      return { error: 'Missing baseUrl, username or systemCode' };
+    }
+
+    const result = { timestamp: new Date().toISOString(), baseUrl, steps: [] };
+
+    try {
+      const token = await openapiLogin(baseUrl, username, systemCode);
+      result.steps.push({ step: 'login', ok: true });
+
+      const { stations } = await openapiGetStationList(baseUrl, token);
+      result.steps.push({ step: 'getStationList', ok: true, data: stations });
+      result.stations = stations;
+
+      if (!stations.length) {
+        result.steps.push({ step: 'note', ok: true, data: 'No stations found — cannot fetch devices.' });
+        return result;
+      }
+
+      result.stationDetails = [];
+
+      for (const station of stations) {
+        const code = station.plantCode ?? station.stationCode;
+        if (!code) continue;
+
+        const stationResult = { stationCode: code, stationName: station.plantName ?? station.stationName ?? code };
+
+        try {
+          const { raw } = await openapiGetStationRealKpiRaw(baseUrl, token, code);
+          stationResult.stationKpi = raw;
+          result.steps.push({ step: `getStationRealKpi(${code})`, ok: true, data: raw ? 'data received' : 'no data' });
+        } catch (err) {
+          stationResult.stationKpi = null;
+          result.steps.push({ step: `getStationRealKpi(${code})`, ok: false, data: err.message });
+        }
+
+        const { devices } = await openapiGetDevList(baseUrl, token, code);
+        stationResult.devices = devices;
+        result.steps.push({ step: `getDevList(${code})`, ok: true, data: `${devices.length} device(s)` });
+
+        const byType = {};
+        for (const d of devices) {
+          const t = Number(d.devTypeId);
+          if (!byType[t]) byType[t] = [];
+          byType[t].push(String(d.id));
+        }
+
+        stationResult.kpiByType = {};
+        const kpiEntries = Object.entries(byType);
+        const kpiResults = await Promise.allSettled(
+          kpiEntries.map(([typeId, ids]) =>
+            openapiGetDevRealKpi(baseUrl, token, ids, Number(typeId))
+              .then(({ devices: kpiDevices }) => ({ typeId, kpiDevices, ok: true }))
+              .catch((err) => ({ typeId, error: err.message, ok: false })),
+          ),
+        );
+        for (const settled of kpiResults) {
+          const r = settled.status === 'fulfilled' ? settled.value : { typeId: '?', ok: false, error: settled.reason?.message };
+          if (r.ok) {
+            stationResult.kpiByType[r.typeId] = r.kpiDevices;
+            result.steps.push({ step: `getDevRealKpi(type=${r.typeId})`, ok: true, data: `${r.kpiDevices.length} device(s)` });
+          } else {
+            stationResult.kpiByType[r.typeId] = { error: r.error };
+            result.steps.push({ step: `getDevRealKpi(type=${r.typeId})`, ok: false, data: r.error });
+          }
+        }
+
+        result.stationDetails.push(stationResult);
+      }
+    } catch (err) {
+      result.steps.push({ step: 'error', ok: false, data: err.message });
+      result.error = err.message;
+    }
+
+    return result;
   },
 
 };

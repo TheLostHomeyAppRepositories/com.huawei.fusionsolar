@@ -23,6 +23,8 @@ const EXTRA_CAPABILITIES = [
   'measure_power.phase1',     // Active power Phase A (W)
   'measure_power.phase2',     // Active power Phase B (W)
   'measure_power.phase3',     // Active power Phase C (W)
+  'measure_frequency',        // Grid frequency (Hz)
+  'powermeter_state_string',  // "Export 1234 W" / "Import 1234 W"
 ];
 
 // Removed capabilities — stripped from already-paired devices on init
@@ -30,7 +32,6 @@ const DEPRECATED_CAPABILITIES = [
   'openapi_meter_status',
   'measure_reactive_power',
   'measure_power_factor',
-  'measure_frequency',
   'openapi_meter_run_state',
   'measure_voltage.ab_u',
   'measure_voltage.bc_u',
@@ -86,6 +87,11 @@ class FusionSolarMeterDevice extends Device {
       // active_power: positive = import, negative = export
       const activePower = sumW(psMaps, 'active_power');
       await this._set('measure_power', activePower);
+      if (activePower !== null) {
+        const gridWatts = Math.round(Math.abs(activePower));
+        const label = activePower < 0 ? 'Export' : 'Import';
+        await this._set('powermeter_state_string', gridWatts === 0 ? '0 W' : `${gridWatts} W ${label}`);
+      }
       this._fireExportImportTriggers(activePower);
       await this._set('meter_power',            sumKwh(psMaps, 'reverse_active_cap'));
       await this._set('meter_power.exported',   sumKwh(psMaps, 'active_cap'));
@@ -104,6 +110,7 @@ class FusionSolarMeterDevice extends Device {
       await this._set('measure_power.phase1',    sumW(psMaps, 'active_power_a'));
       await this._set('measure_power.phase2',    sumW(psMaps, 'active_power_b'));
       await this._set('measure_power.phase3',    sumW(psMaps, 'active_power_c'));
+      await this._set('measure_frequency',       avg(psMaps, 'grid_frequency'));
 
       return;
     }
@@ -113,6 +120,11 @@ class FusionSolarMeterDevice extends Device {
     if (meterMaps.length) {
       const activePower = sumW(meterMaps, 'active_power');
       await this._set('measure_power', activePower);
+      if (activePower !== null) {
+        const gridWatts = Math.round(Math.abs(activePower));
+        const label = activePower < 0 ? 'Export' : 'Import';
+        await this._set('powermeter_state_string', gridWatts === 0 ? '0 W' : `${gridWatts} W ${label}`);
+      }
       this._fireExportImportTriggers(activePower);
     }
   }
