@@ -1,4 +1,19 @@
 {
+  "1.1.62": {
+    "en": "iSitePower-M Solar driver now uses the cumulative total energy from the Huawei Station KPI instead of local accumulation — Homey Energy dashboard shows the real lifetime yield that never resets on app reinstall.",
+    "de": "iSitePower-M Solar-Treiber nutzt jetzt die kumulative Gesamtenergie aus der Huawei Station-KPI statt lokaler Akkumulation — Homey Energy Dashboard zeigt den echten Lebenszeit-Ertrag der bei App-Neuinstallation nicht zurückgesetzt wird.",
+    "nl": "iSitePower-M Solar-stuurprogramma gebruikt nu de cumulatieve totale energie uit de Huawei Station-KPI in plaats van lokale accumulatie — Homey Energy-dashboard toont de echte levensduuropbrengst die niet wordt gereset bij herinstallatie van de app."
+  },
+  "1.1.61": {
+    "en": "Fixed iSitePower-M battery status display when multiple battery clusters have different states (e.g. one charging, one discharging) — now shows the first cluster's state instead of an invalid averaged value.",
+    "de": "iSitePower-M Batteriestatus-Anzeige korrigiert wenn mehrere Batterie-Cluster unterschiedliche Zustände haben (z.B. einer lädt, einer entlädt) — zeigt jetzt den Zustand des ersten Clusters statt eines ungültigen Durchschnittswerts.",
+    "nl": "iSitePower-M batterijstatus-weergave gecorrigeerd wanneer meerdere batterijclusters verschillende statussen hebben (bijv. één laadt, één ontlaadt) — toont nu de status van het eerste cluster in plaats van een ongeldige gemiddelde waarde."
+  },
+  "1.1.60": {
+    "en": "Removed OpenAPI control features (battery working mode, force charge/discharge, active power control) — these APIs require OAuth Connect mode which is not supported by the standard Northbound API authentication. Battery and inverter control remains fully available via the Modbus drivers. Cleaned up deprecated capabilities from existing installs.",
+    "de": "OpenAPI-Steuerungsfunktionen entfernt (Batterie-Betriebsmodus, Zwangsladen/-entladen, Wirkleistungssteuerung) — diese APIs erfordern den OAuth-Connect-Modus, der von der Standard-Northbound-API-Authentifizierung nicht unterstützt wird. Batterie- und Wechselrichtersteuerung bleibt über die Modbus-Treiber vollständig verfügbar. Veraltete Capabilities aus bestehenden Installationen bereinigt.",
+    "nl": "OpenAPI-besturingsfuncties verwijderd (batterij werkingsmodus, geforceerd laden/ontladen, werkzaam-vermogenregeling) — deze API's vereisen OAuth Connect-modus die niet wordt ondersteund door de standaard Northbound API-authenticatie. Batterij- en omvormerbesturing blijft volledig beschikbaar via de Modbus-stuurprogramma's. Verouderde capabilities uit bestaande installaties opgeschoond."
+  },
   "1.1.59": {
     "en": "iSitePower-M Battery flow cards: SoC changed, charging state changed, charging/discharging started triggers and charging/discharging/SoC above/below conditions now work with iSitePower-M Battery devices — shared with all other battery drivers. Added capability icons for remaining backup time, total capacity, and discharge cycles.",
     "de": "iSitePower-M Batterie Flow-Karten: SoC geändert, Ladestatus geändert, Laden/Entladen gestartet Trigger und Laden/Entladen/SoC über/unter Bedingungen funktionieren jetzt mit iSitePower-M Batterie-Geräten — geteilt mit allen anderen Batterie-Treibern. Capability-Icons für Backup-Restzeit, Gesamtkapazität und Entladezyklen ergänzt.",

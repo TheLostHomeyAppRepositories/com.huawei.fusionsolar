@@ -24,7 +24,6 @@ const EXTRA_CAPABILITIES = [
   'meter_power.charged',            // total lifetime charged (kWh)
   'meter_power.discharged',         // total lifetime discharged (kWh)
   'battery_state_string',           // human-readable: "1234 W 🔺 73%"
-  'openapi_working_mode_control',   // setable picker: working mode
 ];
 
 // Removed capabilities — stripped from already-paired devices on init
@@ -32,6 +31,7 @@ const DEPRECATED_CAPABILITIES = [
   'measure_voltage.busbar',
   'meter_power.batt_rated',
   'openapi_battery_run_state',
+  'openapi_working_mode_control',
 ];
 
 const BATTERY_STATUS_MAP = {
@@ -65,11 +65,8 @@ class FusionSolarBatteryDevice extends Device {
     this._prevSoc            = null;
     this._prevChargingState  = null;
     this._prevBatteryMode    = null;
-    this._updatingFromApi    = false;
     await this._ensureCapabilities();
     this._registerConditionListeners();
-    this._registerActionListeners();
-    this._registerCapabilityListeners();
     this.homey.app.getCoordinator().register(this);
   }
 
@@ -96,109 +93,6 @@ class FusionSolarBatteryDevice extends Device {
       .registerRunListener((args) => (args.device.getCapabilityValue('measure_battery') ?? 0) > args.soc);
     this.homey.flow.getConditionCard('luna2000_soc_below')
       .registerRunListener((args) => (args.device.getCapabilityValue('measure_battery') ?? 0) < args.soc);
-  }
-
-  _registerActionListeners() {
-    const coord = () => this.homey.app.getCoordinator();
-
-    // ─── Working Mode ─────────────────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_set_working_mode')
-      .registerRunListener(async ({ mode }) => {
-        this.log(`OpenAPI: Set working mode to ${mode}`);
-        await coord().sendBatteryModeTask(this, mode);
-      });
-
-    // ─── Force Charge until SoC ───────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_start_force_charge')
-      .registerRunListener(async ({ power, target_soc }) => {
-        const powerW = Math.round(Math.max(0, power));
-        this.log(`OpenAPI: Force charge power=${powerW}W target SoC=${target_soc}%`);
-        await coord().sendChargeDischargeTask(this, 1, {
-          controlType: 1, targetSOC: target_soc, powerDispatch: powerW,
-        });
-      });
-
-    // ─── Force Discharge until SoC ────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_start_force_discharge')
-      .registerRunListener(async ({ power, target_soc }) => {
-        const powerW = Math.round(Math.max(0, power));
-        this.log(`OpenAPI: Force discharge power=${powerW}W stop at SoC=${target_soc}%`);
-        await coord().sendChargeDischargeTask(this, 2, {
-          controlType: 1, targetSOC: target_soc, powerDispatch: -powerW,
-        });
-      });
-
-    // ─── Force Charge for duration ────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_start_force_charge_duration')
-      .registerRunListener(async ({ power, duration }) => {
-        const powerW = Math.round(Math.max(0, power));
-        this.log(`OpenAPI: Force charge power=${powerW}W for ${duration} min`);
-        await coord().sendChargeDischargeTask(this, 1, {
-          controlType: 2, dispatchTime: Math.round(duration), powerDispatch: powerW,
-        });
-      });
-
-    // ─── Force Discharge for duration ─────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_start_force_discharge_duration')
-      .registerRunListener(async ({ power, duration }) => {
-        const powerW = Math.round(Math.max(0, power));
-        this.log(`OpenAPI: Force discharge power=${powerW}W for ${duration} min`);
-        await coord().sendChargeDischargeTask(this, 2, {
-          controlType: 2, dispatchTime: Math.round(duration), powerDispatch: -powerW,
-        });
-      });
-
-    // ─── Stop Force Charge/Discharge ──────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_stop_force_charge_discharge')
-      .registerRunListener(async () => {
-        this.log('OpenAPI: Stop force charge/discharge');
-        await coord().sendChargeDischargeTask(this, 0);
-      });
-
-    // ─── Third-party Dispatch ─────────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_dispatch_battery_power')
-      .registerRunListener(async ({ power }) => {
-        const w = Math.round(power);
-        this.log(`OpenAPI: Dispatch battery power to ${w}W`);
-        await coord().sendBatteryDispatchTask(this, w);
-      });
-
-    // ─── Battery Configuration ────────────────────────────────────────────────
-    this.homey.flow.getActionCard('openapi_set_max_charge_power')
-      .registerRunListener(async ({ power }) => {
-        const w = Math.round(Math.max(200, power));
-        this.log(`OpenAPI: Set max charge power to ${w}W`);
-        await coord().sendBatteryConfigTask(this, { maximumChargePower: w });
-      });
-
-    this.homey.flow.getActionCard('openapi_set_max_discharge_power')
-      .registerRunListener(async ({ power }) => {
-        const w = Math.round(Math.max(200, power));
-        this.log(`OpenAPI: Set max discharge power to ${w}W`);
-        await coord().sendBatteryConfigTask(this, { maximumDischargePower: w });
-      });
-
-    this.homey.flow.getActionCard('openapi_set_end_of_charge_soc')
-      .registerRunListener(async ({ soc }) => {
-        const v = Math.max(90, Math.min(100, soc));
-        this.log(`OpenAPI: Set end-of-charge SoC to ${v}%`);
-        await coord().sendBatteryConfigTask(this, { endOfChargeSoc: v });
-      });
-
-    this.homey.flow.getActionCard('openapi_set_end_of_discharge_soc')
-      .registerRunListener(async ({ soc }) => {
-        const v = Math.max(0, Math.min(20, soc));
-        this.log(`OpenAPI: Set end-of-discharge SoC to ${v}%`);
-        await coord().sendBatteryConfigTask(this, { endOfDischargeSoc: v });
-      });
-  }
-
-  _registerCapabilityListeners() {
-    this.registerCapabilityListener('openapi_working_mode_control', async (value) => {
-      if (this._updatingFromApi) return;
-      this.log(`UI: Set working mode to ${value}`);
-      await this.homey.app.getCoordinator().sendBatteryModeTask(this, value);
-    });
   }
 
   // ─── Coordinator interface ─────────────────────────────────────────────────
@@ -251,13 +145,6 @@ class FusionSolarBatteryDevice extends Device {
     const battModeVal = num(maps[0].ch_discharge_model);
     if (battModeVal !== null) {
       await this._set('openapi_battery_mode', BATTERY_MODE_MAP[battModeVal] ?? `Mode ${battModeVal}`);
-      const MODE_TO_ENUM = { 4: 'maximumSelfConsumption', 2: 'TOU', 6: 'TOU', 9: 'TOU', 12: 'thirdPartyDispatch' };
-      const enumVal = MODE_TO_ENUM[battModeVal];
-      if (enumVal) {
-        this._updatingFromApi = true;
-        await this._set('openapi_working_mode_control', enumVal);
-        this._updatingFromApi = false;
-      }
     }
 
     const battStatusVal = num(maps[0].battery_status);

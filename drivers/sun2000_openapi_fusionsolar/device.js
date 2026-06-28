@@ -27,7 +27,6 @@ const EXTRA_CAPABILITIES = [
   'huawei_status',                   // inverter state string
   'measure_frequency',               // grid frequency (Hz)
   'openapi_inverter_efficiency',     // inverter efficiency (%)
-  'openapi_active_power_control',    // setable picker: unlimited / limited feed-in
 ];
 
 // Removed capabilities — stripped from already-paired devices on init
@@ -45,6 +44,7 @@ const DEPRECATED_CAPABILITIES = [
   'measure_current.a_i',
   'measure_current.b_i',
   'measure_current.c_i',
+  'openapi_active_power_control',
 ];
 
 // OpenAPI inverter_state values (different from Modbus register 32089!)
@@ -81,15 +81,9 @@ class FusionSolarInverterDevice extends Device {
 
   async onInit() {
     this.log(`Inverter device initialised: ${this.getName()}`);
-    this._powerHistory      = [];
-    this._updatingFromApi   = false;
+    this._powerHistory = [];
     await this._ensureCapabilities();
-    if (this.hasCapability('openapi_active_power_control') && this.getCapabilityValue('openapi_active_power_control') === null) {
-      await this.setCapabilityValue('openapi_active_power_control', '0').catch(() => {});
-    }
     this._registerPowerThresholdListeners();
-    this._registerActionListeners();
-    this._registerCapabilityListeners();
     this.homey.app.getCoordinator().register(this);
   }
 
@@ -106,37 +100,6 @@ class FusionSolarInverterDevice extends Device {
 
   async onUninit()  { this.homey.app.getCoordinator().unregister(this); }
   async onDeleted() { this.homey.app.getCoordinator().unregister(this); }
-
-  _registerCapabilityListeners() {
-    this.registerCapabilityListener('openapi_active_power_control', async (value) => {
-      if (this._updatingFromApi) return;
-      this.log(`UI: Set active power control to ${value}`);
-      await this.homey.app.getCoordinator().sendActivePowerTask(this, parseInt(value, 10));
-    });
-  }
-
-  _registerActionListeners() {
-    const coord = () => this.homey.app.getCoordinator();
-
-    this.homey.flow.getActionCard('openapi_set_active_power_unlimited')
-      .registerRunListener(async () => {
-        this.log('OpenAPI: Set active power control to unlimited');
-        await coord().sendActivePowerTask(this, 0);
-        this._updatingFromApi = true;
-        await this._set('openapi_active_power_control', '0');
-        this._updatingFromApi = false;
-      });
-
-    this.homey.flow.getActionCard('openapi_set_max_feed_in_power')
-      .registerRunListener(async ({ power }) => {
-        const kw = Math.round(power) / 1000;
-        this.log(`OpenAPI: Set max feed-in power to ${kw} kW`);
-        await coord().sendActivePowerTask(this, 6, { maxGridFeedInPower: kw });
-        this._updatingFromApi = true;
-        await this._set('openapi_active_power_control', '6');
-        this._updatingFromApi = false;
-      });
-  }
 
   // ─── Coordinator interface ─────────────────────────────────────────────────
 
