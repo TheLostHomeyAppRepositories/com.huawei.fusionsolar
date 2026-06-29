@@ -1,4 +1,9 @@
 {
+  "1.1.63": {
+    "en": "iSitePower-M Grid driver now appears in the Homey Energy dashboard as a cumulative energy meter — grid import is tracked and visible in the Energy overview.",
+    "de": "iSitePower-M Netz-Treiber erscheint jetzt im Homey Energy Dashboard als kumulativer Energiezähler — Netzbezug wird erfasst und ist in der Energieübersicht sichtbar.",
+    "nl": "iSitePower-M Net-stuurprogramma verschijnt nu in het Homey Energy-dashboard als cumulatieve energiemeter — netimport wordt bijgehouden en is zichtbaar in het energieoverzicht."
+  },
   "1.1.62": {
     "en": "iSitePower-M Solar driver now uses the cumulative total energy from the Huawei Station KPI instead of local accumulation — Homey Energy dashboard shows the real lifetime yield that never resets on app reinstall.",
     "de": "iSitePower-M Solar-Treiber nutzt jetzt die kumulative Gesamtenergie aus der Huawei Station-KPI statt lokaler Akkumulation — Homey Energy Dashboard zeigt den echten Lebenszeit-Ertrag der bei App-Neuinstallation nicht zurückgesetzt wird.",
