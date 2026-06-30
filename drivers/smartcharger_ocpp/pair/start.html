@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a1a1a; background: transparent; }
+    h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    p.subtitle { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; color: #1a1a1a; outline: none; transition: border-color 0.15s; background: #fff; }
+    input:focus { border-color: #CF0A2C; }
+    .hint { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.4; }
+    .info-box { background: #eef4fb; border: 1px solid #b8d4ef; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #1a4a7a; line-height: 1.7; margin-bottom: 20px; }
+    .info-box code { background: rgba(0,0,0,0.07); padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+    .status { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; line-height: 1.5; }
+    .status.error { background: #fdf0ee; border: 1px solid #f5c2ba; color: #8b1a0e; display: block; }
+    button.primary { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; background: #CF0A2C; color: #fff; transition: opacity 0.15s; }
+    button.primary:disabled { opacity: 0.45; cursor: default; }
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h2>Smart Charger (OCPP)</h2>
+  <p class="subtitle">Connect your Huawei SCharger via OCPP 1.6 to Homey.</p>
+
+  <div class="info-box">
+    <strong>Setup in FusionSolar App (as Installer):</strong><br>
+    1. Open FusionSolar → <em>Services</em> → <em>Device Commissioning</em><br>
+    2. Scan the QR code on the SCharger and connect via its WiFi hotspot<br>
+    3. Go to <em>Settings</em> → <em>Third-party management system</em> → <em>OCPP Settings</em><br>
+    4. Mode: <code>Insecure transmission with basic authentication</code><br>
+    5. Fill in the Comm. Parameters:<br>
+    &nbsp;&nbsp;• <strong>Domain:</strong> Homey's IP address (no ws://)<br>
+    &nbsp;&nbsp;• <strong>Port:</strong> <code>8887</code><br>
+    &nbsp;&nbsp;• <strong>Path:</strong> your Station ID (e.g. <code>EVB-P12345</code>)<br>
+    &nbsp;&nbsp;• <strong>Username / Password:</strong> optional — enter the same below if used<br>
+    6. Save and restart the charger if prompted
+  </div>
+
+  <div class="field">
+    <label>Device Name</label>
+    <input type="text" id="name" value="Smart Charger (OCPP)" />
+  </div>
+
+  <div class="field">
+    <label>Station ID</label>
+    <input type="text" id="station-id" placeholder="e.g. EVB-P12345" />
+    <p class="hint">The Station ID of your charger (e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">EVB-P12345</code>). Find it in the Huawei FusionSolar app or the OCPP settings of your wallbox. Must match exactly (case-sensitive).</p>
+  </div>
+
+  <div class="field">
+    <label>Username <span style="font-weight:400;color:#aaa">(optional)</span></label>
+    <input type="text" id="ocpp-username" placeholder="Leave empty if not required" autocomplete="off" />
+  </div>
+
+  <div class="field">
+    <label>Password <span style="font-weight:400;color:#aaa">(optional)</span></label>
+    <input type="password" id="ocpp-password" placeholder="Leave empty if not required" autocomplete="new-password" />
+    <p class="hint">Only needed if you configured authentication in the SCharger OCPP settings.</p>
+  </div>
+
+  <div class="status error" id="status" style="display:none;">
+    <span id="status-text"></span>
+  </div>
+
+  <button class="primary" id="btn" onclick="addDevice()">
+    <span id="btn-label">Add Device</span>
+  </button>
+
+  <script>
+    async function addDevice() {
+      const stationId = document.getElementById('station-id').value.trim();
+      const name      = document.getElementById('name').value.trim() || 'Smart Charger (OCPP)';
+      const username  = document.getElementById('ocpp-username').value.trim();
+      const password  = document.getElementById('ocpp-password').value;
+      const btn       = document.getElementById('btn');
+      const lbl       = document.getElementById('btn-label');
+
+      if (!stationId) {
+        showError('Please enter a Station ID.');
+        return;
+      }
+
+      btn.disabled = true;
+      lbl.innerHTML = '<span class="spinner"></span>Adding…';
+      document.getElementById('status').style.display = 'none';
+
+      try {
+        await Homey.emit('add', { stationId, name });
+
+        await Homey.createDevice({
+          name,
+          data: { id: `ocpp:${stationId}` },
+          settings: {
+            station_id:    stationId,
+            ocpp_port:     8887,
+            ocpp_username: username,
+            ocpp_password: password,
+          },
+        });
+
+        await Homey.done();
+
+      } catch (err) {
+        showError(err.message || 'Failed to add device.');
+        btn.disabled = false;
+        lbl.textContent = 'Add Device';
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('status');
+      el.style.display = 'block';
+      document.getElementById('status-text').textContent = '✗ ' + msg;
+    }
+  </script>
+</body>
+</html>

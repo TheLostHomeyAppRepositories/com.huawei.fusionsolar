@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.64",
+  "version": "1.1.69",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -229,6 +229,72 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
+      "insights": false
+    },
+    "ocpp_server_status": {
+      "type": "enum",
+      "title": {
+        "en": "OCPP Server Status",
+        "de": "OCPP Server Status",
+        "nl": "OCPP Server Status"
+      },
+      "values": [
+        { "id": "starting", "title": { "en": "Starting", "de": "Startet", "nl": "Starten" } },
+        { "id": "waiting",  "title": { "en": "Waiting for charger", "de": "Warte auf Charger", "nl": "Wacht op lader" } },
+        { "id": "connected","title": { "en": "Charger connected", "de": "Charger verbunden", "nl": "Lader verbonden" } },
+        { "id": "error",    "title": { "en": "Error", "de": "Fehler", "nl": "Fout" } }
+      ],
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/ocpp_server_status.svg",
+      "insights": false
+    },
+    "ocpp_last_message": {
+      "type": "string",
+      "title": {
+        "en": "Last OCPP Message",
+        "de": "Letzte OCPP Nachricht",
+        "nl": "Laatste OCPP bericht"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/ocpp_last_message.svg",
+      "insights": false
+    },
+    "vehicle_soc": {
+      "type": "number",
+      "title": {
+        "en": "Vehicle Battery (SoC)",
+        "de": "Fahrzeug-Akku (SoC)",
+        "nl": "Voertuigaccu (SoC)"
+      },
+      "units": "%",
+      "min": 0,
+      "max": 100,
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "icon": "/assets/capabilities/vehicle_soc.svg",
+      "insights": true
+    },
+    "target_current": {
+      "type": "number",
+      "title": {
+        "en": "Max Charging Current",
+        "de": "Maximaler Ladestrom",
+        "nl": "Maximale laadstroom"
+      },
+      "units": "A",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "decimals": 0,
+      "getable": true,
+      "setable": true,
+      "uiComponent": "slider",
       "insights": false
     },
     "optimizer_total_count": {
@@ -1124,6 +1190,161 @@
           "hint": {
             "en": "How often to read data from the charger.",
             "de": "Wie oft Daten vom Charger abgerufen werden."
+          }
+        }
+      ]
+    },
+    {
+      "id": "smartcharger_ocpp",
+      "name": {
+        "en": "Smart Charger (OCPP Test)",
+        "de": "Smart Charger (OCPP Test)",
+        "nl": "Smart Charger (OCPP Test)"
+      },
+      "class": "evcharger",
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "energy": {
+        "evCharger": true,
+        "meterPowerImportedCapability": "meter_power"
+      },
+      "capabilities": [
+        "onoff",
+        "target_current",
+        "measure_power",
+        "evcharger_charging_state",
+        "meter_power",
+        "vehicle_soc",
+        "ocpp_server_status",
+        "ocpp_last_message"
+      ],
+      "capabilitiesOptions": {
+        "onoff": {
+          "title": {
+            "en": "Start / Stop Charging",
+            "de": "Laden starten / stoppen",
+            "nl": "Laden starten / stoppen"
+          }
+        },
+        "target_current": {
+          "title": {
+            "en": "Max Charging Current",
+            "de": "Maximaler Ladestrom",
+            "nl": "Maximale laadstroom"
+          }
+        },
+        "vehicle_soc": {
+          "title": {
+            "en": "Vehicle Battery (SoC)",
+            "de": "Fahrzeug-Akku (SoC)",
+            "nl": "Voertuigaccu (SoC)"
+          }
+        },
+        "measure_power": {
+          "title": {
+            "en": "Charging Power",
+            "de": "Ladeleistung",
+            "nl": "Laadvermogen"
+          }
+        },
+        "meter_power": {
+          "title": {
+            "en": "Total Energy Charged",
+            "de": "Gesamtgeladene Energie",
+            "nl": "Totale geladen energie"
+          }
+        },
+        "ocpp_server_status": {
+          "title": {
+            "en": "OCPP Server Status",
+            "de": "OCPP Server Status",
+            "nl": "OCPP Server Status"
+          }
+        },
+        "ocpp_last_message": {
+          "title": {
+            "en": "Last OCPP Message",
+            "de": "Letzte OCPP Nachricht",
+            "nl": "Laatste OCPP bericht"
+          }
+        }
+      },
+      "images": {
+        "small":  "/drivers/smartcharger_ocpp/assets/images/small.png",
+        "large":  "/drivers/smartcharger_ocpp/assets/images/large.png",
+        "xlarge": "/drivers/smartcharger_ocpp/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
+      "settings": [
+        {
+          "id": "station_id",
+          "type": "text",
+          "label": {
+            "en": "Station ID",
+            "de": "Station ID",
+            "nl": "Station ID"
+          },
+          "value": "",
+          "hint": {
+            "en": "The OCPP Station ID configured on the charger. The charger must connect to ws://[Homey-IP]:8887/[station-id].",
+            "de": "Die am Charger konfigurierte OCPP Station-ID. Der Charger muss sich zu ws://[Homey-IP]:8887/[station-id] verbinden.",
+            "nl": "De OCPP Station ID geconfigureerd op de lader. De lader moet verbinding maken met ws://[Homey-IP]:8887/[station-id]."
+          },
+          "highlight": true
+        },
+        {
+          "id": "ocpp_port",
+          "type": "number",
+          "label": {
+            "en": "OCPP Port",
+            "de": "OCPP Port",
+            "nl": "OCPP Poort"
+          },
+          "value": 8887,
+          "min": 1024,
+          "max": 65535,
+          "hint": {
+            "en": "WebSocket port the OCPP server listens on. Enter the same port in the SCharger OCPP settings (default: 8887).",
+            "de": "WebSocket Port des OCPP Servers. Denselben Port in den OCPP-Einstellungen des SChargers eintragen (Standard: 8887).",
+            "nl": "WebSocket poort van de OCPP server. Dezelfde poort invoeren in de OCPP-instellingen van de SCharger (standaard: 8887)."
+          }
+        },
+        {
+          "id": "ocpp_username",
+          "type": "text",
+          "label": {
+            "en": "Username (optional)",
+            "de": "Benutzername (optional)",
+            "nl": "Gebruikersnaam (optioneel)"
+          },
+          "value": "",
+          "hint": {
+            "en": "Leave empty to skip authentication. If set, the SCharger must send the same username in its OCPP settings.",
+            "de": "Leer lassen um Authentifizierung zu überspringen. Falls gesetzt, muss der SCharger denselben Benutzernamen in seinen OCPP-Einstellungen verwenden.",
+            "nl": "Leeg laten om authenticatie over te slaan. Indien ingesteld moet de SCharger dezelfde gebruikersnaam in zijn OCPP-instellingen gebruiken."
+          }
+        },
+        {
+          "id": "ocpp_password",
+          "type": "password",
+          "label": {
+            "en": "Password (optional)",
+            "de": "Passwort (optional)",
+            "nl": "Wachtwoord (optioneel)"
+          },
+          "value": "",
+          "hint": {
+            "en": "Password for Basic Authentication. Only used if a username is set.",
+            "de": "Passwort für die Basisauthentifizierung. Wird nur verwendet wenn ein Benutzername gesetzt ist.",
+            "nl": "Wachtwoord voor basisauthenticatie. Alleen gebruikt als een gebruikersnaam is ingesteld."
           }
         }
       ]
@@ -4372,9 +4593,122 @@
             "filter": "driver_id=smartcharger_emma_modbus"
           }
         ]
+      },
+      {
+        "id": "ocpp_charging_started",
+        "title": {
+          "en": "EV charging started (OCPP)",
+          "de": "Laden des Fahrzeugs begonnen (OCPP)",
+          "nl": "EV laden gestart (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the OCPP charger reports a StartTransaction.",
+          "de": "Wird ausgelöst wenn der OCPP Charger eine StartTransaction meldet.",
+          "nl": "Wordt geactiveerd wanneer de OCPP lader een StartTransaction meldt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charging_stopped",
+        "title": {
+          "en": "EV charging stopped (OCPP)",
+          "de": "Laden des Fahrzeugs beendet (OCPP)",
+          "nl": "EV laden gestopt (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the OCPP charger reports a StopTransaction.",
+          "de": "Wird ausgelöst wenn der OCPP Charger eine StopTransaction meldet.",
+          "nl": "Wordt geactiveerd wanneer de OCPP lader een StopTransaction meldt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
       }
     ],
     "actions": [
+      {
+        "id": "ocpp_set_max_current",
+        "title": {
+          "en": "Set max charging current (OCPP)",
+          "de": "Maximalen Ladestrom setzen (OCPP)"
+        },
+        "titleFormatted": {
+          "en": "Set max charging current to [[amperes]] A (OCPP)",
+          "de": "Maximalen Ladestrom auf [[amperes]] A setzen (OCPP)"
+        },
+        "hint": {
+          "en": "Sets the maximum charging current via OCPP SetChargingProfile. Set to 0 to pause charging.",
+          "de": "Setzt den maximalen Ladestrom via OCPP SetChargingProfile. 0 hält den Ladevorgang an."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "number",
+            "name": "amperes",
+            "title": {
+              "en": "Current (A)",
+              "de": "Strom (A)"
+            },
+            "min": 0,
+            "max": 32,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 16",
+              "de": "z.B. 16"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_remote_start",
+        "title": {
+          "en": "Start charging (OCPP)",
+          "de": "Laden starten (OCPP)"
+        },
+        "hint": {
+          "en": "Sends a RemoteStartTransaction command to the OCPP charger.",
+          "de": "Sendet einen RemoteStartTransaction-Befehl an den OCPP Charger."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_remote_stop",
+        "title": {
+          "en": "Stop charging (OCPP)",
+          "de": "Laden stoppen (OCPP)"
+        },
+        "hint": {
+          "en": "Sends a RemoteStopTransaction command to the OCPP charger.",
+          "de": "Sendet einen RemoteStopTransaction-Befehl an den OCPP Charger."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
       {
         "id": "sun2000_set_active_power_mode",
         "title": {

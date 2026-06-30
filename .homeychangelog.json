@@ -1,4 +1,29 @@
 {
+  "1.1.69": {
+    "en": "OCPP Smart Charger: added optional Basic Authentication (username/password settings) — required when the Huawei SCharger is configured with 'Insecure transmission with basic authentication'. Updated pairing instructions with exact FusionSolar commissioning steps and SCharger field mapping.",
+    "de": "OCPP Smart Charger: Optionale Basisauthentifizierung (Benutzername/Passwort Einstellungen) hinzugefügt — erforderlich wenn der Huawei SCharger mit 'Unverschlüsselte Übertragung mit Basisauthentifizierung' konfiguriert ist. Pairing-Anleitung mit exakten FusionSolar Inbetriebnahme-Schritten und SCharger-Feldzuordnung aktualisiert.",
+    "nl": "OCPP Smart Charger: optionele basisauthenticatie (gebruikersnaam/wachtwoord instellingen) toegevoegd — vereist wanneer de Huawei SCharger is geconfigureerd met 'Onveilige overdracht met basisauthenticatie'. Koppel-instructies bijgewerkt met exacte FusionSolar inbedrijfstellingsstappen en SCharger-veldtoewijzing."
+  },
+  "1.1.68": {
+    "en": "OCPP Smart Charger: fixed SetChargingProfile to use TxDefaultProfile on connector 1 (was ChargePointMaxProfile on connector 0 — incorrect for Huawei SCharger). Fixed transaction ID tracking with atomic counter. Added MeterValues unit scaling (kW/kWh → W/Wh). Added WebSocketPingInterval ChangeConfiguration after boot.",
+    "de": "OCPP Smart Charger: SetChargingProfile korrigiert auf TxDefaultProfile an Connector 1 (war ChargePointMaxProfile an Connector 0 — falsch für Huawei SCharger). Transaction-ID-Tracking mit atomarem Zähler korrigiert. MeterValues Unit-Skalierung hinzugefügt (kW/kWh → W/Wh). WebSocketPingInterval ChangeConfiguration nach Boot hinzugefügt.",
+    "nl": "OCPP Smart Charger: SetChargingProfile gecorrigeerd naar TxDefaultProfile op connector 1 (was ChargePointMaxProfile op connector 0 — onjuist voor Huawei SCharger). Transactie-ID tracking gecorrigeerd met atomaire teller. MeterValues eenheidsschaling toegevoegd (kW/kWh → W/Wh). WebSocketPingInterval ChangeConfiguration na boot toegevoegd."
+  },
+  "1.1.67": {
+    "en": "OCPP Smart Charger: added vehicle battery SoC display (%) from OCPP MeterValues. Improved pairing page with correct Station ID format (e.g. EVB-P12354) and where to find it.",
+    "de": "OCPP Smart Charger: Fahrzeug-Akku SoC Anzeige (%) aus OCPP MeterValues hinzugefügt. Pairing-Seite mit korrektem Station-ID Format (z.B. EVB-P12354) und Fundort verbessert.",
+    "nl": "OCPP Smart Charger: voertuigaccu SoC weergave (%) via OCPP MeterValues toegevoegd. Koppelpagina verbeterd met correct Station ID formaat (bijv. EVB-P12354) en waar dit te vinden is."
+  },
+  "1.1.66": {
+    "en": "Added flow action cards for OCPP Smart Charger: Set max charging current (0–32 A via SetChargingProfile), Start charging (RemoteStartTransaction), Stop charging (RemoteStopTransaction).",
+    "de": "Flow-Aktionskarten für OCPP Smart Charger hinzugefügt: Maximalen Ladestrom setzen (0–32 A via SetChargingProfile), Laden starten (RemoteStartTransaction), Laden stoppen (RemoteStopTransaction).",
+    "nl": "Flow-actiekaarten toegevoegd voor OCPP Smart Charger: Maximale laadstroom instellen (0–32 A via SetChargingProfile), Laden starten (RemoteStartTransaction), Laden stoppen (RemoteStopTransaction)."
+  },
+  "1.1.65": {
+    "en": "Added experimental Smart Charger (OCPP Test) driver — runs an OCPP 1.6 WebSocket server on port 8887 so the Huawei SCharger can connect directly to Homey. Reports live charging power, energy, and state. Flow triggers for charging started/stopped.",
+    "de": "Experimenteller Smart Charger (OCPP Test) Treiber hinzugefügt — startet einen OCPP 1.6 WebSocket Server auf Port 8887 damit der Huawei SCharger sich direkt mit Homey verbinden kann. Zeigt Live-Ladeleistung, Energie und Status. Flow-Trigger für Laden gestartet/beendet.",
+    "nl": "Experimenteel Smart Charger (OCPP Test) stuurprogramma toegevoegd — start een OCPP 1.6 WebSocket server op poort 8887 zodat de Huawei SCharger rechtstreeks verbinding kan maken met Homey. Toont live laadvermogen, energie en status. Flow-triggers voor laden gestart/gestopt."
+  },
   "1.1.64": {
     "en": "Fixed phantom grid readings on dual-unit iSitePower-M systems (Master + Slave): energy balance now uses only live API data per poll cycle — stale cache from different timestamps no longer causes false grid import. When live battery data is unavailable, discharge is derived from the Power Converter (60092) output, which is always present on both units. Fixed battery total capacity showing only one cluster's capacity on dual-unit systems (was averaging, now summing). Fixed solar cumulative meter resetting to zero when station KPI returns 0.",
     "de": "Phantom-Netzbezug bei Dual-Unit iSitePower-M Systemen (Master + Slave) behoben: Energiebilanz verwendet jetzt nur Live-API-Daten pro Poll-Zyklus — veralteter Cache aus unterschiedlichen Zeitstempeln verursacht keinen falschen Netzbezug mehr. Wenn keine Live-Batteriedaten verfügbar sind, wird die Entladeleistung vom Power Converter (60092) abgeleitet, der auf beiden Einheiten immer vorhanden ist. Batterie-Gesamtkapazität zeigt bei Dual-Unit-Systemen nicht mehr nur die Kapazität eines Clusters (war Durchschnitt, jetzt Summe). Solarer kumulativer Zähler wird nicht mehr auf null zurückgesetzt wenn die Station-KPI 0 zurückgibt.",
