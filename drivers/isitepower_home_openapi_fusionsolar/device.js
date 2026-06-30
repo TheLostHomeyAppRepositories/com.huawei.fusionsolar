@@ -33,8 +33,8 @@ class ISitePowerHomeDevice extends Device {
 
   getDevTypes() { return [DEV_TYPE_AC_OUTPUT]; }
 
-  async onPollData({ kpiByType }) {
-    const v = calculate(kpiByType);
+  async onPollData({ kpiByType, freshKpiByType }) {
+    const v = calculate(kpiByType, freshKpiByType);
 
     await this._set('measure_power', v.loadW);
     await this._accumulate(v.loadW);

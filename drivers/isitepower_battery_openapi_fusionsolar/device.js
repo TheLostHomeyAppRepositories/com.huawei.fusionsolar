@@ -66,8 +66,8 @@ class ISitePowerBatteryDevice extends Device {
 
   getDevTypes() { return [DEV_TYPE_BATTERY_RACK]; }
 
-  async onPollData({ kpiByType }) {
-    const v = calculate(kpiByType);
+  async onPollData({ kpiByType, freshKpiByType }) {
+    const v = calculate(kpiByType, freshKpiByType);
 
     const signed = v.dischargeW > 0 ? -v.dischargeW : v.chargeW;
     await this._set('measure_power', signed);

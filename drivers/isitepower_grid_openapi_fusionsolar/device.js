@@ -16,6 +16,7 @@ class ISitePowerGridDevice extends Device {
   async onInit() {
     this.log(`iSitePower-M Grid device initialised: ${this.getName()}`);
     this._prevExporting  = null;
+    this._prevGridW      = 0;
     this._lastEnergyTs   = this.getStoreValue('energy_ts') || Date.now();
     this._importedKwh    = this.getStoreValue('imported_kwh') || 0;
     await this._ensureCapabilities();
@@ -37,17 +38,32 @@ class ISitePowerGridDevice extends Device {
 
   getDevTypes() { return [DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK]; }
 
-  async onPollData({ kpiByType }) {
-    const v = calculate(kpiByType);
+  async onPollData({ kpiByType, freshKpiByType }) {
+    const v = calculate(kpiByType, freshKpiByType);
 
-    await this._set('measure_power', v.gridImportW);
+    // Grid is calculated, not measured — suppress single-poll spikes caused by
+    // timing differences between AC output and battery sensors.
+    // Only report grid > 0 if it was also > 0 on the previous poll.
+    const GRID_THRESHOLD = 50;
+    const rawGridW = v.gridImportW;
+    let gridW;
+    if (rawGridW <= GRID_THRESHOLD) {
+      gridW = 0;
+    } else if (this._prevGridW > GRID_THRESHOLD) {
+      gridW = rawGridW;
+    } else {
+      gridW = 0;
+    }
+    this._prevGridW = rawGridW;
+
+    await this._set('measure_power', gridW);
     await this._set('measure_voltage.phase1', v.acVoltage);
     await this._set('measure_current.phase1', v.acCurrent);
     await this._set('measure_frequency', v.acFrequency);
-    await this._accumulate(v.gridImportW);
+    await this._accumulate(gridW);
 
     if (!this.getAvailable()) await this.setAvailable();
-    this.log('Poll OK: Grid=' + Math.round(v.gridImportW) + 'W');
+    this.log('Poll OK: Grid=' + Math.round(gridW) + 'W (raw=' + Math.round(rawGridW) + 'W)');
   }
 
   async _accumulate(importW) {

@@ -31,8 +31,8 @@ class ISitePowerSolarDevice extends Device {
 
   getDevTypes() { return [DEV_TYPE_SOLAR_GROUP, DEV_TYPE_POWER_CONVERTER]; }
 
-  async onPollData({ stationKpi, kpiByType }) {
-    const v = calculate(kpiByType);
+  async onPollData({ stationKpi, kpiByType, freshKpiByType }) {
+    const v = calculate(kpiByType, freshKpiByType);
     await this._set('measure_power', v.solarW);
     if (v.solarCurrentA !== null) {
       if (!this.hasCapability('measure_current')) await this.addCapability('measure_current').catch(() => {});
@@ -40,7 +40,8 @@ class ISitePowerSolarDevice extends Device {
     }
 
     // Use cumulative total_power from Station KPI (real Huawei counter, never resets)
-    if (stationKpi?.totalEnergy !== null && stationKpi?.totalEnergy !== undefined) {
+    // Guard against 0: some off-grid stations return 0 for all KPIs — don't reset the counter
+    if (stationKpi?.totalEnergy > 0) {
       await this._set('meter_power', stationKpi.totalEnergy);
     }
 
