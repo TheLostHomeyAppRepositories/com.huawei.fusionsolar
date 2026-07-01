@@ -1,7 +1,7 @@
 'use strict';
 
 const { Device } = require('homey');
-const { DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -36,7 +36,7 @@ class ISitePowerGridDevice extends Device {
   async onUninit() { this.homey.app.getCoordinator().unregister(this); }
   async onDeleted() { this.homey.app.getCoordinator().unregister(this); }
 
-  getDevTypes() { return [DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK]; }
+  getDevTypes() { return [DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK]; }
 
   async onPollData({ kpiByType, freshKpiByType }) {
     const v = calculate(kpiByType, freshKpiByType);
@@ -60,7 +60,21 @@ class ISitePowerGridDevice extends Device {
     await this._set('measure_voltage.phase1', v.acVoltage);
     await this._set('measure_current.phase1', v.acCurrent);
     await this._set('measure_frequency', v.acFrequency);
-    await this._accumulate(gridW);
+
+    // Cumulative grid import: prefer direct 60001 total_energy_consumption (authoritative meter
+    // reading) over local time-integration. Guard with Math.max to prevent backward jumps when
+    // only one of two Mains units returns data in a given poll cycle.
+    if (v.mainsTotalKwh !== null && v.mainsTotalKwh > 0) {
+      const newKwh = Math.max(this._importedKwh, v.mainsTotalKwh);
+      if (newKwh !== this._importedKwh) {
+        this._importedKwh = newKwh;
+        await this.setStoreValue('imported_kwh', newKwh);
+        await this._set('meter_power', Number(newKwh.toFixed(3)));
+      }
+      this._lastEnergyTs = Date.now();
+    } else {
+      await this._accumulate(gridW);
+    }
 
     if (!this.getAvailable()) await this.setAvailable();
     this.log('Poll OK: Grid=' + Math.round(gridW) + 'W (raw=' + Math.round(rawGridW) + 'W)');

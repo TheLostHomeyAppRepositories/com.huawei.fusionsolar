@@ -1,7 +1,7 @@
 'use strict';
 
 const { Device } = require('homey');
-const { DEV_TYPE_AC_OUTPUT, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, calculate } = require('../../lib/isitepower-utils');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -31,16 +31,22 @@ class ISitePowerHomeDevice extends Device {
   async onUninit() { this.homey.app.getCoordinator().unregister(this); }
   async onDeleted() { this.homey.app.getCoordinator().unregister(this); }
 
-  getDevTypes() { return [DEV_TYPE_AC_OUTPUT]; }
+  getDevTypes() { return [DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT]; }
 
   async onPollData({ kpiByType, freshKpiByType }) {
     const v = calculate(kpiByType, freshKpiByType);
 
-    await this._set('measure_power', v.loadW);
-    await this._accumulate(v.loadW);
+    if (v.loadW !== null) {
+      // Live or stale-cached data available — update display and accumulate
+      await this._set('measure_power', v.loadW);
+      await this._accumulate(v.loadW);
+      this.log('Poll OK: Load=' + Math.round(v.loadW) + 'W');
+    } else {
+      // No 60010/60092 data at all — keep last displayed value, skip accumulation
+      this.log('Poll: no load data (60010/60092 unavailable), preserving last value');
+    }
 
     if (!this.getAvailable()) await this.setAvailable();
-    this.log('Poll OK: Load=' + Math.round(v.loadW) + 'W');
   }
 
   async _accumulate(homeW) {

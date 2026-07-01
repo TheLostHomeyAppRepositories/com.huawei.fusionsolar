@@ -35,9 +35,9 @@
     3. Go to <em>Settings</em> → <em>Third-party management system</em> → <em>OCPP Settings</em><br>
     4. Mode: <code>Insecure transmission with basic authentication</code><br>
     5. Fill in the Comm. Parameters:<br>
-    &nbsp;&nbsp;• <strong>Domain:</strong> Homey's IP address (no ws://)<br>
+    &nbsp;&nbsp;• <strong>Domain Name:</strong> Homey's IP address (no ws://)<br>
+    &nbsp;&nbsp;• <strong>Path:</strong> a name you choose freely — this field is empty by default in the SCharger. Use anything unique, e.g. <code>scharger-home</code> or the serial number from the charger label (e.g. <code>EVB-P12345</code>)<br>
     &nbsp;&nbsp;• <strong>Port:</strong> <code>8887</code><br>
-    &nbsp;&nbsp;• <strong>Path:</strong> your Station ID (e.g. <code>EVB-P12345</code>)<br>
     &nbsp;&nbsp;• <strong>Username / Password:</strong> optional — enter the same below if used<br>
     6. Save and restart the charger if prompted
   </div>
@@ -49,8 +49,8 @@
 
   <div class="field">
     <label>Station ID</label>
-    <input type="text" id="station-id" placeholder="e.g. EVB-P12345" />
-    <p class="hint">The Station ID of your charger (e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">EVB-P12345</code>). Find it in the Huawei FusionSolar app or the OCPP settings of your wallbox. Must match exactly (case-sensitive).</p>
+    <input type="text" id="station-id" placeholder="e.g. scharger-home" />
+    <p class="hint">Choose any unique name — e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">scharger-home</code> or the serial number from the label on your charger (e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">EVB-P12345</code>). Enter the exact same value in the SCharger's Path field. Case-sensitive.</p>
   </div>
 
   <div class="field">
