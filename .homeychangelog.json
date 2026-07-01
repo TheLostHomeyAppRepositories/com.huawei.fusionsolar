@@ -1,4 +1,9 @@
 {
+  "1.1.72": {
+    "en": "Improved App Store discoverability: added tags for SUN2000, LUNA2000, battery, wallbox, EV, OCPP, Modbus, and iSitePower so the app appears in more search results.",
+    "de": "Auffindbarkeit im App Store verbessert: Tags für SUN2000, LUNA2000, Batterie, Wallbox, Elektroauto, OCPP, Modbus und iSitePower ergänzt, damit die App in mehr Suchanfragen erscheint.",
+    "nl": "Vindbaarheid in de App Store verbeterd: tags toegevoegd voor SUN2000, LUNA2000, batterij, wallbox, elektrische auto, OCPP, Modbus en iSitePower zodat de app in meer zoekresultaten verschijnt."
+  },
   "1.1.71": {
     "en": "OCPP Smart Charger: improved pairing page Station ID description — clarifies that the Path field in the SCharger is empty by default and the user chooses any unique name (e.g. scharger-home) or the serial number from the charger label. Field order in the setup guide now matches the SCharger Comm. parameters screen (Domain Name → Path → Port → Username/Password).",
     "de": "OCPP Smart Charger: Beschreibung der Station-ID auf der Pairing-Seite verbessert — stellt klar, dass das Path-Feld im SCharger standardmässig leer ist und der Benutzer einen beliebigen eindeutigen Namen wählt (z. B. scharger-home) oder die Seriennummer vom Geräteetikett verwendet. Reihenfolge der Felder in der Einrichtungsanleitung entspricht jetzt dem SCharger-Menü Comm. parameters (Domain Name → Path → Port → Username/Password).",

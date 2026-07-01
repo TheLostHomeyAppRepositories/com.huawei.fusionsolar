@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.71",
+  "version": "1.1.72",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -67,7 +67,15 @@
       "huawei",
       "fusionsolar",
       "energy",
-      "inverter"
+      "inverter",
+      "SUN2000",
+      "LUNA2000",
+      "battery",
+      "wallbox",
+      "ev",
+      "ocpp",
+      "modbus",
+      "iSitePower"
     ],
     "de": [
       "solar",
@@ -76,7 +84,15 @@
       "huawei",
       "fusionsolar",
       "energie",
-      "wechselrichter"
+      "wechselrichter",
+      "SUN2000",
+      "LUNA2000",
+      "batterie",
+      "wallbox",
+      "elektroauto",
+      "ocpp",
+      "modbus",
+      "iSitePower"
     ],
     "nl": [
       "solar",
@@ -85,7 +101,15 @@
       "huawei",
       "fusionsolar",
       "energie",
-      "omvormer"
+      "omvormer",
+      "SUN2000",
+      "LUNA2000",
+      "batterij",
+      "wallbox",
+      "elektrische auto",
+      "ocpp",
+      "modbus",
+      "iSitePower"
     ]
   },
   "category": "energy",
