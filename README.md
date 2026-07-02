@@ -9,7 +9,7 @@
 
 ## Supported Connection Types
 
-This app supports four independent connection methods to a Huawei FusionSolar installation:
+This app supports five independent connection methods to a Huawei FusionSolar installation:
 
 | Connection      | Description                                                                        |
 |-----------------|------------------------------------------------------------------------------------|
@@ -17,6 +17,7 @@ This app supports four independent connection methods to a Huawei FusionSolar in
 | **OpenAPI**     | Connects via the official Northbound API using a FusionSolar account              |
 | **Modbus TCP**  | Direct communication with SUN2000, LUNA2000 and DTSU666 over the local network   |
 | **EMMA Modbus** | Direct communication via the EMMA Energy Management Module (SUN2000MA)            |
+| **OCPP 1.6**    | Runs an OCPP 1.6 WebSocket server on Homey so EV chargers can connect directly    |
 
 ---
 
@@ -88,6 +89,64 @@ Connection via the Huawei FusionSolar Northbound API. Registered as a P1 meter (
 | Phase A/B/C voltage     | Phase voltages (V) — dynamic                              |
 | Phase A/B/C current     | Phase currents (A) — dynamic                              |
 | Phase A/B/C power       | Phase power (W) — dynamic                                 |
+
+---
+
+### iSitePower-M Solar (OpenAPI)
+
+Dedicated driver for the Huawei iSitePower-M Solar subsystem. Registered as a solar panel in the Homey Energy Dashboard.
+
+| Capability    | Description                                      |
+|---------------|--------------------------------------------------|
+| Solar power   | Current PV output power (W)                      |
+| Total yield   | Cumulative PV yield (kWh) — from station KPI     |
+
+---
+
+### iSitePower-M Battery (OpenAPI)
+
+Dedicated driver for the Huawei iSitePower-M Battery subsystem. Registered as a home battery in the Homey Energy Dashboard.
+
+| Capability               | Description                                              |
+|--------------------------|----------------------------------------------------------|
+| Battery power            | Current: positive = charging, negative = discharging (W) |
+| State of charge          | SoC in percent (%)                                       |
+| Charge power             | Current charge power (W)                                 |
+| Discharge power          | Current discharge power (W)                              |
+| Total charged energy     | Cumulative charged energy (kWh)                          |
+| Total discharged energy  | Cumulative discharged energy (kWh)                       |
+| Battery voltage          | Current battery voltage (V)                              |
+| Remaining backup time    | Estimated backup runtime at current load (h)             |
+| Total capacity           | Total installed battery capacity (kWh)                   |
+| Discharge cycles         | Total number of discharge cycles                         |
+| Battery state            | Human-readable state string — available in flows         |
+
+---
+
+### iSitePower-M Grid (OpenAPI)
+
+Dedicated driver for the Huawei iSitePower-M Grid meter. Registered as a cumulative energy meter in the Homey Energy Dashboard. Grid power is read directly from the Mains meter (type 60001) when available, or derived from energy balance as fallback.
+
+| Capability      | Description                                                  |
+|-----------------|--------------------------------------------------------------|
+| Grid power      | Current import power (W)                                     |
+| Grid import     | Cumulative grid import (kWh)                                 |
+| AC voltage      | Grid voltage (V)                                             |
+| AC current      | Grid current (A)                                             |
+| Grid frequency  | Grid frequency (Hz)                                          |
+
+---
+
+### iSitePower-M Home (OpenAPI)
+
+Dedicated driver for the Huawei iSitePower-M Home consumption measurement. Registered as a cumulative energy consumer in the Homey Energy Dashboard.
+
+| Capability         | Description                                              |
+|--------------------|----------------------------------------------------------|
+| Home consumption   | Current home load power (W)                              |
+| Total consumption  | Cumulative home energy consumption (kWh)                 |
+
+> If load data is temporarily unavailable from the API, the last known value is preserved (no drop to 0 W).
 
 ---
 
@@ -259,6 +318,46 @@ Reads EV charger data via the EMMA Energy Management Module.
 
 ---
 
+### Smart Charger (OCPP)
+
+Runs an OCPP 1.6 JSON WebSocket server on port 8887 so compatible EV chargers (Huawei SCharger, Easee Home, and others) can connect directly to Homey without a cloud intermediary. One Homey device is created per charger (Station ID).
+
+| Capability            | Description                                                        |
+|-----------------------|--------------------------------------------------------------------|
+| On / Off              | Start or stop a charging session (RemoteStart/RemoteStopTransaction)|
+| Max current (A)       | Set charging current limit 0–32 A via SetChargingProfile           |
+| Charging power        | Live AC charging power (W)                                         |
+| Charging energy       | Cumulative session energy (kWh)                                    |
+| Charging state        | Connected / Charging / Finished / Error                            |
+| Vehicle SoC           | Vehicle battery state of charge (%) — if supported by charger      |
+| OCPP server status    | WebSocket connection status and port                               |
+| Last OCPP message     | Timestamp of the last received OCPP message                        |
+
+#### Setup (Huawei SCharger)
+
+Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Settings*:
+
+| SCharger field  | Value                                        |
+|-----------------|----------------------------------------------|
+| Domain Name     | Homey's local IP address                     |
+| Path            | Your chosen Station ID (e.g. `scharger-home` or the serial number from the charger label) |
+| Port            | `8887`                                        |
+| Mode            | Insecure transmission with basic authentication |
+| Username / Password | Optional — enter the same values in Homey settings if used |
+
+> The **Path** field in the SCharger is empty by default. You choose any unique identifier and enter the exact same value as **Station ID** in Homey. The value is case-sensitive.
+
+#### Device Settings
+
+| Setting    | Description                                              |
+|------------|----------------------------------------------------------|
+| Station ID | Unique identifier matching the Path field on the charger |
+| OCPP port  | WebSocket server port (default: 8887)                    |
+| Username   | Optional Basic Auth username                             |
+| Password   | Optional Basic Auth password                             |
+
+---
+
 ## Installation
 
 ### Requirements
@@ -266,10 +365,15 @@ Reads EV charger data via the EMMA Energy Management Module.
 #### Kiosk
 - FusionSolar Kiosk URL (available in the FusionSolar app under Share → Kiosk URL)
 
-#### OpenAPI
+#### OpenAPI (SUN2000 / LUNA2000 / iSitePower-M)
 - FusionSolar account with Northbound API enabled
 - Username and System Code (API password)
-- Regional server, e.g. `https://eu5.fusionsolar.huawei.com`
+- Regional server, e.g. `https://intl.fusionsolar.huawei.com`
+
+#### OCPP Smart Charger
+- EV charger with OCPP 1.6 JSON support
+- Charger and Homey on the same local network
+- Port 8887 accessible (not blocked by firewall)
 
 #### SDongle A
 - SDongle A reachable over LAN
@@ -306,17 +410,17 @@ Reads EV charger data via the EMMA Energy Management Module.
 | Kiosk URL         | –        | Public Kiosk URL of the plant                 |
 | Update interval   | 10 min   | How often data is fetched (min. 10 min)       |
 
-### OpenAPI
+### OpenAPI (SUN2000 / LUNA2000 / iSitePower-M)
 
-| Setting           | Default                    | Description                                   |
-|-------------------|----------------------------|-----------------------------------------------|
-| Server URL        | eu5.fusionsolar.huawei.com | Regional FusionSolar API server               |
-| Username          | –                          | FusionSolar API username                      |
-| System Code       | –                          | API password                                  |
-| Plant code        | –                          | Set automatically during pairing              |
-| Update interval   | 10 min                     | How often data is fetched (min. 10 min)       |
+| Setting           | Default                         | Description                                   |
+|-------------------|---------------------------------|-----------------------------------------------|
+| Server URL        | intl.fusionsolar.huawei.com     | Regional FusionSolar API server               |
+| Username          | –                               | FusionSolar API username                      |
+| System Code       | –                               | API password                                  |
+| Station Code      | –                               | Set automatically during pairing              |
+| Update interval   | 5 min                           | How often data is fetched (min. 1 min)        |
 
-> Huawei rate-limits API requests. An interval below 10 minutes is not recommended.
+> **Rate limiting:** Huawei may return HTTP 407 if polling too frequently. The default of 5 minutes is recommended. Values below 5 minutes may cause temporary data gaps.
 
 ### SUN2000 (Modbus)
 
@@ -389,9 +493,9 @@ These registers derate the inverter AC output directly and work without a DTSU66
 | Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)     | Fires on every power change                                              |
 | Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)       | Fires on every SoC change                                                |
 | Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`         | `charging` / `discharging` / `idle`                                     |
-| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when the storage working mode changes (e.g. switched by a grid balancing service) |
-| Excess PV energy use changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when switching between Feed to Grid / Charge Battery                              |
-| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`          | Fires when the remote charge/discharge control mode changes                             |
+| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when the storage working mode changes                              |
+| Excess PV energy use changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when switching between Feed to Grid / Charge Battery               |
+| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`          | Fires when the remote charge/discharge control mode changes              |
 | Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)       | Fires on every SoC change                                                |
 | Battery charging state changed           | Battery OpenAPI                 | `state`         | `charging` / `discharging` / `idle`                                     |
 | Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from import to export                               |
@@ -399,6 +503,8 @@ These registers derate the inverter AC output directly and work without a DTSU66
 | Inverter status changed                  | Inverter SUN2000 Modbus         | `status`        | Fires when the inverter operating state changes (timeline notification)  |
 | Battery status changed                   | LUNA2000 Modbus                 | `status`        | Fires when the battery state changes (timeline notification)             |
 | Meter status changed                     | Power Meter DTSU666 Modbus      | `status`        | Fires when the meter state changes (timeline notification)               |
+| Charging session started                 | Smart Charger (OCPP)            | –               | Fires when a vehicle starts charging (StartTransaction received)         |
+| Charging session stopped                 | Smart Charger (OCPP)            | –               | Fires when a vehicle stops charging (StopTransaction received)           |
 
 ### Conditions
 
@@ -445,7 +551,15 @@ These registers derate the inverter AC output directly and work without a DTSU66
 | Set storage working mode          | Sets the battery operating mode (self-consumption / TOU / full feed-in / etc.)                    |
 | Force charge                      | Forces immediate battery charging at the specified power                                           |
 | Force discharge                   | Forces immediate battery discharging at the specified power                                        |
-| Set max grid charging power (kW)  | Sets the max grid charge power on the EMMA (reg 40002)               |
+| Set max grid charging power (kW)  | Sets the max grid charge power on the EMMA (reg 40002)                                             |
+
+#### Smart Charger (OCPP)
+
+| Card                          | Description                                                                |
+|-------------------------------|----------------------------------------------------------------------------|
+| Set max charging current (A)  | Sends SetChargingProfile with TxDefaultProfile (0–32 A)                    |
+| Start charging                | Sends RemoteStartTransaction to the charger                                |
+| Stop charging                 | Sends RemoteStopTransaction to the active session                          |
 
 ---
 
@@ -453,20 +567,24 @@ These registers derate the inverter AC output directly and work without a DTSU66
 
 The app is fully configured for the Homey Energy Dashboard:
 
-| Device                          | Homey category  | Function                                                  |
-|---------------------------------|-----------------|-----------------------------------------------------------|
-| Kiosk                           | Solar panel     | Total yield → Generated energy                            |
-| Inverter SUN2000 OpenAPI        | Solar panel     | Inverter total yield → Generated energy                   |
-| Inverter SUN2000 Modbus         | Solar panel     | Total yield → Generated energy                            |
-| Inverter SUN2000 EMMA Modbus    | Solar panel     | Total yield → Generated energy                            |
-| Battery LUNA2000 OpenAPI        | Home battery    | Charge and discharge power                                |
-| Battery LUNA2000 Modbus         | Home battery    | Charged / discharged energy + charge/discharge power      |
-| Battery LUNA2000 EMMA Modbus    | Home battery    | Charged / discharged energy + charge/discharge power      |
-| Power Meter OpenAPI             | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
-| Power Meter Modbus              | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
-| Power Meter EMMA Modbus         | P1 meter        | Grid import (cumulative) + grid export (cumulative)       |
+| Device                          | Homey category        | Function                                                  |
+|---------------------------------|-----------------------|-----------------------------------------------------------|
+| Kiosk                           | Solar panel           | Total yield → Generated energy                            |
+| Inverter SUN2000 OpenAPI        | Solar panel           | Inverter total yield → Generated energy                   |
+| Inverter SUN2000 Modbus         | Solar panel           | Total yield → Generated energy                            |
+| Inverter SUN2000 EMMA Modbus    | Solar panel           | Total yield → Generated energy                            |
+| iSitePower-M Solar              | Solar panel           | Total yield → Generated energy                            |
+| Battery LUNA2000 OpenAPI        | Home battery          | Charge and discharge power                                |
+| Battery LUNA2000 Modbus         | Home battery          | Charged / discharged energy + charge/discharge power      |
+| Battery LUNA2000 EMMA Modbus    | Home battery          | Charged / discharged energy + charge/discharge power      |
+| iSitePower-M Battery            | Home battery          | Charged / discharged energy + charge/discharge power      |
+| Power Meter OpenAPI             | P1 meter (cumulative) | Grid import + grid export                                 |
+| Power Meter Modbus              | P1 meter (cumulative) | Grid import + grid export                                 |
+| Power Meter EMMA Modbus         | P1 meter (cumulative) | Grid import + grid export                                 |
+| iSitePower-M Grid               | P1 meter (cumulative) | Grid import (direct from Mains meter or energy balance)   |
+| iSitePower-M Home               | Energy consumer       | Total home consumption (cumulative kWh)                   |
 
-All three LUNA2000 variants are declared with `"batteries": ["INTERNAL"]` so Homey correctly identifies them as built-in (AC-coupled) home batteries in the Energy dashboard.
+All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": ["INTERNAL"]` so Homey correctly identifies them as built-in home batteries in the Energy Dashboard.
 
 ---
 
@@ -578,9 +696,10 @@ At-a-glance summary of today's solar production.
 ## Technical Background
 
 - **Kiosk:** HTTP polling of the public FusionSolar Kiosk API
-- **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session (one API call per interval for all devices)
+- **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session and coordinator — one API call per interval for all devices of the same plant
 - **Modbus (SUN2000/SDongle):** TCP connection via [`jsmodbus`](https://www.npmjs.com/package/jsmodbus) following the Huawei SUN2000 Modbus Interface Definition A. All Modbus devices on the same host share a serialised queue (`withHostLock`) — no concurrent connections
 - **EMMA Modbus:** TCP connection to the SUN2000MA Energy Management Module (unit ID 0). All three EMMA device types (inverter, battery, meter) read from the same EMMA register range — no SDongle or DTSU666 required. R/W access to ESS control registers (40000–40002) via FC06/FC16
+- **OCPP 1.6:** Singleton WebSocket server (port 8887) running inside Homey. Implements BootNotification, Heartbeat, StatusNotification, MeterValues, StartTransaction, StopTransaction, Authorize, DataTransfer. Outgoing: RemoteStartTransaction, RemoteStopTransaction, SetChargingProfile (TxDefaultProfile), ChangeConfiguration. Supports optional HTTP Basic Authentication per station. Station ID is extracted from the WebSocket URL path (`ws://homey-ip:8887/[station-id]`)
 
 ---
 

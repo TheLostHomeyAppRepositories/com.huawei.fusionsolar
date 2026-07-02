@@ -1,4 +1,9 @@
 {
+  "1.1.73": {
+    "en": "iSitePower-M Home driver: added energy configuration so Homey recognises it as a home consumption device — 'Track total home energy consumption' now appears in Energy settings and the Home kWh value populates in the Homey Energy tab. Update interval minimum lowered from 5 to 1 minute for all iSitePower-M drivers (default remains 5 min; values below 5 may trigger Huawei rate limiting).",
+    "de": "iSitePower-M Haus-Treiber: Energiekonfiguration hinzugefügt, damit Homey ihn als Hausverbrauchsgerät erkennt — 'Gesamten Heimenergieverbrauch verfolgen' erscheint jetzt in den Energieeinstellungen und der Haus-kWh-Wert wird im Homey Energie-Tab angezeigt. Mindest-Aktualisierungsintervall von 5 auf 1 Minute für alle iSitePower-M Treiber gesenkt (Standard bleibt 5 Min.; Werte unter 5 können Huawei-Rate-Limiting auslösen).",
+    "nl": "iSitePower-M Huis-stuurprogramma: energieconfiguratie toegevoegd zodat Homey het herkent als een thuisverbruiksapparaat — 'Totaal thuisenergieverbruik bijhouden' verschijnt nu in Energie-instellingen en de Huis-kWh-waarde wordt ingevuld in het Homey Energie-tabblad. Minimale update-interval verlaagd van 5 naar 1 minuut voor alle iSitePower-M stuurprogramma's (standaard blijft 5 min.; waarden onder 5 kunnen Huawei-snelheidsbeperking activeren)."
+  },
   "1.1.72": {
     "en": "Improved App Store discoverability: added tags for SUN2000, LUNA2000, battery, wallbox, EV, OCPP, Modbus, and iSitePower so the app appears in more search results.",
     "de": "Auffindbarkeit im App Store verbessert: Tags für SUN2000, LUNA2000, Batterie, Wallbox, Elektroauto, OCPP, Modbus und iSitePower ergänzt, damit die App in mehr Suchanfragen erscheint.",

@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.72",
+  "version": "1.1.73",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -3548,7 +3548,7 @@
         { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
         { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
         { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
       ]
     },
     {
@@ -3589,7 +3589,7 @@
         { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
         { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
         { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
       ]
     },
     {
@@ -3603,12 +3603,14 @@
       "connectivity": [],
       "energy": {
         "cumulative": true,
-        "cumulativeImportedCapability": "meter_power"
+        "cumulativeImportedCapability": "meter_power",
+        "cumulativeExportedCapability": "meter_power.exported"
       },
-      "capabilities": ["measure_power", "meter_power", "measure_voltage.phase1", "measure_current.phase1", "measure_frequency"],
+      "capabilities": ["measure_power", "meter_power", "meter_power.exported", "measure_voltage.phase1", "measure_current.phase1", "measure_frequency"],
       "capabilitiesOptions": {
         "measure_power": { "title": { "en": "Grid Power", "de": "Netzleistung" }, "insights": true },
         "meter_power": { "title": { "en": "Grid Import", "de": "Netzbezug gesamt" }, "insights": true },
+        "meter_power.exported": { "title": { "en": "Grid Export", "de": "Netzeinspeisung gesamt" }, "preventInsights": true, "preventTag": true },
         "measure_voltage.phase1": { "title": { "en": "AC Voltage", "de": "AC Spannung" }, "insights": true },
         "measure_current.phase1": { "title": { "en": "AC Current", "de": "AC Strom" }, "insights": true },
         "measure_frequency": { "title": { "en": "Grid Frequency", "de": "Netzfrequenz" }, "insights": true }
@@ -3623,7 +3625,7 @@
         { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
         { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
         { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
       ]
     },
     {
@@ -3635,10 +3637,16 @@
       "class": "sensor",
       "platforms": ["local"],
       "connectivity": [],
-      "capabilities": ["measure_power", "meter_power"],
+      "energy": {
+        "cumulative": true,
+        "cumulativeImportedCapability": "meter_power",
+        "cumulativeExportedCapability": "meter_power.exported"
+      },
+      "capabilities": ["measure_power", "meter_power", "meter_power.exported"],
       "capabilitiesOptions": {
         "measure_power": { "title": { "en": "Home Consumption", "de": "Hausverbrauch" }, "insights": true },
-        "meter_power": { "title": { "en": "Total Consumption", "de": "Gesamtverbrauch" }, "insights": true }
+        "meter_power": { "title": { "en": "Total Consumption", "de": "Gesamtverbrauch" }, "insights": true },
+        "meter_power.exported": { "title": { "en": "Export", "de": "Einspeisung" }, "preventInsights": true, "preventTag": true }
       },
       "images": {
         "small": "/drivers/isitepower_home_openapi_fusionsolar/assets/images/small.png",
@@ -3650,7 +3658,7 @@
         { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
         { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
         { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 5, "max": 60, "hint": { "en": "How often to fetch data (minutes).", "de": "Wie oft Daten abgerufen werden (Minuten)." } }
+        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
       ]
     },
     {

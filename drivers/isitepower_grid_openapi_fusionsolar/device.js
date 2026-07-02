@@ -6,6 +6,7 @@ const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTE
 const REQUIRED_CAPABILITIES = [
   'measure_power',
   'meter_power',
+  'meter_power.exported',
   'measure_voltage.phase1',
   'measure_current.phase1',
   'measure_frequency',
@@ -20,6 +21,7 @@ class ISitePowerGridDevice extends Device {
     this._lastEnergyTs   = this.getStoreValue('energy_ts') || Date.now();
     this._importedKwh    = this.getStoreValue('imported_kwh') || 0;
     await this._ensureCapabilities();
+    await this._set('meter_power.exported', 0);
     this.homey.app.getCoordinator().register(this);
   }
 
