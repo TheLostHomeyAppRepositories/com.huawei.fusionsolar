@@ -44,8 +44,12 @@ class ISitePowerHomeDevice extends Device {
       await this._accumulate(v.loadW);
       this.log('Poll OK: Load=' + Math.round(v.loadW) + 'W');
     } else {
-      // No 60010/60092 data at all — keep last displayed value, skip accumulation
-      this.log('Poll: no load data (60010/60092 unavailable), preserving last value');
+      // No 60010/60092 data — system is likely in solar/battery mode with no grid.
+      // Keep accumulating using the last Homey-persisted measure_power so meter_power
+      // stays continuous and the Energy tab doesn't show "— kWh".
+      const lastW = this.getCapabilityValue('measure_power') ?? 0;
+      await this._accumulate(lastW);
+      this.log('Poll: no 60010/60092 data; accumulating with last known value (' + Math.round(lastW) + 'W)');
     }
 
     if (!this.getAvailable()) await this.setAvailable();

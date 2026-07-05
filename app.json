@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.73",
+  "version": "1.1.75",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -3572,6 +3572,7 @@
         "measure_battery": { "title": { "en": "State of Charge", "de": "Ladezustand" }, "insights": true },
         "measure_power.batt_charge": { "title": { "en": "Charge Power", "de": "Ladeleistung" }, "insights": true },
         "measure_power.batt_discharge": { "title": { "en": "Discharge Power", "de": "Entladeleistung" }, "insights": true },
+        "meter_power.charged": { "title": { "en": "Total Charged", "de": "Gesamtladung" }, "insights": true },
         "meter_power.discharged": { "title": { "en": "Total Discharged", "de": "Gesamtentladung" }, "insights": true },
         "measure_voltage.battery": { "title": { "en": "Battery Voltage", "de": "Batteriespannung" }, "insights": true },
         "measure_current.battery": { "title": { "en": "Battery Current", "de": "Batteriestrom" }, "insights": true },

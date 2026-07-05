@@ -1,4 +1,14 @@
 {
+  "1.1.75": {
+    "en": "iSitePower-M Battery: fixed missing 'Total Charged' entry in capabilitiesOptions — meter_power.charged now has a proper title and appears in Homey Insights like meter_power.discharged.",
+    "de": "iSitePower-M Batterie: fehlenden Eintrag 'Gesamtladung' in capabilitiesOptions behoben — meter_power.charged hat jetzt einen korrekten Titel und erscheint in Homey Insights wie meter_power.discharged.",
+    "nl": "iSitePower-M Batterij: ontbrekend 'Totaal geladen' item in capabilitiesOptions hersteld — meter_power.charged heeft nu een correcte titel en verschijnt in Homey Insights net als meter_power.discharged."
+  },
+  "1.1.74": {
+    "en": "iSitePower-M Home: fixed 'Home — kWh' in the Energy tab when the system switches to solar/battery mode. Previously the Home energy meter paused whenever AC Output data (type 60010) was unavailable — typically when grid is not used. Now the meter continues accumulating using the last known power reading, keeping the Energy tab graph continuous.",
+    "de": "iSitePower-M Haus: '— kWh Haus' im Energie-Tab behoben, wenn das System auf Solar-/Batteriebetrieb umschaltet. Zuvor pausierte der Hauszähler wenn AC-Ausgangsdaten (Typ 60010) nicht verfügbar waren — typischerweise bei Netz-Abwesenheit. Jetzt akkumuliert der Zähler mit dem letzten bekannten Leistungswert und hält den Energie-Tab-Graphen lückenlos.",
+    "nl": "iSitePower-M Huis: 'Huis — kWh' in het Energie-tabblad opgelost wanneer het systeem overschakelt op zonne-/batterijmodus. Voorheen pauzeerde de huisenergiemeter wanneer AC-uitvoergegevens (type 60010) niet beschikbaar waren — typisch wanneer het net niet wordt gebruikt. Nu accumuleert de meter verder met de laatste bekende vermogenswaarde, zodat de grafiek in het Energie-tabblad doorlopend blijft."
+  },
   "1.1.73": {
     "en": "iSitePower-M Home driver: added energy configuration so Homey recognises it as a home consumption device — 'Track total home energy consumption' now appears in Energy settings and the Home kWh value populates in the Homey Energy tab. Update interval minimum lowered from 5 to 1 minute for all iSitePower-M drivers (default remains 5 min; values below 5 may trigger Huawei rate limiting).",
     "de": "iSitePower-M Haus-Treiber: Energiekonfiguration hinzugefügt, damit Homey ihn als Hausverbrauchsgerät erkennt — 'Gesamten Heimenergieverbrauch verfolgen' erscheint jetzt in den Energieeinstellungen und der Haus-kWh-Wert wird im Homey Energie-Tab angezeigt. Mindest-Aktualisierungsintervall von 5 auf 1 Minute für alle iSitePower-M Treiber gesenkt (Standard bleibt 5 Min.; Werte unter 5 können Huawei-Rate-Limiting auslösen).",
