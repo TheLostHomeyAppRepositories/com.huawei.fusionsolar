@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.75",
+  "version": "1.1.76",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -1244,7 +1244,16 @@
         "meter_power",
         "vehicle_soc",
         "ocpp_server_status",
-        "ocpp_last_message"
+        "ocpp_last_message",
+        "measure_current",
+        "measure_current.l1",
+        "measure_current.l2",
+        "measure_current.l3",
+        "measure_voltage",
+        "measure_voltage.l1",
+        "measure_voltage.l2",
+        "measure_voltage.l3",
+        "measure_temperature"
       ],
       "capabilitiesOptions": {
         "onoff": {
@@ -1294,6 +1303,69 @@
             "en": "Last OCPP Message",
             "de": "Letzte OCPP Nachricht",
             "nl": "Laatste OCPP bericht"
+          }
+        },
+        "measure_current": {
+          "title": {
+            "en": "Current Total",
+            "de": "Gesamtstrom",
+            "nl": "Totaalstroom"
+          }
+        },
+        "measure_current.l1": {
+          "title": {
+            "en": "Current L1",
+            "de": "Strom L1",
+            "nl": "Stroom L1"
+          }
+        },
+        "measure_current.l2": {
+          "title": {
+            "en": "Current L2",
+            "de": "Strom L2",
+            "nl": "Stroom L2"
+          }
+        },
+        "measure_current.l3": {
+          "title": {
+            "en": "Current L3",
+            "de": "Strom L3",
+            "nl": "Stroom L3"
+          }
+        },
+        "measure_voltage": {
+          "title": {
+            "en": "Voltage (avg)",
+            "de": "Spannung (Ø)",
+            "nl": "Spanning (gem.)"
+          }
+        },
+        "measure_voltage.l1": {
+          "title": {
+            "en": "Voltage L1",
+            "de": "Spannung L1",
+            "nl": "Spanning L1"
+          }
+        },
+        "measure_voltage.l2": {
+          "title": {
+            "en": "Voltage L2",
+            "de": "Spannung L2",
+            "nl": "Spanning L2"
+          }
+        },
+        "measure_voltage.l3": {
+          "title": {
+            "en": "Voltage L3",
+            "de": "Spannung L3",
+            "nl": "Spanning L3"
+          }
+        },
+        "measure_temperature": {
+          "title": {
+            "en": "Temperature",
+            "de": "Temperatur",
+            "nl": "Temperatuur"
           }
         }
       },
@@ -1369,6 +1441,39 @@
             "en": "Password for Basic Authentication. Only used if a username is set.",
             "de": "Passwort für die Basisauthentifizierung. Wird nur verwendet wenn ein Benutzername gesetzt ist.",
             "nl": "Wachtwoord voor basisauthenticatie. Alleen gebruikt als een gebruikersnaam is ingesteld."
+          }
+        },
+        {
+          "id": "auto_start_charging",
+          "type": "checkbox",
+          "label": {
+            "en": "Auto-start charging when car connects",
+            "de": "Laden automatisch starten wenn Auto angeschlossen",
+            "nl": "Automatisch starten bij aansluiten auto"
+          },
+          "value": true,
+          "hint": {
+            "en": "When enabled, charging begins automatically as soon as the car plugs in. When disabled, use the 'Start charging' flow action or the on/off button to start manually.",
+            "de": "Wenn aktiviert, beginnt der Ladevorgang automatisch sobald das Auto angeschlossen wird. Wenn deaktiviert, mit der Flow-Aktion 'Laden starten' oder dem Ein/Aus-Schalter manuell starten.",
+            "nl": "Indien ingeschakeld begint het laden automatisch zodra de auto wordt aangesloten. Indien uitgeschakeld, gebruik de flow-actie 'Starten met laden' of de aan/uit-knop om handmatig te starten."
+          }
+        },
+        {
+          "id": "default_charging_amps",
+          "type": "number",
+          "label": {
+            "en": "Default charging current (A)",
+            "de": "Standard-Ladestrom (A)",
+            "nl": "Standaard laadstroom (A)"
+          },
+          "value": 16,
+          "min": 6,
+          "max": 32,
+          "step": 1,
+          "hint": {
+            "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value.",
+            "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird.",
+            "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde."
           }
         }
       ]
@@ -4645,6 +4750,17 @@
             "name": "device",
             "filter": "driver_id=smartcharger_ocpp"
           }
+        ],
+        "tokens": [
+          {
+            "name": "amps",
+            "type": "number",
+            "title": {
+              "en": "Charging current (A)",
+              "de": "Ladestrom (A)",
+              "nl": "Laadstroom (A)"
+            }
+          }
         ]
       },
       {
@@ -4664,6 +4780,77 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "energy_delivered_kwh",
+            "type": "number",
+            "title": {
+              "en": "Energy delivered (kWh)",
+              "de": "Gelieferte Energie (kWh)",
+              "nl": "Geleverde energie (kWh)"
+            }
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "title": {
+              "en": "Stop reason",
+              "de": "Stoppgrund",
+              "nl": "Stopreden"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_car_plugged_waiting",
+        "title": {
+          "en": "EV plugged in — waiting for start (OCPP)",
+          "de": "Fahrzeug angeschlossen — wartet auf Start (OCPP)",
+          "nl": "EV aangesloten — wacht op start (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when a car plugs in and auto-start charging is disabled. Use this to start charging manually from a flow.",
+          "de": "Wird ausgelöst wenn ein Auto angeschlossen wird und das automatische Laden deaktiviert ist. Damit kann der Ladevorgang manuell per Flow gestartet werden.",
+          "nl": "Wordt geactiveerd wanneer een auto wordt aangesloten en automatisch starten is uitgeschakeld. Gebruik dit om het laden handmatig vanuit een flow te starten."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charging_state_changed",
+        "title": {
+          "en": "EV charger state changed (OCPP)",
+          "de": "EV-Ladegerät Status geändert (OCPP)",
+          "nl": "EV-lader status gewijzigd (OCPP)"
+        },
+        "hint": {
+          "en": "Fires whenever the OCPP charger changes state (idle / connected / charging / error).",
+          "de": "Wird ausgelöst wenn der OCPP Charger seinen Status ändert (idle / connected / charging / error).",
+          "nl": "Wordt geactiveerd wanneer de OCPP lader van status verandert (idle / connected / charging / error)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "state",
+            "type": "string",
+            "title": {
+              "en": "State",
+              "de": "Status",
+              "nl": "Status"
+            }
           }
         ]
       }
@@ -4721,6 +4908,48 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_start_charging_at",
+        "title": {
+          "en": "Start charging at (OCPP)",
+          "de": "Laden starten mit (OCPP)",
+          "nl": "Laden starten met (OCPP)"
+        },
+        "titleFormatted": {
+          "en": "Start charging at [[amperes]] A (OCPP)",
+          "de": "Laden starten mit [[amperes]] A (OCPP)",
+          "nl": "Laden starten met [[amperes]] A (OCPP)"
+        },
+        "hint": {
+          "en": "Starts charging at the given current. If the car is already plugged in and blocked, unblocks it at the specified ampere value.",
+          "de": "Startet den Ladevorgang mit dem angegebenen Strom. Wenn das Auto bereits angeschlossen und blockiert ist, wird es mit dem angegebenen Ampere-Wert freigegeben.",
+          "nl": "Start het laden met de opgegeven stroom. Als de auto al is aangesloten en geblokkeerd, wordt deze vrijgegeven met de opgegeven ampèrewaarde."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "number",
+            "name": "amperes",
+            "title": {
+              "en": "Current (A)",
+              "de": "Strom (A)",
+              "nl": "Stroom (A)"
+            },
+            "min": 6,
+            "max": 32,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 16",
+              "de": "z.B. 16",
+              "nl": "bijv. 16"
+            }
           }
         ]
       },
