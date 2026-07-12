@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.78",
+  "version": "1.1.79",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -7080,6 +7080,80 @@
             "placeholder": {
               "en": "e.g. 20",
               "de": "z.B. 20"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_max_charge_power_above",
+        "title": {
+          "en": "Max charge power is !{{above|not above}} threshold",
+          "de": "Maximale Ladeleistung !{{über|nicht über}} Schwellwert"
+        },
+        "titleFormatted": {
+          "en": "Max charge power is !{{above|not above}} [[power]] W",
+          "de": "Maximale Ladeleistung !{{über|nicht über}} [[power]] W"
+        },
+        "hint": {
+          "en": "True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter every 5 poll cycles.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) über dem angegebenen Schwellwert liegt. Wird alle 5 Abfragezyklen synchronisiert."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 1000",
+              "de": "z.B. 1000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_max_charge_power_below",
+        "title": {
+          "en": "Max charge power is !{{below|not below}} threshold",
+          "de": "Maximale Ladeleistung !{{unter|nicht unter}} Schwellwert"
+        },
+        "titleFormatted": {
+          "en": "Max charge power is !{{below|not below}} [[power]] W",
+          "de": "Maximale Ladeleistung !{{unter|nicht unter}} [[power]] W"
+        },
+        "hint": {
+          "en": "True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter every 5 poll cycles.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird alle 5 Abfragezyklen synchronisiert."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 1000",
+              "de": "z.B. 1000"
             }
           }
         ]

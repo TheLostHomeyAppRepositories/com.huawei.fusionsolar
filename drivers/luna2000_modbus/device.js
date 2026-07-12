@@ -592,6 +592,20 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getConditionCard('luna2000_remote_mode_is')
       .registerRunListener((args) => this.getCapabilityValue('remote_charge_discharge_control_mode') === args.mode);
+
+    this.homey.flow
+      .getConditionCard('luna2000_max_charge_power_above')
+      .registerRunListener((args) => {
+        const current = parseFloat(args.device.getSetting('max_charge_power'));
+        return Number.isFinite(current) && current > args.power;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_max_charge_power_below')
+      .registerRunListener((args) => {
+        const current = parseFloat(args.device.getSetting('max_charge_power'));
+        return Number.isFinite(current) && current < args.power;
+      });
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
