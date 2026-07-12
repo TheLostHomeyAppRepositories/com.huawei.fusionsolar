@@ -11,9 +11,7 @@ class SmartChargerOcppDriver extends Driver {
   async onPair(session) {
     session.setHandler('add', async ({ stationId, name }) => {
       stationId = (stationId || '').trim();
-      if (!stationId) throw new Error('Please enter a Station ID.');
-
-      this.log(`Pairing OCPP SmartCharger with station ID: ${stationId}`);
+      this.log(`Pairing OCPP SmartCharger: station ID = "${stationId || '(catch-all)'}"`);
       return { success: true };
     });
   }

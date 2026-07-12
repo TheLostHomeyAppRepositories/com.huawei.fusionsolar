@@ -48,9 +48,9 @@
   </div>
 
   <div class="field">
-    <label>Station ID</label>
-    <input type="text" id="station-id" placeholder="e.g. scharger-home" />
-    <p class="hint">Choose any unique name — e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">scharger-home</code> or the serial number from the label on your charger (e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">EVB-P12345</code>). Enter the exact same value in the SCharger's Path field. Case-sensitive.</p>
+    <label>Station ID <span style="font-weight:400;color:#aaa">(optional)</span></label>
+    <input type="text" id="station-id" placeholder="e.g. scharger-home (leave empty to accept any)" />
+    <p class="hint">Enter the same value you set in the SCharger's <em>Path</em> field — e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">scharger-home</code> or the serial number (e.g. <code style="font-family:monospace;background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px">EVB-P12345</code>). Case-sensitive.<br><strong>Leave empty</strong> to accept the first charger that connects, regardless of its Station ID. Useful if you don't know the ID in advance.</p>
   </div>
 
   <div class="field">
@@ -81,11 +81,6 @@
       const btn       = document.getElementById('btn');
       const lbl       = document.getElementById('btn-label');
 
-      if (!stationId) {
-        showError('Please enter a Station ID.');
-        return;
-      }
-
       btn.disabled = true;
       lbl.innerHTML = '<span class="spinner"></span>Adding…';
       document.getElementById('status').style.display = 'none';
@@ -95,7 +90,7 @@
 
         await Homey.createDevice({
           name,
-          data: { id: `ocpp:${stationId}` },
+          data: { id: stationId ? `ocpp:${stationId}` : `ocpp:any-${Date.now()}` },
           settings: {
             station_id:    stationId,
             ocpp_port:     8887,

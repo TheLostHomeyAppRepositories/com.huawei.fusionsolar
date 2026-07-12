@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+    background: transparent;
+    color: #1a1a1a;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 12px;
+  }
+  .photo-wrap {
+    position: relative;
+    width: 100%;
+    /* Full portrait photo, no cropping: height locked to the photo's
+       aspect ratio (1056/992) via padding-top, robust in any webview */
+    padding-top: 106.45%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #2a2a2e;
+  }
+  .photo-wrap img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  #imgBlue { opacity: 0; }
+  /* Charging: smooth white <-> blue ring crossfade */
+  .charging #imgBlue, .finishing #imgBlue { animation: ringPulse 3s ease-in-out infinite; }
+  @keyframes ringPulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  /* Idle: slightly muted photo */
+  .muted img { filter: grayscale(35%) brightness(0.95); }
+
+  .status-label { font-size: 15px; font-weight: 700; margin-top: 10px; }
+  .status-label.error { color: #e53935; }
+  .sub {
+    font-size: 11px; color: #888; margin-top: 2px;
+    /* Always occupy one line, even when empty — states differ in whether
+       they have a sub-line (Charging doesn't, Paused/Smart do), and the
+       widget height is measured once, so a variable text block leaves a
+       trail in some states and would clip in others */
+    min-height: 14px;
+  }
+  .divider { height: 1px; background: #eee; margin-top: 10px; }
+  .stats { display: flex; justify-content: space-between; margin-top: 9px; }
+  .stat-value { font-size: 16px; font-weight: 700; color: #1c66ff; }
+  .stat-label { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
+
+  /* Dark mode last, so these rules win the cascade */
+  @media (prefers-color-scheme: dark) {
+    html, body { color: #f2f2f2; }
+    .card { background: #1e1e22; }
+    .divider { background: #333; }
+    .sub { color: #8a8a8f; }
+    .stat-label { color: #8a8a8f; }
+    .stat-value { color: #5a8cff; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="photo-wrap" id="photoWrap">
+      <img id="imgBase" src="img/idle.jpg" alt="">
+      <img id="imgBlue" src="img/charging_blue.jpg" alt="">
+    </div>
+    <div class="status-label" id="statusLabel">—</div>
+    <div class="sub" id="statusSub"></div>
+    <div class="divider"></div>
+    <div class="stats">
+      <div>
+        <div class="stat-value" id="statPower">—</div>
+        <div class="stat-label">Power</div>
+      </div>
+      <div>
+        <div class="stat-value" id="statAmps">—</div>
+        <div class="stat-label">Amps</div>
+      </div>
+      <div>
+        <div class="stat-value" id="statTimer">—</div>
+        <div class="stat-label">Session</div>
+      </div>
+    </div>
+  </div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+  const card = document.getElementById('card');
+  const photoWrap = document.getElementById('photoWrap');
+  const imgBase = document.getElementById('imgBase');
+  const imgBlue = document.getElementById('imgBlue');
+  const statusLabel = document.getElementById('statusLabel');
+  const statusSub = document.getElementById('statusSub');
+  const statPower = document.getElementById('statPower');
+  const statAmps = document.getElementById('statAmps');
+  const statTimer = document.getElementById('statTimer');
+
+  const LABELS = {
+    not_connected: ['Idle', 'No car connected'],
+    connected: ['Connected', 'Ready to start'],
+    smart_charging: ['Smart Charging', 'Waiting for a flow to start'],
+    charging: ['Charging', ''],
+    paused: ['Paused', 'Same session — resumes at your last limit'],
+    fully_charged: ['Fully Charged', 'Cable still connected'],
+    finishing: ['Finishing', 'Car topping off — almost full'],
+    offline: ['Charger Offline', 'Not connected to Homey'],
+    error: ['Error', 'Check the charger'],
+  };
+
+  let sessionStartTime = null;
+
+  function fmtDuration(ms) {
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return mins + 'm';
+    const h = Math.floor(mins / 60);
+    return h + 'h ' + (mins % 60) + 'm';
+  }
+
+  function tickTimer() {
+    if (sessionStartTime) {
+      statTimer.textContent = fmtDuration(Date.now() - sessionStartTime);
+    } else {
+      statTimer.textContent = '—';
+    }
+  }
+
+  function render(s) {
+    if (!s || s.error) {
+      statusLabel.textContent = 'Not available';
+      statusLabel.className = 'status-label';
+      statusSub.textContent = s && s.error ? s.error : '';
+      card.className = 'card';
+      photoWrap.className = 'photo-wrap muted';
+      sessionStartTime = null;
+      tickTimer();
+      return;
+    }
+
+    const st = s.sessionStatus || 'not_connected';
+    const [label, sub] = LABELS[st] || [st, ''];
+
+    // Photo per state: each state has its own ring color where a photo
+    // exists — white (connected), pulsing white/blue (charging), orange
+    // (paused), green (fully charged), purple (smart charging), red (error)
+    const STATE_PHOTOS = {
+      not_connected: 'img/idle.jpg',
+      connected: 'img/connected.jpg',
+      // Charging fades between the UNLIT ring and the blue ring — reads
+      // as a breathing blue pulse (like a real LED), rather than the
+      // odd-looking color shift a white-to-blue fade produces
+      charging: 'img/ring_off.jpg',
+      paused: 'img/paused_orange.jpg',
+      smart_charging: 'img/smart_purple.jpg',
+      fully_charged: 'img/fully_green.jpg',
+      finishing: 'img/ring_off.jpg',
+      error: 'img/error_red.jpg',
+      offline: 'img/ring_off.jpg',
+    };
+    imgBase.src = STATE_PHOTOS[st] || 'img/idle.jpg';
+    // Pulse overlay: blue while charging, green while finishing — pulsing
+    // means "in motion", the static green of Fully Charged means "settled"
+    imgBlue.src = (st === 'finishing') ? 'img/fully_green.jpg' : 'img/charging_blue.jpg';
+
+    photoWrap.className = 'photo-wrap'
+      + (st === 'charging' ? ' charging' : '')
+      + (st === 'finishing' ? ' finishing' : '')
+      + (st === 'not_connected' || st === 'offline' ? ' muted' : '');
+
+    statusLabel.className = 'status-label' + (st === 'error' ? ' error' : '');
+    if (st === 'charging' && s.requestedAmps) {
+      statusLabel.textContent = 'Charging \u00b7 ' + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
+      statusSub.textContent = '';
+    } else if (st === 'paused' && s.requestedAmps) {
+      statusLabel.textContent = 'Paused';
+      statusSub.textContent = 'Resumes at ' + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
+    } else {
+      statusLabel.textContent = label;
+      statusSub.textContent = sub;
+    }
+
+    // Stats populate while a session is running (charging or paused),
+    // and show placeholders otherwise — row always visible for stable height
+    if (st === 'charging' || st === 'finishing' || st === 'paused') {
+      const kw = (s.powerW || 0) / 1000;
+      statPower.textContent = kw >= 1 ? kw.toFixed(1) + ' kW' : Math.round(s.powerW || 0) + ' W';
+      statAmps.textContent = (s.currentA != null ? Math.round(s.currentA * 10) / 10 : '—') + ' A';
+      sessionStartTime = s.sessionStartTime || null;
+    } else {
+      statPower.textContent = '—';
+      statAmps.textContent = '—';
+      sessionStartTime = null;
+    }
+    tickTimer();
+  }
+
+  async function refresh() {
+    try {
+      const s = await Homey.api('GET', '/status');
+      render(s);
+    } catch (err) {
+      render({ error: 'Charger unreachable' });
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+  setInterval(tickTimer, 1000);
+
+  // Size the widget to fit the full photo plus the status/stats area,
+  // whatever width the dashboard gives us. padding-top-based aspect
+  // ratio means layout height is known immediately, no image-load wait.
+  requestAnimationFrame(() => {
+    // Sub-pixel-precise measurement: offsetHeight rounds down, which
+    // clipped the stat labels; the blunt +14 buffer that fixed it left a
+    // visible trail instead. getBoundingClientRect().bottom is exact —
+    // ceil it and add only a hairline for webview chrome.
+    const rect = document.getElementById('card').getBoundingClientRect();
+    Homey.ready({ height: Math.ceil(rect.bottom) + 2 });
+  });
+}
+</script>
+</body>
+</html>

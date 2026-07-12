@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.76",
+  "version": "1.1.78",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -320,6 +320,56 @@
       "setable": true,
       "uiComponent": "slider",
       "insights": false
+    },
+    "session_status": {
+      "type": "enum",
+      "title": {
+        "en": "Session Status",
+        "de": "Sitzungsstatus",
+        "nl": "Sessiestatus"
+      },
+      "icon": "/assets/capabilities/session_status.svg",
+      "values": [
+        { "id": "not_connected",  "title": { "en": "Not Connected",  "de": "Nicht verbunden",  "nl": "Niet verbonden"  } },
+        { "id": "connected",      "title": { "en": "Connected",      "de": "Verbunden",         "nl": "Verbonden"       } },
+        { "id": "smart_charging", "title": { "en": "Smart Charging", "de": "Smartladen",        "nl": "Smart laden"     } },
+        { "id": "charging",       "title": { "en": "Charging",       "de": "Lädt",              "nl": "Aan het laden"   } },
+        { "id": "finishing",      "title": { "en": "Finishing",      "de": "Abschluss",         "nl": "Afronden"        } },
+        { "id": "paused",         "title": { "en": "Paused",         "de": "Pausiert",          "nl": "Gepauzeerd"      } },
+        { "id": "fully_charged",  "title": { "en": "Fully Charged",  "de": "Vollständig geladen","nl": "Volledig geladen"} },
+        { "id": "offline",        "title": { "en": "Offline",        "de": "Offline",           "nl": "Offline"         } },
+        { "id": "error",          "title": { "en": "Error",          "de": "Fehler",            "nl": "Fout"            } }
+      ],
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false
+    },
+    "charging_profile": {
+      "type": "string",
+      "title": {
+        "en": "Charging Profile",
+        "de": "Ladeprofil",
+        "nl": "Laadprofiel"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/charging_profile.svg"
+    },
+    "status_summary": {
+      "type": "string",
+      "title": {
+        "en": "Status Summary",
+        "de": "Statuszusammenfassung",
+        "nl": "Statussamenvatting"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/status_summary.svg"
     },
     "optimizer_total_count": {
       "type": "number",
@@ -1221,9 +1271,9 @@
     {
       "id": "smartcharger_ocpp",
       "name": {
-        "en": "Smart Charger (OCPP Test)",
-        "de": "Smart Charger (OCPP Test)",
-        "nl": "Smart Charger (OCPP Test)"
+        "en": "Smart Charger (OCPP)",
+        "de": "Smart Charger (OCPP)",
+        "nl": "Smart Charger (OCPP)"
       },
       "class": "evcharger",
       "platforms": [
@@ -1238,6 +1288,11 @@
       },
       "capabilities": [
         "onoff",
+        "button.pause_charging",
+        "button.resume_charging",
+        "session_status",
+        "charging_profile",
+        "status_summary",
         "target_current",
         "measure_power",
         "evcharger_charging_state",
@@ -1253,7 +1308,8 @@
         "measure_voltage.l1",
         "measure_voltage.l2",
         "measure_voltage.l3",
-        "measure_temperature"
+        "measure_temperature",
+        "button.release_charger"
       ],
       "capabilitiesOptions": {
         "onoff": {
@@ -1367,6 +1423,54 @@
             "de": "Temperatur",
             "nl": "Temperatuur"
           }
+        },
+        "session_status": {
+          "title": {
+            "en": "Session Status",
+            "de": "Sitzungsstatus",
+            "nl": "Sessiestatus"
+          }
+        },
+        "charging_profile": {
+          "title": {
+            "en": "Charging Profile",
+            "de": "Ladeprofil",
+            "nl": "Laadprofiel"
+          }
+        },
+        "status_summary": {
+          "title": {
+            "en": "Status Summary",
+            "de": "Statuszusammenfassung",
+            "nl": "Statussamenvatting"
+          }
+        },
+        "button.release_charger": {
+          "maintenanceAction": true,
+          "title": {
+            "en": "Release Charger",
+            "de": "Ladestation freigeben",
+            "nl": "Lader vrijgeven"
+          },
+          "desc": {
+            "en": "Forces the connector back to Operative — use if the charger is stuck Unavailable or the cable is locked in the socket after a pause.",
+            "de": "Setzt den Anschluss zwangsweise auf Operative zurück — verwenden wenn die Ladestation auf Nicht verfügbar feststeckt oder das Kabel nach einer Pause verriegelt ist.",
+            "nl": "Zet de connector geforceerd terug op Operative — gebruik dit als de lader vastzit op Niet beschikbaar of de kabel na een pauze vergrendeld is."
+          }
+        },
+        "button.pause_charging": {
+          "title": {
+            "en": "Pause Charging",
+            "de": "Laden pausieren",
+            "nl": "Laden pauzeren"
+          }
+        },
+        "button.resume_charging": {
+          "title": {
+            "en": "Resume Charging",
+            "de": "Laden fortsetzen",
+            "nl": "Laden hervatten"
+          }
         }
       },
       "images": {
@@ -1459,17 +1563,127 @@
           }
         },
         {
-          "id": "default_charging_amps",
-          "type": "number",
+          "id": "enable_timeline_notifications",
+          "type": "checkbox",
           "label": {
-            "en": "Default charging current (A)",
-            "de": "Standard-Ladestrom (A)",
-            "nl": "Standaard laadstroom (A)"
+            "en": "Enable Timeline notifications",
+            "de": "Zeitleisten-Benachrichtigungen aktivieren",
+            "nl": "Tijdlijn-meldingen inschakelen"
           },
-          "value": 16,
-          "min": 6,
-          "max": 32,
-          "step": 1,
+          "value": true,
+          "hint": {
+            "en": "Posts to Homey's Timeline when the car connects, charging starts, charging stops, and the car disconnects.",
+            "de": "Veröffentlicht Einträge in Homeys Zeitleiste, wenn das Auto sich verbindet, das Laden startet, stoppt und das Auto die Verbindung trennt.",
+            "nl": "Plaatst berichten op de Tijdlijn van Homey wanneer de auto verbindt, het laden start, stopt en de auto wordt losgekoppeld."
+          }
+        },
+        {
+          "id": "charger_vendor",
+          "type": "text",
+          "label": {
+            "en": "Charger vendor",
+            "de": "Hersteller der Ladestation",
+            "nl": "Laadpaalfabrikant"
+          },
+          "value": "Huawei",
+          "hint": {
+            "en": "Not read from the charger — defaults to \"Huawei\", but you can edit it freely.",
+            "de": "Wird nicht von der Ladestation ausgelesen — Standard ist \"Huawei\", kann aber frei geändert werden.",
+            "nl": "Wordt niet uitgelezen van de lader — standaard \"Huawei\", maar vrij aanpasbaar."
+          }
+        },
+        {
+          "id": "charger_model",
+          "type": "dropdown",
+          "label": {
+            "en": "Charger model",
+            "de": "Modell der Ladestation",
+            "nl": "Laadpaalmodel"
+          },
+          "value": "other",
+          "highlight": true,
+          "values": [
+            {
+              "id": "7ks",
+              "label": {
+                "en": "SCharger-7KS-S0 (Mono-Phase only)",
+                "de": "SCharger-7KS-S0 (nur Mono-Phase)",
+                "nl": "SCharger-7KS-S0 (alleen Mono-Phase)"
+              }
+            },
+            {
+              "id": "22kt",
+              "label": {
+                "en": "SCharger-22KT-S0 (Mono-Phase or Tri-Phase)",
+                "de": "SCharger-22KT-S0 (Mono-Phase oder Tri-Phase)",
+                "nl": "SCharger-22KT-S0 (Mono-Phase of Tri-Phase)"
+              }
+            },
+            {
+              "id": "other",
+              "label": {
+                "en": "Other / not sure",
+                "de": "Andere / nicht sicher",
+                "nl": "Anders / niet zeker"
+              }
+            }
+          ],
+          "hint": {
+            "en": "If set to SCharger-7KS-S0 and 'Number of phases' is set to 3, saving is rejected with an error.",
+            "de": "Wenn auf SCharger-7KS-S0 gesetzt und 'Anzahl der Phasen' auf 3, wird das Speichern mit einem Fehler abgelehnt.",
+            "nl": "Als dit is ingesteld op SCharger-7KS-S0 en 'Aantal fasen' op 3, wordt opslaan geweigerd."
+          }
+        },
+        {
+          "id": "number_of_phases",
+          "type": "dropdown",
+          "label": {
+            "en": "Number of phases",
+            "de": "Anzahl der Phasen",
+            "nl": "Aantal fasen"
+          },
+          "value": "3",
+          "highlight": true,
+          "values": [
+            {
+              "id": "1",
+              "label": {
+                "en": "1 (Mono-Phase)",
+                "de": "1 (Mono-Phase)",
+                "nl": "1 (Mono-Phase)"
+              }
+            },
+            {
+              "id": "3",
+              "label": {
+                "en": "3 (Tri-Phase)",
+                "de": "3 (Tri-Phase)",
+                "nl": "3 (Tri-Phase)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "How your charger is wired — Mono-Phase or Tri-Phase. Never auto-detected — check your charger installation and set this to match.",
+            "de": "Wie deine Ladestation verkabelt ist — Mono-Phase oder Tri-Phase. Wird nie automatisch erkannt — überprüfe die Installation und stelle es entsprechend ein.",
+            "nl": "Hoe je lader is aangesloten — Mono-Phase of Tri-Phase. Nooit automatisch gedetecteerd — controleer de installatie en stel dit dienovereenkomstig in."
+          }
+        },
+        {
+          "id": "default_charging_amps",
+          "type": "dropdown",
+          "label": {
+            "en": "Default charging current",
+            "de": "Standard-Ladestrom",
+            "nl": "Standaard laadstroom"
+          },
+          "value": "16",
+          "values": [
+            { "id": "6",  "label": { "en": "6A",  "de": "6A",  "nl": "6A"  } },
+            { "id": "8",  "label": { "en": "8A",  "de": "8A",  "nl": "8A"  } },
+            { "id": "10", "label": { "en": "10A", "de": "10A", "nl": "10A" } },
+            { "id": "12", "label": { "en": "12A", "de": "12A", "nl": "12A" } },
+            { "id": "16", "label": { "en": "16A", "de": "16A", "nl": "16A" } }
+          ],
           "hint": {
             "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value.",
             "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird.",
@@ -4760,6 +4974,33 @@
               "de": "Ladestrom (A)",
               "nl": "Laadstroom (A)"
             }
+          },
+          {
+            "name": "phases",
+            "type": "number",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            }
+          },
+          {
+            "name": "phase_label",
+            "type": "string",
+            "title": {
+              "en": "Phase label",
+              "de": "Phasen-Bezeichnung",
+              "nl": "Fase-label"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
           }
         ]
       },
@@ -4793,12 +5034,75 @@
             }
           },
           {
+            "name": "energy_delivered_wh",
+            "type": "number",
+            "title": {
+              "en": "Energy delivered (Wh)",
+              "de": "Gelieferte Energie (Wh)",
+              "nl": "Geleverde energie (Wh)"
+            }
+          },
+          {
+            "name": "energy_delivered_formatted",
+            "type": "string",
+            "title": {
+              "en": "Energy delivered (formatted)",
+              "de": "Gelieferte Energie (formatiert)",
+              "nl": "Geleverde energie (opgemaakt)"
+            }
+          },
+          {
+            "name": "duration_minutes",
+            "type": "number",
+            "title": {
+              "en": "Duration (minutes)",
+              "de": "Dauer (Minuten)",
+              "nl": "Duur (minuten)"
+            }
+          },
+          {
+            "name": "duration_formatted",
+            "type": "string",
+            "title": {
+              "en": "Duration (formatted)",
+              "de": "Dauer (formatiert)",
+              "nl": "Duur (opgemaakt)"
+            }
+          },
+          {
             "name": "reason",
             "type": "string",
             "title": {
               "en": "Stop reason",
               "de": "Stoppgrund",
               "nl": "Stopreden"
+            }
+          },
+          {
+            "name": "amps",
+            "type": "number",
+            "title": {
+              "en": "Charging current (A)",
+              "de": "Ladestrom (A)",
+              "nl": "Laadstroom (A)"
+            }
+          },
+          {
+            "name": "phases",
+            "type": "number",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
             }
           }
         ]
@@ -4850,6 +5154,265 @@
               "en": "State",
               "de": "Status",
               "nl": "Status"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_disconnected",
+        "title": {
+          "en": "EV disconnected (OCPP)",
+          "de": "Fahrzeug getrennt (OCPP)",
+          "nl": "EV losgekoppeld (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the cable is physically unplugged from the charger (rawStatus=Available).",
+          "de": "Wird ausgelöst wenn das Kabel physisch vom Charger getrennt wird (rawStatus=Available).",
+          "nl": "Wordt geactiveerd wanneer de kabel fysiek van de lader wordt losgekoppeld (rawStatus=Available)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "connected_minutes",
+            "type": "number",
+            "title": {
+              "en": "Connected for (minutes)",
+              "de": "Verbunden für (Minuten)",
+              "nl": "Verbonden voor (minuten)"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charger_offline",
+        "title": {
+          "en": "Charger went offline (OCPP)",
+          "de": "Ladestation offline gegangen (OCPP)",
+          "nl": "Lader offline gegaan (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when no OCPP message has been received from the charger for 3 minutes.",
+          "de": "Wird ausgelöst wenn seit 3 Minuten keine OCPP-Nachricht vom Charger empfangen wurde.",
+          "nl": "Wordt geactiveerd wanneer gedurende 3 minuten geen OCPP-bericht van de lader is ontvangen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "message",
+            "type": "string",
+            "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charger_online",
+        "title": {
+          "en": "Charger came back online (OCPP)",
+          "de": "Ladestation wieder online (OCPP)",
+          "nl": "Lader weer online (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the charger reconnects after having been offline.",
+          "de": "Wird ausgelöst wenn der Charger nach einem Offline-Zustand wieder eine Verbindung aufbaut.",
+          "nl": "Wordt geactiveerd wanneer de lader opnieuw verbinding maakt na offline te zijn geweest."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "message",
+            "type": "string",
+            "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charging_paused",
+        "title": {
+          "en": "Charging paused (OCPP)",
+          "de": "Laden pausiert (OCPP)",
+          "nl": "Laden gepauzeerd (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when charging is paused via the masked-stop mechanism.",
+          "de": "Wird ausgelöst wenn der Ladevorgang über den maskierten Stop pausiert wird.",
+          "nl": "Wordt geactiveerd wanneer het laden wordt gepauzeerd via het gemaskeerde stopmechanisme."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "resume_amps",
+            "type": "number",
+            "title": {
+              "en": "Resume current (A)",
+              "de": "Fortsetzungsstrom (A)",
+              "nl": "Hervatten stroom (A)"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charging_resumed",
+        "title": {
+          "en": "Charging resumed (OCPP)",
+          "de": "Laden fortgesetzt (OCPP)",
+          "nl": "Laden hervat (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when power is flowing again after a pause (power-verified).",
+          "de": "Wird ausgelöst wenn nach einer Pause wieder Strom fließt (leistungsverifiziert).",
+          "nl": "Wordt geactiveerd wanneer er na een pauze weer stroom stroomt (vermogensverifiseerd)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "amps",
+            "type": "number",
+            "title": {
+              "en": "Charging current (A)",
+              "de": "Ladestrom (A)",
+              "nl": "Laadstroom (A)"
+            }
+          },
+          {
+            "name": "phases",
+            "type": "number",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            }
+          },
+          {
+            "name": "phase_label",
+            "type": "string",
+            "title": {
+              "en": "Phase label",
+              "de": "Phasen-Bezeichnung",
+              "nl": "Fase-label"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charging_limit_changed",
+        "title": {
+          "en": "Charging limit changed (OCPP)",
+          "de": "Ladelimit geändert (OCPP)",
+          "nl": "Laadlimiet gewijzigd (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the charging current limit is changed during an active session.",
+          "de": "Wird ausgelöst wenn das Ladelimit während einer aktiven Sitzung geändert wird.",
+          "nl": "Wordt geactiveerd wanneer de laadstroom limiet wordt gewijzigd tijdens een actieve sessie."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "amps",
+            "type": "number",
+            "title": {
+              "en": "New current (A)",
+              "de": "Neuer Strom (A)",
+              "nl": "Nieuwe stroom (A)"
+            }
+          },
+          {
+            "name": "previous_amps",
+            "type": "number",
+            "title": {
+              "en": "Previous current (A)",
+              "de": "Vorheriger Strom (A)",
+              "nl": "Vorige stroom (A)"
+            }
+          },
+          {
+            "name": "phases",
+            "type": "number",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            }
+          },
+          {
+            "name": "phase_label",
+            "type": "string",
+            "title": {
+              "en": "Phase label",
+              "de": "Phasen-Bezeichnung",
+              "nl": "Fase-label"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
             }
           }
         ]
@@ -4968,6 +5531,256 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_pause_charging",
+        "title": {
+          "en": "Pause charging (OCPP)",
+          "de": "Laden pausieren (OCPP)",
+          "nl": "Laden pauzeren (OCPP)"
+        },
+        "hint": {
+          "en": "Pauses charging using a masked RemoteStop. The session snapshot is preserved so Resume stitches it back together.",
+          "de": "Pausiert den Ladevorgang mit einem maskierten RemoteStop. Der Sitzungs-Snapshot wird bewahrt, damit Fortsetzen ihn wieder zusammenfügt.",
+          "nl": "Pauzeert het laden met een gemaskeerde RemoteStop. De sessiemomentopname wordt bewaard zodat Hervatten hem weer samenvoegt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_resume_charging",
+        "title": {
+          "en": "Resume charging (OCPP)",
+          "de": "Laden fortsetzen (OCPP)",
+          "nl": "Laden hervatten (OCPP)"
+        },
+        "hint": {
+          "en": "Resumes a previously paused charging session.",
+          "de": "Setzt einen zuvor pausierten Ladevorgang fort.",
+          "nl": "Hervat een eerder gepauzeerde laadsessie."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_release_charger",
+        "title": {
+          "en": "Release charger (OCPP)",
+          "de": "Ladestation freigeben (OCPP)",
+          "nl": "Lader vrijgeven (OCPP)"
+        },
+        "hint": {
+          "en": "Sends ChangeAvailability → Operative to unlock the connector. Use if the charger is stuck Unavailable after a pause.",
+          "de": "Sendet ChangeAvailability → Operative um den Anschluss zu entsperren. Verwenden wenn die Ladestation nach einer Pause auf Nicht verfügbar feststeckt.",
+          "nl": "Stuurt ChangeAvailability → Operative om de connector te ontgrendelen. Gebruik als de lader na een pauze vastzit op Niet beschikbaar."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_start_charging_at_phase",
+        "title": {
+          "en": "Start charging at current + phase (OCPP)",
+          "de": "Laden starten mit Strom + Phase (OCPP)",
+          "nl": "Laden starten met stroom + fase (OCPP)"
+        },
+        "titleFormatted": {
+          "en": "Start charging at [[amperes]] A / [[phases]] (OCPP)",
+          "de": "Laden starten mit [[amperes]] A / [[phases]] (OCPP)",
+          "nl": "Laden starten met [[amperes]] A / [[phases]] (OCPP)"
+        },
+        "hint": {
+          "en": "Starts charging at the specified current and phase count. Useful for solar surplus charging on mono-phase.",
+          "de": "Startet den Ladevorgang mit dem angegebenen Strom und Phasenzahl. Nützlich für Solarladen auf einer Phase.",
+          "nl": "Start het laden met de opgegeven stroom en aantal fasen. Handig voor zonne-energie laden op één fase."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "number",
+            "name": "amperes",
+            "title": {
+              "en": "Current (A)",
+              "de": "Strom (A)",
+              "nl": "Stroom (A)"
+            },
+            "min": 6,
+            "max": 32,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 16",
+              "de": "z.B. 16",
+              "nl": "bijv. 16"
+            }
+          },
+          {
+            "type": "dropdown",
+            "name": "phases",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            },
+            "values": [
+              {
+                "id": "1",
+                "label": {
+                  "en": "Mono-Phase (1)",
+                  "de": "Einphasig (1)",
+                  "nl": "Eénfasig (1)"
+                }
+              },
+              {
+                "id": "3",
+                "label": {
+                  "en": "Tri-Phase (3)",
+                  "de": "Dreiphasig (3)",
+                  "nl": "Driefasig (3)"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ocpp_set_charging_limit_at_phase",
+        "title": {
+          "en": "Set charging limit at current + phase (OCPP)",
+          "de": "Ladelimit setzen mit Strom + Phase (OCPP)",
+          "nl": "Laadlimiet instellen met stroom + fase (OCPP)"
+        },
+        "titleFormatted": {
+          "en": "Set charging limit to [[amperes]] A / [[phases]] (OCPP)",
+          "de": "Ladelimit auf [[amperes]] A / [[phases]] setzen (OCPP)",
+          "nl": "Laadlimiet op [[amperes]] A / [[phases]] instellen (OCPP)"
+        },
+        "hint": {
+          "en": "Changes the charging current and phase count during an active session.",
+          "de": "Ändert den Ladestrom und die Phasenzahl während einer aktiven Sitzung.",
+          "nl": "Wijzigt de laadstroom en het aantal fasen tijdens een actieve sessie."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "number",
+            "name": "amperes",
+            "title": {
+              "en": "Current (A)",
+              "de": "Strom (A)",
+              "nl": "Stroom (A)"
+            },
+            "min": 6,
+            "max": 32,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 16",
+              "de": "z.B. 16",
+              "nl": "bijv. 16"
+            }
+          },
+          {
+            "type": "dropdown",
+            "name": "phases",
+            "title": {
+              "en": "Phases",
+              "de": "Phasen",
+              "nl": "Fasen"
+            },
+            "values": [
+              {
+                "id": "1",
+                "label": {
+                  "en": "Mono-Phase (1)",
+                  "de": "Einphasig (1)",
+                  "nl": "Eénfasig (1)"
+                }
+              },
+              {
+                "id": "3",
+                "label": {
+                  "en": "Tri-Phase (3)",
+                  "de": "Dreiphasig (3)",
+                  "nl": "Driefasig (3)"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "ocpp_reboot_charger",
+        "title": {
+          "en": "Reboot charger (OCPP)",
+          "de": "Ladestation neu starten (OCPP)",
+          "nl": "Lader herstarten (OCPP)"
+        },
+        "titleFormatted": {
+          "en": "Reboot charger ([[type]]) (OCPP)",
+          "de": "Ladestation neu starten ([[type]]) (OCPP)",
+          "nl": "Lader herstarten ([[type]]) (OCPP)"
+        },
+        "hint": {
+          "en": "Sends a Reset command to the charger. Soft reboot gracefully stops the session; Hard reboot cuts power immediately.",
+          "de": "Sendet einen Reset-Befehl an die Ladestation. Soft beendet die Sitzung ordentlich; Hard trennt sofort die Stromzufuhr.",
+          "nl": "Stuurt een Reset-opdracht naar de lader. Soft stopt de sessie netjes; Hard verbreekt onmiddellijk de stroom."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "dropdown",
+            "name": "type",
+            "title": {
+              "en": "Reset type",
+              "de": "Reset-Typ",
+              "nl": "Reset-type"
+            },
+            "values": [
+              {
+                "id": "Soft",
+                "label": {
+                  "en": "Soft",
+                  "de": "Soft",
+                  "nl": "Soft"
+                }
+              },
+              {
+                "id": "Hard",
+                "label": {
+                  "en": "Hard",
+                  "de": "Hard",
+                  "nl": "Hard"
+                }
+              }
+            ]
           }
         ]
       },
@@ -6792,6 +7605,66 @@
     ]
   },
   "widgets": {
+    "charger-status": {
+      "id": "charger-status",
+      "name": {
+        "en": "Charger Status",
+        "de": "Ladestatus",
+        "nl": "Laderstatus",
+        "fr": "État de la borne"
+      },
+      "height": 392,
+      "transparent": false,
+      "settings": [],
+      "images": {
+        "light": "/widgets/charger-status/preview-light.png",
+        "dark": "/widgets/charger-status/preview-dark.png"
+      },
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/status"
+        }
+      }
+    },
+    "session-history": {
+      "id": "session-history",
+      "name": {
+        "en": "Charging Sessions",
+        "de": "Ladesitzungen",
+        "nl": "Laadsessies",
+        "fr": "Sessions de charge"
+      },
+      "height": 340,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "rows",
+          "type": "dropdown",
+          "title": {
+            "en": "Sessions to show",
+            "de": "Anzahl Sitzungen",
+            "nl": "Aantal sessies",
+            "fr": "Nombre de sessions"
+          },
+          "value": "5",
+          "values": [
+            { "id": "5",  "title": { "en": "Last 5",  "de": "Letzte 5",  "nl": "Laatste 5",  "fr": "5 dernières"  } },
+            { "id": "10", "title": { "en": "Last 10", "de": "Letzte 10", "nl": "Laatste 10", "fr": "10 dernières" } }
+          ]
+        }
+      ],
+      "images": {
+        "light": "/widgets/session-history/preview-light.png",
+        "dark": "/widgets/session-history/preview-dark.png"
+      },
+      "api": {
+        "getSessions": {
+          "method": "GET",
+          "path": "/sessions"
+        }
+      }
+    },
     "solar-power-flow": {
       "id": "solar-power-flow",
       "name": {

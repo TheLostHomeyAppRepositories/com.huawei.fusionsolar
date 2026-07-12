@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+    background: transparent;
+    color: #1a1a1a;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 12px 14px;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .session-row { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .session-row:last-child { border-bottom: none; }
+  .top-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .date-range { font-size: 12px; font-weight: 600; }
+  .date-range .arrow { color: #bbb; font-weight: 400; margin: 0 3px; }
+  .phase-tag { font-size: 10px; color: #888; background: #f4f4f4; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
+  .bottom-line { display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px; }
+  .duration-energy { font-size: 11px; color: #999; }
+  .duration-energy b { color: #444; font-weight: 700; }
+  .reason { font-size: 10px; color: #bbb; }
+  .active {
+    background: #f4f1ff;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin: -4px -10px 4px -10px;
+    border-bottom: none;
+  }
+  .active .date-range { color: #6d4aff; }
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #6d4aff; margin-right: 5px;
+    box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.15);
+  }
+  .active.paused { background: #fff5e8; }
+  .active.paused .date-range { color: #e08600; }
+  .active.paused .live-dot { background: #ff9500; box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.15); }
+  .empty { font-size: 12px; color: #999; padding: 12px 0; text-align: center; }
+
+  /* Dark mode last, so these rules win the cascade */
+  @media (prefers-color-scheme: dark) {
+    html, body { color: #f2f2f2; }
+    .card { background: #1e1e22; }
+    .session-row { border-color: #2e2e33; }
+    .date-range .arrow { color: #666; }
+    .duration-energy { color: #8a8a8f; }
+    .duration-energy b { color: #d5d5da; }
+    .phase-tag { background: #2c2c31; color: #9a9aa0; }
+    .reason { color: #6a6a70; }
+    .active { background: #26243a; }
+    .active .date-range { color: #9678ff; }
+    .active.paused { background: #35291a; }
+    .active.paused .date-range { color: #ffb04d; }
+    .empty { color: #8a8a8f; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="empty" id="empty">Loading…</div>
+    <div id="list"></div>
+  </div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+  const listEl = document.getElementById('list');
+  const emptyEl = document.getElementById('empty');
+
+  const settings = Homey.getSettings();
+  const maxRows = parseInt(settings.rows || '5', 10);
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    return MONTHS[d.getMonth()] + ' ' + d.getDate();
+  }
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function sameDay(a, b) {
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  }
+  function fmtDuration(ms) {
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return mins + 'm';
+    const h = Math.floor(mins / 60);
+    return h + 'h ' + (mins % 60) + 'm';
+  }
+  function fmtEnergy(wh) {
+    if (wh == null) return '—';
+    if (wh >= 1000) return (wh / 1000).toFixed(2) + ' kWh';
+    return Math.round(wh) + ' Wh';
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+  function phaseTag(amps, phases) {
+    if (!amps) return '';
+    // "4.1 kW (6A) / 3P" — kW truncated to one decimal like everywhere
+    // else; rows recorded before phases were tracked fall back to amps-only
+    const p = phases
+      ? (Math.floor(amps * phases * 230 / 100) / 10).toFixed(1) + ' kW (' + amps + 'A) / ' + phases + 'P'
+      : amps + 'A';
+    return '<div class="phase-tag">' + esc(p) + '</div>';
+  }
+
+  let currentStartTime = null;
+
+  function render(data) {
+    if (!data || data.error) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = data && data.error ? data.error : 'Not available';
+      listEl.innerHTML = '';
+      return;
+    }
+    const rows = [];
+    currentStartTime = null;
+
+    if (data.current && data.current.startTime) {
+      currentStartTime = data.current.startTime;
+      const isPaused = data.current.paused === true;
+      rows.push(
+        '<div class="session-row active' + (isPaused ? ' paused' : '') + '">' +
+          '<div class="top-line">' +
+            '<div class="date-range"><span class="live-dot"></span>' + (isPaused ? 'Paused' : 'In progress') + ' \u00b7 started ' +
+              esc(fmtDate(data.current.startTime)) + ', ' + esc(fmtTime(data.current.startTime)) + '</div>' +
+          '</div>' +
+          '<div class="bottom-line">' +
+            '<div class="duration-energy"><b id="liveDuration">' + esc(fmtDuration(data.current.durationMs)) + '</b> so far \u00b7 <b>' +
+              esc(fmtEnergy(data.current.energyWh)) + '</b></div>' +
+            phaseTag(data.current.amps, data.current.phases) +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    // Fixed row budget: an in-progress session occupies the first slot,
+    // so show maxRows-1 completed rows while charging and maxRows when
+    // idle — no reserved-but-empty space either way.
+    const hasCurrent = !!(data.current && data.current.startTime);
+    const completed = (data.history || []).slice(0, hasCurrent ? maxRows - 1 : maxRows);
+    for (const s of completed) {
+      const startStr = fmtDate(s.startTime) + ', ' + fmtTime(s.startTime);
+      const stopStr = sameDay(s.startTime, s.stopTime)
+        ? fmtTime(s.stopTime)
+        : fmtDate(s.stopTime) + ', ' + fmtTime(s.stopTime);
+      rows.push(
+        '<div class="session-row">' +
+          '<div class="top-line">' +
+            '<div class="date-range">' + esc(startStr) + ' <span class="arrow">\u2192</span> ' + esc(stopStr) + '</div>' +
+            phaseTag(s.amps, s.phases) +
+          '</div>' +
+          '<div class="bottom-line">' +
+            '<div class="duration-energy"><b>' + esc(fmtDuration(s.durationMs)) + '</b> \u00b7 <b>' + esc(fmtEnergy(s.energyWh)) + '</b></div>' +
+            '<div class="reason">' + esc(s.reason || '') + '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    if (rows.length === 0) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'No sessions yet';
+      listEl.innerHTML = '';
+    } else {
+      emptyEl.style.display = 'none';
+      listEl.innerHTML = rows.join('');
+    }
+  }
+
+  function tickLive() {
+    const el = document.getElementById('liveDuration');
+    if (el && currentStartTime) {
+      el.textContent = fmtDuration(Date.now() - currentStartTime);
+    }
+  }
+
+  async function refresh() {
+    try {
+      const data = await Homey.api('GET', '/sessions');
+      render(data);
+    } catch (err) {
+      render({ error: 'Charger unreachable' });
+    }
+  }
+
+  let readyCalled = false;
+  function callReadyMeasured(hadCurrent) {
+    if (readyCalled) return;
+    readyCalled = true;
+    requestAnimationFrame(() => {
+      // Measure the real rendered height instead of estimating row sizes
+      // (the estimate left a visible empty trail at the bottom). If we
+      // measured in idle mode, reserve the extra height the taller
+      // active-session row needs, so a session starting later isn't clipped.
+      const card = document.getElementById('card');
+      const reserve = hadCurrent ? 2 : 19;
+      Homey.ready({ height: card.scrollHeight + reserve });
+    });
+  }
+
+  async function firstLoad() {
+    try {
+      const data = await Homey.api('GET', '/sessions');
+      render(data);
+      callReadyMeasured(!!(data && data.current && data.current.startTime));
+    } catch (err) {
+      render({ error: 'Charger unreachable' });
+      callReadyMeasured(false);
+    }
+  }
+
+  firstLoad();
+  setInterval(refresh, 10000);
+  setInterval(tickLive, 1000);
+
+  // Safety net: never leave the widget stuck in its loading state
+  setTimeout(() => callReadyMeasured(false), 3000);
+}
+</script>
+</body>
+</html>
