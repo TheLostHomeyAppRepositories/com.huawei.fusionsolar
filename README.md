@@ -322,39 +322,59 @@ Reads EV charger data via the EMMA Energy Management Module.
 
 Runs an OCPP 1.6 JSON WebSocket server on port 8887 so compatible EV chargers (Huawei SCharger, Easee Home, and others) can connect directly to Homey without a cloud intermediary. One Homey device is created per charger (Station ID).
 
-| Capability            | Description                                                        |
-|-----------------------|--------------------------------------------------------------------|
-| On / Off              | Start or stop a charging session (RemoteStart/RemoteStopTransaction)|
-| Max current (A)       | Set charging current limit 0–32 A via SetChargingProfile           |
-| Charging power        | Live AC charging power (W)                                         |
-| Charging energy       | Cumulative session energy (kWh)                                    |
-| Charging state        | Connected / Charging / Finished / Error                            |
-| Vehicle SoC           | Vehicle battery state of charge (%) — if supported by charger      |
-| OCPP server status    | WebSocket connection status and port                               |
-| Last OCPP message     | Timestamp of the last received OCPP message                        |
+#### Readable Capabilities
+
+| Capability              | Description                                                                      |
+|-------------------------|----------------------------------------------------------------------------------|
+| On / Off                | Current charging state (on = actively charging)                                  |
+| Charging power          | Live AC charging power (W)                                                       |
+| Target current (A)      | Active charging current limit                                                    |
+| Charging energy         | Cumulative total energy (kWh)                                                    |
+| Charging state          | `idle` / `connected` / `charging` / `finishing` / `fully_charged` / `error`     |
+| Session status          | Human-readable session summary (e.g. "Charging · 3.2 kWh · 1h 12min")          |
+| Charging profile        | Active limit display (e.g. "11 kW · 3-phase")                                   |
+| Status summary          | Combined charger state line for the device card                                  |
+| Phase currents L1/L2/L3 | Per-phase current (A) from MeterValues                                           |
+| Phase voltages L1/L2/L3 | Per-phase voltage (V) from MeterValues                                           |
+| Temperature             | Charger internal temperature (°C)                                                |
+| Vehicle SoC             | Vehicle battery state of charge (%) — if charger supports it                    |
+| OCPP server status      | WebSocket connection status and port                                             |
+| Last OCPP message       | Timestamp of the last received OCPP message                                      |
+
+#### Button Actions (device card)
+
+| Button          | Description                                                           |
+|-----------------|-----------------------------------------------------------------------|
+| Pause charging  | Sends RemoteStop and stores session state for resume                  |
+| Resume charging | Sends RemoteStart and restores the previous charging limit            |
+| Release charger | Sends ChangeAvailability → Operative (unlocks stuck chargers)         |
 
 #### Setup (Huawei SCharger)
 
 Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Settings*:
 
-| SCharger field  | Value                                        |
-|-----------------|----------------------------------------------|
-| Domain Name     | Homey's local IP address                     |
-| Path            | Your chosen Station ID (e.g. `scharger-home` or the serial number from the charger label) |
-| Port            | `8887`                                        |
-| Mode            | Insecure transmission with basic authentication |
-| Username / Password | Optional — enter the same values in Homey settings if used |
+| SCharger field      | Value                                                                                      |
+|---------------------|--------------------------------------------------------------------------------------------|
+| Domain Name         | Homey's local IP address                                                                   |
+| Path                | Your chosen Station ID (e.g. `scharger-home` or the serial number from the charger label) |
+| Port                | `8887`                                                                                     |
+| Mode                | Insecure transmission with basic authentication                                            |
+| Username / Password | Optional — enter the same values in Homey settings if used                                 |
 
 > The **Path** field in the SCharger is empty by default. You choose any unique identifier and enter the exact same value as **Station ID** in Homey. The value is case-sensitive.
 
 #### Device Settings
 
-| Setting    | Description                                              |
-|------------|----------------------------------------------------------|
-| Station ID | Unique identifier matching the Path field on the charger |
-| OCPP port  | WebSocket server port (default: 8887)                    |
-| Username   | Optional Basic Auth username                             |
-| Password   | Optional Basic Auth password                             |
+| Setting                      | Default | Description                                                              |
+|------------------------------|---------|--------------------------------------------------------------------------|
+| Station ID                   | –       | Unique identifier matching the Path field on the charger                 |
+| OCPP port                    | 8887    | WebSocket server port                                                    |
+| Username / Password          | –       | Optional Basic Auth credentials (must match charger settings)            |
+| Auto-start charging          | on      | Automatically starts charging when a car connects                        |
+| Default charging current (A) | 16      | Current limit applied on each new session                                |
+| Number of phases             | 3       | Phase count used for SetChargingProfile (1 or 3)                         |
+| Charger model                | –       | Hardware variant (affects minimum current floor validation)              |
+| Timeline notifications       | off     | Posts session start/stop events to the Homey timeline                    |
 
 ---
 
@@ -485,26 +505,34 @@ These registers derate the inverter AC output directly and work without a DTSU66
 
 ### Triggers
 
-| Card                                     | Device                          | Token           | Description                                                              |
-|------------------------------------------|---------------------------------|-----------------|--------------------------------------------------------------------------|
-| Power output changed                     | Kiosk                           | `power` (W)     | Fires on every power change                                              |
-| Daily yield updated                      | Kiosk                           | `daily_energy`  | Fires when daily yield is updated                                        |
-| Power output changed                     | Inverter SUN2000 Modbus/EMMA    | `power` (W)     | Fires on every power change                                              |
-| Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)     | Fires on every power change                                              |
-| Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)       | Fires on every SoC change                                                |
-| Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`         | `charging` / `discharging` / `idle`                                     |
-| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when the storage working mode changes                              |
-| Excess PV energy use changed             | LUNA2000 Modbus/EMMA            | `mode`          | Fires when switching between Feed to Grid / Charge Battery               |
-| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`          | Fires when the remote charge/discharge control mode changes              |
-| Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)       | Fires on every SoC change                                                |
-| Battery charging state changed           | Battery OpenAPI                 | `state`         | `charging` / `discharging` / `idle`                                     |
-| Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from import to export                               |
-| Grid import started                      | Power Meter Modbus/EMMA         | `power` (W)     | Fires when switching from export to import                               |
-| Inverter status changed                  | Inverter SUN2000 Modbus         | `status`        | Fires when the inverter operating state changes (timeline notification)  |
-| Battery status changed                   | LUNA2000 Modbus                 | `status`        | Fires when the battery state changes (timeline notification)             |
-| Meter status changed                     | Power Meter DTSU666 Modbus      | `status`        | Fires when the meter state changes (timeline notification)               |
-| Charging session started                 | Smart Charger (OCPP)            | –               | Fires when a vehicle starts charging (StartTransaction received)         |
-| Charging session stopped                 | Smart Charger (OCPP)            | –               | Fires when a vehicle stops charging (StopTransaction received)           |
+| Card                                     | Device                          | Tokens                                               | Description                                                              |
+|------------------------------------------|---------------------------------|------------------------------------------------------|--------------------------------------------------------------------------|
+| Power output changed                     | Kiosk                           | `power` (W)                                          | Fires on every power change                                              |
+| Daily yield updated                      | Kiosk                           | `daily_energy`                                       | Fires when daily yield is updated                                        |
+| Power output changed                     | Inverter SUN2000 Modbus/EMMA    | `power` (W)                                          | Fires on every power change                                              |
+| Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)                                          | Fires on every power change                                              |
+| Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)                                            | Fires on every SoC change                                                |
+| Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`                                              | `charging` / `discharging` / `idle`                                     |
+| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`                                               | Fires when the storage working mode changes                              |
+| Excess PV energy use changed             | LUNA2000 Modbus/EMMA            | `mode`                                               | Fires when switching between Feed to Grid / Charge Battery               |
+| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`                                               | Fires when the remote charge/discharge control mode changes              |
+| Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)                                            | Fires on every SoC change                                                |
+| Battery charging state changed           | Battery OpenAPI                 | `state`                                              | `charging` / `discharging` / `idle`                                     |
+| Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)                                          | Fires when switching from import to export                               |
+| Grid import started                      | Power Meter Modbus/EMMA         | `power` (W)                                          | Fires when switching from export to import                               |
+| Inverter status changed                  | Inverter SUN2000 Modbus         | `status`                                             | Fires when the inverter operating state changes (timeline notification)  |
+| Battery status changed                   | LUNA2000 Modbus                 | `status`                                             | Fires when the battery state changes (timeline notification)             |
+| Meter status changed                     | Power Meter DTSU666 Modbus      | `status`                                             | Fires when the meter state changes (timeline notification)               |
+| Charging session started                 | Smart Charger (OCPP)            | `amps`, `phases`, `phase_label`, `message`           | Fires when a vehicle starts charging (power confirmed > 100 W)          |
+| Charging session stopped                 | Smart Charger (OCPP)            | `energy_wh`, `energy_formatted`, `duration`, `amps`, `phases`, `message` | Fires when a vehicle stops charging (StopTransaction received) |
+| Car plugged in, waiting                  | Smart Charger (OCPP)            | –                                                    | Fires when a car connects but auto-start is off or session is blocked    |
+| Charging state changed                   | Smart Charger (OCPP)            | `state`                                              | Fires on every charging state transition                                 |
+| Charger offline                          | Smart Charger (OCPP)            | `message`                                            | Fires when no OCPP message has been received for 3 minutes               |
+| Charger back online                      | Smart Charger (OCPP)            | `message`                                            | Fires when the charger reconnects after being offline                    |
+| Charging paused                          | Smart Charger (OCPP)            | –                                                    | Fires when a session is paused via the Pause button or flow action       |
+| Charging resumed                         | Smart Charger (OCPP)            | `amps`, `phases`, `phase_label`, `message`           | Fires when a paused session is resumed                                   |
+| Charging limit changed                   | Smart Charger (OCPP)            | `amps`, `previous_amps`, `phases`, `phase_label`, `message` | Fires when the SetChargingProfile limit is changed during a session |
+| Charger disconnected                     | Smart Charger (OCPP)            | –                                                    | Fires when the OCPP WebSocket connection drops                           |
 
 ### Conditions
 
@@ -514,8 +542,18 @@ These registers derate the inverter AC output directly and work without a DTSU66
 | Is currently producing                    | Inverter SUN2000 Modbus/EMMA    | Checks if the inverter is currently generating                                      |
 | Solar power above value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been above the threshold for at least N minutes             |
 | Solar power below value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been below the threshold for at least N minutes             |
-| Battery SoC is above threshold            | LUNA2000 Modbus/EMMA            | True if current SoC (%) is strictly above the configured value                     |
-| Battery SoC is below threshold            | LUNA2000 Modbus/EMMA            | True if current SoC (%) is strictly below the configured value                     |
+| Battery SoC is above threshold            | LUNA2000 Modbus/EMMA/OpenAPI    | True if current SoC (%) is strictly above the configured value                     |
+| Battery SoC is below threshold            | LUNA2000 Modbus/EMMA/OpenAPI    | True if current SoC (%) is strictly below the configured value                     |
+| Battery is charging                       | LUNA2000 Modbus                 | True when the battery is actively charging                                          |
+| Battery is discharging                    | LUNA2000 Modbus                 | True when the battery is actively discharging                                       |
+| Battery status is                         | LUNA2000 Modbus                 | Checks the current battery operating state string                                   |
+| Storage working mode is                   | LUNA2000 Modbus/EMMA            | Checks the current storage working mode                                             |
+| Excess PV use is                          | LUNA2000 Modbus/EMMA            | Checks whether excess PV is set to feed-in or charge battery                        |
+| Remote charge/discharge mode is           | LUNA2000 Modbus                 | Checks the current remote dispatch control mode                                     |
+| Max charge power is above threshold       | LUNA2000 Modbus                 | True when register 47075 (max charge power) is above the given W value. Use "NOT below 1 W" to check if the limit has already been zeroed. |
+| Max charge power is below threshold       | LUNA2000 Modbus                 | True when register 47075 (max charge power) is below the given W value. Threshold 1 checks whether the limit is already set to 0. |
+| Grid is exporting                         | Power Meter Modbus/EMMA/OpenAPI | True when the meter reports negative active power (surplus fed to grid)             |
+| Meter status is                           | Power Meter DTSU666 Modbus      | Checks the current meter online/offline status                                      |
 
 ### Actions
 
@@ -555,11 +593,17 @@ These registers derate the inverter AC output directly and work without a DTSU66
 
 #### Smart Charger (OCPP)
 
-| Card                          | Description                                                                |
-|-------------------------------|----------------------------------------------------------------------------|
-| Set max charging current (A)  | Sends SetChargingProfile with TxDefaultProfile (0–32 A)                    |
-| Start charging                | Sends RemoteStartTransaction to the charger                                |
-| Stop charging                 | Sends RemoteStopTransaction to the active session                          |
+| Card                                         | Description                                                                                            |
+|----------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| Start charging                               | Sends RemoteStartTransaction; applies pending current limit beforehand                                 |
+| Start charging at X A (N-phase)              | Starts a session with an explicit current and phase override                                           |
+| Stop charging                                | Sends RemoteStopTransaction to the active session                                                      |
+| Pause charging                               | Masked pause: stops the current session and saves state for resume                                     |
+| Resume charging                              | Restores the paused session with the previous current limit                                            |
+| Set charging limit to X A                   | Sends SetChargingProfile (TxProfile during session / TxDefaultProfile otherwise) in Watts/Absolute     |
+| Set charging limit to X A (N-phase)          | Same as above with an explicit phase override                                                          |
+| Release charger                              | Sends ChangeAvailability → Operative (unblocks a charger stuck in Unavailable state)                   |
+| Reboot charger (Soft / Hard)                 | Sends OCPP Reset and suppresses the offline watchdog alert for 5 minutes                               |
 
 ---
 
@@ -699,7 +743,7 @@ At-a-glance summary of today's solar production.
 - **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session and coordinator — one API call per interval for all devices of the same plant
 - **Modbus (SUN2000/SDongle):** TCP connection via [`jsmodbus`](https://www.npmjs.com/package/jsmodbus) following the Huawei SUN2000 Modbus Interface Definition A. All Modbus devices on the same host share a serialised queue (`withHostLock`) — no concurrent connections
 - **EMMA Modbus:** TCP connection to the SUN2000MA Energy Management Module (unit ID 0). All three EMMA device types (inverter, battery, meter) read from the same EMMA register range — no SDongle or DTSU666 required. R/W access to ESS control registers (40000–40002) via FC06/FC16
-- **OCPP 1.6:** Singleton WebSocket server (port 8887) running inside Homey. Implements BootNotification, Heartbeat, StatusNotification, MeterValues, StartTransaction, StopTransaction, Authorize, DataTransfer. Outgoing: RemoteStartTransaction, RemoteStopTransaction, SetChargingProfile (TxDefaultProfile), ChangeConfiguration. Supports optional HTTP Basic Authentication per station. Station ID is extracted from the WebSocket URL path (`ws://homey-ip:8887/[station-id]`)
+- **OCPP 1.6:** Singleton WebSocket server (port 8887) running inside Homey. Implements BootNotification, Heartbeat, StatusNotification, MeterValues, StartTransaction, StopTransaction, Authorize, DataTransfer. Outgoing calls are fully async with response tracking (`_pendingCalls` map, 10 s timeout): RemoteStartTransaction, RemoteStopTransaction, SetChargingProfile (TxDefaultProfile stackLevel 0 / TxProfile stackLevel 1, `chargingRateUnit: 'W'`, Absolute kind), ChangeAvailability, Reset. SetChargingProfile uses Watts (0 A → 1 W to work around a Huawei firmware bug where a 0 W TxDefaultProfile is unreliable). Supports optional HTTP Basic Authentication per station. Station ID is extracted from the WebSocket URL path (`ws://homey-ip:8887/[station-id]`). Masked Pause/Resume stitches two physical transactions into a single logical session preserving cumulative energy and start time. Power-verified start: the `charging_started` trigger fires only after > 100 W is confirmed (90 s watchdog). Offline watchdog triggers a flow card after 3 minutes of silence and suppresses alerts for 5 minutes after a reboot command.
 
 ---
 
