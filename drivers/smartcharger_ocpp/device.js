@@ -2,10 +2,11 @@
 
 const { Device } = require('homey');
 const OcppServer = require('../../lib/ocpp-server');
+const SolarOffpeakEngine = require('../../lib/solar-offpeak-engine');
 
-const VALID_AMPS          = [6, 8, 10, 12, 16];
+const VALID_AMPS          = [6, 8, 10, 12, 14, 16];
 const AMPS_TO_WATTS       = (amps, phases = 3) => Math.round(amps * phases * 230);
-const BLOCK_AMPS          = 0;
+const BLOCK_AMPS          = 0; // server converts 0A → 1W (Huawei firmware bug workaround)
 const IDLE_GUARD_MS       = 300_000;
 const QUICK_ABORT_MS      = 2000;
 const MAX_SESSION_HIST    = 10;
@@ -46,15 +47,34 @@ const REQUIRED_CAPABILITIES = [
   'session_status',
   'charging_profile',
   'status_summary',
-  'button.release_charger',
+  'pause_charging',
+  'resume_charging',
+  'charge_now',
+  'release_charger',
+  'resume_automation',
+];
+
+// Old button capabilities to remove during migration
+const REMOVE_CAPABILITIES = [
   'button.pause_charging',
   'button.resume_charging',
+  'button.release_charger',
 ];
 
 class SmartChargerOcppDevice extends Device {
 
   async onInit() {
     this.log(`[OCPP] Device initializing: ${this.getName()}`);
+
+    // ── Migrate old button.* capabilities to custom capabilities ────────────
+    for (const cap of REMOVE_CAPABILITIES) {
+      if (this.hasCapability(cap)) {
+        try {
+          await this.removeCapability(cap);
+          this.log(`[OCPP] Removed old capability: ${cap}`);
+        } catch (e) { this.log(`[OCPP] Remove ${cap} failed: ${e.message}`); }
+      }
+    }
     await this._ensureCapabilities();
 
     // ── One-time setting migrations ─────────────────────────────────────────
@@ -66,31 +86,6 @@ class SmartChargerOcppDevice extends Device {
       }
     } catch (e) { this.log(`[OCPP] charger_vendor migration error: ${e.message}`); }
 
-    // ── One-time capability options migrations (icons + button titles) ──────
-    for (const [cap, opts] of [
-      ['session_status',         { icon: '/assets/capabilities/session_status.svg' }],
-      ['status_summary',         { icon: '/assets/capabilities/status_summary.svg' }],
-      ['button.release_charger', {
-        maintenanceAction: true,
-        title: { en: 'Release Charger', de: 'Ladestation freigeben', nl: 'Lader vrijgeven' },
-      }],
-      ['button.pause_charging',  {
-        title: { en: 'Pause Charging',  de: 'Laden pausieren',       nl: 'Laden pauzeren' },
-      }],
-      ['button.resume_charging', {
-        title: { en: 'Resume Charging', de: 'Laden fortsetzen',      nl: 'Laden hervatten' },
-      }],
-    ]) {
-      const key = `capOptsMigrated_${cap.replace('.', '_')}`;
-      try {
-        if (!await this.getStoreValue(key) && this.hasCapability(cap)) {
-          await this.setCapabilityOptions(cap, opts);
-          await this.setStoreValue(key, true);
-          this.log(`[OCPP] Capability options migrated: ${cap}`);
-        }
-      } catch (e) { this.log(`[OCPP] Cap opts migration failed for ${cap}: ${e.message}`); }
-    }
-
     // ── Core session state ──────────────────────────────────────────────────
     this._txnId                = null;
     this._txnStartTime         = null;
@@ -101,10 +96,19 @@ class SmartChargerOcppDevice extends Device {
     this._quickAbortCount      = 0;
     this.sessionPhaseOverride  = null;
     this.pendingStartAmps      = null;
-    this.idTag                 = 'Homey';
+    this.idTag                 = 'homey';
     this._startInFlight        = false;
     this.assumeActiveFromRestart = false;
     this._lastNonZero          = null;
+
+    // ── Session ownership (tracks who started the current session) ──────────
+    this.sessionOwner = null; // 'user' | 'solar' | 'offpeak' | null
+
+    // ── Adaptive car-phase memory ───────────────────────────────────────────
+    this._rememberedCarPhases = null;
+
+    // ── Learned idTag for RemoteStart after restart ─────────────────────────
+    this.learnedIdTag = 'homey';
 
     // ── Timer handles ───────────────────────────────────────────────────────
     this._idleGuardTimer                  = null;
@@ -141,7 +145,8 @@ class SmartChargerOcppDevice extends Device {
         this._txnMeterStart = sess.meterStart || 0;
         this._txnAmps       = sess.amps || null;
         this.sessionPhaseOverride = sess.phases || null;
-        this.log(`[OCPP] Restored session: txnId=${sess.txnId}, amps=${sess.amps}`);
+        this.sessionOwner   = sess.owner || null;
+        this.log(`[OCPP] Restored session: txnId=${sess.txnId}, amps=${sess.amps}, owner=${sess.owner}`);
       }
     } catch (e) { /* ignore */ }
 
@@ -160,7 +165,8 @@ class SmartChargerOcppDevice extends Device {
       if (stitched && stitched.originalStartTime) {
         this.stitchedSession = stitched;
         this.isPaused = stitched.paused === true;
-        this.log(`[OCPP] Restored stitched session: started ${new Date(stitched.originalStartTime).toISOString()}, accum=${stitched.accumulatedEnergyWh || 0}Wh, paused=${this.isPaused}`);
+        if (stitched.owner) this.sessionOwner = stitched.owner;
+        this.log(`[OCPP] Restored stitched session: started ${new Date(stitched.originalStartTime).toISOString()}, accum=${stitched.accumulatedEnergyWh || 0}Wh, paused=${this.isPaused}, owner=${stitched.owner}`);
       }
     } catch (e) { /* ignore */ }
 
@@ -174,10 +180,34 @@ class SmartChargerOcppDevice extends Device {
       if (lnz) this._lastNonZero = lnz;
     } catch (e) { /* ignore */ }
 
+    try {
+      const rcp = await this.getStoreValue('rememberedCarPhases');
+      if (rcp === 1 || rcp === 2 || rcp === 3) this._rememberedCarPhases = rcp;
+    } catch (e) { /* ignore */ }
+
+    try {
+      const lt = await this.getStoreValue('learnedIdTag');
+      if (lt) this.learnedIdTag = lt;
+    } catch (e) { /* ignore */ }
+
+    // Restore offline state across restarts so the device card stays correct
+    // and the "back online" notification fires once rather than being silently lost.
+    try {
+      if (await this.getStoreValue('chargerWasOffline')) {
+        this.chargerOffline = true;
+        this._offlineWasAlerted = true;
+        this.log('[OCPP] Restored offline state after restart — waiting for charger (quietly)');
+      }
+    } catch (e) { /* ignore */ }
+
     // After restart, if the device was charging, suppress the idle guard
     // until the charger reconnects and sends a StatusNotification.
     const wasCharging = this.getCapabilityValue('evcharger_charging_state') === 'charging';
     this.assumeActiveFromRestart = wasCharging;
+
+    // ── Solar / off-peak automation engine ─────────────────────────────────
+    this.automationEngine = new SolarOffpeakEngine(this);
+    this.automationEngine.start();
 
     // ── Register with OcppServer ────────────────────────────────────────────
     const stationId = this.getSetting('station_id');
@@ -224,6 +254,56 @@ class SmartChargerOcppDevice extends Device {
 
     if (newSettings.charger_model === '7ks' && String(newSettings.number_of_phases) === '3') {
       throw new Error('SCharger-7KS-S0 only supports Mono-Phase wiring — please set "Number of phases" to 1.');
+    }
+    if (newSettings.charger_model === '22kt' && String(newSettings.number_of_phases) === '1') {
+      throw new Error('SCharger-22KT-S0 requires Tri-Phase wiring — please set "Number of phases" to 3.');
+    }
+
+    // Validate HH:MM format for off-peak time fields
+    const timeRe = /^([01]?\d|2[0-3]):[0-5]\d$/;
+    for (const key of ['offpeak_weekday_start', 'offpeak_weekday_end', 'offpeak_weekend_start', 'offpeak_weekend_end']) {
+      if (changedKeys.includes(key) && newSettings[key]) {
+        if (!timeRe.test(newSettings[key].trim())) {
+          throw new Error(`"${key}" must be in HH:MM format (e.g. 22:00 or 06:00), got "${newSettings[key]}".`);
+        }
+      }
+    }
+
+    // Solar / off-peak require smart charging (auto_start OFF)
+    const willAutoStart = newSettings.auto_start_charging !== false;
+    if (willAutoStart) {
+      if (newSettings.solar_enabled === true) {
+        throw new Error('Solar charging requires smart charging mode — please disable "Auto-start charging" first.');
+      }
+      if (newSettings.offpeak_enabled === true) {
+        throw new Error('Off-peak charging requires smart charging mode — please disable "Auto-start charging" first.');
+      }
+    }
+
+    // Engine restart when solar/offpeak settings toggle
+    const engineKeys = ['solar_enabled', 'offpeak_enabled', 'offpeak_weekday_start', 'offpeak_weekday_end',
+      'offpeak_weekend_differs', 'offpeak_weekend_start', 'offpeak_weekend_end', 'offpeak_amps',
+      'offpeak_solar_first', 'solar_has_battery', 'solar_min_battery_soc', 'solar_count_battery_discharge',
+      'solar_grid_tolerance_w', 'solar_start_sustain_s', 'solar_step_hold_s', 'solar_stop_grace_s'];
+    if (changedKeys.some((k) => engineKeys.includes(k))) {
+      // When a mode is disabled while it owns the current session, hand back to user
+      if (changedKeys.includes('solar_enabled') && newSettings.solar_enabled !== true
+        && this.sessionOwner === 'solar') {
+        this.sessionOwner = 'user';
+        this.log('[OCPP] Solar disabled — session ownership transferred to user');
+      }
+      if (changedKeys.includes('offpeak_enabled') && newSettings.offpeak_enabled !== true
+        && this.sessionOwner === 'offpeak') {
+        this.sessionOwner = 'user';
+        this.log('[OCPP] Off-peak disabled — session ownership transferred to user');
+      }
+      // Suppression clearance: toggling a mode off→on resets engine state
+      if (changedKeys.includes('solar_enabled') && newSettings.solar_enabled === true) {
+        this.automationEngine.clearSuppression('solar');
+      }
+      if (changedKeys.includes('offpeak_enabled') && newSettings.offpeak_enabled === true) {
+        this.automationEngine.clearSuppression('offpeak');
+      }
     }
 
     if (changedKeys.includes('auto_start_charging')) {
@@ -290,6 +370,7 @@ class SmartChargerOcppDevice extends Device {
 
   _clearTimers() {
     this._clearIdleGuard();
+    if (this.automationEngine) this.automationEngine.stop();
     if (this._offlineWatchdog) {
       this.homey.clearInterval(this._offlineWatchdog);
       this._offlineWatchdog = null;
@@ -578,7 +659,12 @@ class SmartChargerOcppDevice extends Device {
     this.log('[OCPP] StartTransaction txnId:', txnId);
     this._lowPowerSince = null;
 
-    if (payload.idTag) this.idTag = payload.idTag;
+    if (payload.idTag) {
+      this.idTag = payload.idTag;
+      // Persist idTag so RemoteStart works correctly after a Homey restart
+      this.learnedIdTag = payload.idTag;
+      this.setStoreValue('learnedIdTag', payload.idTag).catch(() => {});
+    }
 
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
@@ -731,9 +817,10 @@ class SmartChargerOcppDevice extends Device {
     }
     const reportDurationMs = reportStartTime ? (Date.now() - reportStartTime) : 0;
 
-    const wasBlocked    = this._autoStartBlocked;
-    const sessionAmps   = this._txnAmps;
-    const sessionPhases = this._getPhases();
+    const wasBlocked      = this._autoStartBlocked;
+    const sessionAmps     = this._txnAmps;
+    const sessionPhases   = this._getPhases();
+    const sessionOwnerWas = this.sessionOwner;
 
     this.lastStopReason = reason;
     await this.setStoreValue('lastStopReason', reason).catch(() => {});
@@ -745,6 +832,7 @@ class SmartChargerOcppDevice extends Device {
     this._startVerify   = null;
     this.sessionPhaseOverride = null;
     this.isPaused = false;
+    this.sessionOwner = null;
     if (this._pendingStartNotificationTimeout) {
       clearTimeout(this._pendingStartNotificationTimeout);
       this._pendingStartNotificationTimeout = null;
@@ -777,7 +865,7 @@ class SmartChargerOcppDevice extends Device {
 
     if (!wasBlocked) {
       if (reportDurationMs >= 5000) {
-        await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: sessionAmps, phases: sessionPhases, reason });
+        await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: sessionAmps, phases: sessionPhases, reason, startTime: reportStartTime, owner: sessionOwnerWas });
       }
 
       const durationStr = this._formatDuration(reportDurationMs);
@@ -818,16 +906,16 @@ class SmartChargerOcppDevice extends Device {
 
   // ─── Charging control ────────────────────────────────────────────────────
 
-  async startCharging(amps, overridePhases) {
+  async startCharging(amps, overridePhases, owner) {
     this._startInFlight = true;
     try {
-      return await this._startChargingInner(amps, overridePhases);
+      return await this._startChargingInner(amps, overridePhases, owner);
     } finally {
       this._startInFlight = false;
     }
   }
 
-  async _startChargingInner(amps, overridePhases) {
+  async _startChargingInner(amps, overridePhases, owner) {
     const stationId   = this.getSetting('station_id');
     const server      = OcppServer.getInstance(this.homey);
     const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
@@ -845,6 +933,7 @@ class SmartChargerOcppDevice extends Device {
       // Existing blocked transaction: raise the limit instead of starting fresh
       this._autoStartBlocked = false;
       this._txnAmps = targetAmps;
+      this.sessionOwner = owner || 'user';
       await this._saveSession();
       const unblockResp = await server.setTxProfileAsync(stationId, this._txnId, targetAmps, this._getPhases());
       this.log(`[OCPP] Unblock TxProfile response: ${JSON.stringify(unblockResp)}`);
@@ -857,14 +946,16 @@ class SmartChargerOcppDevice extends Device {
       const message = `Charging started · ${this._kwLabel(targetAmps, phases)} (${targetAmps}A) / ${this._phaseLabel(phases)}`;
       await this._postNotification('🔋', 'Charging Started', message);
       this.homey.flow.getDeviceTriggerCard('ocpp_charging_started')
-        .trigger(this, { amps: targetAmps, phases, phase_label: this._phaseLabel(phases), message })
+        .trigger(this, { amps: targetAmps, phases, phase_label: this._phaseLabel(phases), message,
+          transaction_id: this._txnId || 0, meter_start: this._txnMeterStart || 0 })
         .catch(() => {});
-      this.log(`[OCPP] Unblocked transaction ${this._txnId} at ${targetAmps}A`);
+      this.log(`[OCPP] Unblocked transaction ${this._txnId} at ${targetAmps}A (owner: ${this.sessionOwner})`);
       return;
     }
 
     // No active transaction — set limit and send RemoteStartTransaction
     this._txnAmps = targetAmps;
+    this.sessionOwner = owner || 'user';
     this._manualStartRequested = true;
     try {
       const limitResp = await server.setMaxCurrentAsync(stationId, targetAmps, this._getPhases());
@@ -890,16 +981,25 @@ class SmartChargerOcppDevice extends Device {
     }, 3000);
   }
 
-  async stopCharging() {
+  async stopCharging(source) {
     if (!this._txnId) {
       if (this.stitchedSession && this.stitchedSession.paused) {
         this.log('[OCPP] Stop during masked pause — finalizing logical session');
+        if (source !== 'engine' && this.automationEngine
+          && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
+          this.automationEngine.noteUserStop(this.sessionOwner);
+        }
         await this._finalizeStitchedSession('Remote');
         await this._updateSessionStatus('connected');
         return;
       }
       this.log('[OCPP] No active transaction to stop');
       return;
+    }
+    // User stopped an engine session — signal the engine to back off
+    if (source !== 'engine' && this.automationEngine
+      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
+      this.automationEngine.noteUserStop(this.sessionOwner);
     }
     try {
       const response = await OcppServer.getInstance(this.homey).remoteStopAsync(this.getSetting('station_id'));
@@ -912,7 +1012,7 @@ class SmartChargerOcppDevice extends Device {
 
   // ─── Masked Pause / Resume ───────────────────────────────────────────────
 
-  async pauseCharging() {
+  async pauseCharging(context) {
     if (this.stitchedSession && this.stitchedSession.paused) {
       this.log('[OCPP] Already paused — ignoring duplicate pause');
       return;
@@ -921,9 +1021,18 @@ class SmartChargerOcppDevice extends Device {
       throw new Error('No active charging session to pause.');
     }
 
+    // User manually pausing an engine session → hand ownership to user
+    if (!context || context === 'user') {
+      if (this.automationEngine && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
+        this.automationEngine.noteUserStop(this.sessionOwner);
+      }
+      this.sessionOwner = 'user';
+    }
+
     const resumeAmps   = this._txnAmps || parseInt(this.getSetting('default_charging_amps')) || 16;
     const resumePhases = this.sessionPhaseOverride;
     const prior        = this.stitchedSession;
+    const pauseOwner   = this.sessionOwner;
 
     this.stitchedSession = {
       originalStartTime:   prior ? prior.originalStartTime   : this._txnStartTime,
@@ -933,12 +1042,22 @@ class SmartChargerOcppDevice extends Device {
       resuming:            false,
       resumeAmps,
       resumePhases,
+      owner:               pauseOwner,
     };
     this.isPaused = true;
     await this._persistStitched();
 
-    this.log(`[OCPP] Masked pause: stopping transaction ${this._txnId} (will resume at ${resumeAmps}A)`);
-    const pauseMessage = 'Charging paused';
+    this.log(`[OCPP] Masked pause: stopping transaction ${this._txnId} (context=${context || 'user'}, will resume at ${resumeAmps}A)`);
+
+    let pauseMessage;
+    if (context === 'solar-stale') {
+      pauseMessage = 'Solar charging paused — energy data is stale (check update flows)';
+    } else if (context === 'solar') {
+      pauseMessage = 'Solar charging paused — surplus below floor';
+    } else {
+      pauseMessage = 'Charging paused';
+    }
+
     try {
       const stopResponse = await OcppServer.getInstance(this.homey).remoteStopAsync(this.getSetting('station_id'));
       if (stopResponse && stopResponse.status === 'Rejected') {
@@ -957,13 +1076,21 @@ class SmartChargerOcppDevice extends Device {
     }
   }
 
-  async resumeCharging() {
+  async resumeCharging(source) {
     if (!this.stitchedSession || !this.stitchedSession.paused) {
       if (this._txnId) {
         this.log('[OCPP] Not paused — ignoring resume');
         return;
       }
       throw new Error('No paused charging session to resume.');
+    }
+
+    // User manually resuming an engine-paused session → transfer ownership
+    if (source !== 'engine' && this.automationEngine
+      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
+      this.automationEngine.noteUserStop(this.sessionOwner);
+      this.sessionOwner = 'user';
+      if (this.stitchedSession) this.stitchedSession.owner = 'user';
     }
 
     const { resumeAmps, resumePhases } = this.stitchedSession;
@@ -974,8 +1101,8 @@ class SmartChargerOcppDevice extends Device {
 
     this.log(`[OCPP] Masked resume: starting transaction stitched onto paused session (${resumeAmps}A${resumePhases ? `/${resumePhases}P` : ''})`);
     try {
-      // Preserve the phase override from the paused session
-      await this.startCharging(this._txnAmps || resumeAmps, resumePhases || undefined);
+      // Preserve the phase override from the paused session; keep existing owner
+      await this.startCharging(this._txnAmps || resumeAmps, resumePhases || undefined, this.sessionOwner);
     } catch (e) {
       this.log(`[OCPP] Resume failed: ${e.message}`);
       this.stitchedSession.paused   = true;
@@ -1008,7 +1135,7 @@ class SmartChargerOcppDevice extends Device {
     await this.setStoreValue('lastStopReason', reason).catch(() => {});
 
     if (reportDurationMs >= 5000 && s.originalStartTime) {
-      await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: s.resumeAmps || null, phases: this._getPhases(), reason });
+      await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: s.resumeAmps || null, phases: this._getPhases(), reason, startTime: s.originalStartTime, owner: s.owner || null });
     }
     if (reportEnergyWh > 0) {
       await this._postNotification('🔌', 'Charging Stopped', message);
@@ -1039,7 +1166,8 @@ class SmartChargerOcppDevice extends Device {
         this.stitchedSession.resuming = false;
         await this._persistStitched();
       }
-      const message = `Charging resumed · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
+      const ownerEmoji = this.sessionOwner === 'solar' ? '☀️ ' : this.sessionOwner === 'offpeak' ? '🌙 ' : '';
+      const message = `${ownerEmoji}Charging resumed · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
       await this._postNotification('▶️', 'Charging Resumed', message);
       this.homey.flow.getDeviceTriggerCard('ocpp_charging_resumed')
         .trigger(this, { amps, phases, phase_label: this._phaseLabel(phases), message })
@@ -1047,10 +1175,13 @@ class SmartChargerOcppDevice extends Device {
       return;
     }
 
-    const message = `Charging started · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
-    await this._postNotification('🔋', 'Charging Started', message);
+    const ownerEmoji = this.sessionOwner === 'solar' ? '☀️ ' : this.sessionOwner === 'offpeak' ? '🌙 ' : '';
+    const message = `${ownerEmoji}Charging started · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
+    const emoji = this.sessionOwner === 'solar' ? '☀️' : this.sessionOwner === 'offpeak' ? '🌙' : '🔋';
+    await this._postNotification(emoji, 'Charging Started', message);
     this.homey.flow.getDeviceTriggerCard('ocpp_charging_started')
-      .trigger(this, { amps, phases, phase_label: this._phaseLabel(phases), message })
+      .trigger(this, { amps, phases, phase_label: this._phaseLabel(phases), message,
+        transaction_id: this._txnId || 0, meter_start: this._txnMeterStart || 0 })
       .catch((err) => this.log('[OCPP] Trigger ocpp_charging_started failed:', err.message));
   }
 
@@ -1067,6 +1198,47 @@ class SmartChargerOcppDevice extends Device {
     }
   }
 
+  // ─── Charge Now ──────────────────────────────────────────────────────────
+  // One-tap 16A start — takes over any engine session without suppressing future automation.
+
+  async chargeNow() {
+    if (this.chargerOffline) {
+      throw new Error('Charger is offline — cannot start charging.');
+    }
+    const state = this.getCapabilityValue('session_status');
+    if (!this._txnId && state === 'not_connected') {
+      throw new Error('No car connected — plug in first, then Charge Now.');
+    }
+
+    const targetAmps  = 16; // always 16A — "important travel" semantics
+    this.log(`[OCPP] Charge Now: ${targetAmps}A`);
+
+    // If an engine session is paused, resume it at 16A
+    if (this.stitchedSession && this.stitchedSession.paused) {
+      this._txnAmps = targetAmps;
+      this.stitchedSession.resumeAmps = targetAmps;
+      await this.resumeCharging('user');
+      return;
+    }
+    // If a session is active (engine or otherwise), raise limit to 16A
+    if (this._txnId && !this._autoStartBlocked) {
+      await this.setChargingLimit(targetAmps, undefined, 'user');
+      return;
+    }
+    // Otherwise start fresh at 16A
+    await this.startCharging(targetAmps, undefined, 'user');
+  }
+
+  // ─── Resume Automation ────────────────────────────────────────────────────
+  // Clears engine suppression from a user-stopped solar/off-peak session.
+
+  async resumeAutomation() {
+    if (this.automationEngine) {
+      this.automationEngine.clearSuppression('all');
+    }
+    this.log('[OCPP] Resume automation: engine suppression cleared');
+  }
+
   // ─── Reboot charger ──────────────────────────────────────────────────────
   // A reboot takes 2–3 minutes of silence — suppress the offline watchdog alert.
 
@@ -1080,9 +1252,16 @@ class SmartChargerOcppDevice extends Device {
 
   // ─── Set charging limit ───────────────────────────────────────────────────
 
-  async setChargingLimit(amps, overridePhases) {
+  async setChargingLimit(amps, overridePhases, source) {
     if (!VALID_AMPS.includes(amps)) {
       throw new Error(`Invalid amps: ${amps}. Must be one of ${VALID_AMPS.join(', ')}.`);
+    }
+
+    // User changing limit on an engine session → transfer ownership
+    if (source !== 'solar' && source !== 'engine' && this.automationEngine
+      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
+      this.automationEngine.noteUserStop(this.sessionOwner);
+      this.sessionOwner = 'user';
     }
 
     // Set phase override first so _getPhases() returns the right value for validate
@@ -1166,12 +1345,14 @@ class SmartChargerOcppDevice extends Device {
           .catch((err) => this.log('[OCPP] Trigger ocpp_charger_offline failed:', err.message));
       }
       this._offlineWasAlerted = !expected;
+      await this.setStoreValue('chargerWasOffline', true).catch(() => {});
       return;
     }
 
     if (!isOffline && this.chargerOffline) {
       this.chargerOffline = false;
       this._bootGraceStart = null;
+      await this.setStoreValue('chargerWasOffline', false).catch(() => {});
       this.log('[OCPP] Charger back ONLINE');
       await this.setAvailable().catch(() => {});
       await this._updateSessionStatus(this.getCapabilityValue('evcharger_charging_state') || 'idle');
@@ -1223,6 +1404,7 @@ class SmartChargerOcppDevice extends Device {
       meterStart: this._txnMeterStart,
       amps:       this._txnAmps,
       phases:     this.sessionPhaseOverride,
+      owner:      this.sessionOwner,
     }).catch(() => {});
   }
 
@@ -1247,17 +1429,35 @@ class SmartChargerOcppDevice extends Device {
       await this.setChargingLimit(value);
     });
 
-    this.registerCapabilityListener('button.release_charger', async () => {
-      await this.releaseCharger();
-    });
+    if (this.hasCapability('release_charger')) {
+      this.registerCapabilityListener('release_charger', async () => {
+        await this.releaseCharger();
+      });
+    }
 
-    this.registerCapabilityListener('button.pause_charging', async () => {
-      await this.pauseCharging();
-    });
+    if (this.hasCapability('pause_charging')) {
+      this.registerCapabilityListener('pause_charging', async () => {
+        await this.pauseCharging('user');
+      });
+    }
 
-    this.registerCapabilityListener('button.resume_charging', async () => {
-      await this.resumeCharging();
-    });
+    if (this.hasCapability('resume_charging')) {
+      this.registerCapabilityListener('resume_charging', async () => {
+        await this.resumeCharging('user');
+      });
+    }
+
+    if (this.hasCapability('charge_now')) {
+      this.registerCapabilityListener('charge_now', async () => {
+        await this.chargeNow();
+      });
+    }
+
+    if (this.hasCapability('resume_automation')) {
+      this.registerCapabilityListener('resume_automation', async () => {
+        await this.resumeAutomation();
+      });
+    }
   }
 
   // ─── Flow actions ─────────────────────────────────────────────────────────
@@ -1322,6 +1522,48 @@ class SmartChargerOcppDevice extends Device {
         if (args.device.id !== this.id) return;
         await this.rebootCharger(args.type || 'Soft');
       });
+
+    this.homey.flow.getActionCard('ocpp_charge_now')
+      .registerRunListener(async (args) => {
+        if (args.device.id !== this.id) return;
+        await this.chargeNow();
+      });
+
+    this.homey.flow.getActionCard('ocpp_resume_automation')
+      .registerRunListener(async (args) => {
+        if (args.device.id !== this.id) return;
+        await this.resumeAutomation();
+      });
+
+    for (const key of ['production_w', 'grid_w', 'battery_soc', 'battery_power_w']) {
+      this.homey.flow.getActionCard(`ocpp_update_solar_${key}`)
+        .registerRunListener(async (args) => {
+          if (args.device.id !== this.id) return;
+          this.updateSolarInput(key, args.value);
+        });
+    }
+  }
+
+  // ─── Solar input (with batched log debounce) ──────────────────────────────
+
+  updateSolarInput(key, value) {
+    if (!this.automationEngine) throw new Error('Solar engine not initialized');
+    this.automationEngine.feedInput(key, value);
+    // Batch all updates that arrive within 1200ms into one log line
+    this._solarInputBatch = this._solarInputBatch || {};
+    this._solarInputBatch[key] = value;
+    if (this._solarInputLogTimer) this.homey.clearTimeout(this._solarInputLogTimer);
+    this._solarInputLogTimer = this.homey.setTimeout(() => {
+      const b = this._solarInputBatch || {};
+      this._solarInputBatch = {};
+      this._solarInputLogTimer = null;
+      const parts = [];
+      if ('production_w'   in b) parts.push(`production ${b.production_w} W`);
+      if ('grid_w'         in b) parts.push(`grid ${b.grid_w > 0 ? '+' : ''}${b.grid_w} W`);
+      if ('battery_soc'    in b) parts.push(`battery ${b.battery_soc}%`);
+      if ('battery_power_w' in b) parts.push(`battery power ${b.battery_power_w} W`);
+      if (parts.length) this.log(`[OCPP] Solar data in: ${parts.join(' · ')}`);
+    }, 1200);
   }
 
   // ─── Capabilities management ─────────────────────────────────────────────
@@ -1355,6 +1597,8 @@ class SmartChargerOcppDevice extends Device {
     if (this.stitchedSession && this.stitchedSession.paused && chargingState !== 'idle') return 'paused';
     if (chargingState === 'charging') {
       if (this._lowPowerSince && (Date.now() - this._lowPowerSince) >= LOW_POWER_FINISH_MS) return 'finishing';
+      if (this.sessionOwner === 'solar') return 'solar_charging';
+      if (this.sessionOwner === 'offpeak') return 'offpeak_charging';
       return 'charging';
     }
     if (chargingState === 'idle') return 'not_connected';
@@ -1377,6 +1621,14 @@ class SmartChargerOcppDevice extends Device {
   _composeStatusSummary(status) {
     const session = this.getCurrentSessionInfo();
     switch (status) {
+      case 'solar_charging': {
+        const powerW = this.getCapabilityValue('measure_power') || 0;
+        return `☀️ ${(powerW / 1000).toFixed(1)} kW`;
+      }
+      case 'offpeak_charging': {
+        const powerW = this.getCapabilityValue('measure_power') || 0;
+        return `🌙 ${(powerW / 1000).toFixed(1)} kW`;
+      }
       case 'charging': {
         const powerW = this.getCapabilityValue('measure_power') || 0;
         return `Charging · ${(powerW / 1000).toFixed(1)} kW`;
@@ -1428,11 +1680,21 @@ class SmartChargerOcppDevice extends Device {
     if (requestedPhases > devicePhases) {
       throw new Error(`This charger is configured as ${this._phaseLabel(devicePhases)} — a ${this._phaseLabel(requestedPhases)} profile can't be delivered on it.`);
     }
+    const model = this.getSetting('charger_model') || 'other';
     const watts = AMPS_TO_WATTS(amps, requestedPhases);
-    const perPhaseAmps = watts / (devicePhases * 230);
-    if (perPhaseAmps < 6) {
-      const minKw = (Math.floor(1380 * devicePhases / 100) / 10).toFixed(1);
-      throw new Error(`Below this charger's minimum: ${amps}A ${this._phaseLabel(requestedPhases)} = ~${Math.round(perPhaseAmps * 10) / 10}A/phase on ${devicePhases} physical phases (under the 6A hardware floor). Lowest deliverable is 6A ${this._phaseLabel(devicePhases)} = ${minKw} kW.`);
+    if (model === '7ks' || model === '22kt') {
+      // Huawei firmware ignores numberPhases and spreads watts across all physical phases.
+      // A 6A mono request on a 3-phase unit = 2A/phase → instant abort (IEC 61851 floor).
+      const perPhaseAmps = watts / (devicePhases * 230);
+      if (perPhaseAmps < 6) {
+        const minKw = (Math.floor(1380 * devicePhases / 100) / 10).toFixed(1);
+        throw new Error(`Below this charger's minimum: Huawei chargers ignore the phase choice, so the ${watts}W requested spreads across all ${devicePhases} phases (~${Math.round(perPhaseAmps * 10) / 10}A each, under the 6A hardware floor). Lowest deliverable is 6A ${this._phaseLabel(devicePhases)} = ${minKw} kW.`);
+      }
+    } else {
+      // Other vendors may honour numberPhases — validate per requested phase.
+      if (amps < 6) {
+        throw new Error(`Below the 6A minimum charging current (IEC hardware floor) — ${amps}A ${this._phaseLabel(requestedPhases)} can't be delivered.`);
+      }
     }
   }
 

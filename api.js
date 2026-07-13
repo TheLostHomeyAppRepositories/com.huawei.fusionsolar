@@ -120,42 +120,97 @@ module.exports = {
    * POST /debug/registers
    * Body: { driverId, deviceId }
    * Reads all raw register values for the given device over Modbus TCP.
+   *
+   * All register groups are merged into a single TCP connection so the total
+   * round-trip fits well within Homey's API timeout.  Polling is paused first
+   * so the connection slot is guaranteed to be free (Huawei devices only allow
+   * one concurrent TCP session on port 502/6607).
    */
   async readDebugRegisters({ homey, body }) {
+    const log = (...a) => { try { homey.app.log('[ReadLive]', ...a); } catch { /* no-op */ } };
     try {
-    const { driverId, deviceId } = body || {};
+      const { driverId, deviceId } = body || {};
+      log(`request: driverId=${driverId} deviceId=${deviceId}`);
 
-    if (!driverId || !deviceId) {
-      return { error: 'Missing driverId or deviceId' };
-    }
+      if (!driverId || !deviceId) {
+        return { error: 'Missing driverId or deviceId' };
+      }
 
-    let driver;
-    try {
-      driver = homey.drivers.getDriver(driverId);
-    } catch {
-      return { error: `Driver not found: ${driverId}` };
-    }
-
-    const devices = driver.getDevices();
-    const device  = devices.find(d => d.getId() === deviceId);
-    if (!device) return { error: 'Device not found' };
-
-    const settings  = device.getSettings();
-    const address   = settings.address;
-    const port      = parseInt(settings.port,      10) || 502;
-    const modbusId  = parseInt(settings.modbus_id, 10);
-    const unitId    = Number.isFinite(modbusId) ? modbusId : 1;
-
-    if (!address) return { error: 'No IP address configured for this device' };
-
-    const registerSets = DRIVER_REGISTER_SETS[driverId];
-    if (!registerSets) return { error: `No register map defined for driver: ${driverId}` };
-
-    const result = {};
-
-    for (const [groupName, registers] of Object.entries(registerSets)) {
+      let driver;
       try {
-        const data = await readModbusRegisters(address, port, unitId, registers);
+        driver = homey.drivers.getDriver(driverId);
+      } catch {
+        return { error: `Driver not found: ${driverId}` };
+      }
+
+      const devices = driver.getDevices();
+      const device  = devices.find(d => d.getId() === deviceId);
+      if (!device) return { error: 'Device not found' };
+
+      const settings  = device.getSettings();
+      const address   = settings.address;
+      const port      = parseInt(settings.port,      10) || 502;
+      const modbusId  = parseInt(settings.modbus_id, 10);
+      const unitId    = Number.isFinite(modbusId) ? modbusId : 1;
+      log(`target: ${address}:${port} unit=${unitId}`);
+
+      if (!address) return { error: 'No IP address configured for this device' };
+
+      const registerSets = DRIVER_REGISTER_SETS[driverId];
+      if (!registerSets) return { error: `No register map defined for driver: ${driverId}` };
+
+      // ── 1. Pause polling on all devices sharing this host ────────────────────
+      const pausedDevices = [];
+      for (const dId of MODBUS_DRIVER_IDS) {
+        let drv;
+        try { drv = homey.drivers.getDriver(dId); } catch { continue; }
+        for (const dev of drv.getDevices()) {
+          try {
+            if ((dev.getSetting('address') || '').trim() !== address) continue;
+            if (typeof dev._stopPolling === 'function') {
+              await dev._stopPolling();
+              pausedDevices.push(dev);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+
+      // Wait for any in-flight fetch to finish (max 2 s)
+      const deadline = Date.now() + 2000;
+      for (const dev of pausedDevices) {
+        while (dev._fetchInProgress && Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 100)); // eslint-disable-line no-promise-executor-return
+        }
+      }
+
+      // ── 2. Merge all register groups into a single flat map ──────────────────
+      // Use group name + NUL byte as separator so keys are unique across groups.
+      // This lets us open ONE TCP connection instead of one per group.
+      const merged = {};
+      for (const [groupName, registers] of Object.entries(registerSets)) {
+        for (const [key, def] of Object.entries(registers)) {
+          merged[`${groupName}\x00${key}`] = def;
+        }
+      }
+
+      // ── 3. Single probe — bypasses queue lock (safe because polling is paused) ─
+      const PROBE_TIMEOUT_MS = 12000;
+      log(`probing ${Object.keys(merged).length} registers…`);
+      const raw = await probeModbusUnit(address, port, unitId, merged, PROBE_TIMEOUT_MS);
+      log(`probe done: ${raw === null ? 'null (connection failed)' : `${Object.keys(raw).length} values`}`);
+
+      // ── 4. Resume polling ────────────────────────────────────────────────────
+      for (const dev of pausedDevices) {
+        try { if (typeof dev._startPolling === 'function') await dev._startPolling(); } catch { /* ignore */ }
+      }
+
+      // ── 5. Reassemble per-group results ──────────────────────────────────────
+      const result = {};
+      for (const [groupName, registers] of Object.entries(registerSets)) {
+        if (raw === null) {
+          result[groupName] = { ok: false, error: 'Connection failed or timed out' };
+          continue;
+        }
         const rows = {};
         for (const [key, regDef] of Object.entries(registers)) {
           rows[key] = {
@@ -163,23 +218,20 @@ module.exports = {
             length:  regDef[1],
             type:    regDef[2],
             label:   regDef[3],
-            value:   data[key] ?? null,
+            value:   raw[`${groupName}\x00${key}`] ?? null,
           };
         }
         result[groupName] = { ok: true, registers: rows };
-      } catch (err) {
-        result[groupName] = { ok: false, error: err.message };
       }
-    }
 
-    return {
-      timestamp: new Date().toISOString(),
-      device:    device.getName(),
-      address,
-      port,
-      unitId,
-      groups:    result,
-    };
+      return {
+        timestamp: new Date().toISOString(),
+        device:    device.getName(),
+        address,
+        port,
+        unitId,
+        groups:    result,
+      };
     } catch (err) {
       return { error: `Unexpected error: ${err.message}` };
     }

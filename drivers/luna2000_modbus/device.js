@@ -163,7 +163,9 @@ class LUNA2000ModbusDevice extends Device {
       };
       for (const [key, { reg, scale, u32 }] of Object.entries(socSettings)) {
         if (changedKeys.includes(key)) {
-          const raw = Math.round(parseFloat(newSettings[key]) * scale);
+          // Homey renders 0 as a blank number field — treat blank (null/NaN) as 0
+          const val = parseFloat(newSettings[key]);
+          const raw = Math.round((Number.isFinite(val) ? val : 0) * scale);
           this.log(`Write ${key}: ${newSettings[key]} → reg ${reg} raw=${raw}`);
           (u32 ? writeModbusU32 : writeModbusRegister)(address, port, modbusId, reg, raw)
             .catch((err) => this.error(`${key} write failed:`, err.message));
@@ -859,11 +861,16 @@ class LUNA2000ModbusDevice extends Device {
         ['storageMaxDischargePower',       'max_discharge_power'],
         ['storageBackupPowerSoc',          'backup_power_soc'],
       ];
+      // Fields that Homey renders as blank when the value is 0 — always sync so
+      // a stored null gets populated and a stored 0 triggers a settings refresh.
+      const alwaysSync = new Set(['discharge_cutoff_capacity', 'backup_power_soc']);
       for (const [key, settingId] of numericSync) {
         const v = ctrl[key];
         if (v !== null && v !== undefined) {
           const current = parseFloat(this.getSetting(settingId));
-          if (!Number.isFinite(current) || Math.abs(v - current) > 0.5) settingUpdates[settingId] = v;
+          if (alwaysSync.has(settingId) || !Number.isFinite(current) || Math.abs(v - current) > 0.5) {
+            settingUpdates[settingId] = v;
+          }
         }
       }
 

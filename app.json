@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.79",
+  "version": "1.1.81",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -263,10 +263,38 @@
         "nl": "OCPP Server Status"
       },
       "values": [
-        { "id": "starting", "title": { "en": "Starting", "de": "Startet", "nl": "Starten" } },
-        { "id": "waiting",  "title": { "en": "Waiting for charger", "de": "Warte auf Charger", "nl": "Wacht op lader" } },
-        { "id": "connected","title": { "en": "Charger connected", "de": "Charger verbunden", "nl": "Lader verbonden" } },
-        { "id": "error",    "title": { "en": "Error", "de": "Fehler", "nl": "Fout" } }
+        {
+          "id": "starting",
+          "title": {
+            "en": "Starting",
+            "de": "Startet",
+            "nl": "Starten"
+          }
+        },
+        {
+          "id": "waiting",
+          "title": {
+            "en": "Waiting for charger",
+            "de": "Warte auf Charger",
+            "nl": "Wacht op lader"
+          }
+        },
+        {
+          "id": "connected",
+          "title": {
+            "en": "Charger connected",
+            "de": "Charger verbunden",
+            "nl": "Lader verbonden"
+          }
+        },
+        {
+          "id": "error",
+          "title": {
+            "en": "Error",
+            "de": "Fehler",
+            "nl": "Fout"
+          }
+        }
       ],
       "getable": true,
       "setable": false,
@@ -330,15 +358,94 @@
       },
       "icon": "/assets/capabilities/session_status.svg",
       "values": [
-        { "id": "not_connected",  "title": { "en": "Not Connected",  "de": "Nicht verbunden",  "nl": "Niet verbonden"  } },
-        { "id": "connected",      "title": { "en": "Connected",      "de": "Verbunden",         "nl": "Verbonden"       } },
-        { "id": "smart_charging", "title": { "en": "Smart Charging", "de": "Smartladen",        "nl": "Smart laden"     } },
-        { "id": "charging",       "title": { "en": "Charging",       "de": "Lädt",              "nl": "Aan het laden"   } },
-        { "id": "finishing",      "title": { "en": "Finishing",      "de": "Abschluss",         "nl": "Afronden"        } },
-        { "id": "paused",         "title": { "en": "Paused",         "de": "Pausiert",          "nl": "Gepauzeerd"      } },
-        { "id": "fully_charged",  "title": { "en": "Fully Charged",  "de": "Vollständig geladen","nl": "Volledig geladen"} },
-        { "id": "offline",        "title": { "en": "Offline",        "de": "Offline",           "nl": "Offline"         } },
-        { "id": "error",          "title": { "en": "Error",          "de": "Fehler",            "nl": "Fout"            } }
+        {
+          "id": "not_connected",
+          "title": {
+            "en": "Not Connected",
+            "de": "Nicht verbunden",
+            "nl": "Niet verbonden"
+          }
+        },
+        {
+          "id": "connected",
+          "title": {
+            "en": "Connected",
+            "de": "Verbunden",
+            "nl": "Verbonden"
+          }
+        },
+        {
+          "id": "smart_charging",
+          "title": {
+            "en": "Smart Charging",
+            "de": "Smartladen",
+            "nl": "Smart laden"
+          }
+        },
+        {
+          "id": "charging",
+          "title": {
+            "en": "Charging",
+            "de": "Lädt",
+            "nl": "Aan het laden"
+          }
+        },
+        {
+          "id": "finishing",
+          "title": {
+            "en": "Finishing",
+            "de": "Abschluss",
+            "nl": "Afronden"
+          }
+        },
+        {
+          "id": "paused",
+          "title": {
+            "en": "Paused",
+            "de": "Pausiert",
+            "nl": "Gepauzeerd"
+          }
+        },
+        {
+          "id": "fully_charged",
+          "title": {
+            "en": "Fully Charged",
+            "de": "Vollständig geladen",
+            "nl": "Volledig geladen"
+          }
+        },
+        {
+          "id": "offline",
+          "title": {
+            "en": "Offline",
+            "de": "Offline",
+            "nl": "Offline"
+          }
+        },
+        {
+          "id": "error",
+          "title": {
+            "en": "Error",
+            "de": "Fehler",
+            "nl": "Fout"
+          }
+        },
+        {
+          "id": "solar_charging",
+          "title": {
+            "en": "Solar Charging",
+            "de": "Solar-Laden",
+            "nl": "Zonne-laden"
+          }
+        },
+        {
+          "id": "offpeak_charging",
+          "title": {
+            "en": "Off-peak Charging",
+            "de": "Nebenzeit-Laden",
+            "nl": "Dal-uur laden"
+          }
+        }
       ],
       "getable": true,
       "setable": false,
@@ -1027,6 +1134,66 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false
+    },
+    "pause_charging": {
+      "type": "boolean",
+      "title": {
+        "en": "Pause Charging",
+        "de": "Laden pausieren",
+        "nl": "Laden pauzeren"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/capabilities/pause_charging.svg"
+    },
+    "resume_charging": {
+      "type": "boolean",
+      "title": {
+        "en": "Resume Charging",
+        "de": "Laden fortsetzen",
+        "nl": "Laden hervatten"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/capabilities/resume_charging.svg"
+    },
+    "charge_now": {
+      "type": "boolean",
+      "title": {
+        "en": "Charge Now",
+        "de": "Jetzt laden",
+        "nl": "Nu laden"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/capabilities/charge_now.svg"
+    },
+    "release_charger": {
+      "type": "boolean",
+      "title": {
+        "en": "Release Charger",
+        "de": "Ladestation freigeben",
+        "nl": "Lader vrijgeven"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/capabilities/release_charger.svg"
+    },
+    "resume_automation": {
+      "type": "boolean",
+      "title": {
+        "en": "Resume Automation",
+        "de": "Automatik fortsetzen",
+        "nl": "Automatisering hervatten"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/capabilities/resume_automation.svg"
     }
   },
   "drivers": [
@@ -1288,8 +1455,6 @@
       },
       "capabilities": [
         "onoff",
-        "button.pause_charging",
-        "button.resume_charging",
         "session_status",
         "charging_profile",
         "status_summary",
@@ -1309,7 +1474,11 @@
         "measure_voltage.l2",
         "measure_voltage.l3",
         "measure_temperature",
-        "button.release_charger"
+        "pause_charging",
+        "resume_charging",
+        "charge_now",
+        "release_charger",
+        "resume_automation"
       ],
       "capabilitiesOptions": {
         "onoff": {
@@ -1445,7 +1614,33 @@
             "nl": "Statussamenvatting"
           }
         },
-        "button.release_charger": {
+        "pause_charging": {
+          "title": {
+            "en": "Pause Charging",
+            "de": "Laden pausieren",
+            "nl": "Laden pauzeren"
+          }
+        },
+        "resume_charging": {
+          "title": {
+            "en": "Resume Charging",
+            "de": "Laden fortsetzen",
+            "nl": "Laden hervatten"
+          }
+        },
+        "charge_now": {
+          "title": {
+            "en": "Charge Now",
+            "de": "Jetzt laden",
+            "nl": "Nu laden"
+          },
+          "desc": {
+            "en": "One tap for urgent charging: charges at 16A until full, overriding any solar/off-peak session.",
+            "de": "Ein Tipp fuer dringliches Laden: laedt mit 16A bis voll, uebersteuert Solar/Nebenzeit.",
+            "nl": "Een tik voor dringend laden: laadt op 16A tot vol, overschrijft zonne-energie/dal-uur."
+          }
+        },
+        "release_charger": {
           "maintenanceAction": true,
           "title": {
             "en": "Release Charger",
@@ -1453,29 +1648,28 @@
             "nl": "Lader vrijgeven"
           },
           "desc": {
-            "en": "Forces the connector back to Operative — use if the charger is stuck Unavailable or the cable is locked in the socket after a pause.",
-            "de": "Setzt den Anschluss zwangsweise auf Operative zurück — verwenden wenn die Ladestation auf Nicht verfügbar feststeckt oder das Kabel nach einer Pause verriegelt ist.",
-            "nl": "Zet de connector geforceerd terug op Operative — gebruik dit als de lader vastzit op Niet beschikbaar of de kabel na een pauze vergrendeld is."
+            "en": "Forces the connector back to Operative. Use if the charger is stuck Unavailable or the cable is locked after a pause.",
+            "de": "Setzt den Anschluss auf Operative zurueck. Verwenden wenn die Ladestation feststeckt.",
+            "nl": "Zet de connector terug op Operative. Gebruik dit als de lader vastzit op Niet beschikbaar."
           }
         },
-        "button.pause_charging": {
+        "resume_automation": {
+          "maintenanceAction": true,
           "title": {
-            "en": "Pause Charging",
-            "de": "Laden pausieren",
-            "nl": "Laden pauzeren"
-          }
-        },
-        "button.resume_charging": {
-          "title": {
-            "en": "Resume Charging",
-            "de": "Laden fortsetzen",
-            "nl": "Laden hervatten"
+            "en": "Resume Automation",
+            "de": "Automatik fortsetzen",
+            "nl": "Automatisering hervatten"
+          },
+          "desc": {
+            "en": "After manually stopping a solar or off-peak session, clears the suppression so automation can restart when conditions are met.",
+            "de": "Nach manuellem Stopp einer Solar- oder Nebenzeitsitzung wird die Unterdrueckung aufgehoben.",
+            "nl": "Na handmatig stoppen van een sessie wordt de onderdrukking opgeheven zodat automatisering opnieuw kan starten."
           }
         }
       },
       "images": {
-        "small":  "/drivers/smartcharger_ocpp/assets/images/small.png",
-        "large":  "/drivers/smartcharger_ocpp/assets/images/large.png",
+        "small": "/drivers/smartcharger_ocpp/assets/images/small.png",
+        "large": "/drivers/smartcharger_ocpp/assets/images/large.png",
         "xlarge": "/drivers/smartcharger_ocpp/assets/images/xlarge.png"
       },
       "pair": [
@@ -1676,18 +1870,366 @@
             "de": "Standard-Ladestrom",
             "nl": "Standaard laadstroom"
           },
-          "value": "16",
+          "value": "10",
           "values": [
-            { "id": "6",  "label": { "en": "6A",  "de": "6A",  "nl": "6A"  } },
-            { "id": "8",  "label": { "en": "8A",  "de": "8A",  "nl": "8A"  } },
-            { "id": "10", "label": { "en": "10A", "de": "10A", "nl": "10A" } },
-            { "id": "12", "label": { "en": "12A", "de": "12A", "nl": "12A" } },
-            { "id": "16", "label": { "en": "16A", "de": "16A", "nl": "16A" } }
+            {
+              "id": "6",
+              "label": {
+                "en": "6A",
+                "de": "6A",
+                "nl": "6A"
+              }
+            },
+            {
+              "id": "8",
+              "label": {
+                "en": "8A",
+                "de": "8A",
+                "nl": "8A"
+              }
+            },
+            {
+              "id": "10",
+              "label": {
+                "en": "10A",
+                "de": "10A",
+                "nl": "10A"
+              }
+            },
+            {
+              "id": "12",
+              "label": {
+                "en": "12A",
+                "de": "12A",
+                "nl": "12A"
+              }
+            },
+            {
+              "id": "14",
+              "label": {
+                "en": "14A",
+                "de": "14A",
+                "nl": "14A"
+              }
+            },
+            {
+              "id": "16",
+              "label": {
+                "en": "16A",
+                "de": "16A",
+                "nl": "16A"
+              }
+            }
           ],
           "hint": {
             "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value.",
             "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird.",
             "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde."
+          }
+        },
+        {
+          "id": "solar_enabled",
+          "type": "checkbox",
+          "label": {
+            "en": "Enable solar surplus charging",
+            "de": "Solarueberschuss-Laden aktivieren",
+            "nl": "Zonne-overschot laden inschakelen"
+          },
+          "value": false,
+          "hint": {
+            "en": "Requires one flow you build once: it must send your live energy data with the four Update cards (solar production, grid power, battery SOC, battery power). Without fresh data (at most 5 minutes old) solar charging safely does nothing. When data arrives: when enough surplus lasts long enough to cover the minimum charging power, charging starts at the highest step the surplus can pay for, follows the sun up and down through the 6/8/10/12/14/16A steps, pauses on clouds and resumes by itself — one session in your history. Requires Smart Charging mode (auto-start OFF).",
+            "de": "Erfordert einen Flow, den du einmalig baust: Er muss deine Live-Energiedaten mit den vier Aktualisierungs-Karten senden (Solarproduktion, Netzleistung, Batteriestand, Batterieleistung). Ohne frische Daten (hoechstens 5 Minuten alt) tut das Solarladen sicher nichts. Mit Daten: Sobald genug Ueberschuss lange genug anhaelt, startet das Laden auf der hoechsten Stufe, die der Ueberschuss bezahlen kann, folgt der Sonne ueber die Stufen 6/8/10/12/14/16A auf und ab, pausiert bei Wolken und setzt fort — eine Sitzung in deiner Historie. Erfordert Smart-Charging-Modus (Auto-Start AUS).",
+            "nl": "Vereist een eenmalig gemaakte flow: die moet je live energiedata sturen met de vier Update-kaarten (zonneproductie, netvermogen, batterij-SOC, batterijvermogen). Zonder verse data (maximaal 5 minuten oud) doet zonneladen veilig niets. Met data: zodra genoeg overschot lang genoeg aanhoudt, start het laden op de hoogste stap die het overschot kan bekostigen, volgt de zon via de stappen 6/8/10/12/14/16A, pauzeert bij wolken en hervat vanzelf — een sessie in je geschiedenis. Vereist slimme laadmodus (auto-start UIT)."
+          }
+        },
+        {
+          "id": "solar_has_battery",
+          "type": "checkbox",
+          "label": {
+            "en": "System has a home battery",
+            "de": "System hat eine Hausbatterie",
+            "nl": "Systeem heeft een thuisbatterij"
+          },
+          "value": true,
+          "hint": {
+            "en": "Whether your solar system includes a home battery. Off: the two battery settings below are ignored, the battery flow cards are not needed, and solar charging runs on production and grid data alone.",
+            "de": "Ob deine Solaranlage einen Heimspeicher hat. Aus: Die zwei Batterie-Einstellungen unten werden ignoriert, die Batterie-Flow-Karten sind nicht noetig, und das Solarladen laeuft nur mit Produktions- und Netzdaten.",
+            "nl": "Of je zonnesysteem een thuisbatterij heeft. Uit: de twee batterij-instellingen hieronder worden genegeerd, de batterij-flowkaarten zijn niet nodig, en zonneladen draait alleen op productie- en netdata."
+          }
+        },
+        {
+          "id": "solar_min_battery_soc",
+          "type": "number",
+          "label": {
+            "en": "Minimum battery SOC (%)",
+            "de": "Minimaler Batteriestand (%)",
+            "nl": "Minimale batterijlading (%)"
+          },
+          "value": 90,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "hint": {
+            "en": "The home battery comes first: no solar goes to the car until your home battery reaches this level (sent via the Update battery SOC card). Set to 0 to skip this rule. Ignored when Home battery installed is off.",
+            "de": "Die Hausbatterie kommt zuerst: Es geht kein Solarstrom ans Auto, bis deine Hausbatterie diesen Stand erreicht (uebermittelt ueber die Karte Batterie-SOC aktualisieren). Auf 0 setzen, um diese Regel zu ueberspringen. Ignoriert, wenn Heimspeicher vorhanden aus ist.",
+            "nl": "De thuisbatterij gaat voor: er gaat geen zonnestroom naar de auto totdat je thuisbatterij dit niveau bereikt (doorgegeven via de kaart Batterij-SOC bijwerken). Zet op 0 om deze regel over te slaan. Genegeerd wanneer Thuisbatterij aanwezig uit staat."
+          }
+        },
+        {
+          "id": "solar_count_battery_discharge",
+          "type": "checkbox",
+          "label": {
+            "en": "Count battery discharge as consumed surplus",
+            "de": "Batterieentladung als verbrauchten Ueberschuss zaehlen",
+            "nl": "Batterij ontlading als verbruikt overschot tellen"
+          },
+          "value": true,
+          "hint": {
+            "en": "Your energy manager keeps the grid meter near zero by covering house loads from the home battery — so the grid meter alone can miss that the solar surplus is gone while the car quietly charges on stored energy. With this on (recommended), power drawn from the home battery counts as if it were bought from the grid, so charging steps down or pauses honestly. Small readings under 100W are ignored. Only works while the Update battery power card is wired (positive when charging, negative when discharging). Ignored when Home battery installed is off.",
+            "de": "Dein Energiemanager haelt den Netzzaehler nahe null, indem er Hausverbrauch aus der Hausbatterie deckt — der Netzzaehler allein kann also uebersehen, dass der Solarueberschuss weg ist. Wenn aktiviert (empfohlen), zaehlt Strom aus der Hausbatterie als waere er vom Netz gekauft. Kleine Werte unter 100W werden ignoriert. Wirkt nur, solange die Karte Batterieleistung aktualisieren verbunden ist (positiv beim Laden, negativ beim Entladen). Ignoriert, wenn Heimspeicher vorhanden aus ist.",
+            "nl": "Je energiemanager houdt de netmeter rond nul door huisverbruik uit de thuisbatterij te dekken — de netmeter alleen kan dus missen dat het zonneoverschot weg is. Met dit aan (aanbevolen) telt stroom uit de thuisbatterij alsof die van het net gekocht is. Kleine waarden onder 100W worden genegeerd. Werkt alleen zolang de kaart Batterijvermogen bijwerken is aangesloten (positief bij laden, negatief bij ontladen). Genegeerd wanneer Thuisbatterij aanwezig uit staat."
+          }
+        },
+        {
+          "id": "solar_grid_tolerance_w",
+          "type": "number",
+          "label": {
+            "en": "Grid import tolerance (W)",
+            "de": "Netzbezugstoleranz (W)",
+            "nl": "Netimporttolerantie (W)"
+          },
+          "value": 0,
+          "min": 0,
+          "max": 10000,
+          "step": 50,
+          "hint": {
+            "en": "How much grid import to tolerate before considering the surplus gone. 0 = purist surplus-only charging. A small value (e.g. 300) keeps a session on the current step through brief dips instead of stepping down or pausing.",
+            "de": "Wie viel Netzbezug toleriert wird, bevor der Ueberschuss als weg gilt. 0 = puristisches Laden nur mit Ueberschuss. Ein kleiner Wert (z. B. 300) haelt eine Sitzung bei kurzen Einbruechen auf der aktuellen Stufe, statt herunterzuschalten oder zu pausieren.",
+            "nl": "Hoeveel netimport wordt getolereerd voordat het overschot als verdwenen geldt. 0 = puristisch laden op alleen overschot. Een kleine waarde (bijv. 300) houdt een sessie op de huidige stap bij korte dips in plaats van terug te schakelen of te pauzeren."
+          }
+        },
+        {
+          "id": "solar_start_sustain_s",
+          "type": "number",
+          "label": {
+            "en": "Start sustain time (s)",
+            "de": "Starthaltezeit (s)",
+            "nl": "Startaanhoudtijd (s)"
+          },
+          "value": 180,
+          "min": 30,
+          "max": 1800,
+          "step": 30,
+          "hint": {
+            "en": "The surplus must cover the minimum charging power for this long before charging starts (or resumes after a pause) — so a short burst of sun does not start a session that stops a minute later.",
+            "de": "Der Ueberschuss muss so lange die minimale Ladeleistung decken, bevor das Laden startet (oder nach einer Pause fortsetzt) — damit eine kurze sonnige Phase keine Sitzung startet, die eine Minute spaeter wieder stoppt.",
+            "nl": "Het overschot moet zo lang het minimale laadvermogen dekken voordat het laden start (of hervat na een pauze) — zodat een korte zonnige periode geen sessie start die een minuut later weer stopt."
+          }
+        },
+        {
+          "id": "solar_step_hold_s",
+          "type": "number",
+          "label": {
+            "en": "Step hold time (s)",
+            "de": "Schritthaltezeit (s)",
+            "nl": "Stappaanhoudtijd (s)"
+          },
+          "value": 120,
+          "min": 30,
+          "max": 1800,
+          "step": 30,
+          "hint": {
+            "en": "A higher or lower power step must stay justified for this long before the charging power actually changes — prevents constant up-and-down on fast-moving clouds.",
+            "de": "Eine hoehere oder niedrigere Leistungsstufe muss so lange gerechtfertigt bleiben, bevor sich die Ladeleistung aendert — verhindert staendiges Auf und Ab bei schnell ziehenden Wolken.",
+            "nl": "Een hogere of lagere vermogensstap moet zo lang gerechtvaardigd blijven voordat het laadvermogen echt verandert — voorkomt constant op en neer bij snel bewegende wolken."
+          }
+        },
+        {
+          "id": "solar_stop_grace_s",
+          "type": "number",
+          "label": {
+            "en": "Stop grace time (s)",
+            "de": "Stopptoleranzzeit (s)",
+            "nl": "Stopleeglooptijd (s)"
+          },
+          "value": 300,
+          "min": 60,
+          "max": 3600,
+          "step": 60,
+          "hint": {
+            "en": "How long the surplus may stay below the minimum charging power before charging pauses. When the sun returns, charging resumes by itself, and your history still shows one continuous session.",
+            "de": "Wie lange der Ueberschuss unter der minimalen Ladeleistung bleiben darf, bevor das Laden pausiert. Kehrt die Sonne zurueck, setzt das Laden von selbst fort, und deine Historie zeigt weiterhin eine durchgehende Sitzung.",
+            "nl": "Hoe lang het overschot onder het minimale laadvermogen mag blijven voordat het laden pauzeert. Zodra de zon terugkeert, hervat het laden vanzelf, en je geschiedenis toont een doorlopende sessie."
+          }
+        },
+        {
+          "id": "offpeak_enabled",
+          "type": "checkbox",
+          "label": {
+            "en": "Enable off-peak charging",
+            "de": "Nebenzeiten-Laden aktivieren",
+            "nl": "Dal-uur laden inschakelen"
+          },
+          "value": false,
+          "hint": {
+            "en": "Starts charging automatically at the off-peak current whenever the car is connected, no session is running, and the time window below is open — and stops ONLY sessions this scheduler started when the window ends. Sessions you start manually are never touched, even across the window boundary. Requires Smart Charging mode (auto-start OFF), so plugging in waits for the window instead of charging immediately.",
+            "de": "Startet das Laden automatisch mit dem Niedertarif-Strom, wenn das Auto angeschlossen ist, keine Sitzung laeuft und das Zeitfenster offen ist — und stoppt am Fensterende NUR Sitzungen, die dieser Planer gestartet hat. Manuell gestartete Sitzungen werden nie beendet, auch nicht ueber die Fenstergrenze. Erfordert Smart-Charging-Modus (Auto-Start AUS).",
+            "nl": "Start het laden automatisch met de daltariefstroom wanneer de auto is aangesloten, er geen sessie loopt en het tijdvenster open is — en stopt ALLEEN sessies die deze planner heeft gestart wanneer het venster sluit. Handmatig gestarte sessies worden nooit aangeraakt. Vereist slimme laadmodus (auto-start UIT)."
+          }
+        },
+        {
+          "id": "offpeak_amps",
+          "type": "dropdown",
+          "label": {
+            "en": "Off-peak charging current",
+            "de": "Nebenzeit-Ladestrom",
+            "nl": "Dal-uur laadstroom"
+          },
+          "value": "16",
+          "values": [
+            {
+              "id": "6",
+              "label": {
+                "en": "6A",
+                "de": "6A",
+                "nl": "6A"
+              }
+            },
+            {
+              "id": "8",
+              "label": {
+                "en": "8A",
+                "de": "8A",
+                "nl": "8A"
+              }
+            },
+            {
+              "id": "10",
+              "label": {
+                "en": "10A",
+                "de": "10A",
+                "nl": "10A"
+              }
+            },
+            {
+              "id": "12",
+              "label": {
+                "en": "12A",
+                "de": "12A",
+                "nl": "12A"
+              }
+            },
+            {
+              "id": "14",
+              "label": {
+                "en": "14A",
+                "de": "14A",
+                "nl": "14A"
+              }
+            },
+            {
+              "id": "16",
+              "label": {
+                "en": "16A",
+                "de": "16A",
+                "nl": "16A"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Current for scheduler-started sessions. Default 16A — cheap electricity, so take whatever the charger and car can offer. Actual wattage depends on your Number of phases setting.",
+            "de": "Strom fuer vom Planer gestartete Sitzungen. Standard 16A — guenstiger Strom, also nimm, was Ladestation und Auto bieten koennen. Die Wattzahl haengt von der Einstellung Anzahl Phasen ab.",
+            "nl": "Stroom voor door de planner gestarte sessies. Standaard 16A — goedkope stroom, dus neem wat de lader en auto kunnen bieden. Het wattage hangt af van je instelling Aantal fasen."
+          }
+        },
+        {
+          "id": "offpeak_solar_first",
+          "type": "checkbox",
+          "label": {
+            "en": "Solar first (defer off-peak when solar can start)",
+            "de": "Solar zuerst (Nebenzeit verschieben, wenn Solar starten kann)",
+            "nl": "Zonne-energie eerst (dal-uur uitstellen als zonne-energie kan starten)"
+          },
+          "value": true,
+          "hint": {
+            "en": "When your off-peak hours fall in daytime (weekend tariffs), your own solar power and the cheap grid rate can compete for the same plug-in. With this on (recommended), off-peak waits whenever solar charging could start right now — sun is out, data is current, home battery full enough, enough surplus. When it is cloudy or dark, off-peak starts at full power as usual. Only matters when both modes are on.",
+            "de": "Wenn deine Niedertarifstunden am Tag liegen (Wochenendtarife), koennen kostenlose Sonne und guenstiger Netzstrom um denselben Ladeplatz konkurrieren. Wenn aktiviert (empfohlen), wartet Niedertarifladen, wenn Solarladen gerade starten koennte. Bei Wolken oder Dunkelheit startet Niedertarifladen wie gewohnt. Nur relevant wenn beide Modi aktiv sind.",
+            "nl": "Wanneer je daltariefuren overdag vallen kunnen gratis zon en goedkope netstroom concurreren. Met dit aan (aanbevolen) wacht daltariefladen wanneer zonneladen nu zou kunnen starten. Bij bewolking of donker start daltariefladen normaal. Alleen relevant als beide modi aanstaan."
+          }
+        },
+        {
+          "id": "offpeak_weekday_start",
+          "type": "text",
+          "label": {
+            "en": "Off-peak start (weekdays)",
+            "de": "Nebenzeit-Start (Wochentage)",
+            "nl": "Dal-uur start (weekdagen)"
+          },
+          "value": "22:00",
+          "hint": {
+            "en": "24h format, e.g. 22:00. Each day is off-peak BEFORE its own morning end and AFTER its own evening start — overnight windows are supported naturally. If weekends differ, this is the weekday definition.",
+            "de": "24h-Format, z. B. 22:00. Jeder Tag ist VOR seinem Morgenende und NACH seinem Abendbeginn im Niedertarif — Nachtfenster werden natuerlich unterstuetzt. Falls Wochenenden abweichen, ist dies die Werktagsdefinition.",
+            "nl": "24-uursformaat, bijv. 22:00. Elke dag is daltarief VOOR zijn eigen ochtendeinde en NA zijn eigen avondstart — nachtvensters worden vanzelf ondersteund. Als weekenden afwijken, is dit de doordeweekse definitie."
+          }
+        },
+        {
+          "id": "offpeak_weekday_end",
+          "type": "text",
+          "label": {
+            "en": "Off-peak end (weekdays)",
+            "de": "Nebenzeit-Ende (Wochentage)",
+            "nl": "Dal-uur einde (weekdagen)"
+          },
+          "value": "06:00",
+          "hint": {
+            "en": "24h format, e.g. 06:00. A night window ends at the END time of the day it lands on: with weekday 22:00-07:00 and weekend 22:00-17:00, Friday night runs until Saturday 17:00, and Sunday night until Monday 07:00.",
+            "de": "24h-Format, z. B. 06:00. Ein Nachtfenster endet zur ENDZEIT des Tages, auf den es faellt: mit Werktag 22:00-07:00 und Wochenende 22:00-17:00 laeuft die Freitagnacht bis Samstag 17:00, Sonntagsnacht bis Montag 07:00.",
+            "nl": "24-uursformaat, bijv. 06:00. Een nachtvenster eindigt op de EINDTIJD van de dag waarop het uitkomt: met doordeweeks 22:00-07:00 en weekend 22:00-17:00 loopt vrijdagnacht tot zaterdag 17:00, zondagnacht tot maandag 07:00."
+          }
+        },
+        {
+          "id": "offpeak_weekend_differs",
+          "type": "checkbox",
+          "label": {
+            "en": "Weekend has different off-peak hours",
+            "de": "Wochenende hat andere Nebenzeiten",
+            "nl": "Weekend heeft andere dal-uren"
+          },
+          "value": false,
+          "hint": {
+            "en": "Tick if Saturday/Sunday have a different (often longer) off-peak window. Covers single-tariff and most EU tariffs; exotic per-day or holiday tariffs are better built as your own flows.",
+            "de": "Ankreuzen, wenn Samstag/Sonntag ein anderes (oft laengeres) Niedertariffenster haben. Deckt Einheitstarif und die meisten EU-Tarife ab; exotische Tages- oder Feiertagstarife baust du besser als eigene Flows.",
+            "nl": "Aanvinken als zaterdag/zondag een ander (vaak langer) daltariefvenster hebben. Dekt enkeltarief en de meeste EU-tarieven; exotische per-dag- of feestdagtarieven bouw je beter als eigen flows."
+          }
+        },
+        {
+          "id": "offpeak_weekend_start",
+          "type": "text",
+          "label": {
+            "en": "Off-peak start (weekends)",
+            "de": "Nebenzeit-Start (Wochenende)",
+            "nl": "Dal-uur start (weekend)"
+          },
+          "value": "22:00",
+          "hint": {
+            "en": "Only used when Weekend window differs is ticked.",
+            "de": "Nur genutzt, wenn Wochenendfenster weicht ab angekreuzt ist.",
+            "nl": "Alleen gebruikt als Weekendvenster wijkt af is aangevinkt."
+          }
+        },
+        {
+          "id": "offpeak_weekend_end",
+          "type": "text",
+          "label": {
+            "en": "Off-peak end (weekends)",
+            "de": "Nebenzeit-Ende (Wochenende)",
+            "nl": "Dal-uur einde (weekend)"
+          },
+          "value": "06:00",
+          "hint": {
+            "en": "Only used when Weekend window differs is ticked.",
+            "de": "Nur genutzt, wenn Wochenendfenster weicht ab angekreuzt ist.",
+            "nl": "Alleen gebruikt als Weekendvenster wijkt af is aangevinkt."
           }
         }
       ]
@@ -2535,8 +3077,10 @@
             "en": "Discharge cutoff capacity (%)",
             "de": "Minimaler Entladezustand (%)"
           },
+          "value": 15,
           "min": 0,
           "max": 20,
+          "step": 1,
           "hint": {
             "en": "Minimum SoC the battery discharges to (register 47082). Range: 0–20 %, default 15 %. If PV modules are deployed, the configured value is applied. If no PV modules are deployed and the configured value is below 15 %, it is treated as 15 %.",
             "de": "Minimaler Ladezustand, bis zu dem die Batterie entladen wird (Register 47082). Bereich: 0–20 %, Standard 15 %. Wenn PV-Module bereitgestellt werden, wird der konfigurierte Wert angewendet. Wenn keine PV-Module bereitgestellt werden und der konfigurierte Wert unter 15 % liegt, wird der Wert als 15 % behandelt."
@@ -2549,6 +3093,7 @@
             "en": "Backup power SoC (%)",
             "de": "Backup-Energie-SoC (%)"
           },
+          "value": 0,
           "min": 0,
           "max": 100,
           "step": 1,
@@ -3847,27 +4392,103 @@
         "de": "iSitePower-M Solar (OpenAPI)"
       },
       "class": "solarpanel",
-      "platforms": ["local"],
+      "platforms": [
+        "local"
+      ],
       "connectivity": [],
       "energy": {
         "meterPowerExportedCapability": "meter_power"
       },
-      "capabilities": ["measure_power", "meter_power"],
+      "capabilities": [
+        "measure_power",
+        "meter_power"
+      ],
       "capabilitiesOptions": {
-        "measure_power": { "title": { "en": "Solar Power", "de": "Solarleistung" }, "insights": true },
-        "meter_power": { "title": { "en": "Total Yield", "de": "Gesamtertrag" }, "insights": true }
+        "measure_power": {
+          "title": {
+            "en": "Solar Power",
+            "de": "Solarleistung"
+          },
+          "insights": true
+        },
+        "meter_power": {
+          "title": {
+            "en": "Total Yield",
+            "de": "Gesamtertrag"
+          },
+          "insights": true
+        }
       },
       "images": {
         "small": "/drivers/isitepower_solar_openapi_fusionsolar/assets/images/small.png",
         "large": "/drivers/isitepower_solar_openapi_fusionsolar/assets/images/large.png"
       },
-      "pair": [{ "id": "start" }],
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
       "settings": [
-        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
-        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
-        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
-        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
+        {
+          "id": "base_url",
+          "type": "text",
+          "label": {
+            "en": "Server URL",
+            "de": "Server URL"
+          },
+          "value": "https://intl.fusionsolar.huawei.com",
+          "hint": {
+            "en": "FusionSolar regional server URL.",
+            "de": "FusionSolar regionaler Server URL."
+          }
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "label": {
+            "en": "Username",
+            "de": "Benutzername"
+          },
+          "value": "",
+          "highlight": true
+        },
+        {
+          "id": "system_code",
+          "type": "password",
+          "label": {
+            "en": "System Code",
+            "de": "Systemcode"
+          },
+          "value": ""
+        },
+        {
+          "id": "station_code",
+          "type": "text",
+          "label": {
+            "en": "Station Code",
+            "de": "Anlagencode"
+          },
+          "value": ""
+        },
+        {
+          "id": "poll_interval",
+          "type": "number",
+          "label": {
+            "en": "Update Interval",
+            "de": "Aktualisierungsintervall"
+          },
+          "units": {
+            "en": "minutes",
+            "de": "Minuten"
+          },
+          "value": 5,
+          "min": 1,
+          "max": 60,
+          "hint": {
+            "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen."
+          }
+        }
       ]
     },
     {
@@ -3877,39 +4498,175 @@
         "de": "iSitePower-M Batterie (OpenAPI)"
       },
       "class": "battery",
-      "platforms": ["local"],
+      "platforms": [
+        "local"
+      ],
       "connectivity": [],
       "energy": {
-        "batteries": ["INTERNAL"],
+        "batteries": [
+          "INTERNAL"
+        ],
         "homeBattery": true,
         "meterPowerImportedCapability": "meter_power.charged",
         "meterPowerExportedCapability": "meter_power.discharged"
       },
-      "capabilities": ["measure_power", "measure_battery", "measure_power.batt_charge", "measure_power.batt_discharge", "meter_power.charged", "meter_power.discharged", "measure_voltage.battery", "battery_state_string"],
+      "capabilities": [
+        "measure_power",
+        "measure_battery",
+        "measure_power.batt_charge",
+        "measure_power.batt_discharge",
+        "meter_power.charged",
+        "meter_power.discharged",
+        "measure_voltage.battery",
+        "battery_state_string"
+      ],
       "capabilitiesOptions": {
-        "measure_power": { "title": { "en": "Battery Power", "de": "Batterieleistung" }, "insights": true },
-        "measure_battery": { "title": { "en": "State of Charge", "de": "Ladezustand" }, "insights": true },
-        "measure_power.batt_charge": { "title": { "en": "Charge Power", "de": "Ladeleistung" }, "insights": true },
-        "measure_power.batt_discharge": { "title": { "en": "Discharge Power", "de": "Entladeleistung" }, "insights": true },
-        "meter_power.charged": { "title": { "en": "Total Charged", "de": "Gesamtladung" }, "insights": true },
-        "meter_power.discharged": { "title": { "en": "Total Discharged", "de": "Gesamtentladung" }, "insights": true },
-        "measure_voltage.battery": { "title": { "en": "Battery Voltage", "de": "Batteriespannung" }, "insights": true },
-        "measure_current.battery": { "title": { "en": "Battery Current", "de": "Batteriestrom" }, "insights": true },
-        "isitepower_remaining_backup_time": { "title": { "en": "Remaining Backup", "de": "Backup-Restzeit" }, "insights": true },
-        "isitepower_total_capacity": { "title": { "en": "Total Capacity", "de": "Gesamtkapazität" } },
-        "isitepower_discharge_cycles": { "title": { "en": "Discharge Cycles", "de": "Entladezyklen" } }
+        "measure_power": {
+          "title": {
+            "en": "Battery Power",
+            "de": "Batterieleistung"
+          },
+          "insights": true
+        },
+        "measure_battery": {
+          "title": {
+            "en": "State of Charge",
+            "de": "Ladezustand"
+          },
+          "insights": true
+        },
+        "measure_power.batt_charge": {
+          "title": {
+            "en": "Charge Power",
+            "de": "Ladeleistung"
+          },
+          "insights": true
+        },
+        "measure_power.batt_discharge": {
+          "title": {
+            "en": "Discharge Power",
+            "de": "Entladeleistung"
+          },
+          "insights": true
+        },
+        "meter_power.charged": {
+          "title": {
+            "en": "Total Charged",
+            "de": "Gesamtladung"
+          },
+          "insights": true
+        },
+        "meter_power.discharged": {
+          "title": {
+            "en": "Total Discharged",
+            "de": "Gesamtentladung"
+          },
+          "insights": true
+        },
+        "measure_voltage.battery": {
+          "title": {
+            "en": "Battery Voltage",
+            "de": "Batteriespannung"
+          },
+          "insights": true
+        },
+        "measure_current.battery": {
+          "title": {
+            "en": "Battery Current",
+            "de": "Batteriestrom"
+          },
+          "insights": true
+        },
+        "isitepower_remaining_backup_time": {
+          "title": {
+            "en": "Remaining Backup",
+            "de": "Backup-Restzeit"
+          },
+          "insights": true
+        },
+        "isitepower_total_capacity": {
+          "title": {
+            "en": "Total Capacity",
+            "de": "Gesamtkapazität"
+          }
+        },
+        "isitepower_discharge_cycles": {
+          "title": {
+            "en": "Discharge Cycles",
+            "de": "Entladezyklen"
+          }
+        }
       },
       "images": {
         "small": "/drivers/isitepower_battery_openapi_fusionsolar/assets/images/small.png",
         "large": "/drivers/isitepower_battery_openapi_fusionsolar/assets/images/large.png"
       },
-      "pair": [{ "id": "start" }],
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
       "settings": [
-        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
-        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
-        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
-        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
+        {
+          "id": "base_url",
+          "type": "text",
+          "label": {
+            "en": "Server URL",
+            "de": "Server URL"
+          },
+          "value": "https://intl.fusionsolar.huawei.com",
+          "hint": {
+            "en": "FusionSolar regional server URL.",
+            "de": "FusionSolar regionaler Server URL."
+          }
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "label": {
+            "en": "Username",
+            "de": "Benutzername"
+          },
+          "value": "",
+          "highlight": true
+        },
+        {
+          "id": "system_code",
+          "type": "password",
+          "label": {
+            "en": "System Code",
+            "de": "Systemcode"
+          },
+          "value": ""
+        },
+        {
+          "id": "station_code",
+          "type": "text",
+          "label": {
+            "en": "Station Code",
+            "de": "Anlagencode"
+          },
+          "value": ""
+        },
+        {
+          "id": "poll_interval",
+          "type": "number",
+          "label": {
+            "en": "Update Interval",
+            "de": "Aktualisierungsintervall"
+          },
+          "units": {
+            "en": "minutes",
+            "de": "Minuten"
+          },
+          "value": 5,
+          "min": 1,
+          "max": 60,
+          "hint": {
+            "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen."
+          }
+        }
       ]
     },
     {
@@ -3919,33 +4676,138 @@
         "de": "iSitePower-M Netz (OpenAPI)"
       },
       "class": "sensor",
-      "platforms": ["local"],
+      "platforms": [
+        "local"
+      ],
       "connectivity": [],
       "energy": {
         "cumulative": true,
         "cumulativeImportedCapability": "meter_power",
         "cumulativeExportedCapability": "meter_power.exported"
       },
-      "capabilities": ["measure_power", "meter_power", "meter_power.exported", "measure_voltage.phase1", "measure_current.phase1", "measure_frequency"],
+      "capabilities": [
+        "measure_power",
+        "meter_power",
+        "meter_power.exported",
+        "measure_voltage.phase1",
+        "measure_current.phase1",
+        "measure_frequency"
+      ],
       "capabilitiesOptions": {
-        "measure_power": { "title": { "en": "Grid Power", "de": "Netzleistung" }, "insights": true },
-        "meter_power": { "title": { "en": "Grid Import", "de": "Netzbezug gesamt" }, "insights": true },
-        "meter_power.exported": { "title": { "en": "Grid Export", "de": "Netzeinspeisung gesamt" }, "preventInsights": true, "preventTag": true },
-        "measure_voltage.phase1": { "title": { "en": "AC Voltage", "de": "AC Spannung" }, "insights": true },
-        "measure_current.phase1": { "title": { "en": "AC Current", "de": "AC Strom" }, "insights": true },
-        "measure_frequency": { "title": { "en": "Grid Frequency", "de": "Netzfrequenz" }, "insights": true }
+        "measure_power": {
+          "title": {
+            "en": "Grid Power",
+            "de": "Netzleistung"
+          },
+          "insights": true
+        },
+        "meter_power": {
+          "title": {
+            "en": "Grid Import",
+            "de": "Netzbezug gesamt"
+          },
+          "insights": true
+        },
+        "meter_power.exported": {
+          "title": {
+            "en": "Grid Export",
+            "de": "Netzeinspeisung gesamt"
+          },
+          "preventInsights": true,
+          "preventTag": true
+        },
+        "measure_voltage.phase1": {
+          "title": {
+            "en": "AC Voltage",
+            "de": "AC Spannung"
+          },
+          "insights": true
+        },
+        "measure_current.phase1": {
+          "title": {
+            "en": "AC Current",
+            "de": "AC Strom"
+          },
+          "insights": true
+        },
+        "measure_frequency": {
+          "title": {
+            "en": "Grid Frequency",
+            "de": "Netzfrequenz"
+          },
+          "insights": true
+        }
       },
       "images": {
         "small": "/drivers/isitepower_grid_openapi_fusionsolar/assets/images/small.png",
         "large": "/drivers/isitepower_grid_openapi_fusionsolar/assets/images/large.png"
       },
-      "pair": [{ "id": "start" }],
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
       "settings": [
-        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
-        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
-        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
-        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
+        {
+          "id": "base_url",
+          "type": "text",
+          "label": {
+            "en": "Server URL",
+            "de": "Server URL"
+          },
+          "value": "https://intl.fusionsolar.huawei.com",
+          "hint": {
+            "en": "FusionSolar regional server URL.",
+            "de": "FusionSolar regionaler Server URL."
+          }
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "label": {
+            "en": "Username",
+            "de": "Benutzername"
+          },
+          "value": "",
+          "highlight": true
+        },
+        {
+          "id": "system_code",
+          "type": "password",
+          "label": {
+            "en": "System Code",
+            "de": "Systemcode"
+          },
+          "value": ""
+        },
+        {
+          "id": "station_code",
+          "type": "text",
+          "label": {
+            "en": "Station Code",
+            "de": "Anlagencode"
+          },
+          "value": ""
+        },
+        {
+          "id": "poll_interval",
+          "type": "number",
+          "label": {
+            "en": "Update Interval",
+            "de": "Aktualisierungsintervall"
+          },
+          "units": {
+            "en": "minutes",
+            "de": "Minuten"
+          },
+          "value": 5,
+          "min": 1,
+          "max": 60,
+          "hint": {
+            "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen."
+          }
+        }
       ]
     },
     {
@@ -3955,30 +4817,114 @@
         "de": "iSitePower-M Haus (OpenAPI)"
       },
       "class": "sensor",
-      "platforms": ["local"],
+      "platforms": [
+        "local"
+      ],
       "connectivity": [],
       "energy": {
         "cumulative": true,
         "cumulativeImportedCapability": "meter_power",
         "cumulativeExportedCapability": "meter_power.exported"
       },
-      "capabilities": ["measure_power", "meter_power", "meter_power.exported"],
+      "capabilities": [
+        "measure_power",
+        "meter_power",
+        "meter_power.exported"
+      ],
       "capabilitiesOptions": {
-        "measure_power": { "title": { "en": "Home Consumption", "de": "Hausverbrauch" }, "insights": true },
-        "meter_power": { "title": { "en": "Total Consumption", "de": "Gesamtverbrauch" }, "insights": true },
-        "meter_power.exported": { "title": { "en": "Export", "de": "Einspeisung" }, "preventInsights": true, "preventTag": true }
+        "measure_power": {
+          "title": {
+            "en": "Home Consumption",
+            "de": "Hausverbrauch"
+          },
+          "insights": true
+        },
+        "meter_power": {
+          "title": {
+            "en": "Total Consumption",
+            "de": "Gesamtverbrauch"
+          },
+          "insights": true
+        },
+        "meter_power.exported": {
+          "title": {
+            "en": "Export",
+            "de": "Einspeisung"
+          },
+          "preventInsights": true,
+          "preventTag": true
+        }
       },
       "images": {
         "small": "/drivers/isitepower_home_openapi_fusionsolar/assets/images/small.png",
         "large": "/drivers/isitepower_home_openapi_fusionsolar/assets/images/large.png"
       },
-      "pair": [{ "id": "start" }],
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
       "settings": [
-        { "id": "base_url", "type": "text", "label": { "en": "Server URL", "de": "Server URL" }, "value": "https://intl.fusionsolar.huawei.com", "hint": { "en": "FusionSolar regional server URL.", "de": "FusionSolar regionaler Server URL." } },
-        { "id": "username", "type": "text", "label": { "en": "Username", "de": "Benutzername" }, "value": "", "highlight": true },
-        { "id": "system_code", "type": "password", "label": { "en": "System Code", "de": "Systemcode" }, "value": "" },
-        { "id": "station_code", "type": "text", "label": { "en": "Station Code", "de": "Anlagencode" }, "value": "" },
-        { "id": "poll_interval", "type": "number", "label": { "en": "Update Interval", "de": "Aktualisierungsintervall" }, "units": { "en": "minutes", "de": "Minuten" }, "value": 5, "min": 1, "max": 60, "hint": { "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.", "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen." } }
+        {
+          "id": "base_url",
+          "type": "text",
+          "label": {
+            "en": "Server URL",
+            "de": "Server URL"
+          },
+          "value": "https://intl.fusionsolar.huawei.com",
+          "hint": {
+            "en": "FusionSolar regional server URL.",
+            "de": "FusionSolar regionaler Server URL."
+          }
+        },
+        {
+          "id": "username",
+          "type": "text",
+          "label": {
+            "en": "Username",
+            "de": "Benutzername"
+          },
+          "value": "",
+          "highlight": true
+        },
+        {
+          "id": "system_code",
+          "type": "password",
+          "label": {
+            "en": "System Code",
+            "de": "Systemcode"
+          },
+          "value": ""
+        },
+        {
+          "id": "station_code",
+          "type": "text",
+          "label": {
+            "en": "Station Code",
+            "de": "Anlagencode"
+          },
+          "value": ""
+        },
+        {
+          "id": "poll_interval",
+          "type": "number",
+          "label": {
+            "en": "Update Interval",
+            "de": "Aktualisierungsintervall"
+          },
+          "units": {
+            "en": "minutes",
+            "de": "Minuten"
+          },
+          "value": 5,
+          "min": 1,
+          "max": 60,
+          "hint": {
+            "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
+            "de": "Wie oft Daten abgerufen werden (Minuten). Standard: 5. Werte unter 5 können Huawei-Rate-Limiting (HTTP 407) auslösen und kurze Datenlücken verursachen."
+          }
+        }
       ]
     },
     {
@@ -5001,6 +5947,24 @@
               "de": "Nachricht",
               "nl": "Bericht"
             }
+          },
+          {
+            "name": "transaction_id",
+            "type": "number",
+            "title": {
+              "en": "Transaction ID",
+              "de": "Transaktions-ID",
+              "nl": "Transactie-ID"
+            }
+          },
+          {
+            "name": "meter_start",
+            "type": "number",
+            "title": {
+              "en": "Meter start (Wh)",
+              "de": "Zaehlerstart (Wh)",
+              "nl": "Meterbeginstatus (Wh)"
+            }
           }
         ]
       },
@@ -5221,7 +6185,11 @@
           {
             "name": "message",
             "type": "string",
-            "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" }
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
           }
         ]
       },
@@ -5248,7 +6216,11 @@
           {
             "name": "message",
             "type": "string",
-            "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" }
+            "title": {
+              "en": "Message",
+              "de": "Nachricht",
+              "nl": "Bericht"
+            }
           }
         ]
       },
@@ -6879,6 +7851,182 @@
             }
           }
         ]
+      },
+      {
+        "id": "ocpp_update_solar_production_w",
+        "title": {
+          "en": "Update solar production",
+          "de": "Solarproduktion aktualisieren",
+          "nl": "Zonne-productie bijwerken"
+        },
+        "titleFormatted": {
+          "en": "Set solar production to [[value]] W",
+          "de": "Solarproduktion auf [[value]] W setzen",
+          "nl": "Zonneproductie instellen op [[value]] W"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Production (W)",
+              "de": "Produktion (W)",
+              "nl": "Productie (W)"
+            },
+            "placeholder": {
+              "en": "0",
+              "de": "0",
+              "nl": "0"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_update_solar_grid_w",
+        "title": {
+          "en": "Update grid power",
+          "de": "Netzleistung aktualisieren",
+          "nl": "Netvermogen bijwerken"
+        },
+        "titleFormatted": {
+          "en": "Set grid power to [[value]] W",
+          "de": "Netzleistung auf [[value]] W setzen",
+          "nl": "Netvermogen instellen op [[value]] W"
+        },
+        "hint": {
+          "en": "Positive = importing from grid, negative = exporting to grid.",
+          "de": "Positiv = Netzbezug, negativ = Einspeisung.",
+          "nl": "Positief = netimport, negatief = netexport."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Grid power (W)",
+              "de": "Netzleistung (W)",
+              "nl": "Netvermogen (W)"
+            },
+            "placeholder": {
+              "en": "0",
+              "de": "0",
+              "nl": "0"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_update_solar_battery_soc",
+        "title": {
+          "en": "Update battery SOC",
+          "de": "Batteriestand aktualisieren",
+          "nl": "Batterijlading bijwerken"
+        },
+        "titleFormatted": {
+          "en": "Set battery SOC to [[value]] %",
+          "de": "Batteriestand auf [[value]] % setzen",
+          "nl": "Batterijlading instellen op [[value]] %"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Battery SOC (%)",
+              "de": "Batteriestand (%)",
+              "nl": "Batterijlading (%)"
+            },
+            "placeholder": {
+              "en": "0",
+              "de": "0",
+              "nl": "0"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_update_solar_battery_power_w",
+        "title": {
+          "en": "Update battery power",
+          "de": "Batterieleistung aktualisieren",
+          "nl": "Batterijvermogen bijwerken"
+        },
+        "titleFormatted": {
+          "en": "Set battery power to [[value]] W",
+          "de": "Batterieleistung auf [[value]] W setzen",
+          "nl": "Batterijvermogen instellen op [[value]] W"
+        },
+        "hint": {
+          "en": "Positive = charging battery, negative = discharging battery.",
+          "de": "Positiv = Batterie laedt, negativ = Batterie entlaedt.",
+          "nl": "Positief = batterij opladen, negatief = batterij ontladen."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "name": "value",
+            "type": "number",
+            "title": {
+              "en": "Battery power (W)",
+              "de": "Batterieleistung (W)",
+              "nl": "Batterijvermogen (W)"
+            },
+            "placeholder": {
+              "en": "0",
+              "de": "0",
+              "nl": "0"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ocpp_charge_now",
+        "title": {
+          "en": "Charge now at 16A",
+          "de": "Jetzt laden mit 16A",
+          "nl": "Nu laden op 16A"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_resume_automation",
+        "title": {
+          "en": "Resume automatic charging",
+          "de": "Automatisches Laden fortsetzen",
+          "nl": "Automatisch laden hervatten"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
       }
     ],
     "conditions": [
@@ -7321,13 +8469,62 @@
               "nl": "Modus"
             },
             "values": [
-              { "id": "0", "label": { "en": "Adaptive", "de": "Adaptiv", "nl": "Adaptief" } },
-              { "id": "1", "label": { "en": "Fixed Charge/Discharge", "de": "Festes Laden/Entladen", "nl": "Vast laden/ontladen" } },
-              { "id": "2", "label": { "en": "Maximise Self-Consumption", "de": "Eigenverbrauch maximieren", "nl": "Eigenverbruik maximaliseren" } },
-              { "id": "3", "label": { "en": "Time of Use (LG)", "de": "Zeitabhängige Nutzung (LG)", "nl": "Time of Use (LG)" } },
-              { "id": "4", "label": { "en": "Fully Fed to Grid", "de": "Volleinspeisung", "nl": "Volledig terugleveren" } },
-              { "id": "5", "label": { "en": "Time of Use (LUNA2000)", "de": "Zeitabhängige Nutzung (LUNA2000)", "nl": "Time of Use (LUNA2000)" } },
-              { "id": "6", "label": { "en": "Third-party Scheduling", "de": "Drittanbieter-Steuerung", "nl": "Derden-sturing" } }
+              {
+                "id": "0",
+                "label": {
+                  "en": "Adaptive",
+                  "de": "Adaptiv",
+                  "nl": "Adaptief"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Fixed Charge/Discharge",
+                  "de": "Festes Laden/Entladen",
+                  "nl": "Vast laden/ontladen"
+                }
+              },
+              {
+                "id": "2",
+                "label": {
+                  "en": "Maximise Self-Consumption",
+                  "de": "Eigenverbrauch maximieren",
+                  "nl": "Eigenverbruik maximaliseren"
+                }
+              },
+              {
+                "id": "3",
+                "label": {
+                  "en": "Time of Use (LG)",
+                  "de": "Zeitabhängige Nutzung (LG)",
+                  "nl": "Time of Use (LG)"
+                }
+              },
+              {
+                "id": "4",
+                "label": {
+                  "en": "Fully Fed to Grid",
+                  "de": "Volleinspeisung",
+                  "nl": "Volledig terugleveren"
+                }
+              },
+              {
+                "id": "5",
+                "label": {
+                  "en": "Time of Use (LUNA2000)",
+                  "de": "Zeitabhängige Nutzung (LUNA2000)",
+                  "nl": "Time of Use (LUNA2000)"
+                }
+              },
+              {
+                "id": "6",
+                "label": {
+                  "en": "Third-party Scheduling",
+                  "de": "Drittanbieter-Steuerung",
+                  "nl": "Derden-sturing"
+                }
+              }
             ]
           }
         ]
@@ -7364,8 +8561,22 @@
               "nl": "Modus"
             },
             "values": [
-              { "id": "0", "label": { "en": "Feed to Grid", "de": "Ins Netz einspeisen", "nl": "Terugleveren aan net" } },
-              { "id": "1", "label": { "en": "Charge Battery", "de": "Batterie laden", "nl": "Batterij laden" } }
+              {
+                "id": "0",
+                "label": {
+                  "en": "Feed to Grid",
+                  "de": "Ins Netz einspeisen",
+                  "nl": "Terugleveren aan net"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Charge Battery",
+                  "de": "Batterie laden",
+                  "nl": "Batterij laden"
+                }
+              }
             ]
           }
         ]
@@ -7402,12 +8613,54 @@
               "nl": "Modus"
             },
             "values": [
-              { "id": "0", "label": { "en": "Local Control", "de": "Lokale Steuerung", "nl": "Lokale sturing" } },
-              { "id": "1", "label": { "en": "Remote: Max Self-Consumption", "de": "Fern: Max Eigenverbrauch", "nl": "Afstand: Max eigenverbruik" } },
-              { "id": "2", "label": { "en": "Remote: Fully Fed to Grid", "de": "Fern: Volleinspeisung", "nl": "Afstand: Volledig terugleveren" } },
-              { "id": "3", "label": { "en": "Remote: Time of Use", "de": "Fern: Zeitabhängige Nutzung", "nl": "Afstand: Time of Use" } },
-              { "id": "4", "label": { "en": "Remote: AI Control", "de": "Fern: KI-Steuerung", "nl": "Afstand: KI-sturing" } },
-              { "id": "5", "label": { "en": "Remote: Three-party Scheduling", "de": "Fern: Drittanbieter-Steuerung", "nl": "Afstand: Derden-sturing" } }
+              {
+                "id": "0",
+                "label": {
+                  "en": "Local Control",
+                  "de": "Lokale Steuerung",
+                  "nl": "Lokale sturing"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Remote: Max Self-Consumption",
+                  "de": "Fern: Max Eigenverbrauch",
+                  "nl": "Afstand: Max eigenverbruik"
+                }
+              },
+              {
+                "id": "2",
+                "label": {
+                  "en": "Remote: Fully Fed to Grid",
+                  "de": "Fern: Volleinspeisung",
+                  "nl": "Afstand: Volledig terugleveren"
+                }
+              },
+              {
+                "id": "3",
+                "label": {
+                  "en": "Remote: Time of Use",
+                  "de": "Fern: Zeitabhängige Nutzung",
+                  "nl": "Afstand: Time of Use"
+                }
+              },
+              {
+                "id": "4",
+                "label": {
+                  "en": "Remote: AI Control",
+                  "de": "Fern: KI-Steuerung",
+                  "nl": "Afstand: KI-sturing"
+                }
+              },
+              {
+                "id": "5",
+                "label": {
+                  "en": "Remote: Three-party Scheduling",
+                  "de": "Fern: Drittanbieter-Steuerung",
+                  "nl": "Afstand: Derden-sturing"
+                }
+              }
             ]
           }
         ]
@@ -7723,8 +8976,24 @@
           },
           "value": "5",
           "values": [
-            { "id": "5",  "title": { "en": "Last 5",  "de": "Letzte 5",  "nl": "Laatste 5",  "fr": "5 dernières"  } },
-            { "id": "10", "title": { "en": "Last 10", "de": "Letzte 10", "nl": "Laatste 10", "fr": "10 dernières" } }
+            {
+              "id": "5",
+              "title": {
+                "en": "Last 5",
+                "de": "Letzte 5",
+                "nl": "Laatste 5",
+                "fr": "5 dernières"
+              }
+            },
+            {
+              "id": "10",
+              "title": {
+                "en": "Last 10",
+                "de": "Letzte 10",
+                "nl": "Laatste 10",
+                "fr": "10 dernières"
+              }
+            }
           ]
         }
       ],
@@ -8031,5 +9300,17 @@
       }
     }
   },
-  "permissions": []
+  "permissions": [],
+  "changelog": {
+    "1.1.80": {
+      "en": "Solar surplus charging and off-peak scheduler. Custom action buttons (pause/resume/charge now/resume automation). 14A added to current ladder. Session ownership tracking for engine vs manual sessions.",
+      "de": "Solarueberschuss-Laden und Nebenzeiten-Scheduler. Eigene Tasten (Pause/Fortsetzen/Jetzt laden/Automatik fortsetzen). 14A zur Strom-Leiter hinzugefuegt. Sitzungsbesitz-Verfolgung fuer Motor- vs. manuelle Sitzungen.",
+      "nl": "Solaaroverschot laden en dal-uur-planner. Aangepaste knoppen (pauzeren/hervatten/nu laden/automatisering hervatten). 14A toegevoegd aan stroomladder. Sessiebeheer voor motor- vs. handmatige sessies."
+    },
+    "1.1.81": {
+      "en": "OCPP: idTag case fix for strict chargers, offline state survives restart, model-aware 22KT/7KS phase validation, chargeNow offline guard, solar input debounce, wider solar/offpeak setting ranges, default current 10A. Luna2000: blank discharge-cutoff and backup-SOC fields fixed (0 treated correctly, always synced from Modbus). Settings debugger: Read Live fixed (polling paused, single TCP connection per read).",
+      "de": "OCPP: idTag-Grossschreibung fuer strenge Charger behoben, Offline-Zustand bleibt nach Neustart erhalten, modellbewusste 22KT/7KS-Phasenvalidierung, Charge Now Offline-Schutz, Solar-Eingabe-Entprellung, groessere Solar/Nebenzeit-Bereiche, Standard 10A. Luna2000: Leere Felder fuer Entladegrenze und Backup-SOC behoben (0 korrekt verarbeitet, immer aus Modbus synchronisiert). Einstellungs-Debugger: Read Live behoben (Polling pausiert, eine TCP-Verbindung pro Lesevorgang).",
+      "nl": "OCPP: idTag-hoofdletterfix voor strikte laders, offline status bewaard na herstart, model-bewuste 22KT/7KS fase-validatie, Charge Now offline-beveiliging, solar input debounce, bredere solar/dal-uur bereiken, standaard 10A. Luna2000: lege velden voor ontlaaddrempel en backup-SOC hersteld (0 correct verwerkt, altijd gesynchroniseerd vanuit Modbus). Instellingen-debugger: Read Live opgelost (polling gepauzeerd, enkele TCP-verbinding per lezing)."
+    }
+  }
 }
