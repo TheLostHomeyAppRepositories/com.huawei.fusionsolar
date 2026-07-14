@@ -1,4 +1,9 @@
 {
+  "1.1.82": {
+    "en": "Luna2000: fixed 'Start force discharge until X%' — Huawei firmware interprets register 47101 (Force Charge Target SOC) as a duration in minutes when in discharge mode, causing the wrong behaviour. The discharge cutoff SOC is now correctly written to register 47082 (Discharge Cutoff Capacity).",
+    "de": "Luna2000: 'Entladung starten bis X%' behoben — Huawei-Firmware interpretiert Register 47101 (Ziel-SoC Laden) im Entlademodus als Dauer in Minuten, was zu falschem Verhalten fuehrte. Der Entlade-Grenzwert wird jetzt korrekt in Register 47082 (Minimaler Entladezustand) geschrieben.",
+    "nl": "Luna2000: 'Start ontlading tot X%' hersteld — Huawei-firmware interpreteert register 47101 (Doel-SoC laden) in ontlaadmodus als een duur in minuten, wat tot verkeerd gedrag leidde. De ontlaadgrens-SoC wordt nu correct geschreven naar register 47082 (Minimale ontlaadcapaciteit)."
+  },
   "1.1.81": {
     "en": "OCPP: idTag case fix for strict chargers, offline state survives restart, model-aware 22KT/7KS phase validation, chargeNow offline guard, solar input debounce, wider solar/offpeak setting ranges, default current 10A. Luna2000: blank discharge-cutoff and backup-SOC fields fixed (0 treated correctly, always synced from Modbus). Settings debugger: Read Live fixed (polling paused, single TCP connection per read).",
     "de": "OCPP: idTag-Grossschreibung fuer strenge Charger behoben, Offline-Zustand bleibt nach Neustart erhalten, modellbewusste 22KT/7KS-Phasenvalidierung, Charge Now Offline-Schutz, Solar-Eingabe-Entprellung, groessere Solar/Nebenzeit-Bereiche, Standard 10A. Luna2000: Leere Felder fuer Entladegrenze und Backup-SOC behoben (0 korrekt verarbeitet, immer aus Modbus synchronisiert). Einstellungs-Debugger: Read Live behoben (Polling pausiert, eine TCP-Verbindung pro Lesevorgang).",

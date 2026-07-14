@@ -346,7 +346,11 @@ class LUNA2000ModbusDevice extends Device {
         this._writeInProgress = true;
         try {
           await writeModbusU32(h, p, u, 47247, powerW);
-          await writeModbusRegister(h, p, u, 47101, socRaw);
+          // Reg 47101 is "Force CHARGE Target SOC" only — writing it during discharge
+          // causes Huawei firmware to interpret the value as a duration in minutes
+          // instead of a SOC target.  The correct discharge cutoff is reg 47082
+          // (Discharge Cutoff Capacity, gain ×10), which is also the persistent setting.
+          await writeModbusRegister(h, p, u, 47082, socRaw);
           if (!already) await writeModbusRegister(h, p, u, 47100, 2);
           this.log('Force discharge command sent');
         } catch (err) {
