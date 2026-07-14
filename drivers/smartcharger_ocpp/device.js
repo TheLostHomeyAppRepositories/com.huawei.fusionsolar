@@ -52,6 +52,8 @@ const REQUIRED_CAPABILITIES = [
   'charge_now',
   'release_charger',
   'resume_automation',
+  'meter_session_energy',
+  'session_duration',
 ];
 
 // Old button capabilities to remove during migration
@@ -85,6 +87,29 @@ class SmartChargerOcppDevice extends Device {
         this.log('[OCPP] Corrected stale charger_vendor setting to "Huawei"');
       }
     } catch (e) { this.log(`[OCPP] charger_vendor migration error: ${e.message}`); }
+
+    // Dropdown value-type migration: Homey shows "–" for a dropdown on the
+    // device settings list when the stored value's type doesn't match the
+    // option ids (which are strings). Devices configured under older versions
+    // may have numbers stored — convert once.
+    try {
+      const DROPDOWN_DEFAULTS = {
+        number_of_phases: '3',
+        default_charging_amps: '16',
+        offpeak_amps: '16',
+        charger_model: 'other',
+      };
+      const fixes = {};
+      for (const [key, def] of Object.entries(DROPDOWN_DEFAULTS)) {
+        const v = this.getSetting(key);
+        if (typeof v === 'number') fixes[key] = String(v);
+        else if (v === null || v === undefined || v === '') fixes[key] = def;
+      }
+      if (Object.keys(fixes).length) {
+        await this.setSettings(fixes);
+        this.log(`[OCPP] Migrated dropdown settings: ${JSON.stringify(fixes)}`);
+      }
+    } catch (e) { this.log(`[OCPP] Dropdown migration skipped: ${e.message}`); }
 
     // ── Core session state ──────────────────────────────────────────────────
     this._txnId                = null;
@@ -207,7 +232,15 @@ class SmartChargerOcppDevice extends Device {
 
     // ── Solar / off-peak automation engine ─────────────────────────────────
     this.automationEngine = new SolarOffpeakEngine(this);
+    await this.automationEngine.restoreInputs();
     this.automationEngine.start();
+
+    // Session tile sensors: 60s refresh so the tile shows live numbers
+    // during a session; one immediate pass to show restored session on boot.
+    this._sessionTileInterval = this.homey.setInterval(() => {
+      this._updateSessionTileSensors().catch(() => {});
+    }, 60_000);
+    this._updateSessionTileSensors().catch(() => {});
 
     // ── Register with OcppServer ────────────────────────────────────────────
     const stationId = this.getSetting('station_id');
@@ -267,6 +300,16 @@ class SmartChargerOcppDevice extends Device {
           throw new Error(`"${key}" must be in HH:MM format (e.g. 22:00 or 06:00), got "${newSettings[key]}".`);
         }
       }
+    }
+    // A zero-length window (start === end) would never open — catch it early.
+    if (newSettings.offpeak_weekday_start && newSettings.offpeak_weekday_end
+      && newSettings.offpeak_weekday_start.trim() === newSettings.offpeak_weekday_end.trim()) {
+      throw new Error('Off-peak weekday start and end time must differ — a zero-length window is always closed.');
+    }
+    if (newSettings.offpeak_weekend_differs === true
+      && newSettings.offpeak_weekend_start && newSettings.offpeak_weekend_end
+      && newSettings.offpeak_weekend_start.trim() === newSettings.offpeak_weekend_end.trim()) {
+      throw new Error('Off-peak weekend start and end time must differ — a zero-length window is always closed.');
     }
 
     // Solar / off-peak require smart charging (auto_start OFF)
@@ -371,6 +414,10 @@ class SmartChargerOcppDevice extends Device {
   _clearTimers() {
     this._clearIdleGuard();
     if (this.automationEngine) this.automationEngine.stop();
+    if (this._sessionTileInterval) {
+      this.homey.clearInterval(this._sessionTileInterval);
+      this._sessionTileInterval = null;
+    }
     if (this._offlineWatchdog) {
       this.homey.clearInterval(this._offlineWatchdog);
       this._offlineWatchdog = null;
@@ -458,6 +505,7 @@ class SmartChargerOcppDevice extends Device {
       const connStart = this._connectionStart;
       this._connectionStart = null;
       await this.setStoreValue('connectionStart', null).catch(() => {});
+      await this._resetSessionTileSensors();
       // Deferred 4 s: let pending StopTransaction settle before reporting unplug
       setTimeout(async () => {
         if (this._txnId) return;
@@ -483,8 +531,14 @@ class SmartChargerOcppDevice extends Device {
       || (oldState === 'idle' && oldRawStatus !== 'Finishing' && oldRawStatus !== 'Reserved');
 
     if (wasGenuinelyFree && newState === 'connected') {
-      this._connectionStart = Date.now();
-      await this.setStoreValue('connectionStart', this._connectionStart).catch(() => {});
+      // Boot replay guard: if this is the first StatusNotification after a
+      // restart and we already restored a connectionStart from the store,
+      // keep the original plug-in time instead of stamping Date.now().
+      const bootReplay = oldState === null && this._connectionStart;
+      if (!bootReplay) {
+        this._connectionStart = Date.now();
+        await this.setStoreValue('connectionStart', this._connectionStart).catch(() => {});
+      }
       this.log('[OCPP] Car plugged in');
 
       const autoStart = this.getSetting('auto_start_charging') !== false;
@@ -1817,6 +1871,7 @@ class SmartChargerOcppDevice extends Device {
 
     return {
       sessionStatus,
+      sessionOwner:     this.sessionOwner || null,
       isPaused:         this.isPaused === true,
       requestedAmps:    amps,
       limitKw:          amps ? this._kwLabel(amps, phases) : null,
@@ -1839,6 +1894,25 @@ class SmartChargerOcppDevice extends Device {
     } catch (e) {
       return [];
     }
+  }
+
+  // ─── Session tile sensors ──────────────────────────────────────────────────
+  // meter_session_energy (kWh) + session_duration ("2h 13m") mirror the same
+  // stitched-session numbers as the history widget — one source of truth
+  // (getCurrentSessionInfo), so restarts and masked pauses are already handled.
+  // Refreshed every 60s while a session exists; reset on unplug.
+
+  async _updateSessionTileSensors() {
+    const info = this.getCurrentSessionInfo();
+    if (!info) return; // between sessions: hold last values (reset happens on unplug)
+    const kwh = Math.round((info.energyWh || 0) / 10) / 100;
+    await this._set('meter_session_energy', kwh);
+    await this._set('session_duration', this._formatDuration(info.durationMs || 0));
+  }
+
+  async _resetSessionTileSensors() {
+    await this._set('meter_session_energy', 0);
+    await this._set('session_duration', '—');
   }
 
   getCurrentSessionInfo() {

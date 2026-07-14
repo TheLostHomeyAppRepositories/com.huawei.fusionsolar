@@ -1,4 +1,9 @@
 {
+  "1.1.83": {
+    "en": "OCPP: Solar anti-thrash guardrails (export guard, 60s import re-fit, +250W up-step margin, 5-min flip cooldown). Solar inputs survive restart (no more 180s re-sustain after reboot). Session tile sensors (energy kWh + duration). Boot plug-in time preserved across restarts. Dropdown settings migration for older devices. Off-peak zero-length window validation. Widget API exposes session owner.",
+    "de": "OCPP: Solar-Anti-Thrash-Schutz (Export-Schutz, 60s Import-Neuanpassung, +250W Aufwärts-Margin, 5-Min Flip-Cooldown). Solar-Inputs überstehen Neustart (kein 180s Neuanlauf mehr). Sitzungs-Kachel-Sensoren (Energie kWh + Dauer). Einsteckzeit bleibt nach Neustart erhalten. Dropdown-Migration für ältere Geräte. Null-Fenster Validierung für Nebenzeit. Widget-API gibt Sitzungsinhaber zurück.",
+    "nl": "OCPP: Solar anti-thrash beveiliging (exportguard, 60s import herfit, +250W opstap-marge, 5-min flip-cooldown). Solar-inputs overleven herstart (geen 180s heraanloop meer). Sessietegel-sensoren (energie kWh + duur). Insteektijd bewaard na herstart. Dropdown-migratie voor oudere apparaten. Nulvenster-validatie voor dal-uur. Widget-API geeft sessie-eigenaar terug."
+  },
   "1.1.82": {
     "en": "Luna2000: fixed 'Start force discharge until X%' — Huawei firmware interprets register 47101 (Force Charge Target SOC) as a duration in minutes when in discharge mode, causing the wrong behaviour. The discharge cutoff SOC is now correctly written to register 47082 (Discharge Cutoff Capacity).",
     "de": "Luna2000: 'Entladung starten bis X%' behoben — Huawei-Firmware interpretiert Register 47101 (Ziel-SoC Laden) im Entlademodus als Dauer in Minuten, was zu falschem Verhalten fuehrte. Der Entlade-Grenzwert wird jetzt korrekt in Register 47082 (Minimaler Entladezustand) geschrieben.",
