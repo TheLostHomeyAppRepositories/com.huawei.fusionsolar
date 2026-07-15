@@ -1,4 +1,9 @@
 {
+  "1.1.84": {
+    "en": "New driver: Energy Management System — coordinates solar surplus charging between any Homey EV charger (Easee, OCPP, generic) and your home battery. Battery-first priority gate (configurable SOC threshold), solar surplus ladder (6–32 A), off-peak fallback, and full flow card support (mode-changed trigger, mode-is condition, enable/disable action).",
+    "de": "Neuer Treiber: Energiemanagementsystem — koordiniert das Solarüberschuss-Laden zwischen beliebigen Homey EV-Ladegeräten (Easee, OCPP, generisch) und der Hausbatterie. Batterie-Priorität (konfigurierbarer SOC-Schwellenwert), Solar-Überschuss-Leiter (6–32 A), Nebenzeit-Fallback und vollständige Flow-Karten-Unterstützung.",
+    "nl": "Nieuw stuurprogramma: Energiebeheersysteem — coördineert zonne-overschotladen tussen elke Homey EV-lader (Easee, OCPP, generiek) en uw thuisbatterij. Batterijprioriteitspoort (instelbare SOC-drempel), zonneoverschotladder (6–32 A), daltarief-terugval en volledige flow-kaartondersteuning."
+  },
   "1.1.83": {
     "en": "OCPP: Solar anti-thrash guardrails (export guard, 60s import re-fit, +250W up-step margin, 5-min flip cooldown). Solar inputs survive restart (no more 180s re-sustain after reboot). Session tile sensors (energy kWh + duration). Boot plug-in time preserved across restarts. Dropdown settings migration for older devices. Off-peak zero-length window validation. Widget API exposes session owner.",
     "de": "OCPP: Solar-Anti-Thrash-Schutz (Export-Schutz, 60s Import-Neuanpassung, +250W Aufwärts-Margin, 5-Min Flip-Cooldown). Solar-Inputs überstehen Neustart (kein 180s Neuanlauf mehr). Sitzungs-Kachel-Sensoren (Energie kWh + Dauer). Einsteckzeit bleibt nach Neustart erhalten. Dropdown-Migration für ältere Geräte. Null-Fenster Validierung für Nebenzeit. Widget-API gibt Sitzungsinhaber zurück.",

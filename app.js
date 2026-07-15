@@ -32,6 +32,20 @@ class FusionSolarKioskApp extends App {
     this._capHistoryInited = false;
     this._registerSensorChartAutocomplete();
     this.homey.setTimeout(() => this._initCapHistory(), 5000);
+
+    // EMS charger triggers — global cards, filter by charger_device_id arg vs state
+    this.homey.flow
+      .getTriggerCard('ems_set_charger_current')
+      .registerRunListener((args, state) => args.charger_device_id === state.charger_device_id);
+    this.homey.flow
+      .getTriggerCard('ems_start_charger')
+      .registerRunListener((args, state) => args.charger_device_id === state.charger_device_id);
+    this.homey.flow
+      .getTriggerCard('ems_start_heat_pump')
+      .registerRunListener((args, state) => args.heat_pump_device_id === state.heat_pump_device_id);
+    this.homey.flow
+      .getTriggerCard('ems_stop_heat_pump')
+      .registerRunListener((args, state) => args.heat_pump_device_id === state.heat_pump_device_id);
   }
 
   async onUninit() {
@@ -40,6 +54,7 @@ class FusionSolarKioskApp extends App {
     if (this._capHistoryPollTimer) this.homey.clearInterval(this._capHistoryPollTimer);
     this._saveCapHistory(); // persist before shutdown
   }
+
 
   /**
    * Schedules a snapshot of cumulative grid counters every midnight.

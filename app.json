@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.83",
+  "version": "1.1.84",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -46,7 +46,21 @@
     "fetchOpenapiDebug": {
       "method": "POST",
       "path": "/debug/openapi"
-    }
+    },
+    "getEmsDevices":             { "method": "GET",  "path": "/ems/devices"              },
+    "getEmsDebug":               { "method": "GET",  "path": "/ems/debug"                },
+    "getEmsConfig":              { "method": "GET",  "path": "/ems/config"               },
+    "putEmsConfig":              { "method": "PUT",  "path": "/ems/config"               },
+    "postEmsChargerSetupFlows":    { "method": "POST", "path": "/ems/charger/setup-flows"    },
+    "getEmsChargerActionCards":    { "method": "GET",  "path": "/ems/charger/action-cards"   },
+    "postEmsCapabilityValue":      { "method": "POST", "path": "/ems/capability"              },
+    "getEmsFlows":                 { "method": "GET",  "path": "/ems/flows"                  },
+    "getEmsTriggerCards":          { "method": "GET",  "path": "/ems/trigger-cards"           },
+    "getEmsDebugFlow":               { "method": "GET",  "path": "/ems/debug/flow"                },
+    "getEmsChargerConditionCards":   { "method": "GET",  "path": "/ems/charger/condition-cards"   },
+    "getEmsHeatPumpActionCards":     { "method": "GET",  "path": "/ems/heatpump/action-cards"     },
+    "postEmsHeatPumpSetupFlows":     { "method": "POST", "path": "/ems/heatpump/setup-flows"      },
+    "getEmsHeatPumpFlows":           { "method": "GET",  "path": "/ems/heatpump/flows"            }
   },
   "brandColor": "#CF0A2C",
   "name": {
@@ -1159,18 +1173,6 @@
       "uiComponent": "button",
       "icon": "/assets/capabilities/resume_charging.svg"
     },
-    "charge_now": {
-      "type": "boolean",
-      "title": {
-        "en": "Charge Now",
-        "de": "Jetzt laden",
-        "nl": "Nu laden"
-      },
-      "getable": false,
-      "setable": true,
-      "uiComponent": "button",
-      "icon": "/assets/capabilities/charge_now.svg"
-    },
     "release_charger": {
       "type": "boolean",
       "title": {
@@ -1224,6 +1226,68 @@
       "uiComponent": "sensor",
       "insights": false,
       "icon": "/assets/capabilities/ocpp_last_message.svg"
+    },
+    "ems_mode": {
+      "type": "enum",
+      "title": {
+        "en": "EMS Mode",
+        "de": "EMS-Modus",
+        "nl": "EMS-modus"
+      },
+      "values": [
+        { "id": "idle",             "title": { "en": "Idle",                    "de": "Bereit",               "nl": "Inactief"          } },
+        { "id": "disabled",         "title": { "en": "Disabled",                "de": "Deaktiviert",          "nl": "Uitgeschakeld"     } },
+        { "id": "battery_priority", "title": { "en": "Battery Priority",        "de": "Batterie-Priorität",   "nl": "Batterijprioriteit"} },
+        { "id": "solar_ev",         "title": { "en": "Solar EV Charging",       "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"    } },
+        { "id": "offpeak_ev",       "title": { "en": "Off-Peak EV Charging",    "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"   } },
+        { "id": "instant_ev",       "title": { "en": "Instant Charging",        "de": "Sofortladen",          "nl": "Direct laden"      } },
+        { "id": "holding",          "title": { "en": "Waiting for Surplus",     "de": "Warte auf Überschuss", "nl": "Wachten op surplus"} },
+        { "id": "error",            "title": { "en": "Error",                   "de": "Fehler",               "nl": "Fout"              } }
+      ],
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/ocpp_last_message.svg"
+    },
+    "ems_status_text": {
+      "type": "string",
+      "title": {
+        "en": "EMS Status",
+        "de": "EMS-Status",
+        "nl": "EMS-status"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/ocpp_last_message.svg"
+    },
+    "offpeak_enabled": {
+      "type": "boolean",
+      "title": {
+        "en": "Off-Peak Charging",
+        "de": "Nebenzeit-Laden",
+        "nl": "Daltarief laden"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "toggle",
+      "insights": false,
+      "icon": "/assets/capabilities/pause_charging.svg"
+    },
+    "charge_now": {
+      "type": "boolean",
+      "title": {
+        "en": "Instant Charging",
+        "de": "Sofortladen",
+        "nl": "Direct laden"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "toggle",
+      "insights": false,
+      "icon": "/assets/capabilities/charge_now.svg"
     }
   },
   "drivers": [
@@ -5092,6 +5156,53 @@
           }
         }
       ]
+    },
+    {
+      "id": "energy_management",
+      "name": {
+        "en": "Energy Management System",
+        "de": "Energiemanagementsystem",
+        "nl": "Energiebeheersysteem"
+      },
+      "class": "other",
+      "capabilities": ["onoff", "offpeak_enabled", "charge_now", "ems_mode", "ems_status_text", "measure_power.surplus"],
+      "capabilitiesOptions": {
+        "onoff": {
+          "title": {
+            "en": "EMS Active",
+            "de": "EMS Aktiv",
+            "nl": "EMS Actief"
+          }
+        },
+        "measure_power.surplus": {
+          "title": {
+            "en": "Solar Surplus",
+            "de": "Solar-Überschuss",
+            "nl": "Zonne-overschot"
+          },
+          "insights": true
+        }
+      },
+      "images": {
+        "small":  "/drivers/energy_management/assets/images/small.png",
+        "large":  "/drivers/energy_management/assets/images/large.png",
+        "xlarge": "/drivers/energy_management/assets/images/xlarge.png"
+      },
+      "pair": [
+        { "id": "start" }
+      ],
+      "settings": [
+        {
+          "id": "homey_api_key",
+          "type": "password",
+          "label": { "en": "Homey API Key", "de": "Homey API-Schlüssel", "nl": "Homey API-sleutel" },
+          "hint": {
+            "en": "Create in Homey → Settings → System → API Keys. The key requires read/write access to Devices and Flows. All EMS configuration is done in the app settings (EMS tab).",
+            "de": "Erstellen in Homey → Einstellungen → System → API-Schlüssel. Der Schlüssel benötigt Lese- und Schreibzugriff auf Geräte und Flows. Alle EMS-Einstellungen erfolgen in den App-Einstellungen (EMS-Tab)."
+          },
+          "value": ""
+        }
+      ]
     }
   ],
   "flow": {
@@ -6418,6 +6529,180 @@
               "de": "Nachricht",
               "nl": "Bericht"
             }
+          }
+        ]
+      },
+      {
+        "id": "ems_mode_changed",
+        "title": {
+          "en": "EMS mode changed",
+          "de": "EMS-Modus geändert",
+          "nl": "EMS-modus gewijzigd"
+        },
+        "hint": {
+          "en": "Fires when the Energy Management System switches to a different operating mode.",
+          "de": "Wird ausgelöst, wenn das Energiemanagementsystem in einen anderen Betriebsmodus wechselt."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=energy_management"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "mode",
+            "type": "string",
+            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" }
+          }
+        ]
+      },
+      {
+        "id": "ems_set_charger_current",
+        "title": {
+          "en": "EMS wants to set charger current",
+          "de": "EMS möchte Ladestrom anpassen"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to set charger current for [[charger_device_id]]",
+          "de": "EMS möchte Ladestrom anpassen für [[charger_device_id]]"
+        },
+        "hint": {
+          "en": "Fires when the EMS needs to change an EV charger's current. Paste the Charger Device ID from the EMS settings. Use [amps], [phase1], [phase2], [phase3] tokens in the charger action.",
+          "de": "Wird ausgelöst wenn das EMS den Ladestrom anpassen möchte. Charger Geräte-ID aus den EMS-Einstellungen einfügen."
+        },
+        "args": [
+          {
+            "name": "charger_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Charger Device ID from EMS settings",
+              "de": "Charger Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "amps",
+            "type": "number",
+            "title": { "en": "Current total (A)", "de": "Strom gesamt (A)" }
+          },
+          {
+            "name": "phase1",
+            "type": "number",
+            "title": { "en": "Phase 1 (A)", "de": "Phase 1 (A)" }
+          },
+          {
+            "name": "phase2",
+            "type": "number",
+            "title": { "en": "Phase 2 (A)", "de": "Phase 2 (A)" }
+          },
+          {
+            "name": "phase3",
+            "type": "number",
+            "title": { "en": "Phase 3 (A)", "de": "Phase 3 (A)" }
+          },
+          {
+            "name": "charger_device_id",
+            "type": "string",
+            "title": { "en": "Charger Device ID", "de": "Charger Geräte-ID" }
+          }
+        ]
+      },
+      {
+        "id": "ems_start_charger",
+        "title": {
+          "en": "EMS wants to start charging",
+          "de": "EMS möchte Ladevorgang starten"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to start charging for [[charger_device_id]]",
+          "de": "EMS möchte Ladevorgang starten für [[charger_device_id]]"
+        },
+        "hint": {
+          "en": "Fires when the EMS detects the charger is idle (power = 0 W) and wants to start a charging session.",
+          "de": "Wird ausgelöst wenn das EMS erkennt, dass der Charger idle ist (Leistung = 0 W) und der Ladevorgang gestartet werden soll."
+        },
+        "args": [
+          {
+            "name": "charger_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Charger Device ID from EMS settings",
+              "de": "Charger Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "charger_device_id",
+            "type": "string",
+            "title": { "en": "Charger Device ID", "de": "Charger Geräte-ID" }
+          }
+        ]
+      },
+      {
+        "id": "ems_start_heat_pump",
+        "title": {
+          "en": "EMS wants to start heat pump",
+          "de": "EMS möchte Wärmepumpe starten"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to start heat pump [[heat_pump_device_id]]",
+          "de": "EMS möchte Wärmepumpe [[heat_pump_device_id]] starten"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the heat pump on (off-peak hours active or sufficient solar surplus).",
+          "de": "Wird ausgelöst wenn der EMS die Wärmepumpe einschalten möchte (Nebenzeit aktiv oder ausreichend Solar-Überschuss)."
+        },
+        "args": [
+          {
+            "name": "heat_pump_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Heat Pump Device ID from EMS settings",
+              "de": "Wärmepumpen Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "heat_pump_device_id",
+            "type": "string",
+            "title": { "en": "Heat Pump Device ID", "de": "Wärmepumpen Geräte-ID" }
+          }
+        ]
+      },
+      {
+        "id": "ems_stop_heat_pump",
+        "title": {
+          "en": "EMS wants to stop heat pump",
+          "de": "EMS möchte Wärmepumpe stoppen"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to stop heat pump [[heat_pump_device_id]]",
+          "de": "EMS möchte Wärmepumpe [[heat_pump_device_id]] stoppen"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the heat pump off (battery priority or no surplus).",
+          "de": "Wird ausgelöst wenn der EMS die Wärmepumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss)."
+        },
+        "args": [
+          {
+            "name": "heat_pump_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Heat Pump Device ID from EMS settings",
+              "de": "Wärmepumpen Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "heat_pump_device_id",
+            "type": "string",
+            "title": { "en": "Heat Pump Device ID", "de": "Wärmepumpen Geräte-ID" }
           }
         ]
       }
@@ -8059,6 +8344,35 @@
             "filter": "driver_id=smartcharger_ocpp"
           }
         ]
+      },
+      {
+        "id": "ems_set_enabled",
+        "title": {
+          "en": "Enable or disable EMS",
+          "de": "EMS aktivieren oder deaktivieren",
+          "nl": "EMS in- of uitschakelen"
+        },
+        "titleFormatted": {
+          "en": "Set EMS to [[enabled]]",
+          "de": "EMS auf [[enabled]] setzen",
+          "nl": "EMS op [[enabled]] instellen"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "name": "enabled",
+            "type": "dropdown",
+            "title": { "en": "State", "de": "Zustand", "nl": "Status" },
+            "values": [
+              { "id": "true",  "label": { "en": "Enable",  "de": "Aktivieren",   "nl": "Inschakelen"   } },
+              { "id": "false", "label": { "en": "Disable", "de": "Deaktivieren", "nl": "Uitschakelen"  } }
+            ]
+          }
+        ]
       }
     ],
     "conditions": [
@@ -8960,6 +9274,40 @@
             "filter": "driver_id=sun2000_modbus||driver_id=sun2000_emma_modbus"
           }
         ]
+      },
+      {
+        "id": "ems_is_in_mode",
+        "title": {
+          "en": "EMS mode !{{is|is not}}",
+          "de": "EMS-Modus !{{ist|ist nicht}}",
+          "nl": "EMS-modus !{{is|is niet}}"
+        },
+        "titleFormatted": {
+          "en": "EMS mode !{{is|is not}} [[mode]]",
+          "de": "EMS-Modus !{{ist|ist nicht}} [[mode]]",
+          "nl": "EMS-modus !{{is|is niet}} [[mode]]"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "values": [
+              { "id": "idle",             "label": { "en": "Idle",                 "de": "Bereit",               "nl": "Inactief"           } },
+              { "id": "disabled",         "label": { "en": "Disabled",             "de": "Deaktiviert",          "nl": "Uitgeschakeld"      } },
+              { "id": "battery_priority", "label": { "en": "Battery Priority",     "de": "Batterie-Priorität",   "nl": "Batterijprioriteit" } },
+              { "id": "solar_ev",         "label": { "en": "Solar EV Charging",    "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"     } },
+              { "id": "offpeak_ev",       "label": { "en": "Off-Peak EV Charging", "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"    } },
+              { "id": "holding",          "label": { "en": "Waiting for Surplus",  "de": "Warte auf Überschuss", "nl": "Wachten op surplus" } },
+              { "id": "error",            "label": { "en": "Error",                "de": "Fehler",               "nl": "Fout"               } }
+            ]
+          }
+        ]
       }
     ]
   },
@@ -9334,6 +9682,11 @@
   },
   "permissions": [],
   "changelog": {
+    "1.1.84": {
+      "en": "New driver: Energy Management System — coordinates solar surplus charging between any Homey EV charger (Easee, OCPP, generic) and your home battery. Battery-first priority gate (configurable SOC threshold), solar surplus ladder (6–32 A), off-peak fallback, and full flow card support (mode-changed trigger, mode-is condition, enable/disable action).",
+      "de": "Neuer Treiber: Energiemanagementsystem — koordiniert das Solarüberschuss-Laden zwischen beliebigen Homey EV-Ladegeräten (Easee, OCPP, generisch) und der Hausbatterie. Batterie-Priorität (konfigurierbarer SOC-Schwellenwert), Solar-Überschuss-Leiter (6–32 A), Nebenzeit-Fallback und vollständige Flow-Karten-Unterstützung.",
+      "nl": "Nieuw stuurprogramma: Energiebeheersysteem — coördineert zonne-overschotladen tussen elke Homey EV-lader (Easee, OCPP, generiek) en uw thuisbatterij. Batterijprioriteitspoort (instelbare SOC-drempel), zonneoverschotladder (6–32 A), daltarief-terugval en volledige flow-kaartondersteuning."
+    },
     "1.1.83": {
       "en": "OCPP: Solar anti-thrash guardrails (export guard, 60s import re-fit, +250W up-step margin, 5-min flip cooldown). Solar inputs survive restart (no more 180s re-sustain after reboot). Session tile sensors (energy kWh + duration). Boot plug-in time preserved across restarts. Dropdown settings migration for older devices. Off-peak zero-length window validation. Widget API exposes session owner.",
       "de": "OCPP: Solar-Anti-Thrash-Schutz (Export-Schutz, 60s Import-Neuanpassung, +250W Aufwärts-Margin, 5-Min Flip-Cooldown). Solar-Inputs überstehen Neustart (kein 180s Neuanlauf mehr). Sitzungs-Kachel-Sensoren (Energie kWh + Dauer). Einsteckzeit bleibt nach Neustart erhalten. Dropdown-Migration für ältere Geräte. Null-Fenster Validierung für Nebenzeit. Widget-API gibt Sitzungsinhaber zurück.",

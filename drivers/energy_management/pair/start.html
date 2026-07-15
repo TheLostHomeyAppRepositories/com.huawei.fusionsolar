@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1a1a1a; background: transparent; }
+    h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    p.subtitle { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; color: #1a1a1a; outline: none; transition: border-color 0.15s; background: #fff; }
+    input:focus { border-color: #CF0A2C; }
+    .hint { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.4; }
+    .status { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; display: none; }
+    .status.error   { background: #fdf0ee; border: 1px solid #f5c2ba; color: #8b1a0e; display: block; }
+    .status.success { background: #eefaf3; border: 1px solid #9ddbb9; color: #1a5e38; display: block; }
+    button.primary { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; background: #CF0A2C; color: #fff; transition: opacity 0.15s; margin-top: 4px; }
+    button.primary:disabled { opacity: 0.45; cursor: default; }
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h2>Energy Management System</h2>
+  <p class="subtitle">Enter a Homey API key to set up the EMS. All other settings are configured in App Settings → EMS after adding this device.</p>
+
+  <div class="status" id="status"></div>
+
+  <div class="field" id="key-field">
+    <label>Homey API Key</label>
+    <input type="password" id="api-key" placeholder="Paste your API key here" autocomplete="off" />
+    <p class="hint">
+      Create one in Homey → <strong>Settings → System → API Keys</strong>.<br>
+      The key requires read/write access to <strong>Devices</strong> and <strong>Flows</strong>.
+    </p>
+  </div>
+
+  <button class="primary" id="add-btn" onclick="addDevice()"><span id="btn-label">Add EMS Device</span></button>
+
+  <script>
+    async function addDevice() {
+      var apiKey = document.getElementById('api-key').value.trim();
+      if (!apiKey) { showStatus('Please enter an API key.', 'error'); return; }
+
+      var btn = document.getElementById('add-btn');
+      var lbl = document.getElementById('btn-label');
+      btn.disabled = true;
+      lbl.innerHTML = '<span class="spinner"></span>Adding…';
+      showStatus('', '');
+
+      try {
+        var result = await Homey.emit('validate_and_create', { apiKey: apiKey });
+        if (result && result.error) {
+          showStatus('✗ ' + result.error, 'error');
+          btn.disabled = false;
+          lbl.textContent = 'Add EMS Device';
+          return;
+        }
+        await Homey.createDevice({
+          name: 'Energy Management System',
+          data: { id: 'ems-' + Date.now() },
+          settings: { homey_api_key: apiKey },
+        });
+        await Homey.done();
+      } catch (err) {
+        showStatus('✗ ' + (err.message || 'Failed to add device.'), 'error');
+        btn.disabled = false;
+        lbl.textContent = 'Add EMS Device';
+      }
+    }
+
+    function showStatus(msg, type) {
+      var el = document.getElementById('status');
+      el.className = 'status ' + (type || '');
+      el.textContent = msg;
+      el.style.display = msg ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>

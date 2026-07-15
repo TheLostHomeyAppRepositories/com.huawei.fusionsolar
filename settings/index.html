@@ -265,6 +265,53 @@
     .tab.active { color: #0071e3; border-bottom-color: #0071e3; background: #fff; }
     .tab:hover:not(.active) { background: #f2f2f7; color: #1d1d1f; }
 
+    /* ── Sub-tab bar (inside Modbus) ─────────────────────── */
+    .sub-tab-bar {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #e5e5ea;
+      padding-bottom: 0;
+    }
+    .sub-tab {
+      padding: 5px 14px;
+      border: none;
+      background: none;
+      border-radius: 4px 4px 0 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6e6e73;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .sub-tab.active { color: #0071e3; border-bottom-color: #0071e3; background: #f5f5f7; }
+    .sub-tab:hover:not(.active) { background: #f2f2f7; color: #1d1d1f; }
+
+    /* ── EMS list rows ───────────────────────────────────── */
+    .ems-entry { display:flex; flex-direction:column; gap:2px; }
+    .ems-list-row { display:flex; align-items:center; gap:6px; }
+    .ems-priority-badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:20px; height:20px; border-radius:50%; background:#e5e5ea;
+      font-size:11px; font-weight:600; color:#3a3a3c; flex-shrink:0;
+    }
+    .ems-row-device {
+      flex:1; padding:6px 8px; border:1px solid #d1d1d6; border-radius:6px;
+      font-size:12px; outline:none; background:#fff; min-width:0;
+    }
+    .ems-row-remove {
+      padding:3px 8px; font-size:12px; border:1px solid #d1d1d6; border-radius:5px;
+      background:#fff; cursor:pointer; color:#c0392b; line-height:1;
+    }
+    .ems-row-remove:hover { background:#fdf0ee; }
+    .ems-caps-info {
+      font-size:10px; color:#1a7a3a; padding-left:28px; min-height:14px;
+      font-family:'SF Mono', Menlo, monospace; letter-spacing:0;
+    }
+    .ems-caps-info.warn { color:#9a5700; }
+    .ems-caps-info:empty { min-height:0; }
+
     /* ── Tab toolbar (debugging tab) ─────────────────────── */
     .tab-toolbar {
       display: flex;
@@ -448,10 +495,18 @@
   </div>
   <!-- Tab bar -->
   <div class="tab-bar">
-    <button class="tab active" id="tab-btn-tool" onclick="showTab('tool')">Tester</button>
-    <button class="tab" id="tab-btn-cap" onclick="showTab('cap')">Values</button>
-    <button class="tab" id="tab-btn-registers" onclick="showTab('registers')">Registers</button>
+    <button class="tab active" id="tab-btn-modbus" onclick="showTab('modbus')">Modbus</button>
     <button class="tab" id="tab-btn-openapi" onclick="showTab('openapi')">OpenAPI</button>
+    <button class="tab" id="tab-btn-ems" onclick="showTab('ems')">EMS</button>
+  </div>
+
+  <!-- ── Tab: Modbus (wrapper with sub-tabs) ── -->
+  <div id="tab-modbus">
+    <div class="sub-tab-bar">
+      <button class="sub-tab active" id="sub-tab-btn-tool" onclick="showSubTab('tool')">Tester</button>
+      <button class="sub-tab" id="sub-tab-btn-cap" onclick="showSubTab('cap')">Values</button>
+      <button class="sub-tab" id="sub-tab-btn-registers" onclick="showSubTab('registers')">Registers</button>
+    </div>
   </div>
 
   <!-- ── Tab: Capabilities ── -->
@@ -501,6 +556,91 @@
     <div id="oa-results"></div>
     <div id="oa-export-bar" style="display:none;margin-top:10px;display:none">
       <button class="btn-secondary" onclick="exportOpenApi()">Copy full JSON</button>
+    </div>
+  </div>
+
+  <!-- ── Tab: EMS ── -->
+  <div id="tab-ems" style="display:none">
+    <div class="tool-card" style="max-width:580px;margin:0 auto">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="tool-card-title" style="margin:0">Energy Management System</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-secondary" id="ems-load-btn" onclick="emsLoadDevices()">↻ Load devices</button>
+        </div>
+      </div>
+
+      <div id="ems-load-status" style="font-size:12px;color:#6e6e73;margin-bottom:12px;display:none"></div>
+      <!-- Inverter -->
+      <div class="section-title">Inverter
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">power is summed</span>
+      </div>
+      <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddDeviceRow('inverter')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add inverter</button>
+
+      <!-- Power Meter (P1) -->
+      <div class="section-title">Power Meter (P1)
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">power is summed</span>
+      </div>
+      <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add meter</button>
+
+      <!-- Home Batteries -->
+      <div class="section-title">Home Batteries
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">min SOC used · optional</span>
+      </div>
+      <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add battery</button>
+
+      <!-- Battery priority -->
+      <div class="section-title">Battery Priority</div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Minimum Battery SOC (%)</label>
+        <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
+          style="width:120px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px">
+        <div style="font-size:11px;color:#6e6e73;margin-top:3px">EV charging paused until all batteries exceed this SOC. Set to 0 to disable.</div>
+      </div>
+
+      <!-- EV Chargers -->
+      <div class="section-title">EV Chargers
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">priority order — sequential start</span>
+      </div>
+      <div id="ems-charger-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add charger</button>
+
+      <!-- Heat Pumps -->
+      <div class="section-title">Heat Pumps
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
+      </div>
+      <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
+
+      <!-- Off-peak -->
+      <div class="section-title">Off-Peak Charging</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+        <div style="font-size:12px;color:#6e6e73">Enable/disable via the device toggle in the Homey app.</div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Start (HH:MM)</label>
+            <input id="ems-offpeak-start" type="text" value="22:00"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">End (HH:MM)</label>
+            <input id="ems-offpeak-end" type="text" value="06:00"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Current (A)</label>
+            <input id="ems-offpeak-amps" type="number" value="16" min="6" max="32" step="2"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Per charger</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
+      <button class="btn-primary" id="ems-save-btn" onclick="emsSave()">Save EMS Settings</button>
     </div>
   </div>
 
@@ -901,9 +1041,29 @@
     let _devicesLoaded = false;
 
     function showTab(name) {
-      ['tool', 'cap', 'registers', 'openapi'].forEach(t => {
-        document.getElementById(`tab-${t}`).style.display     = t === name ? '' : 'none';
+      ['modbus', 'openapi', 'ems'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
         document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
+      });
+      if (name === 'ems' && _emsDevices.length === 0) emsLoadDevices();
+      // When leaving modbus, hide the sub-tab content panels too
+      if (name !== 'modbus') {
+        ['tool', 'cap', 'registers'].forEach(t => {
+          document.getElementById(`tab-${t}`).style.display = 'none';
+        });
+      } else {
+        // Re-show whichever sub-tab was last active
+        var active = ['tool', 'cap', 'registers'].find(
+          t => document.getElementById(`sub-tab-btn-${t}`).classList.contains('active')
+        ) || 'tool';
+        showSubTab(active);
+      }
+    }
+
+    function showSubTab(name) {
+      ['tool', 'cap', 'registers'].forEach(t => {
+        document.getElementById(`tab-${t}`).style.display = t === name ? '' : 'none';
+        document.getElementById(`sub-tab-btn-${t}`).classList.toggle('active', t === name);
       });
       if (name === 'tool' && !_networkLoaded) loadNetworkInfo();
       if ((name === 'cap' || name === 'registers') && !_devicesLoaded) {
@@ -1539,6 +1699,1548 @@
     }
 
     // ── Entry point ────────────────────────────────────────────────────────────
+
+    // ── EMS tab ────────────────────────────────────────────────────────────────
+
+    var _emsDevices = [];
+
+    // ── Capability detection ──────────────────────────────────────────────────
+
+    function emsDetectCap(caps, priorities, fuzzyFn) {
+      for (var i = 0; i < priorities.length; i++) {
+        if (caps.indexOf(priorities[i]) !== -1) return priorities[i];
+      }
+      if (fuzzyFn) {
+        for (var j = 0; j < caps.length; j++) {
+          if (fuzzyFn(caps[j])) return caps[j];
+        }
+      }
+      return null;
+    }
+
+    function emsDetectGridPower(caps) {
+      return emsDetectCap(caps,
+        ['measure_power.grid_active_power', 'measure_power.grid', 'measure_power.gridpower'],
+        function(c) { return c.indexOf('measure_power') === 0 && c.toLowerCase().indexOf('grid') !== -1; }
+      ) || emsDetectCap(caps, [], function(c) { return c.indexOf('measure_power') === 0; });
+    }
+
+    function emsDetectInverterPower(caps) {
+      return emsDetectCap(caps,
+        ['measure_power.pv_active_power', 'measure_power.input_power', 'measure_power.total', 'measure_power'],
+        function(c) {
+          var lc = c.toLowerCase();
+          return c.indexOf('measure_power') === 0 &&
+            (lc.indexOf('pv') !== -1 || lc.indexOf('solar') !== -1 || lc.indexOf('input') !== -1);
+        }
+      ) || emsDetectCap(caps, [], function(c) { return c.indexOf('measure_power') === 0; });
+    }
+
+    function emsDetectChargerState(caps) {
+      return emsDetectCap(caps, ['evcharger_charging_state', 'charging_state', 'onoff']);
+    }
+
+    function emsDetectChargerPower(caps) {
+      return emsDetectCap(caps,
+        ['measure_power', 'measure_power.total', 'measure_power.w'],
+        function(c) { return c.indexOf('measure_power') === 0; }
+      );
+    }
+
+    function emsDetectChargerCurrent(caps) {
+      return emsDetectCap(caps,
+        ['target_charger_current', 'target_current', 'current_target', 'target_amps', 'charger_current', 'current'],
+        function(c) { return c.indexOf('current') !== -1 && c.indexOf('measure') === -1; }
+      );
+    }
+
+    function emsDetectBatterySoc(caps) {
+      return emsDetectCap(caps,
+        ['measure_battery', 'battery_level', 'battery_capacity'],
+        function(c) { return c.toLowerCase().indexOf('battery') !== -1 && c.indexOf('measure') === 0; }
+      );
+    }
+
+    // ── Per-row caps rendering ────────────────────────────────────────────────
+
+    function emsCapsInfoEl(row) {
+      return row.parentElement && row.parentElement.querySelector('.ems-caps-info');
+    }
+
+    // Shared helpers for selectable cap rows
+    function _emsCapLabel(text) {
+      var lbl = document.createElement('span');
+      lbl.textContent = text;
+      lbl.style.cssText = 'font-size:11px;font-weight:500;color:#3a3a3c;white-space:nowrap;min-width:120px';
+      return lbl;
+    }
+
+    function _fetchCapValue(row, capId, valSpan) {
+      var deviceSel = row.querySelector('.ems-row-device');
+      var deviceId  = deviceSel ? deviceSel.value : '';
+      if (!deviceId || !capId) { valSpan.textContent = ''; return; }
+      valSpan.textContent = '(…)';
+      _H.api('POST', '/ems/capability', { deviceId: deviceId, cap: capId }, function(err, result) {
+        if (!err && result && result.value !== null && result.value !== undefined) {
+          var v = typeof result.value === 'number'
+            ? (Number.isInteger(result.value) ? result.value : Math.round(result.value * 10) / 10)
+            : result.value;
+          valSpan.textContent = '(' + v + ')';
+        } else {
+          valSpan.textContent = err ? '(!)' : '';
+        }
+      });
+    }
+
+    function _emsCapSelect(row, capList, dataKey, defVal) {
+      var wrap = document.createElement('span');
+      wrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;flex:1;min-width:0';
+
+      var sel = document.createElement('select');
+      sel.style.cssText = 'font-size:11px;padding:2px 6px;border:1px solid #d1d1d6;border-radius:4px;outline:none;flex:1;min-width:0';
+      var none = document.createElement('option');
+      none.value = ''; none.textContent = '— not used —';
+      sel.appendChild(none);
+      capList.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        sel.appendChild(opt);
+      });
+      sel.value = defVal || '';
+      if (defVal) row.dataset[dataKey] = defVal; else delete row.dataset[dataKey];
+
+      var valSpan = document.createElement('span');
+      valSpan.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      sel.addEventListener('change', function() {
+        if (sel.value) row.dataset[dataKey] = sel.value; else delete row.dataset[dataKey];
+        _fetchCapValue(row, sel.value, valSpan);
+      });
+
+      if (defVal) setTimeout(function() { _fetchCapValue(row, defVal, valSpan); }, 0);
+
+      wrap.appendChild(sel);
+      wrap.appendChild(valSpan);
+      return wrap;
+    }
+
+    function _emsCapRow(row, label, capList, dataKey, defVal) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:6px';
+      wrap.appendChild(_emsCapLabel(label));
+      wrap.appendChild(_emsCapSelect(row, capList, dataKey, defVal));
+      return wrap;
+    }
+
+    function emsRenderChargerCaps(row, caps, stored) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capState;
+      delete row.dataset.capPower;
+
+      if (!caps.length) return;
+
+      var defState = (stored && stored.cap_state) || emsDetectChargerState(caps) || '';
+      var defPower = (stored && stored.cap_power) || emsDetectChargerPower(caps) || '';
+
+      var stateCaps = caps.filter(function(c) { return c.indexOf('charging') !== -1 || c === 'onoff'; });
+      var powerCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
+
+      infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      infoEl.appendChild(_emsCapRow(row, 'State:', stateCaps.length ? stateCaps : caps, 'capState', defState));
+      infoEl.appendChild(_emsCapRow(row, 'Power (W):', powerCaps.length ? powerCaps : caps, 'capPower', defPower));
+
+      var note = document.createElement('span');
+      note.style.cssText = 'font-size:11px;color:#6e6e73';
+      note.textContent = 'Charger control via Homey Flow — set up "When EMS sets current" trigger';
+      infoEl.appendChild(note);
+    }
+
+    function emsRenderGridCaps(row, caps, storedCap) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capPower;
+
+      if (!caps.length) return;
+
+      var pwCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
+      if (!pwCaps.length) {
+        infoEl.textContent = '⚠ no PV power capability found — check device';
+        infoEl.className = 'ems-caps-info warn';
+        return;
+      }
+
+      var defVal = (typeof storedCap === 'string' ? storedCap : (storedCap && storedCap.cap_power))
+        || emsDetectInverterPower(caps) || '';
+
+      infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
+      infoEl.appendChild(_emsCapLabel('PV power (W):'));
+      infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+    }
+
+    function emsRenderMeterCaps(row, caps, stored) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capPower;
+
+      if (!caps.length) return;
+
+      // Only offer power-related capabilities
+      var pwCaps = caps.filter(function(c) {
+        return c.indexOf('measure_power') === 0 || c.indexOf('meter_power') === 0;
+      });
+      if (!pwCaps.length) {
+        infoEl.textContent = '⚠ no power capability found — check device';
+        infoEl.className = 'ems-caps-info warn';
+        return;
+      }
+
+      var defVal = (stored && (stored.cap_power || stored.cap_import)) || emsDetectGridPower(caps) || '';
+
+      infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
+      infoEl.appendChild(_emsCapLabel('Grid power (W):'));
+      infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+      var hint = document.createElement('span');
+      hint.textContent = '+ = import · − = export';
+      hint.style.cssText = 'font-size:10px;color:#aaa;white-space:nowrap';
+      infoEl.appendChild(hint);
+    }
+
+    function emsRenderBatteryCaps(row, caps, stored) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      ['capSoc','capPower','capCharged','capDischarged'].forEach(function(k) { delete row.dataset[k]; });
+
+      if (!caps.length) return;
+
+      var storedSoc = typeof stored === 'string' ? stored : (stored && stored.cap_soc) || null;
+      var defSoc = storedSoc || emsDetectBatterySoc(caps) || '';
+      var defPow = (stored && stored.cap_power)      || emsDetectCap(caps, ['measure_power']) || '';
+      var defChr = (stored && stored.cap_charged)    || emsDetectCap(caps, ['meter_power.charged']) || '';
+      var defDis = (stored && stored.cap_discharged) || emsDetectCap(caps, ['meter_power.discharged']) || '';
+
+      var socCaps  = caps.filter(function(c) { return c.indexOf('measure_battery') === 0 || c.toLowerCase().indexOf('battery') !== -1 || c.indexOf('soc') !== -1; });
+      var pwCaps   = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
+      var mtrCaps  = caps.filter(function(c) { return c.indexOf('meter_power') === 0; });
+
+      infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      infoEl.appendChild(_emsCapRow(row, 'SOC (%):', socCaps.length ? socCaps : caps, 'capSoc', defSoc));
+      if (pwCaps.length)  infoEl.appendChild(_emsCapRow(row, 'Power (W):',          pwCaps,  'capPower',      defPow));
+      if (mtrCaps.length) infoEl.appendChild(_emsCapRow(row, 'Charged (kWh):',      mtrCaps, 'capCharged',    defChr));
+      if (mtrCaps.length) infoEl.appendChild(_emsCapRow(row, 'Discharged (kWh):',   mtrCaps, 'capDischarged', defDis));
+    }
+
+    function emsDeviceCaps(id) {
+      var d = _emsDevices.find(function(x) { return x.id === id; });
+      return d ? (d.capabilities || []) : [];
+    }
+
+    // ── Status helpers ────────────────────────────────────────────────────────
+
+    function emsShowLoadStatus(msg, color) {
+      var el = document.getElementById('ems-load-status');
+      el.textContent = msg; el.style.color = color || '#6e6e73';
+      el.style.display = msg ? '' : 'none';
+    }
+
+    function emsShowSaveStatus(msg, color) {
+      var el = document.getElementById('ems-save-status');
+      el.textContent = msg; el.style.color = color || '#6e6e73';
+      el.style.display = msg ? '' : 'none';
+    }
+
+    // ── Device classifiers (used to pre-filter dropdowns) ─────────────────────
+    // Debug confirmed: d.class ✓ works, d.capabilities ✓ works (array),
+    // d.energy.* ✗ always null in bulk listing — do NOT use energy flags.
+    // driverId fallback covers FusionSolar/iSitePower drivers where class='sensor'.
+
+    function _drvId(d) { return (d.driverId || '').toLowerCase(); }
+
+    function emsIsCharger(d) {
+      var id = _drvId(d);
+      return d.deviceClass === 'evcharger'
+        || id.indexOf('smartcharger') !== -1
+        || id.indexOf('ocpp') !== -1;
+    }
+
+    function emsIsInverter(d) {
+      // Only solarpanel class + known inverter driverIds. No measure_power fallback
+      // (too broad — power meters also have measure_power).
+      var id = _drvId(d);
+      return d.deviceClass === 'solarpanel'
+        || id.indexOf('sun2000') !== -1
+        || id.indexOf('isitepower_solar') !== -1
+        || id.indexOf('fusionsolar_kiosk') !== -1;
+    }
+
+    function emsIsPowerMeter(d) {
+      // energy.cumulative is null in bulk listing → rely on driverId for FusionSolar.
+      // Third-party cumulative meters will appear in "other devices" section.
+      var id = _drvId(d);
+      return id.indexOf('dtsu666') !== -1
+        || id.indexOf('powermeter') !== -1
+        || id.indexOf('isitepower_grid') !== -1
+        || id.indexOf('isitepower_home') !== -1;
+    }
+
+    function emsIsBattery(d) {
+      var id = _drvId(d);
+      return d.deviceClass === 'battery'
+        || id.indexOf('luna2000') !== -1
+        || id.indexOf('isitepower_battery') !== -1
+        || (d.capabilities || []).indexOf('measure_battery') !== -1;
+    }
+
+    function emsIsHeatPump(d) {
+      var cls = d.deviceClass || d.class || '';
+      return cls === 'thermostat' || cls === 'heater';
+    }
+
+    var EMS_FILTER = {
+      charger:   emsIsCharger,
+      inverter:  emsIsInverter,
+      meter:     emsIsPowerMeter,
+      battery:   emsIsBattery,
+      heatpump:  emsIsHeatPump,
+    };
+
+    // ── Select helpers ────────────────────────────────────────────────────────
+
+    function emsDeviceOption(d) {
+      var o = document.createElement('option');
+      o.value = d.id;
+      o.textContent = d.name + (d.driverId ? '  [' + d.driverId + ']' : '');
+      return o;
+    }
+
+    // Fill <select> with matching devices first, then a separator + others.
+    // Falls back to all devices when nothing matches the filter.
+    function emsFillSelect(sel, selectedId, filterFn) {
+      var prev = selectedId !== undefined ? selectedId : sel.value;
+      sel.innerHTML = '<option value="">— select device —</option>';
+
+      if (filterFn) {
+        var matching = _emsDevices.filter(filterFn);
+        var others   = _emsDevices.filter(function(d) { return !filterFn(d); });
+        if (matching.length > 0) {
+          matching.forEach(function(d) { sel.appendChild(emsDeviceOption(d)); });
+          if (others.length > 0) {
+            var sep = document.createElement('option');
+            sep.disabled = true; sep.textContent = '── other devices ──';
+            sel.appendChild(sep);
+            others.forEach(function(d) { sel.appendChild(emsDeviceOption(d)); });
+          }
+        } else {
+          // No matches: show all (and store the filter type so refresh can retry)
+          _emsDevices.forEach(function(d) { sel.appendChild(emsDeviceOption(d)); });
+        }
+      } else {
+        _emsDevices.forEach(function(d) { sel.appendChild(emsDeviceOption(d)); });
+      }
+
+      if (prev) sel.value = prev;
+    }
+
+    function emsRefreshAllSelects() {
+      document.querySelectorAll(
+        '#ems-charger-list .ems-row-device, #ems-inverter-list .ems-row-device, #ems-meter-list .ems-row-device, #ems-battery-list .ems-row-device'
+      ).forEach(function(sel) {
+        emsFillSelect(sel, undefined, EMS_FILTER[sel.dataset.filterType]);
+      });
+    }
+
+    // ── Row creation ──────────────────────────────────────────────────────────
+
+    function emsAddChargerRow(deviceId, maxAmps, stored) {
+      var list  = document.getElementById('ems-charger-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var badge = document.createElement('span');
+      badge.className = 'ems-priority-badge';
+      badge.textContent = list.children.length + 1;
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'charger';
+      emsFillSelect(sel, deviceId || '', emsIsCharger);
+
+      var ampsInput = document.createElement('input');
+      ampsInput.type = 'number'; ampsInput.value = maxAmps || 16;
+      ampsInput.min = 6; ampsInput.max = 32; ampsInput.step = 2;
+      ampsInput.title = 'Max current (A)';
+      ampsInput.style.cssText = 'width:68px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var ampsLabel = document.createElement('span');
+      ampsLabel.textContent = 'A max';
+      ampsLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      // Per-charger phases
+      var phasesSel = document.createElement('select');
+      phasesSel.className = 'ems-row-phases';
+      phasesSel.title = 'Number of phases this charger uses';
+      phasesSel.style.cssText = 'padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+      ['3','1'].forEach(function(v) {
+        var opt = document.createElement('option');
+        opt.value = v; opt.textContent = v + 'ph';
+        phasesSel.appendChild(opt);
+      });
+      phasesSel.value = (stored && stored.ev_phases) ? String(stored.ev_phases) : '3';
+
+      // 1↔3 auto phase-switching checkbox
+      var phaseChk = document.createElement('input');
+      phaseChk.type = 'checkbox';
+      phaseChk.className = 'ems-row-phase-switch';
+      phaseChk.title = 'Auto-Switch 1↔3 Phasen (< 4140 W → 1-phasig, ≥ 4140 W → 3-phasig)';
+      phaseChk.style.cssText = 'margin-left:4px;cursor:pointer';
+      if (stored && stored.phase_switch) phaseChk.checked = true;
+
+      var phaseSwLabel = document.createElement('span');
+      phaseSwLabel.textContent = 'auto';
+      phaseSwLabel.title = phaseChk.title;
+      phaseSwLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap;cursor:pointer';
+      phaseSwLabel.onclick = function() { phaseChk.checked = !phaseChk.checked; };
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); emsRenumberChargers(); };
+
+      row.appendChild(badge); row.appendChild(sel);
+      row.appendChild(ampsInput); row.appendChild(ampsLabel);
+      row.appendChild(phasesSel);
+      row.appendChild(phaseChk); row.appendChild(phaseSwLabel);
+      row.appendChild(removeBtn);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        emsRenderChargerCaps(row, emsDeviceCaps(sel.value), null);
+        emsRenderChargerFlows(flowSection, sel.value);
+      });
+      if (deviceId) {
+        emsRenderChargerCaps(row, emsDeviceCaps(deviceId), stored || null);
+        emsRenderChargerFlows(flowSection, deviceId);
+      }
+    }
+
+    function emsAddHeatPumpRow(deviceId, stored) {
+      var list  = document.getElementById('ems-heatpump-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'heatpump';
+      emsFillSelect(sel, deviceId || '', emsIsHeatPump);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.value = (stored && stored.min_surplus_w) || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = 'Minimum solar surplus to turn on (W)';
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = 'W solar min';
+      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(surplusInput); row.appendChild(surplusLabel);
+      row.appendChild(removeBtn);
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        emsRenderHeatPumpFlows(flowSection, sel.value);
+      });
+      if (deviceId) emsRenderHeatPumpFlows(flowSection, deviceId);
+    }
+
+    function emsGetHeatPumps() {
+      var result = [];
+      document.querySelectorAll('#ems-heatpump-list .ems-entry').forEach(function(entry) {
+        var sel     = entry.querySelector('.ems-row-device');
+        var surplus = entry.querySelector('input[type=number]');
+        if (sel && sel.value) {
+          result.push({
+            id:            sel.value,
+            cap_power:     'measure_power',
+            min_surplus_w: parseInt(surplus ? surplus.value : 2000, 10) || 2000,
+          });
+        }
+      });
+      return result;
+    }
+
+    function emsRenderHeatPumpFlows(container, deviceId) {
+      container.innerHTML = '';
+      if (!deviceId) return;
+
+      var header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:6px 0 2px';
+      var arrow = document.createElement('span');
+      arrow.textContent = '▶';
+      arrow.style.cssText = 'font-size:9px;color:#6e6e73;transition:transform 0.15s';
+      var label = document.createElement('span');
+      label.textContent = 'FLOW ACTIONS';
+      label.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.06em;color:#6e6e73';
+      header.appendChild(arrow); header.appendChild(label);
+
+      var body = document.createElement('div');
+      body.style.cssText = 'display:none;flex-direction:column;gap:8px;background:#f0f0f5;border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:12px';
+
+      var open = false;
+      header.onclick = function() {
+        open = !open;
+        body.style.display = open ? 'flex' : 'none';
+        arrow.style.transform = open ? 'rotate(90deg)' : '';
+        if (open && !body.dataset.loaded) {
+          body.dataset.loaded = '1';
+          _emsLoadHeatPumpFlowsInto(body, deviceId);
+        }
+      };
+
+      container.appendChild(header);
+      container.appendChild(body);
+    }
+
+    function _emsLoadHeatPumpFlowsInto(body, deviceId) {
+      // ── How it works ──────────────────────────────────────────────────────
+      var how = document.createElement('div');
+      how.style.cssText = 'color:#3a3a3c;line-height:1.5';
+      how.innerHTML = [
+        '<b>How it works:</b> The EMS fires two separate triggers:',
+        '"<b>EMS: start heat pump</b>" (off-peak or solar surplus) and',
+        '"<b>EMS: stop heat pump</b>" (battery priority or no surplus).',
+        'Create one Flow per trigger and add the appropriate action.',
+      ].join(' ');
+      body.appendChild(how);
+
+      // ── Device ID ─────────────────────────────────────────────────────────
+      var idRow = document.createElement('div');
+      idRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var idLabel = document.createElement('span');
+      idLabel.textContent = 'Device ID (for trigger filter):';
+      idLabel.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var idCode = document.createElement('code');
+      idCode.textContent = deviceId;
+      idCode.style.cssText = 'background:#e5e5ea;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all';
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy';
+      copyBtn.className = 'btn-secondary';
+      copyBtn.style.cssText = 'font-size:10px;padding:2px 8px';
+      copyBtn.onclick = function() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = deviceId;
+          ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          copyBtn.textContent = '✓'; setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
+        } catch (e) { copyBtn.textContent = 'Failed'; setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000); }
+      };
+      idRow.appendChild(idLabel); idRow.appendChild(idCode); idRow.appendChild(copyBtn);
+      body.appendChild(idRow);
+
+      // ── Existing flows ────────────────────────────────────────────────────
+      var flowsTitle = document.createElement('div');
+      flowsTitle.style.cssText = 'font-weight:600;color:#3a3a3c;margin-top:2px';
+      flowsTitle.textContent = 'Flows using these triggers:';
+      body.appendChild(flowsTitle);
+
+      var flowsHint = document.createElement('div');
+      flowsHint.style.cssText = 'font-size:11px;color:#6e6e73;margin-bottom:2px';
+      flowsHint.textContent = 'One Start and one Stop flow per heat pump. More than one flow per trigger will result in duplicate commands.';
+      body.appendChild(flowsHint);
+
+      var flowsContainer = document.createElement('div');
+      flowsContainer.textContent = 'Loading flows…';
+      flowsContainer.style.cssText = 'color:#6e6e73;font-size:11px';
+      body.appendChild(flowsContainer);
+
+      var _hpFlowsCache = null;
+      function _renderHpFlowList(result) {
+        flowsContainer.innerHTML = '';
+        if (result.error && !result.matched) {
+          flowsContainer.textContent = '⚠ ' + result.error;
+          flowsContainer.style.color = '#c0392b';
+          return;
+        }
+        var matched = (result.matched || []).filter(function(f) {
+          var devId = f.name && f.name.match(/\(([^)]+)\)/);
+          return !devId || f.name.indexOf(deviceId.slice(0,8)) !== -1 || true;
+        });
+        if (!matched.length) {
+          var none = document.createElement('span');
+          none.style.cssText = 'color:#c0392b;font-size:11px';
+          none.textContent = 'No heat pump flows found — use "Create / Update Flows" below.';
+          flowsContainer.appendChild(none);
+        } else {
+          matched.forEach(function(f) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+            var dot = document.createElement('span');
+            dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+            var name = document.createElement('span');
+            name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
+            var badge = document.createElement('span');
+            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
+            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+            flowsContainer.appendChild(row);
+          });
+        }
+        var reloadBtn = document.createElement('button');
+        reloadBtn.textContent = '↺ Reload flows'; reloadBtn.className = 'btn-secondary';
+        reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
+        reloadBtn.onclick = function() {
+          _hpFlowsCache = null; flowsContainer.textContent = 'Loading flows…';
+          flowsContainer.style.color = '#6e6e73'; reloadBtn.remove(); _fetchHpFlows();
+        };
+        flowsContainer.appendChild(reloadBtn);
+      }
+      function _fetchHpFlows() {
+        if (_hpFlowsCache) { _renderHpFlowList(_hpFlowsCache); return; }
+        _H.api('GET', '/ems/heatpump/flows', function(err, result) {
+          _hpFlowsCache = result || { matched: [], error: err ? err.message : 'Unknown error' };
+          _renderHpFlowList(_hpFlowsCache);
+        });
+      }
+      _fetchHpFlows();
+
+      // ── Create / Update Flows ─────────────────────────────────────────────
+      var sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid #d1d1d6;margin:4px 0';
+      body.appendChild(sep);
+
+      var createTitle = document.createElement('div');
+      createTitle.style.cssText = 'font-weight:600;color:#3a3a3c';
+      createTitle.textContent = 'Create / Update Flows';
+      body.appendChild(createTitle);
+
+      var createNote = document.createElement('div');
+      createNote.style.cssText = 'font-size:11px;color:#6e6e73';
+      createNote.textContent = 'Creates two flows in "_Huawei EMS": one to start, one to stop the heat pump. Re-running overwrites existing flows.';
+      body.appendChild(createNote);
+
+      // Start action selector
+      var startRow = document.createElement('div');
+      startRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var startLabel = document.createElement('span');
+      startLabel.textContent = 'Start action:';
+      startLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:90px';
+      var startSel = document.createElement('select');
+      startSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+      startSel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Loading…' }));
+      startRow.appendChild(startLabel); startRow.appendChild(startSel);
+      body.appendChild(startRow);
+
+      // Stop action selector
+      var stopRow = document.createElement('div');
+      stopRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var stopLabel = document.createElement('span');
+      stopLabel.textContent = 'Stop action:';
+      stopLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:90px';
+      var stopSel = document.createElement('select');
+      stopSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+      stopSel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Loading…' }));
+      stopRow.appendChild(stopLabel); stopRow.appendChild(stopSel);
+      body.appendChild(stopRow);
+
+      // Preview
+      var preview = document.createElement('div');
+      preview.style.cssText = 'font-size:11px;color:#3a3a3c;background:#e5e5ea;border-radius:6px;padding:8px 10px;line-height:1.7;display:none';
+      body.appendChild(preview);
+
+      // Create button
+      var createRow = document.createElement('div');
+      createRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      var createBtn = document.createElement('button');
+      createBtn.textContent = '✓ Create / Update Flows';
+      createBtn.className = 'btn-primary';
+      createBtn.style.cssText = 'font-size:12px;padding:5px 14px';
+      createBtn.disabled = true;
+      var createStatus = document.createElement('span');
+      createStatus.style.cssText = 'font-size:11px;color:#6e6e73';
+      createRow.appendChild(createBtn); createRow.appendChild(createStatus);
+      body.appendChild(createRow);
+
+      // State
+      var _allHpCards = [];
+      var _hpEmsDevId = '';
+
+      function _fillHpSelect(sel, cards, preferredVal) {
+        sel.innerHTML = '';
+        sel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: '— Select action —' }));
+        var grouped = new Map();
+        cards.forEach(function(c) { var g = grouped.get(c.uri) || []; g.push(c); grouped.set(c.uri, g); });
+        grouped.forEach(function(grpCards, uri) {
+          var og = document.createElement('optgroup');
+          og.label = grpCards[0] && grpCards[0].suggested
+            ? '★ ' + (grpCards[0].groupLabel || uri)
+            : (grpCards[0] && grpCards[0].groupLabel || uri.replace('homey:app:', '').replace('homey:manager:', ''));
+          grpCards.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.id + '|' + c.uri; opt.textContent = c.title || c.id;
+            og.appendChild(opt);
+          });
+          sel.appendChild(og);
+        });
+        if (preferredVal) {
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === preferredVal) { sel.selectedIndex = i; break; }
+          }
+        }
+      }
+
+      function _updateHpPreview() {
+        var sc = _allHpCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; });
+        var ec = _allHpCards.find(function(c) { return c.id + '|' + c.uri === stopSel.value; });
+        createBtn.disabled = !sc || !ec;
+        if (!sc || !ec) { preview.style.display = 'none'; return; }
+        preview.style.display = 'block';
+        preview.innerHTML = [
+          '<b>Flow A — Start:</b><br>',
+          '<b>WHEN</b> EMS: start heat pump <i>(' + deviceId.slice(0,8) + '…)</i><br>',
+          '<b>THEN</b> ' + sc.title,
+          '<br><br>',
+          '<b>Flow B — Stop:</b><br>',
+          '<b>WHEN</b> EMS: stop heat pump <i>(' + deviceId.slice(0,8) + '…)</i><br>',
+          '<b>THEN</b> ' + ec.title,
+        ].join('');
+      }
+
+      startSel.addEventListener('change', _updateHpPreview);
+      stopSel.addEventListener('change', _updateHpPreview);
+
+      // Load action cards
+      _H.api('GET', '/ems/heatpump/action-cards?deviceId=' + encodeURIComponent(deviceId), function(err, res) {
+        if (err || !res || res.error) {
+          startSel.innerHTML = ''; stopSel.innerHTML = '';
+          [startSel, stopSel].forEach(function(s) {
+            s.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: '⚠ ' + ((res && res.error) || 'Load failed') }));
+          });
+          return;
+        }
+        _allHpCards = [];
+        (res.groups || []).forEach(function(g) {
+          g.cards.forEach(function(c) {
+            _allHpCards.push(Object.assign({}, c, { groupLabel: g.label, suggested: g.suggested }));
+          });
+        });
+        _hpEmsDevId = (_hpFlowsCache && _hpFlowsCache.emsDeviceId)
+                   || (_emsFlowsCache && _emsFlowsCache.emsDeviceId)
+                   || '';
+
+        // Pre-select from existing flows
+        var existingStart = null, existingStop = null;
+        (_hpFlowsCache && _hpFlowsCache.matched || []).forEach(function(f) {
+          if (f.triggerType === 'start' && f.actionCardId) existingStart = f.actionCardId + '|' + (f.actionCardUri || '');
+          if (f.triggerType === 'stop'  && f.actionCardId) existingStop  = f.actionCardId + '|' + (f.actionCardUri || '');
+        });
+
+        _fillHpSelect(startSel, _allHpCards, existingStart);
+        _fillHpSelect(stopSel,  _allHpCards, existingStop);
+        _updateHpPreview();
+      });
+
+      // Create button handler
+      createBtn.onclick = function() {
+        var sc = _allHpCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; });
+        var ec = _allHpCards.find(function(c) { return c.id + '|' + c.uri === stopSel.value; });
+        if (!sc || !ec) return;
+
+        if (!_hpEmsDevId) {
+          _hpEmsDevId = (_hpFlowsCache && _hpFlowsCache.emsDeviceId)
+                     || (_emsFlowsCache && _emsFlowsCache.emsDeviceId)
+                     || '';
+        }
+
+        var hpDev = _emsDevices.find(function(d) { return d.id === deviceId; });
+        var payload = {
+          emsDeviceId:  _hpEmsDevId,
+          deviceId:     deviceId,
+          deviceName:   hpDev ? hpDev.name : deviceId,
+          startCardId:  sc.id,  startCardUri:  sc.uri,
+          stopCardId:   ec.id,  stopCardUri:   ec.uri,
+        };
+        createBtn.disabled = true;
+        createStatus.textContent = 'Creating…';
+        _H.api('POST', '/ems/heatpump/setup-flows', payload, function(err, res) {
+          if (err || (res && res.error)) {
+            createStatus.textContent = '⚠ ' + ((res && res.error) || (err && err.message) || 'Error');
+            createStatus.style.color = '#c0392b';
+          } else {
+            var count = (res.startFlowId ? 1 : 0) + (res.stopFlowId ? 1 : 0);
+            createStatus.textContent = '✓ ' + count + ' Flow(s) in "_Huawei EMS" created';
+            createStatus.style.color = '#34c759';
+            _hpFlowsCache = null;
+          }
+          createBtn.disabled = false;
+        });
+      };
+    }
+
+    var _emsFlowsCache = null;
+
+    function emsRenderChargerFlows(container, chargerId) {
+      container.innerHTML = '';
+      if (!chargerId) return;
+
+      // Header row (collapsible)
+      var header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:6px 0 2px';
+      var arrow = document.createElement('span');
+      arrow.textContent = '▶';
+      arrow.style.cssText = 'font-size:9px;color:#6e6e73;transition:transform 0.15s';
+      var label = document.createElement('span');
+      label.textContent = 'FLOW ACTIONS';
+      label.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.06em;color:#6e6e73';
+      header.appendChild(arrow); header.appendChild(label);
+
+      var body = document.createElement('div');
+      body.style.cssText = 'display:none;flex-direction:column;gap:8px;background:#f0f0f5;border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:12px';
+
+      var open = false;
+      header.onclick = function() {
+        open = !open;
+        body.style.display = open ? 'flex' : 'none';
+        arrow.style.transform = open ? 'rotate(90deg)' : '';
+        if (open && !body.dataset.loaded) {
+          body.dataset.loaded = '1';
+          _emsLoadFlowsInto(body, chargerId);
+        }
+      };
+
+      container.appendChild(header);
+      container.appendChild(body);
+    }
+
+    function _emsLoadFlowsInto(body, chargerId) {
+      // ── How it works ──────────────────────────────────────────────────────
+      var how = document.createElement('div');
+      how.style.cssText = 'color:#3a3a3c;line-height:1.5';
+      how.innerHTML = [
+        '<b>How it works:</b> The EMS fires the trigger',
+        '"<b>EMS: set charger current</b>" on the EMS device on every change.',
+        'Create a Homey Flow with this trigger and add your charger action.',
+        '<br><br>',
+        '<b>Available tokens:</b>',
+        '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">phase1</code>',
+        '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">phase2</code>',
+        '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">phase3</code>',
+        '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">amps</code>',
+        '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">charger_device_id</code>',
+        '<br><br>',
+        '<b>When amps = 0</b> → stop charging (e.g. turn off charger).',
+      ].join(' ');
+      body.appendChild(how);
+
+      // ── Charger Device ID ─────────────────────────────────────────────────
+      var idRow = document.createElement('div');
+      idRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var idLabel = document.createElement('span');
+      idLabel.textContent = 'Charger ID (for condition filter):';
+      idLabel.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var idCode = document.createElement('code');
+      idCode.textContent = chargerId;
+      idCode.style.cssText = 'background:#e5e5ea;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all';
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy';
+      copyBtn.className = 'btn-secondary';
+      copyBtn.style.cssText = 'font-size:10px;padding:2px 8px';
+      copyBtn.onclick = function() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = chargerId;
+          ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          copyBtn.textContent = '✓';
+          setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
+        } catch (e) {
+          copyBtn.textContent = 'Failed';
+          setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000);
+        }
+      };
+      idRow.appendChild(idLabel); idRow.appendChild(idCode); idRow.appendChild(copyBtn);
+      body.appendChild(idRow);
+
+      // ── Detected flows ─────────────────────────────────────────────────────
+      var flowsTitle = document.createElement('div');
+      flowsTitle.style.cssText = 'font-weight:600;color:#3a3a3c;margin-top:2px';
+      flowsTitle.textContent = 'Flows using this trigger:';
+      body.appendChild(flowsTitle);
+
+      var flowsHint = document.createElement('div');
+      flowsHint.style.cssText = 'font-size:11px;color:#6e6e73;margin-bottom:2px';
+      flowsHint.textContent = '1–2 flows are created per charger, each with its own trigger: "EMS wants to set current" and optionally "EMS wants to start charging". More than one flow per trigger and charger will result in duplicate commands.';
+      body.appendChild(flowsHint);
+
+      var flowsContainer = document.createElement('div');
+      flowsContainer.textContent = 'Loading flows…';
+      flowsContainer.style.cssText = 'color:#6e6e73;font-size:11px';
+      body.appendChild(flowsContainer);
+
+      // Load from cache or API
+      function renderFlowList(result) {
+        flowsContainer.innerHTML = '';
+        if (result.error && !result.matched) {
+          flowsContainer.textContent = '⚠ ' + result.error;
+          flowsContainer.style.color = '#c0392b';
+          return;
+        }
+        var matched = result.matched || [];
+        if (!matched.length) {
+          var none = document.createElement('span');
+          none.style.cssText = 'color:#c0392b;font-size:11px';
+          none.textContent = 'No flows with trigger "EMS: set charger current" found.';
+          flowsContainer.appendChild(none);
+          var hint = document.createElement('div');
+          hint.style.cssText = 'color:#6e6e73;font-size:11px;margin-top:4px';
+          hint.textContent = '→ Create a new flow in Homey using the trigger described above.';
+          flowsContainer.appendChild(hint);
+        } else {
+          matched.forEach(function(f) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+            var dot = document.createElement('span');
+            dot.textContent = '✓';
+            dot.style.cssText = 'color:#34c759;font-weight:600';
+            var name = document.createElement('span');
+            name.textContent = f.name;
+            name.style.cssText = 'color:#1d1d1f';
+            var badge = document.createElement('span');
+            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
+            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+            flowsContainer.appendChild(row);
+          });
+        }
+
+        // All advanced flows (can't auto-detect trigger)
+        var adv = (result.all || []).filter(function(f) { return f.type === 'advanced'; });
+        if (adv.length) {
+          var advTitle = document.createElement('div');
+          advTitle.style.cssText = 'color:#6e6e73;font-size:11px;margin-top:6px';
+          advTitle.textContent = 'Advanced flows (check manually if trigger is configured):';
+          flowsContainer.appendChild(advTitle);
+          adv.forEach(function(f) {
+            var item = document.createElement('div');
+            item.style.cssText = 'color:#3a3a3c;padding:2px 0 2px 12px;font-size:11px';
+            item.textContent = '· ' + f.name;
+            flowsContainer.appendChild(item);
+          });
+        }
+
+        // Reload button
+        var reloadBtn = document.createElement('button');
+        reloadBtn.textContent = '↺ Reload flows';
+        reloadBtn.className = 'btn-secondary';
+        reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
+        reloadBtn.onclick = function() {
+          _emsFlowsCache = null;
+          flowsContainer.textContent = 'Loading flows…';
+          flowsContainer.style.color = '#6e6e73';
+          reloadBtn.remove();
+          _fetchFlows();
+        };
+        flowsContainer.appendChild(reloadBtn);
+      }
+
+      function _fetchFlows() {
+        if (_emsFlowsCache) { renderFlowList(_emsFlowsCache); return; }
+        _H.api('GET', '/ems/flows', function(err, result) {
+          _emsFlowsCache = result || { matched: [], all: [], emsDeviceId: '', error: err ? err.message : 'Unknown error' };
+          renderFlowList(_emsFlowsCache);
+        });
+      }
+
+      _fetchFlows();
+
+      // ── Create / Update Flow ──────────────────────────────────────────────
+      var sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid #d1d1d6;margin:4px 0';
+      body.appendChild(sep);
+
+      var createTitle = document.createElement('div');
+      createTitle.style.cssText = 'font-weight:600;color:#3a3a3c';
+      createTitle.textContent = 'Create / Update Flow';
+      body.appendChild(createTitle);
+
+      var createNote = document.createElement('div');
+      createNote.style.cssText = 'font-size:11px;color:#6e6e73';
+      createNote.textContent = 'Automatically creates a Flow in a "_Huawei EMS" folder. Re-running overwrites the existing flow.';
+      body.appendChild(createNote);
+
+      // Action card selector (set current)
+      var cardRow = document.createElement('div');
+      cardRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var cardLabel = document.createElement('span');
+      cardLabel.textContent = 'Strom setzen:';
+      cardLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:110px';
+      var cardSel = document.createElement('select');
+      cardSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+      var cardSelOpt = document.createElement('option');
+      cardSelOpt.value = ''; cardSelOpt.textContent = 'Loading action cards…';
+      cardSel.appendChild(cardSelOpt);
+      cardRow.appendChild(cardLabel); cardRow.appendChild(cardSel);
+      body.appendChild(cardRow);
+
+      // Start action selector (optional)
+      var startRow = document.createElement('div');
+      startRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      var startLabel = document.createElement('span');
+      startLabel.textContent = 'Ladevorgang starten:';
+      startLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:110px';
+      var startSel = document.createElement('select');
+      startSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+      var startSelNone = document.createElement('option');
+      startSelNone.value = ''; startSelNone.textContent = '— Nicht benötigt —';
+      startSel.appendChild(startSelNone);
+      startRow.appendChild(startLabel); startRow.appendChild(startSel);
+      body.appendChild(startRow);
+
+      startSel.addEventListener('change', _updatePreview);
+
+      // Preview area
+      var preview = document.createElement('div');
+      preview.style.cssText = 'font-size:11px;color:#3a3a3c;background:#e5e5ea;border-radius:6px;padding:8px 10px;line-height:1.7;display:none';
+      body.appendChild(preview);
+
+      // Create button + status
+      var createRow = document.createElement('div');
+      createRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      var createBtn = document.createElement('button');
+      createBtn.textContent = '✓ Create / Update Flow';
+      createBtn.className = 'btn-primary';
+      createBtn.style.cssText = 'font-size:12px;padding:5px 14px';
+      createBtn.disabled = true;
+      var createStatus = document.createElement('span');
+      createStatus.style.cssText = 'font-size:11px;color:#6e6e73';
+
+      function _makeDebugBlock(data) {
+        var text = JSON.stringify(data, null, 2);
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;margin-top:6px;width:100%';
+        var pre = document.createElement('pre');
+        pre.style.cssText = 'font-size:10px;color:#1c1c1e;background:#f2f2f7;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0';
+        pre.textContent = text;
+        var copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.style.cssText = 'position:absolute;top:6px;right:6px;font-size:10px;padding:2px 8px;background:#fff;border:1px solid #c7c7cc;border-radius:4px;cursor:pointer;opacity:0.85';
+        copyBtn.onclick = function() {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          } catch (_) {}
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
+        };
+        wrap.appendChild(pre);
+        wrap.appendChild(copyBtn);
+        return wrap;
+      }
+
+      // Debug button — shows what trigger card IDs Homey knows about
+      createRow.appendChild(createBtn); createRow.appendChild(createStatus);
+      body.appendChild(createRow);
+
+      // State
+      var _cards = [];
+      var _startCards = [];
+      var _selectedCard = null;
+      var _emsDevId = '';
+      var _lastFlowId = null;
+
+      function _autoMapArg(name, title) {
+        var s = (name + ' ' + (title || '')).toLowerCase();
+        if (/p1|phase.?1|l1|current.?1|phase_?one/.test(s)) return 'phase1';
+        if (/p2|phase.?2|l2|current.?2|phase_?two/.test(s)) return 'phase2';
+        if (/p3|phase.?3|l3|current.?3|phase_?three/.test(s)) return 'phase3';
+        return 'amps';
+      }
+
+      function _isCurrentArg(a) {
+        var s = (a.name + ' ' + (a.title || '')).toLowerCase();
+        // Accept number/range/missing type — Homey local API sometimes omits the type field
+        var isNumeric = !a.type || a.type === 'number' || a.type === 'range';
+        return /current|amp|charge/.test(s) && isNumeric;
+      }
+
+      function _updatePreview() {
+        _selectedCard = _cards.find(function(c) { return c.id + '|' + c.uri === cardSel.value; }) || null;
+        if (!_selectedCard) { preview.style.display = 'none'; createBtn.disabled = true; return; }
+
+        var argLines = _selectedCard.args
+          .filter(_isCurrentArg)
+          .map(function(a) { return '&nbsp;&nbsp;&nbsp;&nbsp;<b>' + (a.title || a.name) + '</b> = <code>' + _autoMapArg(a.name, a.title) + '</code>'; });
+
+        var startCard = _startCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; }) || null;
+
+        var lines = [
+          '<b>Flow A — immer:</b><br>',
+          '<b>WHEN</b> EMS: set charger current <i>(' + chargerId.slice(0,8) + '…)</i><br>',
+          '<b>THEN</b> ' + _selectedCard.title,
+          argLines.length ? ('<br>' + argLines.join('<br>')) : '',
+        ];
+
+        if (startCard) {
+          lines.push('<br><br><b>Flow B — Ladevorgang starten (nur wenn idle):</b><br>');
+          lines.push('<b>WHEN</b> EMS wants to start charging<br>');
+          lines.push('<b>THEN</b> ' + startCard.title);
+        }
+
+        preview.innerHTML = lines.join('');
+        preview.style.display = '';
+        createBtn.disabled = !_emsDevId;
+      }
+
+      cardSel.addEventListener('change', _updatePreview);
+
+      function _populateCards(groups, emsDevId) {
+        // Flatten all cards into _cards for lookup
+        _cards    = [];
+        _emsDevId = emsDevId;
+        cardSel.innerHTML = '';
+
+        (groups || []).forEach(function(g) { _cards = _cards.concat(g.cards || []); });
+
+        if (!_cards.length) {
+          var opt = document.createElement('option');
+          opt.value = ''; opt.textContent = 'No action cards found';
+          cardSel.appendChild(opt);
+          return;
+        }
+
+        (groups || []).forEach(function(g) {
+          var grp = document.createElement('optgroup');
+          var hasCurrentArgs = g.cards.some(function(c) { return c.args && c.args.some(_isCurrentArg); });
+          grp.label = g.label + ' (' + g.cards.length + ' cards' + (hasCurrentArgs ? ', has current args' : '') + ')';
+
+          g.cards.forEach(function(c) {
+            var argSummary = (c.args || []).map(function(a) { return a.name + ':' + (a.type || '?'); }).join(', ');
+            var opt = document.createElement('option');
+            opt.value = c.id + '|' + c.uri;
+            opt.textContent = (c.suggested ? '★ ' : '') + (c.title || c.id) + (argSummary ? '  [' + argSummary + ']' : '');
+            grp.appendChild(opt);
+          });
+          cardSel.appendChild(grp);
+        });
+
+        // Auto-select the suggested card with the MOST current args (prefer per-phase over single)
+        var bestIdx = -1, bestCount = 0;
+        for (var i = 0; i < cardSel.options.length; i++) {
+          var opt = cardSel.options[i];
+          if (opt.value && opt.textContent.startsWith('★')) {
+            var c = _getCardByValue(opt.value);
+            if (c && c.args) {
+              var count = c.args.filter(_isCurrentArg).length;
+              if (count > bestCount) { bestCount = count; bestIdx = i; }
+            }
+          }
+        }
+        if (bestIdx >= 0) cardSel.selectedIndex = bestIdx;
+
+        _updatePreview();
+      }
+
+      function _getCardByValue(val) {
+        var parts = val.split('|');
+        return _cards.find(function(c) { return c.id === parts[0] && c.uri === parts[1]; }) || null;
+      }
+
+      createBtn.onclick = function() {
+        if (!_selectedCard || !_emsDevId) return;
+        createBtn.disabled = true;
+        createStatus.textContent = 'Creating…';
+        createStatus.style.color = '#6e6e73';
+
+        // Build arg name array [p1argName, p2argName, p3argName]
+        var currentArgs = _selectedCard.args.filter(_isCurrentArg);
+        var argNames;
+        if (currentArgs.length >= 3) {
+          // Try to assign phase1/phase2/phase3 by auto-map
+          var mapped = { phase1: null, phase2: null, phase3: null, amps: null };
+          currentArgs.forEach(function(a) { var t = _autoMapArg(a.name, a.title); if (!mapped[t]) mapped[t] = a.name; });
+          argNames = [mapped.phase1, mapped.phase2, mapped.phase3].filter(Boolean);
+          if (argNames.length < 3) argNames = currentArgs.slice(0, 3).map(function(a) { return a.name; });
+        } else if (currentArgs.length > 0) {
+          argNames = currentArgs.map(function(a) { return a.name; });
+        } else {
+          argNames = ['current'];
+        }
+
+        var chargerDev = _emsDevices.find(function(d) { return d.id === chargerId; });
+        var startCard = _startCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; }) || null;
+        var payload = {
+          emsDeviceId:     _emsDevId,
+          deviceId:        chargerId,
+          deviceName:      chargerDev ? chargerDev.name : chargerId,
+          actionCardId:    _selectedCard.id,
+          actionCardUri:   _selectedCard.uri,
+          actionCardTitle: _selectedCard.title || '',
+          actionArgName:   argNames.length === 1 ? argNames[0] : argNames,
+          startCardId:     startCard ? startCard.id  : null,
+          startCardUri:    startCard ? startCard.uri : null,
+        };
+
+        _H.api('POST', '/ems/charger/setup-flows', payload, function(err, res) {
+          if (err || (res && res.error)) {
+            var msg = (res && res.error) || (err && err.message) || 'Error';
+            createStatus.textContent = '⚠ ' + msg;
+            if (res && res.payload) {
+              createStatus.parentNode.insertBefore(_makeDebugBlock(res), createStatus.nextSibling);
+            }
+            createStatus.style.color = '#c0392b';
+          } else {
+            var count = (res.startFlowId ? 2 : 1);
+            createStatus.textContent = '✓ ' + count + ' Flow(s) in "_Huawei EMS" erstellt';
+            createStatus.style.color = '#34c759';
+            _emsFlowsCache = null;
+            if (res && res.flowId) _lastFlowId = res.flowId;
+          }
+          createBtn.disabled = false;
+        });
+      };
+
+      function _populateStartAndCondCards(groups, allActionCards) {
+        _startCards = allActionCards;
+        startSel.innerHTML = '';
+        var noneOpt = document.createElement('option');
+        noneOpt.value = ''; noneOpt.textContent = '— Nicht benötigt —';
+        startSel.appendChild(noneOpt);
+        (groups || []).forEach(function(g) {
+          var grp = document.createElement('optgroup');
+          grp.label = g.label + ' (' + g.cards.length + ')';
+          g.cards.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.id + '|' + c.uri;
+            opt.textContent = (c.suggested ? '★ ' : '') + (c.title || c.id);
+            grp.appendChild(opt);
+          });
+          startSel.appendChild(grp);
+        });
+
+      }
+
+      // Load action cards for this charger
+      _H.api('GET', '/ems/charger/action-cards?deviceId=' + encodeURIComponent(chargerId), function(err, res) {
+        var emsDevId = (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
+        if (err || !res || res.error) {
+          cardSel.innerHTML = '';
+          var opt = document.createElement('option');
+          opt.textContent = '⚠ ' + (res && res.error || 'Could not load action cards');
+          cardSel.appendChild(opt);
+          return;
+        }
+
+        // Populate start-action dropdown with all action cards (same as main dropdown)
+        var allCards = [];
+        (res.groups || []).forEach(function(g) { allCards = allCards.concat(g.cards || []); });
+        _populateStartAndCondCards(res.groups || [], allCards);
+
+        function doPopulate(devId) {
+          _populateCards(res.groups || [], devId);
+          // Pre-select the card used in the existing flow (if any)
+          var existingFlow = _emsFlowsCache && (_emsFlowsCache.matched || []).find(function(f) {
+            return f.actionCardId;
+          });
+          if (existingFlow && existingFlow.actionCardId) {
+            var savedVal = existingFlow.actionCardId + '|' + (existingFlow.actionCardUri || '');
+            for (var i = 0; i < cardSel.options.length; i++) {
+              if (cardSel.options[i].value === savedVal) {
+                cardSel.selectedIndex = i;
+                _updatePreview();
+                break;
+              }
+            }
+          }
+          // Pre-select the start card used in the existing start flow (if any)
+          if (existingFlow && existingFlow.startCardId) {
+            var savedStartVal = existingFlow.startCardId + '|' + (existingFlow.startCardUri || '');
+            for (var j = 0; j < startSel.options.length; j++) {
+              if (startSel.options[j].value === savedStartVal) {
+                startSel.selectedIndex = j;
+                _updatePreview();
+                break;
+              }
+            }
+          }
+        }
+
+        if (!emsDevId) {
+          setTimeout(function() {
+            emsDevId = (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
+            doPopulate(emsDevId);
+          }, 1500);
+        } else {
+          doPopulate(emsDevId);
+        }
+      });
+    }
+
+    function emsRenumberChargers() {
+      document.querySelectorAll('#ems-charger-list .ems-priority-badge').forEach(function(b, i) {
+        b.textContent = i + 1;
+      });
+    }
+
+    function emsAddDeviceRow(type, deviceId, storedCap) {
+      var list  = document.getElementById('ems-' + type + '-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = type;
+      emsFillSelect(sel, deviceId || '', EMS_FILTER[type]);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel); row.appendChild(removeBtn);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      entry.appendChild(row); entry.appendChild(capsInfo);
+      list.appendChild(entry);
+
+      var renderFn = type === 'battery' ? emsRenderBatteryCaps
+                  : type === 'meter'   ? emsRenderMeterCaps
+                  : emsRenderGridCaps;
+      sel.addEventListener('change', function() {
+        renderFn(row, emsDeviceCaps(sel.value), null);
+      });
+      if (deviceId) renderFn(row, emsDeviceCaps(deviceId), storedCap || null);
+    }
+
+    // ── Collect row data for save ─────────────────────────────────────────────
+
+    function emsGetChargers() {
+      var result = [];
+      document.querySelectorAll('#ems-charger-list .ems-entry').forEach(function(entry) {
+        var row = entry.querySelector('.ems-list-row');
+        var id  = row.querySelector('.ems-row-device').value;
+        var ma  = parseInt(row.querySelector('input[type=number]').value, 10) || 16;
+        if (!id) return;
+        var phSel = row.querySelector('.ems-row-phases');
+        var c = { id: id, max_amps: ma, ev_phases: phSel ? phSel.value : '3' };
+        var phkChk = row.querySelector('.ems-row-phase-switch');
+        if (phkChk && phkChk.checked) c.phase_switch = true;
+        if (row.dataset.capState) c.cap_state = row.dataset.capState;
+        if (row.dataset.capPower) c.cap_power = row.dataset.capPower;
+        result.push(c);
+      });
+      return result;
+    }
+
+    function emsGetInverterDevices() {
+      var result = [];
+      document.querySelectorAll('#ems-inverter-list .ems-entry').forEach(function(entry) {
+        var row = entry.querySelector('.ems-list-row');
+        var id  = row.querySelector('.ems-row-device').value;
+        if (!id) return;
+        var d = { id: id };
+        if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
+        result.push(d);
+      });
+      return result;
+    }
+
+    function emsGetMeterDevices() {
+      var result = [];
+      document.querySelectorAll('#ems-meter-list .ems-entry').forEach(function(entry) {
+        var row = entry.querySelector('.ems-list-row');
+        var id  = row.querySelector('.ems-row-device').value;
+        if (!id) return;
+        var d = { id: id };
+        if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
+        result.push(d);
+      });
+      return result;
+    }
+
+    function emsGetBatteryDevices() {
+      var result = [];
+      document.querySelectorAll('#ems-battery-list .ems-entry').forEach(function(entry) {
+        var row = entry.querySelector('.ems-list-row');
+        var id  = row.querySelector('.ems-row-device').value;
+        if (!id) return;
+        var d = { id: id };
+        if (row.dataset.capSoc)        d.cap_soc        = row.dataset.capSoc;
+        if (row.dataset.capPower)      d.cap_power      = row.dataset.capPower;
+        if (row.dataset.capCharged)    d.cap_charged    = row.dataset.capCharged;
+        if (row.dataset.capDischarged) d.cap_discharged = row.dataset.capDischarged;
+        result.push(d);
+      });
+      return result;
+    }
+
+    // ── Load & Save ───────────────────────────────────────────────────────────
+
+
+    function emsLoadDevices(retryCount) {
+      var btn = document.getElementById('ems-load-btn');
+      btn.disabled = true;
+      emsShowLoadStatus('Loading devices…');
+
+      _H.api('GET', '/ems/devices', null, function(err, result) {
+        var isError = err || (result && result.error);
+        var isStartupError = isError && (result && result.error || '').indexOf('No EMS device') !== -1;
+
+        // Retry up to 3× on startup errors (app still initialising after deploy)
+        if (isStartupError && (retryCount || 0) < 3) {
+          emsShowLoadStatus('App starting up — retrying…', '#6e6e73');
+          setTimeout(function() { emsLoadDevices((retryCount || 0) + 1); }, 3000);
+          return;
+        }
+
+        btn.disabled = false;
+        if (isError) {
+          emsShowLoadStatus('✗ ' + ((result && result.error) || (err && err.message) || 'Failed'), '#c0392b');
+          return;
+        }
+        _emsDevices = (result || []).sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+        emsRefreshAllSelects();
+        emsShowLoadStatus('✓ ' + _emsDevices.length + ' devices loaded', '#1a7a3a');
+
+        _H.api('GET', '/ems/config', null, function(err2, cfg) {
+          if (!err2 && cfg && !cfg.error) emsApplyConfig(cfg);
+        });
+      });
+    }
+
+    function emsApplyConfig(cfg) {
+      // ── Chargers ─────────────────────────────────────────────────────────────
+      document.getElementById('ems-charger-list').innerHTML = '';
+      var chargers = cfg.chargers ||
+        (cfg.charger_device_id ? [{ id: cfg.charger_device_id, max_amps: cfg.ev_max_amps || 16 }] : []);
+      chargers.forEach(function(c) { emsAddChargerRow(c.id, c.max_amps, c); });
+      if (!chargers.length) emsAddChargerRow();
+
+      // ── Inverter devices ──────────────────────────────────────────────────────
+      document.getElementById('ems-inverter-list').innerHTML = '';
+      var invDevs = cfg.inverter_devices || [];
+      if (!invDevs.length) {
+        // migrate from old grid_devices / grid_device_ids
+        var oldGrid = cfg.grid_devices || [];
+        if (!oldGrid.length && cfg.grid_device_ids && cfg.grid_device_ids.length) {
+          oldGrid = cfg.grid_device_ids.map(function(id) { return { id: id, cap_power: cfg.grid_capability || null }; });
+        } else if (!oldGrid.length && cfg.grid_device_id) {
+          oldGrid = [{ id: cfg.grid_device_id, cap_power: cfg.grid_capability || null }];
+        }
+        invDevs = oldGrid;
+      }
+      invDevs.forEach(function(d) { emsAddDeviceRow('inverter', d.id, d.cap_power); });
+      if (!invDevs.length) emsAddDeviceRow('inverter');
+
+      // ── Power Meter devices ───────────────────────────────────────────────────
+      document.getElementById('ems-meter-list').innerHTML = '';
+      var meterDevs = cfg.meter_devices || [];
+      meterDevs.forEach(function(d) { emsAddDeviceRow('meter', d.id, d); });
+
+      // ── Battery devices ───────────────────────────────────────────────────────
+      document.getElementById('ems-battery-list').innerHTML = '';
+      var batDevs = cfg.battery_devices || [];
+      if (!batDevs.length && cfg.battery_device_ids && cfg.battery_device_ids.length) {
+        batDevs = cfg.battery_device_ids.map(function(id) { return { id: id }; });
+      } else if (!batDevs.length && cfg.battery_device_id) {
+        batDevs = [{ id: cfg.battery_device_id }];
+      }
+      batDevs.forEach(function(d) { emsAddDeviceRow('battery', d.id, d); });
+
+      // ── Heat pump devices ─────────────────────────────────────────────────────
+      document.getElementById('ems-heatpump-list').innerHTML = '';
+      var hpDevs = cfg.heat_pump_devices || [];
+      hpDevs.forEach(function(d) { emsAddHeatPumpRow(d.id, d); });
+
+      // ── Scalar settings ───────────────────────────────────────────────────────
+      if (cfg.min_battery_soc !== undefined) document.getElementById('ems-min-soc').value      = cfg.min_battery_soc;
+      document.getElementById('ems-offpeak-enabled').checked                                   = !!cfg.offpeak_enabled;
+      if (cfg.offpeak_start) document.getElementById('ems-offpeak-start').value                = cfg.offpeak_start;
+      if (cfg.offpeak_end)   document.getElementById('ems-offpeak-end').value                  = cfg.offpeak_end;
+      if (cfg.offpeak_amps)  document.getElementById('ems-offpeak-amps').value                 = cfg.offpeak_amps;
+    }
+
+    function emsSave() {
+      var chargers   = emsGetChargers();
+      var invDevs    = emsGetInverterDevices();
+      var meterDevs  = emsGetMeterDevices();
+      var batDevs    = emsGetBatteryDevices();
+      var hpDevs     = emsGetHeatPumps();
+
+      if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
+
+      var cfg = {
+        chargers:            chargers,
+        inverter_devices:    invDevs,
+        meter_devices:       meterDevs,
+        battery_devices:     batDevs,
+        heat_pump_devices:   hpDevs,
+        min_battery_soc:    parseInt(document.getElementById('ems-min-soc').value, 10) || 80,
+        offpeak_enabled:    false, // controlled via device capability toggle, not settings
+        offpeak_start:      document.getElementById('ems-offpeak-start').value.trim() || '22:00',
+        offpeak_end:        document.getElementById('ems-offpeak-end').value.trim() || '06:00',
+        offpeak_amps:       parseInt(document.getElementById('ems-offpeak-amps').value, 10) || 16,
+      };
+
+      var btn = document.getElementById('ems-save-btn');
+      btn.disabled = true;
+      emsShowSaveStatus('Saving…', '#6e6e73');
+
+      _H.api('PUT', '/ems/config', cfg, function(err, result) {
+        btn.disabled = false;
+        if (err || (result && result.error)) {
+          emsShowSaveStatus('✗ ' + ((result && result.error) || (err && err.message) || 'Save failed'), '#c0392b');
+        } else {
+          emsShowSaveStatus('✓ Settings saved — EMS restarts automatically', '#1a7a3a');
+        }
+      });
+    }
 
     function onHomeyReady(H) {
       _H = H;
