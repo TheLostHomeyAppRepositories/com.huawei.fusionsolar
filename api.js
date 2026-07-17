@@ -1425,6 +1425,99 @@ module.exports = {
     return { folderId, ...results };
   },
 
+  /** GET /ems/battery/action-cards — marks luna2000 battery cards as suggested */
+  async getEmsBatteryActionCards({ homey, query }) {
+    const base = await this.getEmsChargerActionCards({ homey, query });
+    if (base.error) return base;
+    const SUGGESTED = new Set([
+      'luna2000_start_force_charge',
+      'luna2000_start_force_discharge',
+      'luna2000_set_working_mode',
+      'luna2000_set_max_charge_power',
+      'luna2000_set_max_discharge_power',
+    ]);
+    (base.groups || []).forEach((g) => {
+      (g.cards || []).forEach((c) => { if (SUGGESTED.has(c.id)) c.suggested = true; });
+    });
+    return base;
+  },
+
+  /** GET /ems/battery/flows?deviceId=xxx */
+  async getEmsBatteryFlows({ homey, query }) {
+    const { deviceId } = query || {};
+    if (!deviceId) return { matched: [], error: 'Missing deviceId' };
+    let apiKey = '';
+    try {
+      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
+      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { matched: [], error: 'No API key — configure EMS device first' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    function parseAction(a) {
+      const rawId = a.id || '';
+      if (rawId.startsWith('homey:')) { const lc = rawId.lastIndexOf(':'); return { cardId: rawId.slice(lc + 1), cardUri: rawId.slice(0, lc) }; }
+      return { cardId: rawId, cardUri: a.uri || '' };
+    }
+    try {
+      const api = new HomeyLocalApi({ homey, apiKey });
+      const allFlows = await api.getFlows();
+      let deviceName = deviceId;
+      try { const d = await api.getDevices(); deviceName = d[deviceId]?.name || deviceId; } catch { }
+      const namePrefix = `EMS: ${deviceName} → `;
+      const matched = [];
+      for (const flow of Object.values(allFlows || {})) {
+        if (!flow.name || !flow.name.startsWith(namePrefix)) continue;
+        const firstAction = (flow.actions || []).find((a) => { const { cardUri } = parseAction(a); return !cardUri || cardUri === APP_URI; });
+        const { cardId, cardUri } = firstAction ? parseAction(firstAction) : { cardId: '', cardUri: '' };
+        const { device: _d, ...restArgs } = firstAction?.args || {};
+        matched.push({ id: flow.id, name: flow.name, actionCardId: cardId || null, actionCardUri: cardUri || null, cardArgs: restArgs });
+      }
+      return { matched };
+    } catch (e) { return { matched: [], error: e.message }; }
+  },
+
+  /** POST /ems/battery/setup-flows — creates one flow per entry, same pattern as postInverterSetupFlow */
+  async postEmsBatterySetupFlows({ homey, body }) {
+    const { deviceId, flows } = body || {};
+    if (!deviceId || !Array.isArray(flows) || !flows.length) return { error: 'Missing deviceId or flows array' };
+    let apiKey = '';
+    try {
+      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
+      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    const api = new HomeyLocalApi({ homey, apiKey });
+    let folderId = null;
+    try {
+      const folders = await api.getFlowFolders();
+      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+    } catch (_) { }
+    let deviceName = deviceId;
+    try { const d = await api.getDevices(); deviceName = d[deviceId]?.name || deviceId; } catch { }
+    const allFlows = await api.getFlows().catch(() => ({}));
+    const names = new Set(flows.map((f) => `EMS: ${deviceName} → ${f.name}`));
+    await Promise.all(Object.values(allFlows || {}).filter((f) => names.has(f.name)).map((f) => api.deleteFlow(f.id).catch(() => {})));
+    const results = [];
+    for (const def of flows) {
+      const flowName = `EMS: ${deviceName} → ${def.name}`;
+      const action = { id: def.cardId, uri: def.cardUri, group: 'then', delay: null, duration: null, args: { device: { id: deviceId }, ...(def.cardArgs || {}) } };
+      const trigger = def.triggerId
+        ? { id: `${APP_URI}:${def.triggerId}`, args: { battery_device_id: deviceId } }
+        : { id: 'homey:manager:flow:start', args: {} };
+      let created = null; let lastErr = null;
+      try { created = await api.createFlow({ name: flowName, folder: folderId, trigger, conditions: [], actions: [action] }); } catch (err) { lastErr = err.message; }
+      results.push({ name: flowName, flowId: created?.id, ok: !!created?.id, error: lastErr });
+    }
+    const ok = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok);
+    if (ok === 0) return { error: `All flows failed: ${results[0]?.error || 'rejected by Homey API'}`, results };
+    return { folderId, results, created: ok, note: failed.length ? `${failed.length} flow(s) failed` : 'Add a trigger to each flow in Homey' };
+  },
+
   /** GET /ems/boiler/action-cards */
   async getEmsBoilerActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
   /** GET /ems/boiler/flows */
@@ -1581,19 +1674,19 @@ module.exports = {
       folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
     } catch (_) { }
 
-    const allFlows = await api.getFlows().catch(() => ({}));
-    const names    = new Set(flows.map((f) => f.name));
-    await Promise.all(
-      Object.values(allFlows || {}).filter((f) => names.has(f.name))
-        .map((f) => api.deleteFlow(f.id).catch(() => {})),
-    );
-
-    // Resolve inverter device name for flow name prefix
+    // Resolve inverter device name for flow name prefix (must happen before delete)
     let deviceName = deviceId;
     try {
       const allDevices = await api.getDevices();
       deviceName = allDevices[deviceId]?.name || deviceId;
     } catch { }
+
+    const allFlows = await api.getFlows().catch(() => ({}));
+    const names    = new Set(flows.map((f) => `EMS: ${deviceName} → ${f.name}`));
+    await Promise.all(
+      Object.values(allFlows || {}).filter((f) => names.has(f.name))
+        .map((f) => api.deleteFlow(f.id).catch(() => {})),
+    );
 
     const results = [];
     for (const def of flows) {

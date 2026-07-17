@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.92",
+  "version": "1.1.93",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -68,6 +68,9 @@
     "getEmsPoolActionCards":         { "method": "GET",  "path": "/ems/pool/action-cards"         },
     "postEmsPoolSetupFlows":         { "method": "POST", "path": "/ems/pool/setup-flows"          },
     "getEmsPoolFlows":               { "method": "GET",  "path": "/ems/pool/flows"                },
+    "getEmsBatteryActionCards":      { "method": "GET",  "path": "/ems/battery/action-cards"      },
+    "postEmsBatterySetupFlows":      { "method": "POST", "path": "/ems/battery/setup-flows"       },
+    "getEmsBatteryFlows":            { "method": "GET",  "path": "/ems/battery/flows"             },
     "getInverterActionCards":        { "method": "GET",  "path": "/inverter/action-cards"         },
     "getInverterFlows":              { "method": "GET",  "path": "/inverter/flows"                },
     "postInverterSetupFlow":         { "method": "POST", "path": "/inverter/setup-flow"           }
@@ -6848,6 +6851,68 @@
         "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
       },
       {
+        "id": "ems_battery_full",
+        "title": { "en": "EMS: battery is full", "de": "EMS: Batterie ist voll", "nl": "EMS: batterij is vol" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] is full", "de": "EMS: Batterie [[battery_device_id]] ist voll", "nl": "EMS: batterij [[battery_device_id]] is vol" },
+        "hint": { "en": "Fires when the battery SOC first rises above the configured 'Battery Full SOC' threshold. Use to start force-discharging the battery (e.g. into the EV charger).", "de": "Wird ausgelöst, wenn der Batterie-SOC erstmals den konfigurierten 'Batterie voll'-Schwellenwert überschreitet. Nutzbar um die Batterie zu entladen (z.B. in den EV-Lader).", "nl": "Wordt geactiveerd als de batterij-SOC voor het eerst boven de geconfigureerde 'Batterij vol'-drempelwaarde stijgt." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Paste Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [
+          { "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } },
+          { "name": "soc", "type": "number", "title": { "en": "SOC (%)", "de": "Ladestand (%)" } }
+        ]
+      },
+      {
+        "id": "ems_battery_low",
+        "title": { "en": "EMS: battery is low", "de": "EMS: Batterie ist leer", "nl": "EMS: batterij is leeg" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] is low", "de": "EMS: Batterie [[battery_device_id]] ist leer", "nl": "EMS: batterij [[battery_device_id]] is leeg" },
+        "hint": { "en": "Fires when the battery SOC drops below the configured minimum SOC. Use to stop force-discharging.", "de": "Wird ausgelöst, wenn der Batterie-SOC unter das konfigurierte Minimum fällt. Nutzbar um die Zwangsentladung zu stoppen.", "nl": "Wordt geactiveerd als de batterij-SOC onder de geconfigureerde minimum-SOC daalt." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Paste Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [
+          { "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } },
+          { "name": "soc", "type": "number", "title": { "en": "SOC (%)", "de": "Ladestand (%)" } }
+        ]
+      },
+      {
+        "id": "ems_battery_force_charge",
+        "title": { "en": "EMS: battery — force charge", "de": "EMS: Batterie — Zwangsladen" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — force charge", "de": "EMS: Batterie [[battery_device_id]] — Zwangsladen" },
+        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Force Charge'. Replace with your own trigger (e.g. energy price, time schedule) in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsladen'. Ersetze ihn durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan)." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
+        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+      },
+      {
+        "id": "ems_battery_force_discharge",
+        "title": { "en": "EMS: battery — force discharge", "de": "EMS: Batterie — Zwangsentladen" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — force discharge", "de": "EMS: Batterie [[battery_device_id]] — Zwangsentladen" },
+        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Force Discharge'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsentladen'. Ersetze ihn durch einen eigenen Trigger." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
+        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+      },
+      {
+        "id": "ems_battery_normal_mode",
+        "title": { "en": "EMS: battery — normal mode", "de": "EMS: Batterie — Normalbetrieb" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — normal mode", "de": "EMS: Batterie [[battery_device_id]] — Normalbetrieb" },
+        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Normal Mode'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Normalbetrieb'. Ersetze ihn durch einen eigenen Trigger." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
+        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+      },
+      {
+        "id": "ems_battery_max_charge_power",
+        "title": { "en": "EMS: battery — set max charge power", "de": "EMS: Batterie — max. Ladeleistung setzen" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — set max charge power", "de": "EMS: Batterie [[battery_device_id]] — max. Ladeleistung setzen" },
+        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Max Charge Power'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Ladeleistung'. Ersetze ihn durch einen eigenen Trigger." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
+        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+      },
+      {
+        "id": "ems_battery_max_discharge_power",
+        "title": { "en": "EMS: battery — set max discharge power", "de": "EMS: Batterie — max. Entladeleistung setzen" },
+        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — set max discharge power", "de": "EMS: Batterie [[battery_device_id]] — max. Entladeleistung setzen" },
+        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Max Discharge Power'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Entladeleistung'. Ersetze ihn durch einen eigenen Trigger." },
+        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
+        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+      },
+      {
         "id": "ems_inverter_export_limit_on",
         "title": {
           "en": "EMS: inverter — enable export limit",
@@ -10064,8 +10129,13 @@
   },
   "permissions": [],
   "changelog": {
+    "1.1.93": {
+      "en": "EMS: Added Flow Actions for home batteries — 5 dedicated flows for Force Charge, Force Discharge, Normal Mode, Max Charge Power, and Max Discharge Power. Each flow is created with a placeholder trigger that can be replaced with any trigger in Homey (e.g. energy price, time schedule). Fixed battery flow card selections not being restored after saving settings.",
+      "de": "EMS: Flow-Aktionen für Hausspeicher hinzugefügt — 5 dedizierte Flows für Zwangsladen, Zwangsentladen, Normalbetrieb, maximale Ladeleistung und maximale Entladeleistung. Jeder Flow wird mit einem Platzhalter-Trigger erstellt, der in Homey durch einen beliebigen Trigger ersetzt werden kann (z.B. Energiepreis, Zeitplan). Fehler behoben, bei dem die Flow-Kartenauswahl für Batterien nach dem Speichern nicht wiederhergestellt wurde.",
+      "nl": "EMS: Flow-acties voor thuisbatterijen toegevoegd — 5 speciale flows voor geforceerd laden, geforceerd ontladen, normale modus, maximaal laadvermogen en maximaal ontlaadvermogen. Elke flow wordt aangemaakt met een tijdelijke trigger die in Homey vervangen kan worden door een eigen trigger (bijv. energieprijs, tijdschema). Bug verholpen waarbij de flow-kaartselecties voor batterijen niet werden hersteld na opslaan."
+    },
     "1.1.92": {
-      "en": "EMS: renamed 'EV Charge Budget' capability to 'Solar Surplus' (always ≥ 0, shows grid export power). Added 'not configured' mode when no devices are set up. Fixed EMS status text duplicating mode name. Fixed effectiveGridW not propagating through heat pump / boiler / pool priority steps. Fixed instant charging sending amps every tick (now only on change). Fixed 'Create / Update Flows' HTTP 400/404 for EMS charger and inverter flows. New capability icons for EMS mode, EMS status, off-peak charging, instant charge, and solar surplus.",
+      "en": "EMS: renamed 'EV Charge Budget' capability to 'Solar Surplus' (always ≥ 0, shows grid export power). Added 'not configured' mode when no devices are set up. Fixed EMS status text duplicating mode name. Fixed effectiveGridW not propagating through heat pump / boiler / pool priority steps. Fixed instant charging sending amps every tick (now only on change). Fixed 'Create / Update Flows' HTTP 400/404 for EMS charger and inverter flows. Fixed inverter flows being duplicated instead of updated on re-run. New capability icons for EMS mode, EMS status, off-peak charging, instant charge, and solar surplus.",
       "de": "EMS: Capability 'EV-Ladebudget' in 'Solar-Überschuss' umbenannt (immer ≥ 0, zeigt Einspeiseleistung). Modus 'nicht konfiguriert' hinzugefügt wenn noch keine Geräte eingerichtet sind. EMS-Statustext verdoppelt nicht mehr den Modusnamen. effectiveGridW wird jetzt korrekt durch Wärmepumpe-/Boiler-/Pool-Prioritätsschritte weitergegeben. Sofortladen sendet Ampere nicht mehr bei jedem Tick (nur noch bei Änderung). 'Flows erstellen / aktualisieren' HTTP 400/404 für EMS-Lader- und Wechselrichter-Flows behoben. Neue Capability-Icons für EMS-Modus, EMS-Details, Nebenzeiten-Laden, Sofortladen und Solar-Überschuss.",
       "nl": "EMS: Capability 'EV-laadbudget' hernoemd naar 'Zonne-overschot' (altijd ≥ 0, toont netinvoedingsvermogen). Modus 'niet geconfigureerd' toegevoegd wanneer geen apparaten zijn ingesteld. EMS-statustekst herhaalt de modusnaam niet meer. effectiveGridW wordt nu correct doorgegeven via warmtepomp-/boiler-/zwembad-prioriteitsstappen. Direct laden stuurt ampères niet meer elke tick (alleen bij wijziging). 'Flows aanmaken/bijwerken' HTTP 400/404 voor EMS-laadpaal- en omvormer-flows opgelost. Nieuwe capability-iconen voor EMS-modus, EMS-details, daluur-laden, direct laden en zonne-overschot."
     },

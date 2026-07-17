@@ -24,6 +24,7 @@ class EmsDevice extends Device {
     this._heatPumpStates  = new Map(); // deviceId → { isOn: null | boolean }
     this._boilerStates    = new Map();
     this._poolStates      = new Map();
+    this._batteryStates   = new Map(); // deviceId → { fullFired: boolean, lowFired: boolean }
     this._warmupDone      = false;     // first tick only reads state, no flows fired
     this._tickInProgress  = false;     // prevents overlapping concurrent ticks
     this._importSince     = null;
@@ -214,6 +215,8 @@ class EmsDevice extends Device {
       const houseW = await this._getHouseW(cfg, gridW, pvW, battery);
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
+    if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
+
     const priorityOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
       ? cfg.device_priority_order
       : ['charger', 'heat_pump', 'boiler', 'pool'];
@@ -276,6 +279,46 @@ class EmsDevice extends Device {
       soc:    validSoc.length   ? Math.min(...validSoc)                 : null,
       powerW: validPower.length ? validPower.reduce((a, b) => a + b, 0) : null,
     };
+  }
+
+  async _checkBatteryTriggers(cfg, battery) {
+    const devices    = cfg.battery_devices || [];
+    const minSoc     = Number(cfg.min_battery_soc ?? 80);
+    const fullSoc    = Number(cfg.battery_full_soc ?? 95);
+
+    for (const device of devices) {
+      const soc = await this._api.getCapability(device.id, device.cap_soc || 'measure_battery').catch(() => null);
+      if (soc === null) continue;
+
+      if (!this._batteryStates.has(device.id)) {
+        this._batteryStates.set(device.id, { fullFired: false, lowFired: false });
+      }
+      const st = this._batteryStates.get(device.id);
+
+      if (soc >= fullSoc && !st.fullFired) {
+        st.fullFired = true;
+        st.lowFired  = false;
+        this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% ≥ ${fullSoc}% → ems_battery_full`);
+        await this.homey.flow
+          .getTriggerCard('ems_battery_full')
+          .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
+          .catch((e) => this.log(`[EMS] trigger ems_battery_full failed: ${e.message}`));
+      } else if (soc < fullSoc - 5) {
+        st.fullFired = false;
+      }
+
+      if (soc < minSoc && !st.lowFired) {
+        st.lowFired  = true;
+        st.fullFired = false;
+        this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% < ${minSoc}% → ems_battery_low`);
+        await this.homey.flow
+          .getTriggerCard('ems_battery_low')
+          .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
+          .catch((e) => this.log(`[EMS] trigger ems_battery_low failed: ${e.message}`));
+      } else if (soc >= minSoc + 5) {
+        st.lowFired = false;
+      }
+    }
   }
 
   async _getHouseW(cfg, gridW, pvW, battery) {
