@@ -55,6 +55,9 @@
     .btn-secondary { background: #e5e5ea; color: #1d1d1f; }
     .btn-secondary:not(:disabled):hover { background: #d1d1d6; }
     .btn-danger { background: #ff3b30; color: #fff; }
+    button:focus-visible, .tab:focus-visible, .sub-tab:focus-visible {
+      outline: 2px solid #0071e3; outline-offset: 2px;
+    }
 
     /* ── Device cards ────────────────────────────────────── */
     .device-card {
@@ -289,13 +292,38 @@
     .sub-tab:hover:not(.active) { background: #f2f2f7; color: #1d1d1f; }
 
     /* ── EMS list rows ───────────────────────────────────── */
-    .ems-entry { display:flex; flex-direction:column; gap:2px; }
+    .ems-entry {
+      display:flex; flex-direction:column; gap:4px;
+      background:#fff; border:1px solid #e5e5ea; border-radius:8px; padding:8px 10px;
+    }
     .ems-list-row { display:flex; align-items:center; gap:6px; }
+    #ems-charger-list, #ems-inverter-list, #ems-meter-list,
+    #ems-house-list, #ems-battery-list, #ems-heatpump-list,
+    #ems-boiler-list, #ems-pool-list { gap:8px !important; }
     .ems-priority-badge {
       display:inline-flex; align-items:center; justify-content:center;
       width:20px; height:20px; border-radius:50%; background:#e5e5ea;
       font-size:11px; font-weight:600; color:#3a3a3c; flex-shrink:0;
     }
+    .ems-priority-order-item {
+      display:flex; align-items:center; gap:8px; padding:8px 10px;
+      background:#fff; border:1px solid #e5e5ea; border-radius:7px;
+      font-size:12px; font-weight:500; color:#1d1d1f;
+    }
+    .ems-priority-order-item .priority-rank {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:18px; height:18px; border-radius:50%; background:#0071e3;
+      font-size:10px; font-weight:700; color:#fff; flex-shrink:0;
+    }
+    .ems-priority-order-item .priority-label { flex:1; }
+    .ems-priority-move-btn {
+      background:none; border:1px solid #d1d1d6; border-radius:5px;
+      width:24px; height:24px; font-size:12px; line-height:1; cursor:pointer;
+      color:#3a3a3c; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .ems-priority-move-btn:hover { background:#f0f0f5; }
+    .ems-priority-move-btn:disabled { opacity:.3; cursor:default; }
+    #ems-device-priority-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
     .ems-row-device {
       flex:1; padding:6px 8px; border:1px solid #d1d1d6; border-radius:6px;
       font-size:12px; outline:none; background:#fff; min-width:0;
@@ -305,8 +333,36 @@
       background:#fff; cursor:pointer; color:#c0392b; line-height:1;
     }
     .ems-row-remove:hover { background:#fdf0ee; }
+    .ems-soc-bar { height:6px; background:#e5e5ea; border-radius:3px; overflow:hidden; margin:6px 0 5px; }
+    .ems-soc-bar-fill { height:100%; background:linear-gradient(to right,#34c759,#f4b400); border-radius:3px; transition:width .15s; }
+    .ems-callout {
+      display:flex; align-items:flex-start; gap:8px; padding:8px 10px;
+      background:#eff6ff; border-left:3px solid #0071e3; border-radius:0 6px 6px 0; margin-bottom:12px;
+    }
+    .ems-callout span { font-size:11px; color:#0055b3; line-height:1.5; }
+    .ems-toggle-row {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px; background:#f9f9fb; border:1px solid #e5e5ea;
+      border-radius:8px; cursor:pointer; user-select:none;
+    }
+    .ems-toggle-row + .ems-toggle-row { margin-top:6px; }
+    .ems-toggle-switch { position:relative; width:38px; height:22px; flex-shrink:0; margin-top:1px; }
+    .ems-toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
+    .ems-toggle-slider {
+      position:absolute; inset:0; background:#d1d1d6; border-radius:11px; transition:background .2s;
+    }
+    .ems-toggle-slider::before {
+      content:''; position:absolute; width:18px; height:18px;
+      left:2px; top:2px; background:#fff; border-radius:50%;
+      transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2);
+    }
+    .ems-toggle-switch input:checked ~ .ems-toggle-slider { background:#34c759; }
+    .ems-toggle-switch input:checked ~ .ems-toggle-slider::before { transform:translateX(16px); }
+    .ems-toggle-title { font-size:12px; font-weight:500; color:#1d1d1f; display:block; margin-bottom:2px; }
+    .ems-toggle-desc  { font-size:11px; color:#6e6e73; line-height:1.5; display:block; }
+    .ems-control-hint { font-size:11px; color:#c0392b; line-height:1.5; display:block; margin-top:2px; }
     .ems-caps-info {
-      font-size:10px; color:#1a7a3a; padding-left:28px; min-height:14px;
+      font-size:10px; color:#1a7a3a; padding-left:2px; min-height:14px;
       font-family:'SF Mono', Menlo, monospace; letter-spacing:0;
     }
     .ems-caps-info.warn { color:#9a5700; }
@@ -497,7 +553,7 @@
   <div class="tab-bar">
     <button class="tab active" id="tab-btn-modbus" onclick="showTab('modbus')">Modbus</button>
     <button class="tab" id="tab-btn-openapi" onclick="showTab('openapi')">OpenAPI</button>
-    <button class="tab" id="tab-btn-ems" onclick="showTab('ems')">EMS</button>
+    <button class="tab" id="tab-btn-ems" onclick="showTab('ems')">EMS (Beta Test)</button>
   </div>
 
   <!-- ── Tab: Modbus (wrapper with sub-tabs) ── -->
@@ -554,7 +610,7 @@
       </div>
     </div>
     <div id="oa-results"></div>
-    <div id="oa-export-bar" style="display:none;margin-top:10px;display:none">
+    <div id="oa-export-bar" style="display:none;margin-top:10px">
       <button class="btn-secondary" onclick="exportOpenApi()">Copy full JSON</button>
     </div>
   </div>
@@ -564,13 +620,77 @@
     <div class="tool-card" style="max-width:580px;margin:0 auto">
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="tool-card-title" style="margin:0">Energy Management System</div>
+        <div class="tool-card-title" style="margin:0">Energy Management System (Beta Test)</div>
         <div style="display:flex;gap:6px">
-          <button class="btn-secondary" id="ems-load-btn" onclick="emsLoadDevices()">↻ Load devices</button>
+          <button class="btn-secondary" id="ems-load-btn" onclick="emsLoadDevices()">↻ Reload devices</button>
         </div>
       </div>
 
       <div id="ems-load-status" style="font-size:12px;color:#6e6e73;margin-bottom:12px;display:none"></div>
+
+      <!-- EMS Info Box -->
+      <details id="ems-info-box" style="margin-bottom:16px;border:1px solid var(--color-border,#e0e0e0);border-radius:8px;overflow:hidden">
+        <summary style="cursor:pointer;padding:10px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary,#6e6e73);background:var(--color-bg-secondary,#f5f5f7);list-style:none;display:flex;align-items:center;gap:6px;user-select:none">
+          <span style="font-size:14px">ℹ️</span>
+          <span>How does the EMS work? — Setup &amp; Flow-based control</span>
+          <span style="margin-left:auto;font-size:10px;opacity:.6">▼ Details</span>
+        </summary>
+        <div style="padding:14px 16px;font-size:11.5px;line-height:1.7;color:var(--color-text,#1d1d1f);display:flex;flex-direction:column;gap:12px">
+
+          <!-- What does the EMS do? -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">🔋 What does the EMS do?</div>
+            <div>The EMS monitors solar surplus, battery SOC, and grid power every 15 seconds and automatically controls EV chargers, heat pumps, boilers, and pool pumps — maximising self-consumption without draining the battery below the configured minimum or pulling power from the grid.</div>
+          </div>
+
+          <!-- Step 1: Load devices -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">1 · Load devices</div>
+            <div>Click <b>↻ Reload devices</b> (top right). The EMS reads all Homey devices. Then use the dropdowns below to assign the correct devices and capabilities to each role.</div>
+          </div>
+
+          <!-- Step 2: Configuration -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:var(--color-text,#1d1d1f)">2 · Configurable sections</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Inverter</span> — Measures PV production (W). Multiple devices are summed.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Power Meter (P1)</span> — Grid connection meter: positive = import, negative = export. Used as the basis for all control decisions.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">House Consumption</span> — Optional: direct house load meter. If omitted, the EMS calculates consumption from the energy balance (PV − Grid − Battery).</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Home Batteries</span> — Assign the SOC capability. Set a <b>Min SOC</b> — consumers are paused when the battery drops below this level.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV Chargers</span> — Continuous current control 6–16 A (1- or 3-phase). An anti-oscillation filter prevents rapid ramping. Flows must be linked in Homey to set the charge current.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat Pumps</span> — On/off control via Flow. Configurable minimum surplus threshold. Measured power (W) is used for anti-oscillation.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boilers / Pools</span> — Same logic as heat pumps, with separate Start/Stop flow cards.</div>
+              <div><span style="font-weight:600">Priority order</span> — Configure which device type gets surplus first: e.g. EV charger → heat pump → boiler. Lower-priority devices only receive what remains.</div>
+            </div>
+          </div>
+
+          <!-- Step 3: Flows -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">3 · Control via Homey Flows</div>
+            <div style="margin-bottom:6px;font-size:11px">The EMS decides <em>when</em> a device runs but never sends direct device commands — instead it fires <b>Flow trigger cards</b> that you link to your devices in Homey:</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV — Set charge current</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Trigger <em>"EMS wants to set charger current"</em> → tokens <code>amps</code>, <code>phase1/2/3</code>, <code>charger_device_id</code>. Action: charger app "Set current".</span></div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV — Start charging</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Trigger <em>"EMS wants to start charging"</em> — fired once when charging activates (for charger apps that require an explicit Start command).</span></div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat pump — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start heat pump"</em> / <em>"EMS wants to stop heat pump"</em>. Only fired when surplus ≥ minimum threshold.</span></div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boiler — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start boiler/heater"</em> / <em>"EMS wants to stop boiler/heater"</em>.</span></div>
+              <div><span style="font-weight:600">Pool — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start pool pump"</em> / <em>"EMS wants to stop pool pump"</em>. On the first tick after app start no flows are fired (observation mode).</span></div>
+            </div>
+          </div>
+
+          <!-- Step 4: Set up flows -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">4 · Set up Flow cards</div>
+            <div>Use the <b>✓ Create / Update Flows</b> button in each device section — it automatically creates the required flows in the Homey folder <em>"_Huawei EMS"</em>. You can then open the Homey app, edit those flows, and link them to your devices.</div>
+          </div>
+
+          <!-- Off-peak tip -->
+          <div style="background:var(--color-bg-secondary,#f5f5f7);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--color-text-secondary,#6e6e73)">
+            <b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs, independent of solar surplus.
+          </div>
+
+        </div>
+      </details>
+
       <!-- Inverter -->
       <div class="section-title">Inverter
         <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">power is summed</span>
@@ -585,20 +705,31 @@
       <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
       <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add meter</button>
 
+      <!-- House Consumption Meter -->
+      <div class="section-title">Power Meter (House Consumption)
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">optional · overrides calculated value</span>
+      </div>
+      <div id="ems-house-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddDeviceRow('house')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add house meter</button>
+
       <!-- Home Batteries -->
       <div class="section-title">Home Batteries
         <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">min SOC used · optional</span>
       </div>
       <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add battery</button>
+      <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
 
       <!-- Battery priority -->
-      <div class="section-title">Battery Priority</div>
-      <div style="margin-bottom:20px">
-        <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Minimum Battery SOC (%)</label>
-        <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
-          style="width:120px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px">
-        <div style="font-size:11px;color:#6e6e73;margin-top:3px">EV charging paused until all batteries exceed this SOC. Set to 0 to disable.</div>
+      <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
+        <span class="ems-toggle-title" style="margin-bottom:6px">Minimum Battery SOC</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
+            style="width:80px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff"
+            oninput="emsUpdateSocBar(this.value)">
+          <span style="font-size:12px;color:#6e6e73">%</span>
+        </div>
+        <div class="ems-soc-bar" style="margin-top:8px"><div id="ems-soc-bar-fill" class="ems-soc-bar-fill" style="width:80%"></div></div>
+        <span class="ems-toggle-desc" style="margin-top:4px">All EMS optimisations (charging, heat pumps) pause until every battery exceeds this level. Set to 0 to disable.</span>
       </div>
 
       <!-- EV Chargers -->
@@ -606,35 +737,163 @@
         <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">priority order — sequential start</span>
       </div>
       <div id="ems-charger-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add charger</button>
+      <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add charger</button>
+      <label class="ems-toggle-row">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-charger-control" onchange="emsGuardControl(this,'ems-charger-list','chargerStartCard',null,'ems-charger-control-hint')">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Enable EMS control</span>
+          <span class="ems-toggle-desc">The EMS automatically controls EV charging based on solar surplus and off-peak schedule. Disable to charge manually.</span>
+          <span id="ems-charger-control-hint" class="ems-control-hint"></span>
+        </span>
+      </label>
+      <label class="ems-toggle-row">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-offpeak-solar-first" checked>
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Solar surplus priority</span>
+          <span class="ems-toggle-desc">When PV export surplus is available, EVs are charged from that surplus first — even during the off-peak window. Switches to grid automatically when solar isn't sufficient. When disabled, the off-peak window always charges from grid at the configured amperage, regardless of available surplus.</span>
+        </span>
+      </label>
+
+      <!-- Off-Peak Charging (sub-section of EV Chargers) -->
+      <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px;gap:10px">
+        <span class="ems-toggle-title">Off-Peak Charging</span>
+        <div class="ems-callout"><span>Enable/disable via the device toggle in the Homey app.</span></div>
+        <div style="font-size:11px;font-weight:600;color:#3a3a3c">Weekday</div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Start</label>
+            <input id="ems-offpeak-start" type="time" value="22:00"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">End</label>
+            <input id="ems-offpeak-end" type="time" value="06:00"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Current (A)</label>
+            <input id="ems-offpeak-amps" type="number" value="16" min="6" max="32" step="2"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Per charger · both days</div>
+          </div>
+        </div>
+        <label class="ems-toggle-row" style="margin-top:0">
+          <span class="ems-toggle-switch">
+            <input type="checkbox" id="ems-offpeak-weekend-differs"
+              onchange="document.getElementById('ems-offpeak-weekend-rows').style.display=this.checked?'flex':'none'">
+            <span class="ems-toggle-slider"></span>
+          </span>
+          <span>
+            <span class="ems-toggle-title">Different window on weekends</span>
+            <span class="ems-toggle-desc">Set separate start and end times for EV charging on Saturday and Sunday.</span>
+          </span>
+        </label>
+        <div id="ems-offpeak-weekend-rows" style="display:none;flex-direction:column;gap:8px;padding:10px;background:#fff;border-radius:8px;border:1px solid #e5e5ea">
+          <div style="font-size:11px;font-weight:600;color:#3a3a3c">Weekend</div>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Start</label>
+              <input id="ems-offpeak-weekend-start" type="time" value="22:00"
+                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            </div>
+            <div style="flex:1">
+              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">End</label>
+              <input id="ems-offpeak-weekend-end" type="time" value="06:00"
+                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Heat Pumps -->
       <div class="section-title">Heat Pumps
         <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
       </div>
       <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
+      <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
+      <label class="ems-toggle-row" style="margin-bottom:20px">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-heatpump-control" onchange="emsGuardControl(this,'ems-heatpump-list','hpStartCard','hpStopCard','ems-heatpump-control-hint')">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Enable EMS control</span>
+          <span class="ems-toggle-desc">The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually.</span>
+          <span id="ems-heatpump-control-hint" class="ems-control-hint"></span>
+        </span>
+      </label>
 
-      <!-- Off-peak -->
-      <div class="section-title">Off-Peak Charging</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-        <div style="font-size:12px;color:#6e6e73">Enable/disable via the device toggle in the Homey app.</div>
-        <div style="display:flex;gap:12px">
-          <div style="flex:1">
-            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Start (HH:MM)</label>
-            <input id="ems-offpeak-start" type="text" value="22:00"
-              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+      <!-- Boilers / Immersion Heaters -->
+      <div class="section-title">Boilers / Immersion Heaters
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
+      </div>
+      <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddBoilerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add boiler / heater</button>
+      <label class="ems-toggle-row" style="margin-bottom:20px">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-boiler-control" onchange="emsGuardControl(this,'ems-boiler-list','boilerStartCard','boilerStopCard','ems-boiler-control-hint')">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Enable EMS control</span>
+          <span class="ems-toggle-desc">The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually.</span>
+          <span id="ems-boiler-control-hint" class="ems-control-hint"></span>
+        </span>
+      </label>
+
+      <!-- Pool / Whirlpool -->
+      <div class="section-title">Pool / Whirlpool
+        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
+      </div>
+      <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <button class="btn-secondary" onclick="emsAddPoolRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add pool / whirlpool</button>
+      <label class="ems-toggle-row" style="margin-bottom:20px">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-pool-control" onchange="emsGuardControl(this,'ems-pool-list','poolStartCard','poolStopCard','ems-pool-control-hint')">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Enable EMS control</span>
+          <span class="ems-toggle-desc">The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually.</span>
+          <span id="ems-pool-control-hint" class="ems-control-hint"></span>
+        </span>
+      </label>
+
+      <!-- Device Priority -->
+      <div class="section-title">Device Priority</div>
+      <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
+        <span class="ems-toggle-title">Evaluation order</span>
+        <span class="ems-toggle-desc" style="margin-bottom:4px">Drag to reorder. Devices higher in the list get first claim on available solar surplus.</span>
+        <div id="ems-device-priority-list">
+          <div class="ems-priority-order-item" data-type="charger">
+            <span class="priority-rank">1</span>
+            <span class="priority-label">EV Chargers</span>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
           </div>
-          <div style="flex:1">
-            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">End (HH:MM)</label>
-            <input id="ems-offpeak-end" type="text" value="06:00"
-              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+          <div class="ems-priority-order-item" data-type="heat_pump">
+            <span class="priority-rank">2</span>
+            <span class="priority-label">Heat Pumps</span>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
           </div>
-          <div style="flex:1">
-            <label style="font-size:11px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:4px">Current (A)</label>
-            <input id="ems-offpeak-amps" type="number" value="16" min="6" max="32" step="2"
-              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
-            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Per charger</div>
+          <div class="ems-priority-order-item" data-type="boiler">
+            <span class="priority-rank">3</span>
+            <span class="priority-label">Boilers</span>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
+          </div>
+          <div class="ems-priority-order-item" data-type="pool">
+            <span class="priority-rank">4</span>
+            <span class="priority-label">Pool / Whirlpool</span>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
           </div>
         </div>
       </div>
@@ -699,7 +958,7 @@
     }
 
     function escHtml(s) {
-      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
     }
 
     // Stable cell ID for a register value cell (used to fill values after live read)
@@ -755,8 +1014,8 @@
         for (const r of rows) {
           const cid = regCellId(idx, groupName, r.key);
           html += `<tr>
-            <td class="addr-cell">${r.address}</td>
-            <td class="addr-cell">${r.length}</td>
+            <td class="addr-cell">${escHtml(String(r.address))}</td>
+            <td class="addr-cell">${escHtml(String(r.length))}</td>
             <td class="type-cell">${escHtml(r.type)}</td>
             <td class="key-cell">${escHtml(r.key)}</td>
             <td class="label-cell">${escHtml(r.label)}</td>
@@ -843,7 +1102,7 @@
           <div class="card-body" id="body-${id}">
             <div class="conn-info">${buildConnFields(dev.settings || {})}</div>
             <div class="section-title">Capabilities</div>
-            ${buildCapTable(dev.capabilities)}
+            ${buildCapTable(dev.capabilities || {})}
           </div>
         </div>`;
     }
@@ -900,7 +1159,7 @@
 
         _devices   = result;
         _regValues = {};
-        const ts = 'Updated ' + new Date(result.timestamp).toLocaleTimeString();
+        const ts = result.timestamp ? 'Updated ' + new Date(result.timestamp).toLocaleTimeString() : 'Updated';
         upd.textContent    = ts;
         updReg.textContent = ts;
 
@@ -1007,10 +1266,12 @@
     }
 
     function closeModal(event) {
-      // Close on overlay click or explicit call (no event)
       if (event && event.target !== document.getElementById('export-modal')) return;
       document.getElementById('export-modal').classList.remove('open');
     }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
 
     function copyToClipboard() {
       const ta   = document.getElementById('export-textarea');
@@ -1046,6 +1307,11 @@
         document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
       });
       if (name === 'ems' && _emsDevices.length === 0) emsLoadDevices();
+      if (name !== 'ems') { emsShowSaveStatus(''); emsShowLoadStatus(''); }
+      if (name !== 'openapi') {
+        var _oaStatus = document.getElementById('oa-status');
+        if (_oaStatus) _oaStatus.textContent = '';
+      }
       // When leaving modbus, hide the sub-tab content panels too
       if (name !== 'modbus') {
         ['tool', 'cap', 'registers'].forEach(t => {
@@ -1235,12 +1501,15 @@
     // ── Device Tester ─────────────────────────────────────────────────────────
 
     let _networkLoaded  = false;
+    let _networkLoading = false;
     let _selectedNet    = null; // { address, netmask }
     let _scanResults    = [];   // [{ host, ports }]
 
     function loadNetworkInfo() {
-      _networkLoaded = true;
+      if (_networkLoading) return;
+      _networkLoading = true;
       _H.api('GET', '/scan/network', null, (err, res) => {
+        _networkLoading = false;
         const el = document.getElementById('network-list');
         if (err || !res || !res.networks || !res.networks.length) {
           el.innerHTML = '<p style="color:#c0392b;font-size:12px;">Failed to load network info. Enter base IP manually below.</p>';
@@ -1248,6 +1517,7 @@
           document.getElementById('scan-network-btn').style.display = '';
           return;
         }
+        _networkLoaded = true;
 
         // Collect unique /24 blocks across all interfaces; track Homey's own address
         const homeyAddress = res.networks[0].address;
@@ -1320,7 +1590,7 @@
     function applyManualIp() {
       const val = document.getElementById('manual-base-ip').value.trim();
       const parts = val.split('.');
-      if (parts.length !== 3 || parts.some(p => isNaN(Number(p)) || Number(p) < 0 || Number(p) > 255)) {
+      if (parts.length !== 3 || parts.some(p => p === '' || isNaN(Number(p)) || Number(p) < 0 || Number(p) > 255)) {
         document.getElementById('manual-ip-hint').textContent = '✗ Enter 3 octets, e.g. 192.168.1';
         document.getElementById('manual-ip-hint').style.color = '#c0392b';
         return;
@@ -1694,15 +1964,47 @@
       });
     }
 
-    function apiPostLong(path, body, timeoutMs) {
-      return apiPost(path, body);
-    }
-
-    // ── Entry point ────────────────────────────────────────────────────────────
-
     // ── EMS tab ────────────────────────────────────────────────────────────────
 
     var _emsDevices = [];
+
+    // ── Device priority move buttons ──────────────────────────────────────────
+    function emsPriorityUpdateButtons() {
+      var list = document.getElementById('ems-device-priority-list');
+      if (!list) return;
+      Array.from(list.children).forEach(function(el, i) {
+        var rank = el.querySelector('.priority-rank');
+        if (rank) rank.textContent = i + 1;
+        var btns = el.querySelectorAll('.ems-priority-move-btn');
+        if (btns[0]) btns[0].disabled = i === 0;
+        if (btns[1]) btns[1].disabled = i === list.children.length - 1;
+      });
+    }
+    emsPriorityUpdateButtons();
+
+    function emsPriorityMove(btn, dir) {
+      var item  = btn.closest('.ems-priority-order-item');
+      var list  = document.getElementById('ems-device-priority-list');
+      var items = Array.from(list.children);
+      var idx   = items.indexOf(item);
+      var target = items[idx + dir];
+      if (!target) return;
+      if (dir === -1) list.insertBefore(item, target);
+      else list.insertBefore(target, item);
+      // update rank numbers and button states
+      Array.from(list.children).forEach(function(el, i) {
+        var rank = el.querySelector('.priority-rank');
+        if (rank) rank.textContent = i + 1;
+        var btns = el.querySelectorAll('.ems-priority-move-btn');
+        btns[0].disabled = i === 0;
+        btns[1].disabled = i === list.children.length - 1;
+      });
+    }
+
+    function emsUpdateSocBar(v) {
+      var el = document.getElementById('ems-soc-bar-fill');
+      if (el) el.style.width = Math.min(100, Math.max(0, parseInt(v) || 0)) + '%';
+    }
 
     // ── Capability detection ──────────────────────────────────────────────────
 
@@ -1727,7 +2029,7 @@
 
     function emsDetectInverterPower(caps) {
       return emsDetectCap(caps,
-        ['measure_power.pv_active_power', 'measure_power.input_power', 'measure_power.total', 'measure_power'],
+        ['measure_power'],
         function(c) {
           var lc = c.toLowerCase();
           return c.indexOf('measure_power') === 0 &&
@@ -1858,7 +2160,7 @@
       infoEl.appendChild(note);
     }
 
-    function emsRenderGridCaps(row, caps, storedCap) {
+    function emsRenderInverterCaps(row, caps, storedCap) {
       var infoEl = emsCapsInfoEl(row);
       if (!infoEl) return;
       infoEl.innerHTML = '';
@@ -1903,13 +2205,41 @@
 
       var defVal = (stored && (stored.cap_power || stored.cap_import)) || emsDetectGridPower(caps) || '';
 
-      infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
-      infoEl.appendChild(_emsCapLabel('Grid power (W):'));
-      infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+      infoEl.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding-top:4px';
+      var capRow = document.createElement('div');
+      capRow.style.cssText = 'display:flex;align-items:center;gap:6px';
+      capRow.appendChild(_emsCapLabel('Grid power (W):'));
+      capRow.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+      infoEl.appendChild(capRow);
       var hint = document.createElement('span');
-      hint.textContent = '+ = import · − = export';
-      hint.style.cssText = 'font-size:10px;color:#aaa;white-space:nowrap';
+      hint.textContent = '+ = import  ·  − = export';
+      hint.style.cssText = 'font-size:10px;color:#aaa;padding-left:90px';
       infoEl.appendChild(hint);
+    }
+
+    function emsRenderHouseCaps(row, caps, stored) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capPower;
+
+      if (!caps.length) return;
+
+      var pwCaps = caps.filter(function(c) {
+        return c.indexOf('measure_power') === 0 || c.indexOf('meter_power') === 0;
+      });
+      if (!pwCaps.length) {
+        infoEl.textContent = '⚠ no power capability found — check device';
+        infoEl.className = 'ems-caps-info warn';
+        return;
+      }
+
+      var defVal = (stored && stored.cap_power) || emsDetectGridPower(caps) || '';
+
+      infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
+      infoEl.appendChild(_emsCapLabel('House power (W):'));
+      infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
     }
 
     function emsRenderBatteryCaps(row, caps, stored) {
@@ -1938,6 +2268,34 @@
       if (mtrCaps.length) infoEl.appendChild(_emsCapRow(row, 'Discharged (kWh):',   mtrCaps, 'capDischarged', defDis));
     }
 
+    function emsRenderHeatPumpCaps(row, caps, stored) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capPower;
+      if (!caps.length) return;
+      var pwCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
+      infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      if (pwCaps.length) {
+        var defVal = (stored && stored.cap_power) || emsDetectCap(caps, ['measure_power']) || '';
+        var r = document.createElement('div');
+        r.style.cssText = 'display:flex;align-items:center;gap:6px';
+        r.appendChild(_emsCapLabel('Power (W):'));
+        r.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+        infoEl.appendChild(r);
+        var hint = document.createElement('div');
+        hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
+        hint.textContent = 'Used for anti-oscillation: EMS adds measured HP load back to available surplus when deciding to keep the heat pump running.';
+        infoEl.appendChild(hint);
+      } else {
+        var note = document.createElement('div');
+        note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
+        note.textContent = 'No power capability — anti-oscillation disabled. Heat pump switches on/off based on raw solar surplus only.';
+        infoEl.appendChild(note);
+      }
+    }
+
     function emsDeviceCaps(id) {
       var d = _emsDevices.find(function(x) { return x.id === id; });
       return d ? (d.capabilities || []) : [];
@@ -1949,6 +2307,35 @@
       var el = document.getElementById('ems-load-status');
       el.textContent = msg; el.style.color = color || '#6e6e73';
       el.style.display = msg ? '' : 'none';
+    }
+
+    function emsGuardControl(cb, listId, startKey, stopKey, hintId) {
+      var hint = document.getElementById(hintId);
+      if (!cb.checked) { if (hint) hint.textContent = ''; return; }
+      var entries = document.querySelectorAll('#' + listId + ' .ems-entry');
+      var reason = null;
+      if (!entries.length) {
+        reason = 'Add at least one device first.';
+      } else {
+        var ready = false;
+        entries.forEach(function(e) {
+          var sel = e.querySelector('.ems-row-device');
+          if (!sel || !sel.value) return;
+          var hasStart = !!e.dataset[startKey];
+          var hasStop  = !stopKey || !!e.dataset[stopKey];
+          if (hasStart && hasStop) ready = true;
+        });
+        if (!ready) reason = stopKey
+          ? 'Select a device and configure start + stop flows first.'
+          : 'Select a device and configure a flow action first.';
+      }
+      if (reason) {
+        cb.checked = false;
+        if (hint) hint.textContent = '⚠ ' + reason;
+        setTimeout(function() { if (hint) hint.textContent = ''; }, 4000);
+      } else {
+        if (hint) hint.textContent = '';
+      }
     }
 
     function emsShowSaveStatus(msg, color) {
@@ -1963,10 +2350,11 @@
     // driverId fallback covers FusionSolar/iSitePower drivers where class='sensor'.
 
     function _drvId(d) { return (d.driverId || '').toLowerCase(); }
+    function _cls(d)   { return d.deviceClass || d.class || ''; }
 
     function emsIsCharger(d) {
       var id = _drvId(d);
-      return d.deviceClass === 'evcharger'
+      return _cls(d) === 'evcharger'
         || id.indexOf('smartcharger') !== -1
         || id.indexOf('ocpp') !== -1;
     }
@@ -1975,7 +2363,7 @@
       // Only solarpanel class + known inverter driverIds. No measure_power fallback
       // (too broad — power meters also have measure_power).
       var id = _drvId(d);
-      return d.deviceClass === 'solarpanel'
+      return _cls(d) === 'solarpanel'
         || id.indexOf('sun2000') !== -1
         || id.indexOf('isitepower_solar') !== -1
         || id.indexOf('fusionsolar_kiosk') !== -1;
@@ -1988,7 +2376,8 @@
       return id.indexOf('dtsu666') !== -1
         || id.indexOf('powermeter') !== -1
         || id.indexOf('isitepower_grid') !== -1
-        || id.indexOf('isitepower_home') !== -1;
+        || id.indexOf('isitepower_home') !== -1
+        || id.indexOf('sdongle_a') !== -1;
     }
 
     function emsIsBattery(d) {
@@ -2000,16 +2389,22 @@
     }
 
     function emsIsHeatPump(d) {
-      var cls = d.deviceClass || d.class || '';
-      return cls === 'thermostat' || cls === 'heater';
+      return _cls(d) === 'thermostat' || _cls(d) === 'heater';
     }
+
+    // Boilers and pools can be any smart switch/plug — no narrow filter, show all devices
+    function emsIsBoiler() { return false; }
+    function emsIsPool()   { return false; }
 
     var EMS_FILTER = {
       charger:   emsIsCharger,
       inverter:  emsIsInverter,
       meter:     emsIsPowerMeter,
+      house:     emsIsPowerMeter,
       battery:   emsIsBattery,
       heatpump:  emsIsHeatPump,
+      boiler:    emsIsBoiler,
+      pool:      emsIsPool,
     };
 
     // ── Select helpers ────────────────────────────────────────────────────────
@@ -2017,7 +2412,8 @@
     function emsDeviceOption(d) {
       var o = document.createElement('option');
       o.value = d.id;
-      o.textContent = d.name + (d.driverId ? '  [' + d.driverId + ']' : '');
+      var drv = d.driverId ? d.driverId.split(':').pop() : '';
+      o.textContent = d.name + (drv ? '  [' + drv + ']' : '');
       return o;
     }
 
@@ -2051,7 +2447,7 @@
 
     function emsRefreshAllSelects() {
       document.querySelectorAll(
-        '#ems-charger-list .ems-row-device, #ems-inverter-list .ems-row-device, #ems-meter-list .ems-row-device, #ems-battery-list .ems-row-device'
+        '#ems-charger-list .ems-row-device, #ems-inverter-list .ems-row-device, #ems-meter-list .ems-row-device, #ems-house-list .ems-row-device, #ems-battery-list .ems-row-device, #ems-heatpump-list .ems-row-device, #ems-boiler-list .ems-row-device, #ems-pool-list .ems-row-device'
       ).forEach(function(sel) {
         emsFillSelect(sel, undefined, EMS_FILTER[sel.dataset.filterType]);
       });
@@ -2132,13 +2528,15 @@
       entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
+      entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
       sel.addEventListener('change', function() {
         emsRenderChargerCaps(row, emsDeviceCaps(sel.value), null);
-        emsRenderChargerFlows(flowSection, sel.value);
+        entry.dataset.chargerStartCard = '';
+        emsRenderChargerFlows(flowSection, sel.value, entry, {});
       });
       if (deviceId) {
         emsRenderChargerCaps(row, emsDeviceCaps(deviceId), stored || null);
-        emsRenderChargerFlows(flowSection, deviceId);
+        emsRenderChargerFlows(flowSection, deviceId, entry, stored);
       }
     }
 
@@ -2175,38 +2573,541 @@
       row.appendChild(surplusInput); row.appendChild(surplusLabel);
       row.appendChild(removeBtn);
 
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       sel.addEventListener('change', function() {
-        emsRenderHeatPumpFlows(flowSection, sel.value);
+        emsRenderHeatPumpCaps(row, emsDeviceCaps(sel.value), null);
+        entry.dataset.hpStartCard = '';
+        entry.dataset.hpStopCard  = '';
+        emsRenderHeatPumpFlows(flowSection, sel.value, entry, {});
       });
-      if (deviceId) emsRenderHeatPumpFlows(flowSection, deviceId);
+      entry.dataset.hpStartCard = (stored && stored.start_card) || '';
+      entry.dataset.hpStopCard  = (stored && stored.stop_card)  || '';
+      if (deviceId) {
+        emsRenderHeatPumpCaps(row, emsDeviceCaps(deviceId), stored || null);
+        emsRenderHeatPumpFlows(flowSection, deviceId, entry, stored);
+      }
     }
 
     function emsGetHeatPumps() {
       var result = [];
       document.querySelectorAll('#ems-heatpump-list .ems-entry').forEach(function(entry) {
+        var row     = entry.querySelector('.ems-list-row');
         var sel     = entry.querySelector('.ems-row-device');
         var surplus = entry.querySelector('input[type=number]');
         if (sel && sel.value) {
           result.push({
             id:            sel.value,
-            cap_power:     'measure_power',
+            cap_power:     (row && row.dataset.capPower) || '',
             min_surplus_w: parseInt(surplus ? surplus.value : 2000, 10) || 2000,
+            start_card:    entry.dataset.hpStartCard || '',
+            stop_card:     entry.dataset.hpStopCard  || '',
           });
         }
       });
       return result;
     }
 
-    function emsRenderHeatPumpFlows(container, deviceId) {
+    // ── Generic simple-device row (boiler / pool) ─────────────────────────────
+
+    function _emsAddSimpleRow(listId, filterKey, filterFn, startDataKey, stopDataKey, capsRenderFn, flowsRenderFn, defaultSurplus) {
+      var list  = document.getElementById(listId);
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = filterKey;
+      emsFillSelect(sel, '', filterFn);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.value = defaultSurplus || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = 'Minimum solar surplus to turn on (W)';
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = 'W solar min';
+      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(surplusInput); row.appendChild(surplusLabel);
+      row.appendChild(removeBtn);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        capsRenderFn(row, emsDeviceCaps(sel.value), null);
+        entry.dataset[startDataKey] = '';
+        entry.dataset[stopDataKey]  = '';
+        flowsRenderFn(flowSection, sel.value, entry, {});
+      });
+
+      return { entry: entry, row: row, sel: sel, surplusInput: surplusInput, flowSection: flowSection };
+    }
+
+    function _emsGetSimpleRows(listId, startDataKey, stopDataKey) {
+      var result = [];
+      document.querySelectorAll('#' + listId + ' .ems-entry').forEach(function(entry) {
+        var row     = entry.querySelector('.ems-list-row');
+        var sel     = entry.querySelector('.ems-row-device');
+        var surplus = entry.querySelector('input[type=number]');
+        if (sel && sel.value) {
+          result.push({
+            id:            sel.value,
+            cap_power:     (row && row.dataset.capPower) || '',
+            min_surplus_w: parseInt(surplus ? surplus.value : 2000, 10) || 2000,
+            start_card:    entry.dataset[startDataKey] || '',
+            stop_card:     entry.dataset[stopDataKey]  || '',
+          });
+        }
+      });
+      return result;
+    }
+
+    function _emsRenderSimpleCaps(row, caps, stored, label) {
+      var infoEl = emsCapsInfoEl(row);
+      if (!infoEl) return;
+      infoEl.innerHTML = '';
+      infoEl.className = 'ems-caps-info';
+      delete row.dataset.capPower;
+      if (!caps || !caps.length) return;
+      var pwCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
+      infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      if (pwCaps.length) {
+        var defVal = (stored && stored.cap_power) || emsDetectCap(caps, ['measure_power']) || '';
+        var r = document.createElement('div');
+        r.style.cssText = 'display:flex;align-items:center;gap:6px';
+        r.appendChild(_emsCapLabel('Power (W):'));
+        r.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+        infoEl.appendChild(r);
+        var hint = document.createElement('div');
+        hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
+        hint.textContent = 'Used for anti-oscillation: EMS adds measured ' + label + ' load back to available surplus when deciding to keep it running.';
+        infoEl.appendChild(hint);
+      } else {
+        var note = document.createElement('div');
+        note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
+        note.textContent = 'No power capability — anti-oscillation disabled. Device switches on/off based on raw solar surplus only.';
+        infoEl.appendChild(note);
+      }
+    }
+
+    function _emsRenderSimpleFlows(container, deviceId, entry, stored, startDataKey, stopDataKey, apiBase, triggerStartLabel, triggerStopLabel, howHtml) {
       container.innerHTML = '';
       if (!deviceId) return;
+      _emsMakeFlowSection(container, function(body) {
+        var how = document.createElement('div');
+        how.style.cssText = 'color:#3a3a3c;line-height:1.5';
+        how.innerHTML = howHtml;
+        body.appendChild(how);
 
+        var idRow = document.createElement('div');
+        idRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        var idLabel = document.createElement('span');
+        idLabel.textContent = 'Device ID (for trigger filter):';
+        idLabel.style.cssText = 'color:#6e6e73;white-space:nowrap';
+        var idCode = document.createElement('code');
+        idCode.textContent = deviceId;
+        idCode.style.cssText = 'background:#e5e5ea;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all';
+        var copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy'; copyBtn.className = 'btn-secondary';
+        copyBtn.style.cssText = 'font-size:10px;padding:2px 8px';
+        copyBtn.onclick = function() {
+          try {
+            var ta = document.createElement('textarea'); ta.value = deviceId;
+            ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            copyBtn.textContent = '✓'; setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
+          } catch(e) { copyBtn.textContent = 'Failed'; setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000); }
+        };
+        idRow.appendChild(idLabel); idRow.appendChild(idCode); idRow.appendChild(copyBtn);
+        body.appendChild(idRow);
+
+        var flowsTitle = document.createElement('div');
+        flowsTitle.style.cssText = 'font-weight:600;color:#3a3a3c;margin-top:2px';
+        flowsTitle.textContent = 'Flows using these triggers:';
+        body.appendChild(flowsTitle);
+
+        var flowsHint = document.createElement('div');
+        flowsHint.style.cssText = 'font-size:11px;color:#6e6e73;margin-bottom:2px';
+        flowsHint.textContent = 'One Start and one Stop flow per device. More than one flow per trigger will result in duplicate commands.';
+        body.appendChild(flowsHint);
+
+        var flowsContainer = document.createElement('div');
+        flowsContainer.textContent = 'Loading flows…';
+        flowsContainer.style.cssText = 'color:#6e6e73;font-size:11px';
+        body.appendChild(flowsContainer);
+
+        var _flowsCache = null;
+        function _renderFlowList(result) {
+          flowsContainer.innerHTML = '';
+          if (result.error && !(result.matched && result.matched.length)) {
+            flowsContainer.textContent = '⚠ ' + result.error;
+            flowsContainer.style.color = '#c0392b'; return;
+          }
+          var matched = (result.matched || []).filter(function(f) {
+            return !f.name || f.name.indexOf(deviceId.slice(0,8)) !== -1;
+          });
+          if (!matched.length) {
+            var none = document.createElement('span');
+            none.style.cssText = 'color:#c0392b;font-size:11px';
+            none.textContent = 'No flows found — use "Create / Update Flows" below.';
+            flowsContainer.appendChild(none);
+          } else {
+            matched.forEach(function(f) {
+              var frow = document.createElement('div');
+              frow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+              var dot = document.createElement('span'); dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+              var name = document.createElement('span'); name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
+              var badge = document.createElement('span');
+              badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
+              badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+              frow.appendChild(dot); frow.appendChild(name); frow.appendChild(badge);
+              flowsContainer.appendChild(frow);
+            });
+          }
+          var reloadBtn = document.createElement('button');
+          reloadBtn.textContent = '↺ Reload flows'; reloadBtn.className = 'btn-secondary';
+          reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
+          reloadBtn.onclick = function() { _flowsCache = null; flowsContainer.textContent = 'Loading flows…'; flowsContainer.style.color = '#6e6e73'; reloadBtn.remove(); _fetchFlows(); };
+          flowsContainer.appendChild(reloadBtn);
+        }
+        function _fetchFlows() {
+          if (_flowsCache) { _renderFlowList(_flowsCache); _tryPrefill(); return; }
+          _H.api('GET', '/ems/' + apiBase + '/flows', null, function(err, result) {
+            _flowsCache = result || { matched: [], error: err ? err.message : 'Unknown error' };
+            _renderFlowList(_flowsCache);
+            _tryPrefill();
+          });
+        }
+        _fetchFlows();
+
+        var sep = document.createElement('hr');
+        sep.style.cssText = 'border:none;border-top:1px solid #d1d1d6;margin:4px 0';
+        body.appendChild(sep);
+
+        var createTitle = document.createElement('div');
+        createTitle.style.cssText = 'font-weight:600;color:#3a3a3c';
+        createTitle.textContent = 'Create / Update Flows';
+        body.appendChild(createTitle);
+
+        var createNote = document.createElement('div');
+        createNote.style.cssText = 'font-size:11px;color:#6e6e73';
+        createNote.textContent = 'Creates two flows in "_Huawei EMS": one to start, one to stop. Re-running overwrites existing flows.';
+        body.appendChild(createNote);
+
+        var startRow = document.createElement('div');
+        startRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        var startLabel = document.createElement('span');
+        startLabel.textContent = 'Start action:';
+        startLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:90px';
+        var startSel = document.createElement('select');
+        startSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+        startSel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Loading…' }));
+        startRow.appendChild(startLabel); startRow.appendChild(startSel);
+        body.appendChild(startRow);
+
+        var stopRow = document.createElement('div');
+        stopRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        var stopLabel = document.createElement('span');
+        stopLabel.textContent = 'Stop action:';
+        stopLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:90px';
+        var stopSel = document.createElement('select');
+        stopSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+        stopSel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Loading…' }));
+        stopRow.appendChild(stopLabel); stopRow.appendChild(stopSel);
+        body.appendChild(stopRow);
+
+        var preview = document.createElement('div');
+        preview.style.cssText = 'font-size:11px;color:#3a3a3c;background:#e5e5ea;border-radius:6px;padding:8px 10px;line-height:1.7;display:none';
+        body.appendChild(preview);
+
+        var createRow = document.createElement('div');
+        createRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        var createBtn = document.createElement('button');
+        createBtn.textContent = '✓ Create / Update Flows';
+        createBtn.className = 'btn-primary';
+        createBtn.style.cssText = 'font-size:12px;padding:5px 14px';
+        createBtn.disabled = true;
+        var createStatus = document.createElement('span');
+        createStatus.style.cssText = 'font-size:11px;color:#6e6e73';
+        createRow.appendChild(createBtn); createRow.appendChild(createStatus);
+        body.appendChild(createRow);
+
+        var _allCards = [];
+        var _emsDevId = '';
+
+        function _fillSel(s, cards, preferredVal) {
+          s.innerHTML = '';
+          s.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: '— Select action —' }));
+          var grouped = new Map();
+          cards.forEach(function(c) { var g = grouped.get(c.uri) || []; g.push(c); grouped.set(c.uri, g); });
+          grouped.forEach(function(grpCards, uri) {
+            var og = document.createElement('optgroup');
+            og.label = grpCards[0] && grpCards[0].suggested ? '★ ' + (grpCards[0].groupLabel || uri) : (grpCards[0] && grpCards[0].groupLabel || uri.replace('homey:app:', '').replace('homey:manager:', ''));
+            grpCards.forEach(function(c) {
+              var opt = document.createElement('option');
+              opt.value = c.id + '|' + c.uri; opt.textContent = c.title || c.id;
+              og.appendChild(opt);
+            });
+            s.appendChild(og);
+          });
+          if (preferredVal) {
+            var prefCardId = preferredVal.split('|')[0];
+            var found = false;
+            for (var i = 0; i < s.options.length; i++) {
+              if (s.options[i].value === preferredVal) { s.selectedIndex = i; found = true; break; }
+            }
+            if (!found && prefCardId) {
+              for (var j = 0; j < s.options.length; j++) {
+                if (s.options[j].value.split('|')[0] === prefCardId) { s.selectedIndex = j; break; }
+              }
+            }
+          }
+        }
+
+        function _updatePreview() {
+          var sc = _allCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; });
+          var ec = _allCards.find(function(c) { return c.id + '|' + c.uri === stopSel.value; });
+          createBtn.disabled = !sc || !ec;
+          if (!sc || !ec) { preview.style.display = 'none'; return; }
+          preview.style.display = 'block';
+          preview.innerHTML = [
+            '<b>Flow A — Start:</b><br>',
+            '<b>WHEN</b> ' + escHtml(triggerStartLabel) + ' <i>(' + deviceId.slice(0,8) + '…)</i><br>',
+            '<b>THEN</b> ' + escHtml(sc.title),
+            '<br><br>',
+            '<b>Flow B — Stop:</b><br>',
+            '<b>WHEN</b> ' + escHtml(triggerStopLabel) + ' <i>(' + deviceId.slice(0,8) + '…)</i><br>',
+            '<b>THEN</b> ' + escHtml(ec.title),
+          ].join('');
+        }
+
+        startSel.addEventListener('change', function() { _updatePreview(); if (entry) entry.dataset[startDataKey] = startSel.value; });
+        stopSel.addEventListener('change',  function() { _updatePreview(); if (entry) entry.dataset[stopDataKey]  = stopSel.value; });
+
+        function _tryPrefill() {
+          if (!_allCards.length || !_flowsCache) return;
+          var existingStart = null, existingStop = null;
+          (_flowsCache.matched || []).forEach(function(f) {
+            if (f.triggerType === 'start' && f.actionCardId && !existingStart) existingStart = f.actionCardId + '|' + (f.actionCardUri || '');
+            if (f.triggerType === 'stop'  && f.actionCardId && !existingStop)  existingStop  = f.actionCardId + '|' + (f.actionCardUri || '');
+          });
+          if (stored && stored.start_card) existingStart = stored.start_card;
+          if (stored && stored.stop_card)  existingStop  = stored.stop_card;
+          _fillSel(startSel, _allCards, existingStart);
+          _fillSel(stopSel,  _allCards, existingStop);
+          if (entry) {
+            if (startSel.value) entry.dataset[startDataKey] = startSel.value;
+            if (stopSel.value)  entry.dataset[stopDataKey]  = stopSel.value;
+          }
+          _updatePreview();
+        }
+
+        _H.api('GET', '/ems/' + apiBase + '/action-cards?deviceId=' + encodeURIComponent(deviceId), null, function(err, res) {
+          if (err || !res || res.error) {
+            [startSel, stopSel].forEach(function(s) {
+              s.innerHTML = '';
+              s.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: '⚠ ' + ((res && res.error) || 'Load failed') }));
+            });
+            return;
+          }
+          _allCards = [];
+          (res.groups || []).forEach(function(g) {
+            g.cards.forEach(function(c) { _allCards.push(Object.assign({}, c, { groupLabel: g.label, suggested: g.suggested })); });
+          });
+          _emsDevId = (_flowsCache && _flowsCache.emsDeviceId) || (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
+          _tryPrefill();
+        });
+
+        createBtn.onclick = function() {
+          var sc = _allCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; });
+          var ec = _allCards.find(function(c) { return c.id + '|' + c.uri === stopSel.value; });
+          if (!sc || !ec) return;
+          if (!_emsDevId) _emsDevId = (_flowsCache && _flowsCache.emsDeviceId) || (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
+          var dev = _emsDevices.find(function(d) { return d.id === deviceId; });
+          var payload = {
+            emsDeviceId: _emsDevId, deviceId: deviceId, deviceName: dev ? dev.name : deviceId,
+            startCardId: sc.id, startCardUri: sc.uri, stopCardId: ec.id, stopCardUri: ec.uri,
+          };
+          createBtn.disabled = true; createStatus.textContent = 'Creating…';
+          _H.api('POST', '/ems/' + apiBase + '/setup-flows', payload, function(err, res) {
+            if (err || (res && res.error)) {
+              createStatus.textContent = '⚠ ' + ((res && res.error) || (err && err.message) || 'Error');
+              createStatus.style.color = '#c0392b';
+            } else {
+              var count = (res.startFlowId ? 1 : 0) + (res.stopFlowId ? 1 : 0);
+              createStatus.textContent = '✓ ' + count + ' Flow(s) in "_Huawei EMS" created';
+              createStatus.style.color = '#34c759';
+              _flowsCache = null;
+            }
+            createBtn.disabled = false;
+          });
+        };
+      });
+    }
+
+    // ── Boiler row functions ───────────────────────────────────────────────────
+
+    function emsAddBoilerRow(deviceId, stored) {
+      var list  = document.getElementById('ems-boiler-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'boiler';
+      emsFillSelect(sel, deviceId || '', null);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.value = (stored && stored.min_surplus_w) || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = 'Minimum solar surplus to turn on (W)';
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = 'W solar min';
+      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(surplusInput); row.appendChild(surplusLabel);
+      row.appendChild(removeBtn);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(sel.value), null, 'boiler');
+        entry.dataset.boilerStartCard = '';
+        entry.dataset.boilerStopCard  = '';
+        emsRenderBoilerFlows(flowSection, sel.value, entry, {});
+      });
+      entry.dataset.boilerStartCard = (stored && stored.start_card) || '';
+      entry.dataset.boilerStopCard  = (stored && stored.stop_card)  || '';
+      if (deviceId) {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(deviceId), stored || null, 'boiler');
+        emsRenderBoilerFlows(flowSection, deviceId, entry, stored);
+      }
+    }
+
+    function emsGetBoilers() { return _emsGetSimpleRows('ems-boiler-list', 'boilerStartCard', 'boilerStopCard'); }
+
+    function emsRenderBoilerFlows(container, deviceId, entry, stored) {
+      _emsRenderSimpleFlows(container, deviceId, entry, stored,
+        'boilerStartCard', 'boilerStopCard', 'boiler',
+        'EMS: start boiler', 'EMS: stop boiler',
+        '<b>How it works:</b> The EMS fires two separate triggers: "<b>EMS: start boiler</b>" (solar surplus available) and "<b>EMS: stop boiler</b>" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.'
+      );
+    }
+
+    // ── Pool row functions ────────────────────────────────────────────────────
+
+    function emsAddPoolRow(deviceId, stored) {
+      var list  = document.getElementById('ems-pool-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'pool';
+      emsFillSelect(sel, deviceId || '', null);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.value = (stored && stored.min_surplus_w) || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = 'Minimum solar surplus to turn on (W)';
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = 'W solar min';
+      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(surplusInput); row.appendChild(surplusLabel);
+      row.appendChild(removeBtn);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(sel.value), null, 'pool pump');
+        entry.dataset.poolStartCard = '';
+        entry.dataset.poolStopCard  = '';
+        emsRenderPoolFlows(flowSection, sel.value, entry, {});
+      });
+      entry.dataset.poolStartCard = (stored && stored.start_card) || '';
+      entry.dataset.poolStopCard  = (stored && stored.stop_card)  || '';
+      if (deviceId) {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(deviceId), stored || null, 'pool pump');
+        emsRenderPoolFlows(flowSection, deviceId, entry, stored);
+      }
+    }
+
+    function emsGetPools() { return _emsGetSimpleRows('ems-pool-list', 'poolStartCard', 'poolStopCard'); }
+
+    function emsRenderPoolFlows(container, deviceId, entry, stored) {
+      _emsRenderSimpleFlows(container, deviceId, entry, stored,
+        'poolStartCard', 'poolStopCard', 'pool',
+        'EMS: start pool', 'EMS: stop pool',
+        '<b>How it works:</b> The EMS fires two separate triggers: "<b>EMS: start pool</b>" (solar surplus available) and "<b>EMS: stop pool</b>" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.'
+      );
+    }
+
+    function _emsMakeFlowSection(container, onLoad) {
       var header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:6px 0 2px';
       var arrow = document.createElement('span');
@@ -2216,26 +3117,26 @@
       label.textContent = 'FLOW ACTIONS';
       label.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.06em;color:#6e6e73';
       header.appendChild(arrow); header.appendChild(label);
-
       var body = document.createElement('div');
       body.style.cssText = 'display:none;flex-direction:column;gap:8px;background:#f0f0f5;border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:12px';
-
       var open = false;
       header.onclick = function() {
         open = !open;
         body.style.display = open ? 'flex' : 'none';
         arrow.style.transform = open ? 'rotate(90deg)' : '';
-        if (open && !body.dataset.loaded) {
-          body.dataset.loaded = '1';
-          _emsLoadHeatPumpFlowsInto(body, deviceId);
-        }
+        if (open && !body.dataset.loaded) { body.dataset.loaded = '1'; onLoad(body); }
       };
-
       container.appendChild(header);
       container.appendChild(body);
     }
 
-    function _emsLoadHeatPumpFlowsInto(body, deviceId) {
+    function emsRenderHeatPumpFlows(container, deviceId, entry, stored) {
+      container.innerHTML = '';
+      if (!deviceId) return;
+      _emsMakeFlowSection(container, function(body) { _emsLoadHeatPumpFlowsInto(body, deviceId, entry, stored); });
+    }
+
+    function _emsLoadHeatPumpFlowsInto(body, deviceId, entry, stored) {
       // ── How it works ──────────────────────────────────────────────────────
       var how = document.createElement('div');
       how.style.cssText = 'color:#3a3a3c;line-height:1.5';
@@ -2291,14 +3192,14 @@
       var _hpFlowsCache = null;
       function _renderHpFlowList(result) {
         flowsContainer.innerHTML = '';
-        if (result.error && !result.matched) {
+        if (result.error && !(result.matched && result.matched.length)) {
           flowsContainer.textContent = '⚠ ' + result.error;
           flowsContainer.style.color = '#c0392b';
           return;
         }
         var matched = (result.matched || []).filter(function(f) {
           var devId = f.name && f.name.match(/\(([^)]+)\)/);
-          return !devId || f.name.indexOf(deviceId.slice(0,8)) !== -1 || true;
+          return !devId || f.name.indexOf(deviceId.slice(0,8)) !== -1;
         });
         if (!matched.length) {
           var none = document.createElement('span');
@@ -2330,10 +3231,11 @@
         flowsContainer.appendChild(reloadBtn);
       }
       function _fetchHpFlows() {
-        if (_hpFlowsCache) { _renderHpFlowList(_hpFlowsCache); return; }
-        _H.api('GET', '/ems/heatpump/flows', function(err, result) {
+        if (_hpFlowsCache) { _renderHpFlowList(_hpFlowsCache); _tryHpPrefill(); return; }
+        _H.api('GET', '/ems/heatpump/flows', null, function(err, result) {
           _hpFlowsCache = result || { matched: [], error: err ? err.message : 'Unknown error' };
           _renderHpFlowList(_hpFlowsCache);
+          _tryHpPrefill();
         });
       }
       _fetchHpFlows();
@@ -2417,8 +3319,15 @@
           sel.appendChild(og);
         });
         if (preferredVal) {
+          var foundExact = false;
+          var prefCardId = preferredVal.split('|')[0];
           for (var i = 0; i < sel.options.length; i++) {
-            if (sel.options[i].value === preferredVal) { sel.selectedIndex = i; break; }
+            if (sel.options[i].value === preferredVal) { sel.selectedIndex = i; foundExact = true; break; }
+          }
+          if (!foundExact && prefCardId) {
+            for (var j = 0; j < sel.options.length; j++) {
+              if (sel.options[j].value.split('|')[0] === prefCardId) { sel.selectedIndex = j; break; }
+            }
           }
         }
       }
@@ -2432,19 +3341,45 @@
         preview.innerHTML = [
           '<b>Flow A — Start:</b><br>',
           '<b>WHEN</b> EMS: start heat pump <i>(' + deviceId.slice(0,8) + '…)</i><br>',
-          '<b>THEN</b> ' + sc.title,
+          '<b>THEN</b> ' + escHtml(sc.title),
           '<br><br>',
           '<b>Flow B — Stop:</b><br>',
-          '<b>WHEN</b> EMS: stop heat pump <i>(' + deviceId.slice(0,8) + '…)</i><br>',
-          '<b>THEN</b> ' + ec.title,
+          '<b>WHEN</b> EMS: stop heat pump <i>(' + escHtml(deviceId.slice(0,8)) + '…)</i><br>',
+          '<b>THEN</b> ' + escHtml(ec.title),
         ].join('');
       }
 
-      startSel.addEventListener('change', _updateHpPreview);
-      stopSel.addEventListener('change', _updateHpPreview);
+      startSel.addEventListener('change', function() {
+        _updateHpPreview();
+        if (entry) entry.dataset.hpStartCard = startSel.value;
+      });
+      stopSel.addEventListener('change', function() {
+        _updateHpPreview();
+        if (entry) entry.dataset.hpStopCard = stopSel.value;
+      });
+
+      // Pre-fill: saved config takes priority; flow lookup is fallback for first-time use
+      function _tryHpPrefill() {
+        if (!_allHpCards.length || !_hpFlowsCache) return;
+        var existingStart = null;
+        var existingStop  = null;
+        (_hpFlowsCache.matched || []).forEach(function(f) {
+          if (f.triggerType === 'start' && f.actionCardId && !existingStart) existingStart = f.actionCardId + '|' + (f.actionCardUri || '');
+          if (f.triggerType === 'stop'  && f.actionCardId && !existingStop)  existingStop  = f.actionCardId + '|' + (f.actionCardUri || '');
+        });
+        if (stored && stored.start_card) existingStart = stored.start_card;
+        if (stored && stored.stop_card)  existingStop  = stored.stop_card;
+        _fillHpSelect(startSel, _allHpCards, existingStart);
+        _fillHpSelect(stopSel,  _allHpCards, existingStop);
+        if (entry) {
+          if (startSel.value) entry.dataset.hpStartCard = startSel.value;
+          if (stopSel.value)  entry.dataset.hpStopCard  = stopSel.value;
+        }
+        _updateHpPreview();
+      }
 
       // Load action cards
-      _H.api('GET', '/ems/heatpump/action-cards?deviceId=' + encodeURIComponent(deviceId), function(err, res) {
+      _H.api('GET', '/ems/heatpump/action-cards?deviceId=' + encodeURIComponent(deviceId), null, function(err, res) {
         if (err || !res || res.error) {
           startSel.innerHTML = ''; stopSel.innerHTML = '';
           [startSel, stopSel].forEach(function(s) {
@@ -2461,17 +3396,7 @@
         _hpEmsDevId = (_hpFlowsCache && _hpFlowsCache.emsDeviceId)
                    || (_emsFlowsCache && _emsFlowsCache.emsDeviceId)
                    || '';
-
-        // Pre-select from existing flows
-        var existingStart = null, existingStop = null;
-        (_hpFlowsCache && _hpFlowsCache.matched || []).forEach(function(f) {
-          if (f.triggerType === 'start' && f.actionCardId) existingStart = f.actionCardId + '|' + (f.actionCardUri || '');
-          if (f.triggerType === 'stop'  && f.actionCardId) existingStop  = f.actionCardId + '|' + (f.actionCardUri || '');
-        });
-
-        _fillHpSelect(startSel, _allHpCards, existingStart);
-        _fillHpSelect(stopSel,  _allHpCards, existingStop);
-        _updateHpPreview();
+        _tryHpPrefill();
       });
 
       // Create button handler
@@ -2511,42 +3436,400 @@
       };
     }
 
-    var _emsFlowsCache = null;
+    // ── Inverter Flow Actions ──────────────────────────────────────────────────
 
-    function emsRenderChargerFlows(container, chargerId) {
+    // Each row: label shown left, preferredCardId pre-selects the ★ card, optional fixed args,
+    // optional valueArg adds a numeric/dropdown input after the card select.
+    var INVERTER_FLOW_ROWS = [
+      { label: 'Enable export limit:',  preferCardId: 'sun2000_set_export_limit_enabled',  cardArgs: { onoff: 'enable'  }, flowSuffix: 'Export limit ON',          triggerId: 'ems_inverter_export_limit_on' },
+      { label: 'Disable export limit:', preferCardId: 'sun2000_set_export_limit_enabled',  cardArgs: { onoff: 'disable' }, flowSuffix: 'Export limit OFF',         triggerId: 'ems_inverter_export_limit_off' },
+      { label: 'Set limit (W):',        preferCardId: 'sun2000_set_max_feed_in_power',     valueArg: { name: 'power',      type: 'number', min: 0, max: 100000, step: 100, placeholder: 'e.g. 0' }, flowSuffix: 'Set max feed-in power (W)',  triggerId: 'ems_inverter_set_power_w' },
+      { label: 'Set limit (%):',        preferCardId: 'sun2000_set_max_feed_in_power_pct', valueArg: { name: 'percentage', type: 'number', min: 0, max: 100,    step: 1,   placeholder: '0–100'  }, flowSuffix: 'Set max feed-in power (%)',  triggerId: 'ems_inverter_set_power_pct' },
+      { label: 'Remove limit:',         preferCardId: 'sun2000_reset_output_limit',         flowSuffix: 'Remove output limit',      triggerId: 'ems_inverter_remove_limit' },
+    ];
+
+    function emsRenderInverterFlows(container, deviceId, entry, stored) {
       container.innerHTML = '';
-      if (!chargerId) return;
-
-      // Header row (collapsible)
-      var header = document.createElement('div');
-      header.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:6px 0 2px';
-      var arrow = document.createElement('span');
-      arrow.textContent = '▶';
-      arrow.style.cssText = 'font-size:9px;color:#6e6e73;transition:transform 0.15s';
-      var label = document.createElement('span');
-      label.textContent = 'FLOW ACTIONS';
-      label.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.06em;color:#6e6e73';
-      header.appendChild(arrow); header.appendChild(label);
-
-      var body = document.createElement('div');
-      body.style.cssText = 'display:none;flex-direction:column;gap:8px;background:#f0f0f5;border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:12px';
-
-      var open = false;
-      header.onclick = function() {
-        open = !open;
-        body.style.display = open ? 'flex' : 'none';
-        arrow.style.transform = open ? 'rotate(90deg)' : '';
-        if (open && !body.dataset.loaded) {
-          body.dataset.loaded = '1';
-          _emsLoadFlowsInto(body, chargerId);
-        }
-      };
-
-      container.appendChild(header);
-      container.appendChild(body);
+      if (!deviceId) return;
+      _emsMakeFlowSection(container, function(body) { _emsLoadInverterFlowsInto(body, deviceId, entry, stored); });
     }
 
-    function _emsLoadFlowsInto(body, chargerId) {
+    function _emsLoadInverterFlowsInto(body, deviceId, entry, stored) {
+      var _idScope = deviceId.replace(/[^a-z0-9]/gi, '') || 'inv';
+      // ── How it works ──────────────────────────────────────────────────────
+      var how = document.createElement('div');
+      how.style.cssText = 'color:#3a3a3c;line-height:1.5';
+      how.innerHTML = [
+        '<b>How it works:</b> Each row below creates one Homey Flow in "_Huawei EMS".',
+        'Select the matching action card from your installed apps on the right.',
+        'Add your own trigger (e.g. a price app) in Homey afterwards.',
+        '<br><br>',
+        '<b>Example:</b> <b>WHEN</b> Tibber price &gt; 0.30 CHF',
+        '→ <b>THEN</b> Set max feed-in power to 0 W',
+      ].join(' ');
+      body.appendChild(how);
+
+      // ── Existing flows ─────────────────────────────────────────────────────
+      var flowsTitle = document.createElement('div');
+      flowsTitle.style.cssText = 'font-weight:600;color:#3a3a3c;margin-top:2px';
+      flowsTitle.textContent = 'Flows using these action cards:';
+      body.appendChild(flowsTitle);
+
+      var flowsContainer = document.createElement('div');
+      flowsContainer.textContent = 'Loading flows…';
+      flowsContainer.style.cssText = 'color:#6e6e73;font-size:11px';
+      body.appendChild(flowsContainer);
+
+      var _invFlowsCache = null;
+      function _renderInvFlows(result) {
+        flowsContainer.innerHTML = '';
+        if (result.error && !(result.matched && result.matched.length)) {
+          flowsContainer.textContent = '⚠ ' + result.error;
+          flowsContainer.style.color = '#c0392b';
+          return;
+        }
+        var matched = result.matched || [];
+        if (!matched.length) {
+          var none = document.createElement('span');
+          none.style.cssText = 'color:#c0392b;font-size:11px';
+          none.textContent = 'No flows found — create them below.';
+          flowsContainer.appendChild(none);
+        } else {
+          matched.forEach(function(f) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+            var dot = document.createElement('span');
+            dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+            var name = document.createElement('span');
+            name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
+            var badge = document.createElement('span');
+            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
+            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+            flowsContainer.appendChild(row);
+          });
+        }
+        var reloadBtn = document.createElement('button');
+        reloadBtn.textContent = '↺ Reload flows'; reloadBtn.className = 'btn-secondary';
+        reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
+        reloadBtn.onclick = function() {
+          _invFlowsCache = null; flowsContainer.textContent = 'Loading flows…';
+          flowsContainer.style.color = '#6e6e73'; reloadBtn.remove(); _fetchInvFlows();
+        };
+        flowsContainer.appendChild(reloadBtn);
+      }
+      // Persist current row selections to entry.dataset
+      function _saveInvCards() {
+        if (!entry) return;
+        var cards = _rowSelects.map(function(sel, idx) {
+          var inp = document.getElementById('inv-val-' + _idScope + '-' + idx);
+          return { cardValue: sel.value, numericValue: inp ? (inp.value !== '' ? inp.value : null) : null };
+        });
+        entry.dataset.invCards = JSON.stringify(cards);
+      }
+
+      function _tryInvPrefill() {
+        if (!_allCards.length || !_invFlowsCache) return;
+        // Apply saved config as baseline (flow data overrides if present)
+        var savedCards = null;
+        try { savedCards = stored && stored.inv_cards ? stored.inv_cards : null; } catch(_) {}
+        if (savedCards) {
+          savedCards.forEach(function(sc, idx) {
+            if (!sc || !sc.cardValue) return;
+            var sel = _rowSelects[idx];
+            if (!sel) return;
+            var found = false;
+            for (var i = 0; i < sel.options.length; i++) {
+              if (sel.options[i].value === sc.cardValue) { sel.selectedIndex = i; found = true; break; }
+            }
+            if (!found) {
+              var prefId = sc.cardValue.split('|')[0];
+              for (var j = 0; j < sel.options.length; j++) {
+                if (sel.options[j].value.split('|')[0] === prefId) { sel.selectedIndex = j; break; }
+              }
+            }
+            if (sc.numericValue !== null && sc.numericValue !== undefined) {
+              var inp = document.getElementById('inv-val-' + _idScope + '-' + idx);
+              if (inp && !inp.value) inp.value = sc.numericValue;
+            }
+          });
+        }
+        // Flow data takes priority over saved config
+        (_invFlowsCache.matched || []).forEach(function(f) {
+          if (!f.actionCardId) return;
+          var val = f.actionCardId + '|' + (f.actionCardUri || '');
+          INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+            if (rowCfg.preferCardId && f.actionCardId === rowCfg.preferCardId) {
+              var sel = _rowSelects[idx];
+              var found = false;
+              for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === val) { sel.selectedIndex = i; found = true; break; }
+              }
+              if (!found) {
+                for (var j = 0; j < sel.options.length; j++) {
+                  if (sel.options[j].value.split('|')[0] === f.actionCardId) { sel.selectedIndex = j; break; }
+                }
+              }
+              if (rowCfg.valueArg && f.cardArgs) {
+                var savedVal = f.cardArgs[rowCfg.valueArg.name];
+                if (savedVal !== undefined && savedVal !== null) {
+                  var inp = document.getElementById('inv-val-' + _idScope + '-' + idx);
+                  if (inp && !inp.value) inp.value = savedVal;
+                }
+              }
+            }
+          });
+        });
+        _saveInvCards();
+        _updateInvPreview();
+      }
+
+      function _fetchInvFlows() {
+        if (_invFlowsCache) { _renderInvFlows(_invFlowsCache); _tryInvPrefill(); return; }
+        _H.api('GET', '/inverter/flows?deviceId=' + encodeURIComponent(deviceId), null, function(err, res) {
+          _invFlowsCache = res || { matched: [], error: err ? (err.message || String(err)) : 'Unknown error' };
+          _renderInvFlows(_invFlowsCache);
+          _tryInvPrefill();
+        });
+      }
+      _fetchInvFlows();
+
+      // ── Create / Update Flows ─────────────────────────────────────────────
+      var sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid #d1d1d6;margin:4px 0';
+      body.appendChild(sep);
+
+      var createTitle = document.createElement('div');
+      createTitle.style.cssText = 'font-weight:600;color:#3a3a3c';
+      createTitle.textContent = 'Create / Update Flows';
+      body.appendChild(createTitle);
+
+      var createNote = document.createElement('div');
+      createNote.style.cssText = 'font-size:11px;color:#6e6e73';
+      createNote.textContent = 'Automatically creates Flows in a "_Huawei EMS" folder. Re-running overwrites the existing flows.';
+      body.appendChild(createNote);
+
+      // One select (+ optional value input) per row — populated after API call
+      var _allCards = [];   // flat list for lookup
+      var _rowSelects = []; // parallel to INVERTER_FLOW_ROWS
+
+      INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+        var rowEl = document.createElement('div');
+        rowEl.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+
+        var lbl = document.createElement('span');
+        lbl.textContent = rowCfg.label;
+        lbl.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:130px';
+        rowEl.appendChild(lbl);
+
+        var sel = document.createElement('select');
+        sel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+        var loadOpt = document.createElement('option');
+        loadOpt.value = ''; loadOpt.textContent = 'Loading action cards…';
+        sel.appendChild(loadOpt);
+        sel.addEventListener('change', function() { _updateInvPreview(); _saveInvCards(); });
+        rowEl.appendChild(sel);
+        _rowSelects.push(sel);
+
+        // Optional numeric value input (for W / % rows)
+        if (rowCfg.valueArg) {
+          var valInput = document.createElement('input');
+          valInput.type = 'number';
+          valInput.min = rowCfg.valueArg.min !== undefined ? rowCfg.valueArg.min : 0;
+          valInput.max = rowCfg.valueArg.max !== undefined ? rowCfg.valueArg.max : 100000;
+          valInput.step = rowCfg.valueArg.step !== undefined ? rowCfg.valueArg.step : 1;
+          valInput.placeholder = rowCfg.valueArg.placeholder || '';
+          valInput.style.cssText = 'width:90px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+          valInput.dataset.rowIdx = idx;
+          valInput.addEventListener('input', function() { _updateInvPreview(); _saveInvCards(); });
+          sel.dataset.valueInputId = 'inv-val-' + _idScope + '-' + idx;
+          valInput.id = 'inv-val-' + _idScope + '-' + idx;
+          rowEl.appendChild(valInput);
+        }
+
+        body.appendChild(rowEl);
+      });
+
+      // Preview
+      var preview = document.createElement('div');
+      preview.style.cssText = 'font-size:11px;color:#3a3a3c;background:#e5e5ea;border-radius:6px;padding:8px 10px;line-height:1.7;display:none';
+      body.appendChild(preview);
+
+      // Create button + status
+      var createRow = document.createElement('div');
+      createRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      var createBtn = document.createElement('button');
+      createBtn.textContent = '✓ Create / Update Flows';
+      createBtn.className = 'btn-primary';
+      createBtn.style.cssText = 'font-size:12px;padding:5px 14px';
+      createBtn.disabled = true;
+      var createStatus = document.createElement('span');
+      createStatus.style.cssText = 'font-size:11px;color:#6e6e73';
+      createRow.appendChild(createBtn); createRow.appendChild(createStatus);
+      body.appendChild(createRow);
+
+      function _getCardByValue(val) { return _findCardByValue(val, _allCards); }
+
+      function _updateInvPreview() {
+        var lines = [];
+        var anySelected = false;
+        INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+          var sel = _rowSelects[idx];
+          var card = _getCardByValue(sel.value);
+          if (!card) return;
+          anySelected = true;
+          var valEl = rowCfg.valueArg ? document.getElementById('inv-val-' + _idScope + '-' + idx) : null;
+          var valStr = valEl ? (' = ' + (valEl.value !== '' ? valEl.value : '…')) : '';
+          lines.push('<b>WHEN</b> [trigger] → <b>THEN</b> ' + escHtml(card.title) + valStr + '  <i style="color:#6e6e73">(' + escHtml(rowCfg.flowSuffix) + ')</i>');
+        });
+        createBtn.disabled = !anySelected;
+        if (!lines.length) { preview.style.display = 'none'; return; }
+        preview.innerHTML = lines.join('<br>');
+        preview.style.display = '';
+      }
+
+      function _fillInvSelect(sel, groups, preferCardId) {
+        sel.innerHTML = '';
+        var noneOpt = document.createElement('option');
+        noneOpt.value = ''; noneOpt.textContent = '— Not needed —';
+        sel.appendChild(noneOpt);
+
+        var preferIdx = -1;
+        var optIdx = 1; // account for the none option
+        (groups || []).forEach(function(g) {
+          var grp = document.createElement('optgroup');
+          grp.label = g.label + ' (' + g.cards.length + ')';
+          (g.cards || []).forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.id + '|' + c.uri;
+            opt.textContent = (c.suggested ? '★ ' : '') + (c.title || c.id);
+            grp.appendChild(opt);
+            if (preferCardId && c.id === preferCardId && preferIdx === -1) preferIdx = optIdx;
+            optIdx++;
+          });
+          sel.appendChild(grp);
+        });
+
+        // Auto-select the preferred card
+        if (preferIdx >= 0) sel.selectedIndex = preferIdx;
+      }
+
+      // Load action cards from API
+      _H.api('GET', '/inverter/action-cards?deviceId=' + encodeURIComponent(deviceId), null, function(err, res) {
+        if (err || !res || res.error) {
+          _rowSelects.forEach(function(sel) {
+            sel.innerHTML = '';
+            var opt = document.createElement('option');
+            opt.textContent = '⚠ ' + ((res && res.error) || 'Could not load action cards');
+            sel.appendChild(opt);
+          });
+          return;
+        }
+
+        // Flatten all cards for lookup
+        _allCards = [];
+        (res.groups || []).forEach(function(g) { _allCards = _allCards.concat(g.cards || []); });
+
+        // Fill each row's dropdown with preferred card, then overlay with saved selections
+        INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+          _fillInvSelect(_rowSelects[idx], res.groups || [], rowCfg.preferCardId || null);
+        });
+
+        _tryInvPrefill(); // override preferred with saved values if flows already loaded
+      });
+
+      createBtn.onclick = function() {
+        var flows = [];
+        INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+          var sel = _rowSelects[idx];
+          var card = _getCardByValue(sel.value);
+          if (!card) return;
+          var cardArgs = Object.assign({}, rowCfg.cardArgs || {});
+          if (rowCfg.valueArg) {
+            var valEl = document.getElementById('inv-val-' + _idScope + '-' + idx);
+            if (valEl && valEl.value !== '') {
+              cardArgs[rowCfg.valueArg.name] = parseFloat(valEl.value) || 0;
+            }
+          }
+          flows.push({
+            name:      rowCfg.flowSuffix,
+            triggerId: rowCfg.triggerId || null,
+            cardId:    card.id,
+            cardUri:   card.uri,
+            cardArgs:  cardArgs,
+          });
+        });
+        if (!flows.length) return;
+
+        createBtn.disabled = true;
+        createStatus.textContent = 'Creating…';
+        createStatus.style.color = '#6e6e73';
+
+        var payload = { deviceId: deviceId, flows: flows };
+        _H.api('POST', '/inverter/setup-flow', payload, function(err, res) {
+          if (err || (res && res.error)) {
+            createStatus.textContent = '⚠ ' + ((res && res.error) || (err && err.message) || 'Error');
+            createStatus.style.color = '#c0392b';
+          } else {
+            var created = res.created != null ? res.created
+              : (res.results || []).filter(function(r) { return r.ok; }).length;
+            var total   = flows.length;
+            if (created === 0) {
+              var firstErr = (res.results || [])[0];
+              createStatus.textContent = '⚠ Could not create flows'
+                + (firstErr && firstErr.error ? ': ' + firstErr.error : '');
+              createStatus.style.color = '#c0392b';
+            } else {
+              createStatus.textContent = '✓ ' + created + (created < total ? '/' + total : '')
+                + ' Flow(s) created in "_Huawei EMS" — set trigger in Homey';
+              createStatus.style.color = created < total ? '#f5a623' : '#34c759';
+              _invFlowsCache = null;
+            }
+          }
+          createBtn.disabled = false;
+        });
+      };
+    }
+
+    var _emsFlowsCache = null;
+    var _emsFlowsCacheCallbacks = [];
+
+    function emsRenderChargerFlows(container, chargerId, entry, stored) {
+      container.innerHTML = '';
+      if (!chargerId) return;
+      _emsMakeFlowSection(container, function(body) { _emsLoadFlowsInto(body, chargerId, entry, stored); });
+    }
+
+    function _findCardByValue(val, cards) {
+      if (!val) return null;
+      var parts = val.split('|');
+      return (cards || []).find(function(c) { return c.id === parts[0] && c.uri === parts[1]; }) || null;
+    }
+
+    function _makeDebugBlock(data) {
+      var text = JSON.stringify(data, null, 2);
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;margin-top:6px;width:100%';
+      var pre = document.createElement('pre');
+      pre.style.cssText = 'font-size:10px;color:#1c1c1e;background:#f2f2f7;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0';
+      pre.textContent = text;
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = 'Copy';
+      copyBtn.style.cssText = 'position:absolute;top:6px;right:6px;font-size:10px;padding:2px 8px;background:#fff;border:1px solid #c7c7cc;border-radius:4px;cursor:pointer;opacity:0.85';
+      copyBtn.onclick = function() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        } catch (_) {}
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
+      };
+      wrap.appendChild(pre); wrap.appendChild(copyBtn);
+      return wrap;
+    }
+
+    function _emsLoadFlowsInto(body, chargerId, entry, stored) {
       // ── How it works ──────────────────────────────────────────────────────
       var how = document.createElement('div');
       how.style.cssText = 'color:#3a3a3c;line-height:1.5';
@@ -2617,7 +3900,7 @@
       // Load from cache or API
       function renderFlowList(result) {
         flowsContainer.innerHTML = '';
-        if (result.error && !result.matched) {
+        if (result.error && !(result.matched && result.matched.length)) {
           flowsContainer.textContent = '⚠ ' + result.error;
           flowsContainer.style.color = '#c0392b';
           return;
@@ -2634,19 +3917,23 @@
           flowsContainer.appendChild(hint);
         } else {
           matched.forEach(function(f) {
-            var row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
-            var dot = document.createElement('span');
-            dot.textContent = '✓';
-            dot.style.cssText = 'color:#34c759;font-weight:600';
-            var name = document.createElement('span');
-            name.textContent = f.name;
-            name.style.cssText = 'color:#1d1d1f';
-            var badge = document.createElement('span');
-            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
-            row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
-            flowsContainer.appendChild(row);
+            var makeRow = function(label, flowType) {
+              var row = document.createElement('div');
+              row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+              var dot = document.createElement('span');
+              dot.textContent = '✓';
+              dot.style.cssText = 'color:#34c759;font-weight:600';
+              var name = document.createElement('span');
+              name.textContent = label;
+              name.style.cssText = 'color:#1d1d1f';
+              var badge = document.createElement('span');
+              badge.textContent = flowType === 'advanced' ? 'Advanced' : 'Flow';
+              badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+              row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+              flowsContainer.appendChild(row);
+            };
+            makeRow(f.name, f.type);
+            if (f.startCardId) makeRow(f.name + ' → Start', f.type);
           });
         }
 
@@ -2671,7 +3958,7 @@
         reloadBtn.className = 'btn-secondary';
         reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
         reloadBtn.onclick = function() {
-          _emsFlowsCache = null;
+          _emsFlowsCache = null; _emsFlowsCacheCallbacks.length = 0;
           flowsContainer.textContent = 'Loading flows…';
           flowsContainer.style.color = '#6e6e73';
           reloadBtn.remove();
@@ -2681,10 +3968,11 @@
       }
 
       function _fetchFlows() {
-        if (_emsFlowsCache) { renderFlowList(_emsFlowsCache); return; }
-        _H.api('GET', '/ems/flows', function(err, result) {
+        if (_emsFlowsCache) { renderFlowList(_emsFlowsCache); _emsFlowsCacheCallbacks.splice(0).forEach(function(cb) { cb(_emsFlowsCache); }); return; }
+        _H.api('GET', '/ems/flows', null, function(err, result) {
           _emsFlowsCache = result || { matched: [], all: [], emsDeviceId: '', error: err ? err.message : 'Unknown error' };
           renderFlowList(_emsFlowsCache);
+          _emsFlowsCacheCallbacks.splice(0).forEach(function(cb) { cb(_emsFlowsCache); });
         });
       }
 
@@ -2709,7 +3997,7 @@
       var cardRow = document.createElement('div');
       cardRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
       var cardLabel = document.createElement('span');
-      cardLabel.textContent = 'Strom setzen:';
+      cardLabel.textContent = 'Set current:';
       cardLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:110px';
       var cardSel = document.createElement('select');
       cardSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
@@ -2723,17 +4011,20 @@
       var startRow = document.createElement('div');
       startRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
       var startLabel = document.createElement('span');
-      startLabel.textContent = 'Ladevorgang starten:';
+      startLabel.textContent = 'Start charging:';
       startLabel.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:110px';
       var startSel = document.createElement('select');
       startSel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
       var startSelNone = document.createElement('option');
-      startSelNone.value = ''; startSelNone.textContent = '— Nicht benötigt —';
+      startSelNone.value = ''; startSelNone.textContent = '— Not needed —';
       startSel.appendChild(startSelNone);
       startRow.appendChild(startLabel); startRow.appendChild(startSel);
       body.appendChild(startRow);
 
-      startSel.addEventListener('change', _updatePreview);
+      startSel.addEventListener('change', function() {
+        if (entry) entry.dataset.chargerStartCard = startSel.value;
+        _updatePreview();
+      });
 
       // Preview area
       var preview = document.createElement('div');
@@ -2750,34 +4041,6 @@
       createBtn.disabled = true;
       var createStatus = document.createElement('span');
       createStatus.style.cssText = 'font-size:11px;color:#6e6e73';
-
-      function _makeDebugBlock(data) {
-        var text = JSON.stringify(data, null, 2);
-        var wrap = document.createElement('div');
-        wrap.style.cssText = 'position:relative;margin-top:6px;width:100%';
-        var pre = document.createElement('pre');
-        pre.style.cssText = 'font-size:10px;color:#1c1c1e;background:#f2f2f7;padding:8px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:0';
-        pre.textContent = text;
-        var copyBtn = document.createElement('button');
-        copyBtn.textContent = 'Copy';
-        copyBtn.style.cssText = 'position:absolute;top:6px;right:6px;font-size:10px;padding:2px 8px;background:#fff;border:1px solid #c7c7cc;border-radius:4px;cursor:pointer;opacity:0.85';
-        copyBtn.onclick = function() {
-          try {
-            var ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.cssText = 'position:fixed;opacity:0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-          } catch (_) {}
-          copyBtn.textContent = 'Copied!';
-          setTimeout(function() { copyBtn.textContent = 'Copy'; }, 1500);
-        };
-        wrap.appendChild(pre);
-        wrap.appendChild(copyBtn);
-        return wrap;
-      }
 
       // Debug button — shows what trigger card IDs Homey knows about
       createRow.appendChild(createBtn); createRow.appendChild(createStatus);
@@ -2816,16 +4079,16 @@
         var startCard = _startCards.find(function(c) { return c.id + '|' + c.uri === startSel.value; }) || null;
 
         var lines = [
-          '<b>Flow A — immer:</b><br>',
+          '<b>Flow A — always:</b><br>',
           '<b>WHEN</b> EMS: set charger current <i>(' + chargerId.slice(0,8) + '…)</i><br>',
-          '<b>THEN</b> ' + _selectedCard.title,
+          '<b>THEN</b> ' + escHtml(_selectedCard.title),
           argLines.length ? ('<br>' + argLines.join('<br>')) : '',
         ];
 
         if (startCard) {
-          lines.push('<br><br><b>Flow B — Ladevorgang starten (nur wenn idle):</b><br>');
+          lines.push('<br><br><b>Flow B — Start charging (only when idle):</b><br>');
           lines.push('<b>WHEN</b> EMS wants to start charging<br>');
-          lines.push('<b>THEN</b> ' + startCard.title);
+          lines.push('<b>THEN</b> ' + escHtml(startCard.title));
         }
 
         preview.innerHTML = lines.join('');
@@ -2882,10 +4145,7 @@
         _updatePreview();
       }
 
-      function _getCardByValue(val) {
-        var parts = val.split('|');
-        return _cards.find(function(c) { return c.id === parts[0] && c.uri === parts[1]; }) || null;
-      }
+      function _getCardByValue(val) { return _findCardByValue(val, _cards); }
 
       createBtn.onclick = function() {
         if (!_selectedCard || !_emsDevId) return;
@@ -2932,9 +4192,9 @@
             createStatus.style.color = '#c0392b';
           } else {
             var count = (res.startFlowId ? 2 : 1);
-            createStatus.textContent = '✓ ' + count + ' Flow(s) in "_Huawei EMS" erstellt';
+            createStatus.textContent = '✓ ' + count + ' Flow(s) created in "_Huawei EMS"';
             createStatus.style.color = '#34c759';
-            _emsFlowsCache = null;
+            _emsFlowsCache = null; _emsFlowsCacheCallbacks.length = 0;
             if (res && res.flowId) _lastFlowId = res.flowId;
           }
           createBtn.disabled = false;
@@ -2945,7 +4205,7 @@
         _startCards = allActionCards;
         startSel.innerHTML = '';
         var noneOpt = document.createElement('option');
-        noneOpt.value = ''; noneOpt.textContent = '— Nicht benötigt —';
+        noneOpt.value = ''; noneOpt.textContent = '— Not needed —';
         startSel.appendChild(noneOpt);
         (groups || []).forEach(function(g) {
           var grp = document.createElement('optgroup');
@@ -2962,7 +4222,7 @@
       }
 
       // Load action cards for this charger
-      _H.api('GET', '/ems/charger/action-cards?deviceId=' + encodeURIComponent(chargerId), function(err, res) {
+      _H.api('GET', '/ems/charger/action-cards?deviceId=' + encodeURIComponent(chargerId), null, function(err, res) {
         var emsDevId = (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
         if (err || !res || res.error) {
           cardSel.innerHTML = '';
@@ -2993,24 +4253,35 @@
               }
             }
           }
-          // Pre-select the start card used in the existing start flow (if any)
-          if (existingFlow && existingFlow.startCardId) {
-            var savedStartVal = existingFlow.startCardId + '|' + (existingFlow.startCardUri || '');
+          // Pre-select start card: saved config takes priority, flow lookup is fallback
+          var preferredStart = (stored && stored.start_card) || null;
+          if (!preferredStart && existingFlow && existingFlow.startCardId) {
+            preferredStart = existingFlow.startCardId + '|' + (existingFlow.startCardUri || '');
+          }
+          if (preferredStart) {
+            var foundStart = false;
             for (var j = 0; j < startSel.options.length; j++) {
-              if (startSel.options[j].value === savedStartVal) {
-                startSel.selectedIndex = j;
-                _updatePreview();
-                break;
+              if (startSel.options[j].value === preferredStart) {
+                startSel.selectedIndex = j; foundStart = true; break;
               }
             }
+            if (!foundStart) {
+              var prefStartId = preferredStart.split('|')[0];
+              for (var k = 0; k < startSel.options.length; k++) {
+                if (startSel.options[k].value.split('|')[0] === prefStartId) {
+                  startSel.selectedIndex = k; break;
+                }
+              }
+            }
+            if (entry && startSel.value) entry.dataset.chargerStartCard = startSel.value;
+            _updatePreview();
           }
         }
 
         if (!emsDevId) {
-          setTimeout(function() {
-            emsDevId = (_emsFlowsCache && _emsFlowsCache.emsDeviceId) || '';
-            doPopulate(emsDevId);
-          }, 1500);
+          _emsFlowsCacheCallbacks.push(function(cache) {
+            doPopulate((cache && cache.emsDeviceId) || '');
+          });
         } else {
           doPopulate(emsDevId);
         }
@@ -3023,7 +4294,7 @@
       });
     }
 
-    function emsAddDeviceRow(type, deviceId, storedCap) {
+    function emsAddDeviceRow(type, deviceId, storedCap, stored) {
       var list  = document.getElementById('ems-' + type + '-list');
       var entry = document.createElement('div');
       entry.className = 'ems-entry';
@@ -3047,11 +4318,22 @@
       capsInfo.className = 'ems-caps-info';
 
       entry.appendChild(row); entry.appendChild(capsInfo);
+
+      if (type === 'inverter') {
+        var flowSection = document.createElement('div');
+        flowSection.className = 'ems-flow-section';
+        entry.appendChild(flowSection);
+        try { entry.dataset.invCards = (stored && stored.inv_cards) ? JSON.stringify(stored.inv_cards) : ''; } catch(_) {}
+        sel.addEventListener('change', function() { entry.dataset.invCards = ''; emsRenderInverterFlows(flowSection, sel.value, entry, {}); });
+        if (deviceId) emsRenderInverterFlows(flowSection, deviceId, entry, stored);
+      }
+
       list.appendChild(entry);
 
       var renderFn = type === 'battery' ? emsRenderBatteryCaps
+                  : type === 'house'   ? emsRenderHouseCaps
                   : type === 'meter'   ? emsRenderMeterCaps
-                  : emsRenderGridCaps;
+                  : emsRenderInverterCaps;
       sel.addEventListener('change', function() {
         renderFn(row, emsDeviceCaps(sel.value), null);
       });
@@ -3073,6 +4355,7 @@
         if (phkChk && phkChk.checked) c.phase_switch = true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
         if (row.dataset.capPower) c.cap_power = row.dataset.capPower;
+        if (entry.dataset.chargerStartCard) c.start_card = entry.dataset.chargerStartCard;
         result.push(c);
       });
       return result;
@@ -3086,14 +4369,15 @@
         if (!id) return;
         var d = { id: id };
         if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
+        try { if (entry.dataset.invCards) d.inv_cards = JSON.parse(entry.dataset.invCards); } catch(_) {}
         result.push(d);
       });
       return result;
     }
 
-    function emsGetMeterDevices() {
+    function _emsGetSimpleDeviceList(listId) {
       var result = [];
-      document.querySelectorAll('#ems-meter-list .ems-entry').forEach(function(entry) {
+      document.querySelectorAll('#' + listId + ' .ems-entry').forEach(function(entry) {
         var row = entry.querySelector('.ems-list-row');
         var id  = row.querySelector('.ems-row-device').value;
         if (!id) return;
@@ -3103,6 +4387,8 @@
       });
       return result;
     }
+    function emsGetMeterDevices() { return _emsGetSimpleDeviceList('ems-meter-list'); }
+    function emsGetHouseDevices()  { return _emsGetSimpleDeviceList('ems-house-list'); }
 
     function emsGetBatteryDevices() {
       var result = [];
@@ -3175,13 +4461,18 @@
         }
         invDevs = oldGrid;
       }
-      invDevs.forEach(function(d) { emsAddDeviceRow('inverter', d.id, d.cap_power); });
+      invDevs.forEach(function(d) { emsAddDeviceRow('inverter', d.id, d.cap_power, d); });
       if (!invDevs.length) emsAddDeviceRow('inverter');
 
       // ── Power Meter devices ───────────────────────────────────────────────────
       document.getElementById('ems-meter-list').innerHTML = '';
       var meterDevs = cfg.meter_devices || [];
       meterDevs.forEach(function(d) { emsAddDeviceRow('meter', d.id, d); });
+
+      // ── House Consumption Meter ───────────────────────────────────────────────
+      document.getElementById('ems-house-list').innerHTML = '';
+      var houseDevs = cfg.house_devices || [];
+      houseDevs.forEach(function(d) { emsAddDeviceRow('house', d.id, d); });
 
       // ── Battery devices ───────────────────────────────────────────────────────
       document.getElementById('ems-battery-list').innerHTML = '';
@@ -3198,34 +4489,104 @@
       var hpDevs = cfg.heat_pump_devices || [];
       hpDevs.forEach(function(d) { emsAddHeatPumpRow(d.id, d); });
 
+      // ── Boiler devices ────────────────────────────────────────────────────────
+      document.getElementById('ems-boiler-list').innerHTML = '';
+      var boilerDevs = cfg.boiler_devices || [];
+      boilerDevs.forEach(function(d) { emsAddBoilerRow(d.id, d); });
+
+      // ── Pool devices ──────────────────────────────────────────────────────────
+      document.getElementById('ems-pool-list').innerHTML = '';
+      var poolDevs = cfg.pool_devices || [];
+      poolDevs.forEach(function(d) { emsAddPoolRow(d.id, d); });
+
       // ── Scalar settings ───────────────────────────────────────────────────────
-      if (cfg.min_battery_soc !== undefined) document.getElementById('ems-min-soc').value      = cfg.min_battery_soc;
-      document.getElementById('ems-offpeak-enabled').checked                                   = !!cfg.offpeak_enabled;
+      if (cfg.min_battery_soc !== undefined) { document.getElementById('ems-min-soc').value = cfg.min_battery_soc; emsUpdateSocBar(cfg.min_battery_soc); }
+      var _offpeakEl = document.getElementById('ems-offpeak-enabled');
+      if (_offpeakEl) _offpeakEl.checked                                                       = !!cfg.offpeak_enabled;
       if (cfg.offpeak_start) document.getElementById('ems-offpeak-start').value                = cfg.offpeak_start;
       if (cfg.offpeak_end)   document.getElementById('ems-offpeak-end').value                  = cfg.offpeak_end;
       if (cfg.offpeak_amps)  document.getElementById('ems-offpeak-amps').value                 = cfg.offpeak_amps;
+      var wkd = !!cfg.offpeak_weekend_differs;
+      document.getElementById('ems-offpeak-weekend-differs').checked                           = wkd;
+      document.getElementById('ems-offpeak-weekend-rows').style.display                        = wkd ? 'flex' : 'none';
+      if (cfg.offpeak_weekend_start) document.getElementById('ems-offpeak-weekend-start').value = cfg.offpeak_weekend_start;
+      if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
+      document.getElementById('ems-charger-control').checked                                    = cfg.charger_control === true;
+      document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
+      document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control === true;
+      document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control === true;
+      document.getElementById('ems-pool-control').checked                                      = cfg.pool_control === true;
+      if (Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length) {
+        var pList = document.getElementById('ems-device-priority-list');
+        cfg.device_priority_order.forEach(function(type) {
+          var item = pList.querySelector('[data-type="' + type + '"]');
+          if (item) pList.appendChild(item);
+        });
+        emsPriorityUpdateButtons();
+      }
     }
 
     function emsSave() {
-      var chargers   = emsGetChargers();
-      var invDevs    = emsGetInverterDevices();
-      var meterDevs  = emsGetMeterDevices();
-      var batDevs    = emsGetBatteryDevices();
-      var hpDevs     = emsGetHeatPumps();
+      var chargers    = emsGetChargers();
+      var invDevs     = emsGetInverterDevices();
+      var meterDevs   = emsGetMeterDevices();
+      var houseDevs   = emsGetHouseDevices();
+      var batDevs     = emsGetBatteryDevices();
+      var hpDevs      = emsGetHeatPumps();
+      var boilerDevs  = emsGetBoilers();
+      var poolDevs    = emsGetPools();
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
+
+      var _minSoc = parseInt(document.getElementById('ems-min-soc').value, 10);
+      if (isNaN(_minSoc) || _minSoc < 0 || _minSoc > 100) {
+        emsShowSaveStatus('✗ Min battery SoC must be 0–100', '#c0392b');
+        document.getElementById('ems-min-soc').focus();
+        return;
+      }
+
+      var _timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+      function _validateTime(id, label) {
+        var val = document.getElementById(id).value.trim();
+        if (!_timeRe.test(val)) {
+          emsShowSaveStatus('✗ ' + label + ' must be HH:MM (e.g. 22:00)', '#c0392b');
+          document.getElementById(id).focus();
+          return false;
+        }
+        return true;
+      }
+      if (!_validateTime('ems-offpeak-start', 'Off-peak start'))  return;
+      if (!_validateTime('ems-offpeak-end',   'Off-peak end'))    return;
+      if (document.getElementById('ems-offpeak-weekend-differs').checked) {
+        if (!_validateTime('ems-offpeak-weekend-start', 'Weekend start')) return;
+        if (!_validateTime('ems-offpeak-weekend-end',   'Weekend end'))   return;
+      }
 
       var cfg = {
         chargers:            chargers,
         inverter_devices:    invDevs,
         meter_devices:       meterDevs,
+        house_devices:       houseDevs,
         battery_devices:     batDevs,
         heat_pump_devices:   hpDevs,
-        min_battery_soc:    parseInt(document.getElementById('ems-min-soc').value, 10) || 80,
-        offpeak_enabled:    false, // controlled via device capability toggle, not settings
-        offpeak_start:      document.getElementById('ems-offpeak-start').value.trim() || '22:00',
-        offpeak_end:        document.getElementById('ems-offpeak-end').value.trim() || '06:00',
-        offpeak_amps:       parseInt(document.getElementById('ems-offpeak-amps').value, 10) || 16,
+        boiler_devices:      boilerDevs,
+        pool_devices:        poolDevs,
+        min_battery_soc:    _minSoc,
+        offpeak_enabled:         false, // controlled via device capability toggle, not settings
+        offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
+        offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',
+        offpeak_amps:            parseInt(document.getElementById('ems-offpeak-amps').value, 10) || 16,
+        offpeak_weekend_differs: document.getElementById('ems-offpeak-weekend-differs').checked,
+        ...(document.getElementById('ems-offpeak-weekend-differs').checked ? {
+          offpeak_weekend_start: document.getElementById('ems-offpeak-weekend-start').value.trim() || '22:00',
+          offpeak_weekend_end:   document.getElementById('ems-offpeak-weekend-end').value.trim() || '06:00',
+        } : {}),
+        charger_control:         document.getElementById('ems-charger-control').checked,
+        heat_pump_control:       document.getElementById('ems-heatpump-control').checked,
+        boiler_control:          document.getElementById('ems-boiler-control').checked,
+        pool_control:            document.getElementById('ems-pool-control').checked,
+        offpeak_solar_first:     document.getElementById('ems-offpeak-solar-first').checked,
+        device_priority_order:   Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
       };
 
       var btn = document.getElementById('ems-save-btn');

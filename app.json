@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.84",
+  "version": "1.1.92",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -50,6 +50,7 @@
     "getEmsDevices":             { "method": "GET",  "path": "/ems/devices"              },
     "getEmsDebug":               { "method": "GET",  "path": "/ems/debug"                },
     "getEmsConfig":              { "method": "GET",  "path": "/ems/config"               },
+    "getEmsHistory":             { "method": "GET",  "path": "/ems/history"              },
     "putEmsConfig":              { "method": "PUT",  "path": "/ems/config"               },
     "postEmsChargerSetupFlows":    { "method": "POST", "path": "/ems/charger/setup-flows"    },
     "getEmsChargerActionCards":    { "method": "GET",  "path": "/ems/charger/action-cards"   },
@@ -60,7 +61,16 @@
     "getEmsChargerConditionCards":   { "method": "GET",  "path": "/ems/charger/condition-cards"   },
     "getEmsHeatPumpActionCards":     { "method": "GET",  "path": "/ems/heatpump/action-cards"     },
     "postEmsHeatPumpSetupFlows":     { "method": "POST", "path": "/ems/heatpump/setup-flows"      },
-    "getEmsHeatPumpFlows":           { "method": "GET",  "path": "/ems/heatpump/flows"            }
+    "getEmsHeatPumpFlows":           { "method": "GET",  "path": "/ems/heatpump/flows"            },
+    "getEmsBoilerActionCards":       { "method": "GET",  "path": "/ems/boiler/action-cards"       },
+    "postEmsBoilerSetupFlows":       { "method": "POST", "path": "/ems/boiler/setup-flows"        },
+    "getEmsBoilerFlows":             { "method": "GET",  "path": "/ems/boiler/flows"              },
+    "getEmsPoolActionCards":         { "method": "GET",  "path": "/ems/pool/action-cards"         },
+    "postEmsPoolSetupFlows":         { "method": "POST", "path": "/ems/pool/setup-flows"          },
+    "getEmsPoolFlows":               { "method": "GET",  "path": "/ems/pool/flows"                },
+    "getInverterActionCards":        { "method": "GET",  "path": "/inverter/action-cards"         },
+    "getInverterFlows":              { "method": "GET",  "path": "/inverter/flows"                },
+    "postInverterSetupFlow":         { "method": "POST", "path": "/inverter/setup-flow"           }
   },
   "brandColor": "#CF0A2C",
   "name": {
@@ -1236,9 +1246,13 @@
       },
       "values": [
         { "id": "idle",             "title": { "en": "Idle",                    "de": "Bereit",               "nl": "Inactief"          } },
+        { "id": "not_configured",   "title": { "en": "Not Configured",          "de": "Nicht konfiguriert",   "nl": "Niet geconfigureerd"} },
         { "id": "disabled",         "title": { "en": "Disabled",                "de": "Deaktiviert",          "nl": "Uitgeschakeld"     } },
         { "id": "battery_priority", "title": { "en": "Battery Priority",        "de": "Batterie-Priorität",   "nl": "Batterijprioriteit"} },
         { "id": "solar_ev",         "title": { "en": "Solar EV Charging",       "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"    } },
+        { "id": "solar_hp",         "title": { "en": "Solar Heat Pump",         "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"  } },
+        { "id": "solar_boiler",     "title": { "en": "Solar Boiler/Heater",     "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"       } },
+        { "id": "solar_pool",       "title": { "en": "Solar Pool Pump",         "de": "Solar-Pool-Pumpe",     "nl": "Zonne-zwembadpomp" } },
         { "id": "offpeak_ev",       "title": { "en": "Off-Peak EV Charging",    "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"   } },
         { "id": "instant_ev",       "title": { "en": "Instant Charging",        "de": "Sofortladen",          "nl": "Direct laden"      } },
         { "id": "holding",          "title": { "en": "Waiting for Surplus",     "de": "Warte auf Überschuss", "nl": "Wachten op surplus"} },
@@ -1248,20 +1262,20 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false,
-      "icon": "/assets/capabilities/ocpp_last_message.svg"
+      "icon": "/assets/capabilities/ems_mode.svg"
     },
     "ems_status_text": {
       "type": "string",
       "title": {
-        "en": "EMS Status",
-        "de": "EMS-Status",
-        "nl": "EMS-status"
+        "en": "EMS Details",
+        "de": "EMS-Details",
+        "nl": "EMS-details"
       },
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
       "insights": false,
-      "icon": "/assets/capabilities/ocpp_last_message.svg"
+      "icon": "/assets/capabilities/ems_status_text.svg"
     },
     "offpeak_enabled": {
       "type": "boolean",
@@ -1274,7 +1288,7 @@
       "setable": true,
       "uiComponent": "toggle",
       "insights": false,
-      "icon": "/assets/capabilities/pause_charging.svg"
+      "icon": "/assets/capabilities/offpeak_enabled.svg"
     },
     "charge_now": {
       "type": "boolean",
@@ -1288,6 +1302,81 @@
       "uiComponent": "toggle",
       "insights": false,
       "icon": "/assets/capabilities/charge_now.svg"
+    },
+    "measure_grid_power": {
+      "type": "number",
+      "title": {
+        "en": "Grid Power",
+        "de": "Netzleistung",
+        "nl": "Netvermogen"
+      },
+      "units": { "en": "W" },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_power.grid.svg"
+    },
+    "measure_pv_power": {
+      "type": "number",
+      "title": {
+        "en": "PV Power",
+        "de": "PV-Leistung",
+        "nl": "PV-vermogen"
+      },
+      "units": { "en": "W" },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_pv_power.svg"
+    },
+    "measure_house_power": {
+      "type": "number",
+      "title": {
+        "en": "House Consumption",
+        "de": "Hausverbrauch",
+        "nl": "Huisverbruik"
+      },
+      "units": { "en": "W" },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_house_power.svg"
+    },
+    "measure_solar_surplus": {
+      "type": "number",
+      "title": {
+        "en": "Solar Surplus",
+        "de": "Solar-Überschuss",
+        "nl": "Zonne-overschot"
+      },
+      "units": { "en": "W" },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_solar_surplus.svg"
+    },
+    "measure_battery_power": {
+      "type": "number",
+      "title": {
+        "en": "Battery Power",
+        "de": "Batterieleistung",
+        "nl": "Batterijvermogen"
+      },
+      "units": { "en": "W" },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_battery_power.svg"
     }
   },
   "drivers": [
@@ -5165,7 +5254,7 @@
         "nl": "Energiebeheersysteem"
       },
       "class": "other",
-      "capabilities": ["onoff", "offpeak_enabled", "charge_now", "ems_mode", "ems_status_text", "measure_power.surplus"],
+      "capabilities": ["onoff", "offpeak_enabled", "charge_now", "ems_mode", "ems_status_text", "measure_solar_surplus", "measure_pv_power", "measure_house_power", "measure_grid_power", "measure_battery_power"],
       "capabilitiesOptions": {
         "onoff": {
           "title": {
@@ -5174,13 +5263,33 @@
             "nl": "EMS Actief"
           }
         },
-        "measure_power.surplus": {
+        "measure_solar_surplus": {
           "title": {
             "en": "Solar Surplus",
             "de": "Solar-Überschuss",
             "nl": "Zonne-overschot"
-          },
-          "insights": true
+          }
+        },
+        "measure_pv_power": {
+          "title": {
+            "en": "PV Power",
+            "de": "PV-Leistung",
+            "nl": "PV-vermogen"
+          }
+        },
+        "measure_house_power": {
+          "title": {
+            "en": "House Consumption",
+            "de": "Hausverbrauch",
+            "nl": "Huisverbruik"
+          }
+        },
+        "measure_grid_power": {
+          "title": {
+            "en": "Grid Power",
+            "de": "Netzleistung",
+            "nl": "Netvermogen"
+          }
         }
       },
       "images": {
@@ -6705,6 +6814,143 @@
             "title": { "en": "Heat Pump Device ID", "de": "Wärmepumpen Geräte-ID" }
           }
         ]
+      },
+      {
+        "id": "ems_start_boiler",
+        "title": { "en": "EMS wants to start boiler/heater", "de": "EMS möchte Boiler/Heizstab starten" },
+        "titleFormatted": { "en": "EMS wants to start boiler/heater [[boiler_device_id]]", "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] starten" },
+        "hint": { "en": "Fires when the EMS wants to turn the boiler/heater on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
+        "args": [{ "name": "boiler_device_id", "type": "text", "placeholder": { "en": "Paste Boiler Device ID from EMS settings", "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "boiler_device_id", "type": "string", "title": { "en": "Boiler Device ID", "de": "Boiler Geräte-ID" } }]
+      },
+      {
+        "id": "ems_stop_boiler",
+        "title": { "en": "EMS wants to stop boiler/heater", "de": "EMS möchte Boiler/Heizstab stoppen" },
+        "titleFormatted": { "en": "EMS wants to stop boiler/heater [[boiler_device_id]]", "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] stoppen" },
+        "hint": { "en": "Fires when the EMS wants to turn the boiler/heater off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
+        "args": [{ "name": "boiler_device_id", "type": "text", "placeholder": { "en": "Paste Boiler Device ID from EMS settings", "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "boiler_device_id", "type": "string", "title": { "en": "Boiler Device ID", "de": "Boiler Geräte-ID" } }]
+      },
+      {
+        "id": "ems_start_pool",
+        "title": { "en": "EMS wants to start pool pump", "de": "EMS möchte Pool-Pumpe starten" },
+        "titleFormatted": { "en": "EMS wants to start pool pump [[pool_device_id]]", "de": "EMS möchte Pool-Pumpe [[pool_device_id]] starten" },
+        "hint": { "en": "Fires when the EMS wants to turn the pool pump on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
+        "args": [{ "name": "pool_device_id", "type": "text", "placeholder": { "en": "Paste Pool Device ID from EMS settings", "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
+      },
+      {
+        "id": "ems_stop_pool",
+        "title": { "en": "EMS wants to stop pool pump", "de": "EMS möchte Pool-Pumpe stoppen" },
+        "titleFormatted": { "en": "EMS wants to stop pool pump [[pool_device_id]]", "de": "EMS möchte Pool-Pumpe [[pool_device_id]] stoppen" },
+        "hint": { "en": "Fires when the EMS wants to turn the pool pump off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
+        "args": [{ "name": "pool_device_id", "type": "text", "placeholder": { "en": "Paste Pool Device ID from EMS settings", "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
+      },
+      {
+        "id": "ems_inverter_export_limit_on",
+        "title": {
+          "en": "EMS: inverter — enable export limit",
+          "de": "EMS: Wechselrichter — Einspeisebegrenzung aktivieren"
+        },
+        "titleFormatted": {
+          "en": "EMS: inverter [[inverter_device_id]] — enable export limit",
+          "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeisebegrenzung aktivieren"
+        },
+        "args": [
+          {
+            "name": "inverter_device_id",
+            "type": "text",
+            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+          }
+        ],
+        "tokens": [
+          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+        ]
+      },
+      {
+        "id": "ems_inverter_export_limit_off",
+        "title": {
+          "en": "EMS: inverter — disable export limit",
+          "de": "EMS: Wechselrichter — Einspeisebegrenzung deaktivieren"
+        },
+        "titleFormatted": {
+          "en": "EMS: inverter [[inverter_device_id]] — disable export limit",
+          "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeisebegrenzung deaktivieren"
+        },
+        "args": [
+          {
+            "name": "inverter_device_id",
+            "type": "text",
+            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+          }
+        ],
+        "tokens": [
+          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+        ]
+      },
+      {
+        "id": "ems_inverter_set_power_w",
+        "title": {
+          "en": "EMS: inverter — set feed-in limit (W)",
+          "de": "EMS: Wechselrichter — Einspeiseleistung setzen (W)"
+        },
+        "titleFormatted": {
+          "en": "EMS: inverter [[inverter_device_id]] — set feed-in limit (W)",
+          "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeiseleistung setzen (W)"
+        },
+        "args": [
+          {
+            "name": "inverter_device_id",
+            "type": "text",
+            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+          }
+        ],
+        "tokens": [
+          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+        ]
+      },
+      {
+        "id": "ems_inverter_set_power_pct",
+        "title": {
+          "en": "EMS: inverter — set feed-in limit (%)",
+          "de": "EMS: Wechselrichter — Einspeiseleistung setzen (%)"
+        },
+        "titleFormatted": {
+          "en": "EMS: inverter [[inverter_device_id]] — set feed-in limit (%)",
+          "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeiseleistung setzen (%)"
+        },
+        "args": [
+          {
+            "name": "inverter_device_id",
+            "type": "text",
+            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+          }
+        ],
+        "tokens": [
+          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+        ]
+      },
+      {
+        "id": "ems_inverter_remove_limit",
+        "title": {
+          "en": "EMS: inverter — remove output limit",
+          "de": "EMS: Wechselrichter — Leistungsbegrenzung aufheben"
+        },
+        "titleFormatted": {
+          "en": "EMS: inverter [[inverter_device_id]] — remove output limit",
+          "de": "EMS: Wechselrichter [[inverter_device_id]] — Leistungsbegrenzung aufheben"
+        },
+        "args": [
+          {
+            "name": "inverter_device_id",
+            "type": "text",
+            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+          }
+        ],
+        "tokens": [
+          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+        ]
       }
     ],
     "actions": [
@@ -7121,6 +7367,59 @@
                   "en": "Zero Power Grid Connection",
                   "de": "Nulleinspeisung"
                 }
+              },
+              {
+                "id": "6",
+                "label": {
+                  "en": "Limited by Power",
+                  "de": "Leistungsbegrenzt"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_export_limit_enabled",
+        "title": {
+          "en": "Enable/disable grid export limit",
+          "de": "Einspeisung begrenzen ein-/ausschalten"
+        },
+        "titleFormatted": {
+          "en": "[[onoff]] grid export limit",
+          "de": "Einspeisung begrenzen [[onoff]]"
+        },
+        "hint": {
+          "en": "Enables (mode: Limited by Power, register 47415=6) or disables (mode: Unlimited, register 47415=0) the grid export limit. Set the watt limit separately using 'Set max feed-in power'.",
+          "de": "Aktiviert (Modus: Leistungsbegrenzt, Register 47415=6) oder deaktiviert (Modus: Unbegrenzt, Register 47415=0) die Einspeisegrenze. Den Wattwert separat mit 'Maximale Einspeiseleistung setzen' festlegen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "onoff",
+            "title": {
+              "en": "State",
+              "de": "Zustand"
+            },
+            "values": [
+              {
+                "id": "enable",
+                "label": {
+                  "en": "Enable",
+                  "de": "Aktivieren"
+                }
+              },
+              {
+                "id": "disable",
+                "label": {
+                  "en": "Disable",
+                  "de": "Deaktivieren"
+                }
               }
             ]
           }
@@ -7293,6 +7592,50 @@
               "en": "0–100",
               "de": "0–100"
             }
+          }
+        ]
+      },
+      {
+        "id": "sun2000_enable_zero_export",
+        "title": {
+          "en": "Enable zero export (Nulleinspeisung)",
+          "de": "Nulleinspeisung aktivieren"
+        },
+        "titleFormatted": {
+          "en": "Enable zero export (Nulleinspeisung) for [[device]]",
+          "de": "Nulleinspeisung aktivieren für [[device]]"
+        },
+        "hint": {
+          "en": "Activates zero export: sets active power control mode to 'Max feed-in power' (register 47415 = 6) and sets the feed-in limit to 0 W (register 47416 = 0). The inverter will continue producing power for self-consumption but will not export any surplus to the grid.",
+          "de": "Aktiviert die Nulleinspeisung: setzt den Wirkleistungs-Steuermodus auf 'Max. Einspeiseleistung' (Register 47415 = 6) und setzt das Einspeise-Limit auf 0 W (Register 47416 = 0). Der Wechselrichter produziert weiterhin Strom für den Eigenverbrauch, speist jedoch keinen Überschuss ins Netz ein."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          }
+        ]
+      },
+      {
+        "id": "sun2000_disable_zero_export",
+        "title": {
+          "en": "Disable zero export (Nulleinspeisung)",
+          "de": "Nulleinspeisung deaktivieren"
+        },
+        "titleFormatted": {
+          "en": "Disable zero export (Nulleinspeisung) for [[device]]",
+          "de": "Nulleinspeisung deaktivieren für [[device]]"
+        },
+        "hint": {
+          "en": "Deactivates zero export: sets active power control mode to 'No limit' (register 47415 = 0). The inverter will export surplus solar power to the grid freely.",
+          "de": "Deaktiviert die Nulleinspeisung: setzt den Wirkleistungs-Steuermodus auf 'Keine Begrenzung' (Register 47415 = 0). Der Wechselrichter speist Solarüberschuss wieder unbegrenzt ins Netz ein."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
           }
         ]
       },
@@ -9299,9 +9642,13 @@
             "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
             "values": [
               { "id": "idle",             "label": { "en": "Idle",                 "de": "Bereit",               "nl": "Inactief"           } },
+              { "id": "not_configured",   "label": { "en": "Not Configured",       "de": "Nicht konfiguriert",   "nl": "Niet geconfigureerd" } },
               { "id": "disabled",         "label": { "en": "Disabled",             "de": "Deaktiviert",          "nl": "Uitgeschakeld"      } },
               { "id": "battery_priority", "label": { "en": "Battery Priority",     "de": "Batterie-Priorität",   "nl": "Batterijprioriteit" } },
               { "id": "solar_ev",         "label": { "en": "Solar EV Charging",    "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"     } },
+              { "id": "solar_hp",         "label": { "en": "Solar Heat Pump",      "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"   } },
+              { "id": "solar_boiler",     "label": { "en": "Solar Boiler/Heater",  "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"        } },
+              { "id": "solar_pool",       "label": { "en": "Solar Pool Pump",      "de": "Solar-Pool-Pumpe",     "nl": "Zonne-zwembadpomp"  } },
               { "id": "offpeak_ev",       "label": { "en": "Off-Peak EV Charging", "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"    } },
               { "id": "holding",          "label": { "en": "Waiting for Surplus",  "de": "Warte auf Überschuss", "nl": "Wachten op surplus" } },
               { "id": "error",            "label": { "en": "Error",                "de": "Fehler",               "nl": "Fout"               } }
@@ -9385,6 +9732,41 @@
         "getSessions": {
           "method": "GET",
           "path": "/sessions"
+        }
+      }
+    },
+    "ems-history": {
+      "id": "ems-history",
+      "name": {
+        "en": "EMS History",
+        "de": "EMS Verlauf",
+        "nl": "EMS Geschiedenis"
+      },
+      "height": 420,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "hours",
+          "type": "dropdown",
+          "title": { "en": "Time window", "de": "Zeitfenster", "nl": "Tijdvenster" },
+          "value": "6",
+          "values": [
+            { "id": "1",  "title": { "en": "Last 1 hour",   "de": "Letzte 1 Std",  "nl": "Laatste 1 uur"  } },
+            { "id": "3",  "title": { "en": "Last 3 hours",  "de": "Letzte 3 Std",  "nl": "Laatste 3 uur"  } },
+            { "id": "6",  "title": { "en": "Last 6 hours",  "de": "Letzte 6 Std",  "nl": "Laatste 6 uur"  } },
+            { "id": "12", "title": { "en": "Last 12 hours", "de": "Letzte 12 Std", "nl": "Laatste 12 uur" } },
+            { "id": "24", "title": { "en": "Last 24 hours", "de": "Letzte 24 Std", "nl": "Laatste 24 uur" } }
+          ]
+        }
+      ],
+      "images": {
+        "light": "/widgets/ems-history/preview-light.png",
+        "dark": "/widgets/ems-history/preview-dark.png"
+      },
+      "api": {
+        "getHistory": {
+          "method": "GET",
+          "path": "/history"
         }
       }
     },
@@ -9682,6 +10064,16 @@
   },
   "permissions": [],
   "changelog": {
+    "1.1.92": {
+      "en": "EMS: renamed 'EV Charge Budget' capability to 'Solar Surplus' (always ≥ 0, shows grid export power). Added 'not configured' mode when no devices are set up. Fixed EMS status text duplicating mode name. Fixed effectiveGridW not propagating through heat pump / boiler / pool priority steps. Fixed instant charging sending amps every tick (now only on change). Fixed 'Create / Update Flows' HTTP 400/404 for EMS charger and inverter flows. New capability icons for EMS mode, EMS status, off-peak charging, instant charge, and solar surplus.",
+      "de": "EMS: Capability 'EV-Ladebudget' in 'Solar-Überschuss' umbenannt (immer ≥ 0, zeigt Einspeiseleistung). Modus 'nicht konfiguriert' hinzugefügt wenn noch keine Geräte eingerichtet sind. EMS-Statustext verdoppelt nicht mehr den Modusnamen. effectiveGridW wird jetzt korrekt durch Wärmepumpe-/Boiler-/Pool-Prioritätsschritte weitergegeben. Sofortladen sendet Ampere nicht mehr bei jedem Tick (nur noch bei Änderung). 'Flows erstellen / aktualisieren' HTTP 400/404 für EMS-Lader- und Wechselrichter-Flows behoben. Neue Capability-Icons für EMS-Modus, EMS-Details, Nebenzeiten-Laden, Sofortladen und Solar-Überschuss.",
+      "nl": "EMS: Capability 'EV-laadbudget' hernoemd naar 'Zonne-overschot' (altijd ≥ 0, toont netinvoedingsvermogen). Modus 'niet geconfigureerd' toegevoegd wanneer geen apparaten zijn ingesteld. EMS-statustekst herhaalt de modusnaam niet meer. effectiveGridW wordt nu correct doorgegeven via warmtepomp-/boiler-/zwembad-prioriteitsstappen. Direct laden stuurt ampères niet meer elke tick (alleen bij wijziging). 'Flows aanmaken/bijwerken' HTTP 400/404 voor EMS-laadpaal- en omvormer-flows opgelost. Nieuwe capability-iconen voor EMS-modus, EMS-details, daluur-laden, direct laden en zonne-overschot."
+    },
+    "1.1.85": {
+      "en": "EMS: Configurable device priority order (EV Chargers vs. Heat Pumps) — each device type evaluates against remaining surplus after higher-priority devices are allocated. EMS control and solar surplus priority toggles per device type. Off-Peak Charging moved under EV Chargers. Battery SOC threshold moved under Home Batteries. Redesigned settings page with card-style sections. Fix: off-peak enabled state now persists correctly. Fix: companion start flows shown in flow detection.",
+      "de": "EMS: Konfigurierbare Geräteprioritätsreihenfolge (EV-Lader vs. Wärmepumpen) — jeder Gerätetyp wird gegen den verbleibenden Überschuss nach höher priorisierten Geräten ausgewertet. EMS-Steuerung und Solar-Überschuss-Priorität als Toggles pro Gerätetyp. Nebenzeit-Laden unter EV-Lader verschoben. Batterie-SOC-Schwellenwert unter Hausbatterien verschoben. Überarbeitete Einstellungsseite mit Kachel-Stil. Fix: Nebenzeit-Status wird jetzt korrekt gespeichert. Fix: Begleitende Start-Flows werden in der Flow-Erkennung angezeigt.",
+      "nl": "EMS: Configureerbare apparaatprioriteitsvolgorde (EV-laders vs. warmtepompen) — elk apparaattype wordt geëvalueerd op basis van het resterende overschot na apparaten met hogere prioriteit. EMS-bediening en zonne-overschotprioriteit als schakelaars per apparaattype. Dalurenladen verplaatst onder EV-laders. Batterij-SOC-drempel verplaatst onder thuisbatterijen. Vernieuwd instellingenpagina met kaart-stijl secties."
+    },
     "1.1.84": {
       "en": "New driver: Energy Management System — coordinates solar surplus charging between any Homey EV charger (Easee, OCPP, generic) and your home battery. Battery-first priority gate (configurable SOC threshold), solar surplus ladder (6–32 A), off-peak fallback, and full flow card support (mode-changed trigger, mode-is condition, enable/disable action).",
       "de": "Neuer Treiber: Energiemanagementsystem — koordiniert das Solarüberschuss-Laden zwischen beliebigen Homey EV-Ladegeräten (Easee, OCPP, generisch) und der Hausbatterie. Batterie-Priorität (konfigurierbarer SOC-Schwellenwert), Solar-Überschuss-Leiter (6–32 A), Nebenzeit-Fallback und vollständige Flow-Karten-Unterstützung.",

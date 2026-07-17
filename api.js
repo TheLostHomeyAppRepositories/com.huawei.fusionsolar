@@ -877,16 +877,23 @@ module.exports = {
         api.getAdvancedFlows().catch(() => ({})),
       ]);
 
+      function parseActionCard(a) {
+        if (!a) return { cardId: null, cardUri: null };
+        const rawId = a.id || '';
+        if (rawId.startsWith('homey:')) {
+          const lastColon = rawId.lastIndexOf(':');
+          return { cardId: rawId.slice(lastColon + 1), cardUri: rawId.slice(0, lastColon) };
+        }
+        return { cardId: rawId, cardUri: a.uri || '' };
+      }
+
       // Index start-charger flows by name so we can join them to the set-current flow
       const startByName = {};
       for (const [, f] of Object.entries(flows || {})) {
         const tid = f.trigger && f.trigger.id || '';
         if (tid === 'ems_start_charger' || tid.endsWith(':ems_start_charger')) {
-          const firstAction = (f.actions || [])[0];
-          startByName[f.name || ''] = {
-            startCardId:  firstAction ? firstAction.id  : null,
-            startCardUri: firstAction ? firstAction.uri : null,
-          };
+          const { cardId, cardUri } = parseActionCard((f.actions || [])[0]);
+          startByName[f.name || ''] = { startCardId: cardId, startCardUri: cardUri };
         }
       }
 
@@ -894,15 +901,15 @@ module.exports = {
       for (const [id, f] of Object.entries(flows || {})) {
         const tid = f.trigger && f.trigger.id || '';
         if (tid === 'ems_set_charger_current' || tid.endsWith(':ems_set_charger_current')) {
-          const firstAction = (f.actions || [])[0];
-          const startName   = `${f.name || ''} → Start`;
-          const startInfo   = startByName[startName] || {};
+          const { cardId, cardUri } = parseActionCard((f.actions || [])[0]);
+          const startName = `${f.name || ''} → Start`;
+          const startInfo = startByName[startName] || {};
           matched.push({
             id,
             name:          f.name || id,
             type:          'flow',
-            actionCardId:  firstAction ? firstAction.id  : null,
-            actionCardUri: firstAction ? firstAction.uri : null,
+            actionCardId:  cardId,
+            actionCardUri: cardUri,
             startCardId:   startInfo.startCardId  || null,
             startCardUri:  startInfo.startCardUri || null,
           });
@@ -925,6 +932,19 @@ module.exports = {
   /** GET /ems/config — returns current EMS config from homey.settings */
   async getEmsConfig({ homey }) {
     return homey.settings.get('ems_config') || {};
+  },
+
+  /** GET /ems/history — returns EMS event log for the history widget */
+  async getEmsHistory({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { events: [], error: 'No EMS device found' };
+      const events = devices[0].getEmsHistory();
+      return { events };
+    } catch (e) {
+      return { events: [], error: e.message };
+    }
   },
 
   /** GET /ems/charger/action-cards?deviceId=xxx — lists action cards available for a device */
@@ -1211,6 +1231,79 @@ module.exports = {
     return { folderId, flowId: createdFlow && createdFlow.id, startFlowId };
   },
 
+  /** Shared helper: find flows using a pair of trigger card IDs */
+  async _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startTokenName }) {
+    let apiKey = '', emsDeviceId = '';
+    try {
+      const driver = homey.drivers.getDriver('energy_management');
+      const devs   = driver.getDevices();
+      if (devs.length > 0) { apiKey = devs[0].getSetting('homey_api_key') || ''; emsDeviceId = devs[0].getData().id || ''; }
+    } catch { }
+    if (!apiKey) return { matched: [], error: 'No API key' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    try {
+      const flows = await api.getFlows().catch(() => ({}));
+      const matched = [];
+      for (const [id, f] of Object.entries(flows || {})) {
+        const tid = f.trigger && f.trigger.id || '';
+        const APP = 'homey:app:com.huawei.fusionsolar';
+        if (tid === startCardId || tid === stopCardId || tid === `${APP}:${startCardId}` || tid === `${APP}:${stopCardId}`) {
+          const firstAction = (f.actions || [])[0];
+          let cardId = null, cardUri = null;
+          if (firstAction) {
+            const rawId = firstAction.id || '';
+            if (rawId.startsWith('homey:')) { const lc = rawId.lastIndexOf(':'); cardId = rawId.slice(lc + 1); cardUri = rawId.slice(0, lc); }
+            else { cardId = rawId; cardUri = firstAction.uri || ''; }
+          }
+          matched.push({ id, name: f.name || id, type: 'flow',
+            triggerType: (tid === startCardId || tid === `${APP}:${startCardId}`) ? 'start' : 'stop',
+            actionCardId: cardId, actionCardUri: cardUri });
+        }
+      }
+      return { emsDeviceId, matched: matched.sort((a, b) => a.name.localeCompare(b.name)) };
+    } catch (e) { return { matched: [], error: e.message }; }
+  },
+
+  /** Shared helper: create start + stop flows for a simple on/off device */
+  async _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCardId, tokenName, labelSuffix }) {
+    const { emsDeviceId, deviceId, deviceName, startCardId: startActId, startCardUri, stopCardId: stopActId, stopCardUri } = body || {};
+    if (!emsDeviceId || !deviceId || !startActId || !startCardUri || !stopActId || !stopCardUri)
+      return { error: 'Missing required fields' };
+    let apiKey = '';
+    try {
+      const driver = homey.drivers.getDriver('energy_management');
+      const devs   = driver.getDevices();
+      if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { error: 'No API key' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    const api = new HomeyLocalApi({ homey, apiKey });
+    let folderId = null;
+    try {
+      const folders  = await api.getFlowFolders();
+      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+    } catch (_) { }
+    const baseName  = `EMS: ${deviceName || deviceId}`;
+    const startName = `${baseName} → ${labelSuffix} Start`;
+    const stopName  = `${baseName} → ${labelSuffix} Stop`;
+    const allFlows  = await api.getFlows().catch(() => ({}));
+    await Promise.all(Object.values(allFlows || {}).filter((f) => f.name === startName || f.name === stopName).map((f) => api.deleteFlow(f.id).catch(() => {})));
+    const makeAction = (cId, cUri) => ({ id: cId, uri: cUri, group: 'then', delay: null, duration: null, args: {} });
+    const results = {};
+    try {
+      const sf = await api.createFlow({ name: startName, folder: folderId, trigger: { id: `${APP_URI}:${startCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(startActId, startCardUri)] });
+      results.startFlowId = sf && sf.id;
+    } catch (e) { return { folderId, startFlowError: e.message }; }
+    try {
+      const ef = await api.createFlow({ name: stopName, folder: folderId, trigger: { id: `${APP_URI}:${stopCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(stopActId, stopCardUri)] });
+      results.stopFlowId = ef && ef.id;
+    } catch (e) { return { folderId, startFlowId: results.startFlowId, stopFlowError: e.message }; }
+    return { folderId, ...results };
+  },
+
   /** GET /ems/heatpump/action-cards?deviceId=xxx — action cards for a heat pump device */
   async getEmsHeatPumpActionCards({ homey, query }) {
     return this.getEmsChargerActionCards({ homey, query });
@@ -1239,11 +1332,23 @@ module.exports = {
         if (tid.endsWith(':ems_start_heat_pump') || tid.endsWith(':ems_stop_heat_pump')
             || tid === 'ems_start_heat_pump' || tid === 'ems_stop_heat_pump') {
           const firstAction = (f.actions || [])[0];
+          let cardId = null, cardUri = null;
+          if (firstAction) {
+            const rawId = firstAction.id || '';
+            if (rawId.startsWith('homey:')) {
+              const lastColon = rawId.lastIndexOf(':');
+              cardId  = rawId.slice(lastColon + 1);
+              cardUri = rawId.slice(0, lastColon);
+            } else {
+              cardId  = rawId;
+              cardUri = firstAction.uri || '';
+            }
+          }
           matched.push({
             id, name: f.name || id, type: 'flow',
-            triggerType: tid.endsWith('start') ? 'start' : 'stop',
-            actionCardId:  firstAction ? firstAction.id  : null,
-            actionCardUri: firstAction ? firstAction.uri : null,
+            triggerType:   (tid.endsWith(':ems_start_heat_pump') || tid === 'ems_start_heat_pump') ? 'start' : 'stop',
+            actionCardId:  cardId,
+            actionCardUri: cardUri,
           });
         }
       }
@@ -1318,6 +1423,212 @@ module.exports = {
     } catch (e) { return { folderId, startFlowId: results.startFlowId, stopFlowError: e.message }; }
 
     return { folderId, ...results };
+  },
+
+  /** GET /ems/boiler/action-cards */
+  async getEmsBoilerActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
+  /** GET /ems/boiler/flows */
+  async getEmsBoilerFlows({ homey }) {
+    return this._getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', startTokenName: 'boiler_device_id' });
+  },
+  /** POST /ems/boiler/setup-flows */
+  async postEmsBoilerSetupFlows({ homey, body }) {
+    return this._postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', tokenName: 'boiler_device_id', labelSuffix: 'Boiler' });
+  },
+
+  /** GET /ems/pool/action-cards */
+  async getEmsPoolActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
+  /** GET /ems/pool/flows */
+  async getEmsPoolFlows({ homey }) {
+    return this._getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', startTokenName: 'pool_device_id' });
+  },
+  /** POST /ems/pool/setup-flows */
+  async postEmsPoolSetupFlows({ homey, body }) {
+    return this._postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', tokenName: 'pool_device_id', labelSuffix: 'Pool' });
+  },
+
+  /**
+   * GET /inverter/action-cards?deviceId=xxx
+   * Like getEmsChargerActionCards but marks sun2000 export-limit cards as suggested.
+   */
+  async getInverterActionCards({ homey, query }) {
+    const base = await this.getEmsChargerActionCards({ homey, query });
+    if (base.error) return base;
+
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    const SUN2000_SUGGESTED = new Set([
+      'sun2000_set_export_limit_enabled',
+      'sun2000_set_max_feed_in_power',
+      'sun2000_set_max_feed_in_power_pct',
+      'sun2000_set_active_power_derating_w',
+      'sun2000_set_active_power_derating_pct',
+      'sun2000_reset_output_limit',
+    ]);
+
+    base.groups = base.groups.map((g) => {
+      const isAppGroup = g.uri === APP_URI;
+      return {
+        ...g,
+        label:     isAppGroup ? `★ FusionSolar (${base.deviceName || 'Inverter'})` : g.label,
+        suggested: isAppGroup || g.suggested,
+        cards: g.cards.map((c) => ({
+          ...c,
+          suggested: (isAppGroup && SUN2000_SUGGESTED.has(c.id)) || c.suggested,
+        })),
+      };
+    });
+
+    // Sort so FusionSolar group appears first
+    base.groups.sort((a, b) => {
+      if (a.uri === APP_URI) return -1;
+      if (b.uri === APP_URI) return 1;
+      return 0;
+    });
+
+    return base;
+  },
+
+  /** GET /inverter/flows?deviceId=xxx — finds EMS inverter flows by name prefix */
+  async getInverterFlows({ homey, query }) {
+    const { deviceId } = query || {};
+    if (!deviceId) return { matched: [], error: 'Missing deviceId' };
+
+    let apiKey = '';
+    try {
+      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
+      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { matched: [], error: 'No API key — configure EMS device first' };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+
+    // Normalize full-URI action id ("homey:app:...:card_id") to short form.
+    function parseAction(a) {
+      const rawId = a.id || '';
+      if (rawId.startsWith('homey:')) {
+        const lastColon = rawId.lastIndexOf(':');
+        return { cardId: rawId.slice(lastColon + 1), cardUri: rawId.slice(0, lastColon) };
+      }
+      return { cardId: rawId, cardUri: a.uri || '' };
+    }
+
+    try {
+      const api      = new HomeyLocalApi({ homey, apiKey });
+      const allFlows = await api.getFlows();
+
+      // Resolve device name for name-based matching (same prefix used when creating flows)
+      let deviceName = deviceId;
+      try {
+        const allDevices = await api.getDevices();
+        deviceName = allDevices[deviceId]?.name || deviceId;
+      } catch { }
+      const namePrefix = `EMS: ${deviceName} → `;
+
+      const matched = [];
+      for (const flow of Object.values(allFlows || {})) {
+        if (!flow.name || !flow.name.startsWith(namePrefix)) continue;
+        // Extract action card info so _tryInvPrefill can pre-select dropdowns
+        const firstAction = (flow.actions || []).find((a) => {
+          const { cardUri } = parseAction(a);
+          return !cardUri || cardUri === APP_URI;
+        });
+        const { cardId, cardUri } = firstAction ? parseAction(firstAction) : { cardId: '', cardUri: '' };
+        const { device: _d, ...restArgs } = firstAction?.args || {};
+        matched.push({
+          id: flow.id, name: flow.name,
+          actionCardId:  cardId || null,
+          actionCardUri: cardUri || null,
+          cardArgs:      restArgs,
+        });
+      }
+      return { matched };
+    } catch (e) {
+      return { matched: [], error: e.message };
+    }
+  },
+
+  /**
+   * POST /inverter/setup-flow
+   * body.flows = [{ name, cardId, cardUri, cardArgs }]
+   * Creates one flow per entry in "_Huawei EMS". Re-running overwrites by name.
+   */
+  async postInverterSetupFlow({ homey, body }) {
+    const { deviceId, flows } = body || {};
+    if (!deviceId || !Array.isArray(flows) || !flows.length) {
+      return { error: 'Missing deviceId or flows array' };
+    }
+
+    let apiKey = '', emsDeviceId = '', emsDeviceName = '';
+    try {
+      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
+      if (dev) {
+        apiKey        = dev.getSetting('homey_api_key') || '';
+        emsDeviceId   = dev.id;
+        emsDeviceName = dev.getName();
+      }
+    } catch { }
+    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    const api = new HomeyLocalApi({ homey, apiKey });
+
+    let folderId = null;
+    try {
+      const folders  = await api.getFlowFolders();
+      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+    } catch (_) { }
+
+    const allFlows = await api.getFlows().catch(() => ({}));
+    const names    = new Set(flows.map((f) => f.name));
+    await Promise.all(
+      Object.values(allFlows || {}).filter((f) => names.has(f.name))
+        .map((f) => api.deleteFlow(f.id).catch(() => {})),
+    );
+
+    // Resolve inverter device name for flow name prefix
+    let deviceName = deviceId;
+    try {
+      const allDevices = await api.getDevices();
+      deviceName = allDevices[deviceId]?.name || deviceId;
+    } catch { }
+
+    const results = [];
+    for (const def of flows) {
+      const flowName = `EMS: ${deviceName} → ${def.name}`;
+      const action = {
+        id: def.cardId, uri: def.cardUri, group: 'then', delay: null, duration: null,
+        args: { device: { id: deviceId }, ...(def.cardArgs || {}) },
+      };
+      let created = null;
+      let lastErr  = null;
+      const trigger = def.triggerId
+        ? { id: `${APP_URI}:${def.triggerId}`, args: { inverter_device_id: deviceId } }
+        : (def.trigger || { id: 'homey:manager:flow:start', args: {} });
+      try {
+        created = await api.createFlow({
+          name: flowName, folder: folderId, trigger, conditions: [], actions: [action],
+        });
+      } catch (err) { lastErr = err.message; }
+      results.push({ name: flowName, flowId: created?.id, ok: !!created?.id, error: lastErr });
+    }
+
+    const ok     = results.filter((r) => r.ok).length;
+    const failed = results.filter((r) => !r.ok);
+    if (ok === 0) {
+      const firstErr = results[0]?.error || 'Flow creation rejected by Homey API';
+      return { error: `All flows failed: ${firstErr}`, results };
+    }
+    return {
+      folderId,
+      results,
+      created: ok,
+      note: failed.length
+        ? `${failed.length} flow(s) failed — add manually in Homey`
+        : 'Add a trigger (e.g. price app) to each flow in Homey',
+    };
   },
 
   /** PUT /ems/config — saves EMS config and notifies the device to reload */

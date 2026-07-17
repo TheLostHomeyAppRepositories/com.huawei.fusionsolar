@@ -11,6 +11,14 @@ class FusionSolarKioskApp extends App {
     this._coordinator = new OpenAPICoordinator(this.homey);
 
     this.homey.flow
+      .getActionCard('sun2000_set_export_limit_enabled')
+      .registerRunListener(async ({ device, onoff }) => {
+        // Triggers the existing registerCapabilityListener in sun2000_modbus/device.js
+        // which writes register 47415: 6 = Limited by Power, 0 = Unlimited
+        await device.setCapabilityValue('activepower_controlmode', onoff === 'enable' ? '6' : '0');
+      });
+
+    this.homey.flow
       .getConditionCard('is_producing')
       .registerRunListener(async ({ device }) => {
         const power = device.getCapabilityValue('measure_power');

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+  background: transparent;
+  height: 100%;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 14px 4px;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: .3px;
+}
+.refresh-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #aaa;
+  padding: 2px 4px;
+  border-radius: 6px;
+  line-height: 1;
+}
+.refresh-btn:hover { color: #555; background: #f4f4f4; }
+
+/* Timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 6px;
+}
+
+.day-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #bbb;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 8px 0 4px 20px;
+}
+
+.event-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  position: relative;
+}
+
+/* Vertical line */
+.event-row::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 16px;
+  bottom: -3px;
+  width: 1px;
+  background: #f0f0f0;
+}
+.event-row:last-child::before { display: none; }
+
+.dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #e0e0e0;
+}
+
+.event-body { flex: 1; min-width: 0; }
+
+.event-top {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.event-mode {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-time {
+  font-size: 9.5px;
+  color: #bbb;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.event-detail {
+  font-size: 10px;
+  color: #888;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  font-size: 12px;
+  color: #bbb;
+  text-align: center;
+  padding: 24px 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Dot colours ── */
+.dot-solar-ev      { background: #34c759; }
+.dot-solar-hp      { background: #30d158; }
+.dot-solar-boiler  { background: #32ade6; }
+.dot-solar-pool    { background: #00c7be; }
+.dot-offpeak-ev    { background: #007aff; }
+.dot-instant-ev    { background: #af52de; }
+.dot-battery       { background: #ff9500; }
+.dot-holding       { background: #c7c7cc; }
+.dot-idle          { background: #d1d1d6; }
+.dot-disabled      { background: #d1d1d6; }
+.dot-error         { background: #ff3b30; }
+.dot-dev-start     { background: #34c759; }
+.dot-dev-stop      { background: #ff6b6b; }
+.dot-charger-start { background: #007aff; }
+.dot-charger-amps  { background: #5ac8fa; }
+.dot-charger-stop  { background: #c7c7cc; }
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  .card { background: #1e1e22; }
+  .title { color: #f2f2f2; }
+  .refresh-btn { color: #666; }
+  .refresh-btn:hover { color: #aaa; background: #2c2c31; }
+  .event-row::before { background: #2e2e33; }
+  .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
+  .event-mode { color: #f2f2f2; }
+  .event-time { color: #666; }
+  .event-detail { color: #8a8a8f; }
+  .empty { color: #555; }
+  .day-label { color: #555; }
+  .dot-holding  { background: #5a5a5f; }
+  .dot-idle     { background: #4a4a4f; }
+  .dot-disabled { background: #4a4a4f; }
+  .refresh-btn:hover { color: #ccc; }
+}
+
+:root[data-theme="dark"] .card { background: #1e1e22; }
+:root[data-theme="dark"] .title { color: #f2f2f2; }
+:root[data-theme="dark"] .event-row::before { background: #2e2e33; }
+:root[data-theme="dark"] .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
+:root[data-theme="dark"] .event-mode { color: #f2f2f2; }
+:root[data-theme="dark"] .event-time { color: #666; }
+:root[data-theme="dark"] .event-detail { color: #8a8a8f; }
+:root[data-theme="dark"] .empty { color: #555; }
+:root[data-theme="dark"] .day-label { color: #555; }
+
+:root[data-theme="light"] .card { background: #fff; }
+:root[data-theme="light"] .title { color: #1a1a1a; }
+:root[data-theme="light"] .event-mode { color: #1a1a1a; }
+:root[data-theme="light"] .event-time { color: #bbb; }
+:root[data-theme="light"] .event-detail { color: #888; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="title">⚡ EMS History</div>
+    <button class="refresh-btn" id="refresh-btn" title="Refresh">↻</button>
+  </div>
+  <div class="timeline" id="timeline">
+    <div class="empty">Loading…</div>
+  </div>
+</div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+var hoursWindow = 6;
+
+// ── Mode metadata ──────────────────────────────────────────────────────────
+var MODE_META = {
+  solar_ev:        { label: 'Solar EV charging',        dot: 'dot-solar-ev'      },
+  solar_hp:        { label: 'Solar heat pump on',       dot: 'dot-solar-hp'      },
+  solar_boiler:    { label: 'Solar boiler on',          dot: 'dot-solar-boiler'  },
+  solar_pool:      { label: 'Solar pool pump on',       dot: 'dot-solar-pool'    },
+  offpeak_ev:      { label: 'Off-peak EV charging',     dot: 'dot-offpeak-ev'    },
+  instant_ev:      { label: 'Instant charge (max)',     dot: 'dot-instant-ev'    },
+  battery_priority:{ label: 'Battery priority',         dot: 'dot-battery'       },
+  holding:         { label: 'Waiting for solar surplus',dot: 'dot-holding'       },
+  idle:            { label: 'Idle — no EV connected',   dot: 'dot-idle'          },
+  disabled:        { label: 'EMS disabled',             dot: 'dot-disabled'      },
+  error:           { label: 'Error',                    dot: 'dot-error'         },
+};
+
+// ── Time formatting ────────────────────────────────────────────────────────
+function fmtTime(ts) {
+  var d = new Date(ts);
+  var h = d.getHours().toString().padStart(2, '0');
+  var m = d.getMinutes().toString().padStart(2, '0');
+  return h + ':' + m;
+}
+
+function fmtDayLabel(ts) {
+  var d   = new Date(ts);
+  var now = new Date();
+  var today     = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var yesterday = today - 86400000;
+  var dayStart  = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  if (dayStart === today)     return 'Today';
+  if (dayStart === yesterday) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function relTime(ts) {
+  var diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60)    return diff + 's ago';
+  if (diff < 3600)  return Math.floor(diff / 60) + 'min ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+// ── Extract numeric info from German status text ───────────────────────────
+function fmtStatusDetail(raw) {
+  if (!raw) return '';
+  var parts = [];
+  var amps  = raw.match(/(\d+A\/\d+ph)/);        if (amps)  parts.push(amps[1]);
+  var bat   = raw.match(/Bat\s+(\d+)%/);          if (bat)   parts.push('Bat ' + bat[1] + '%');
+  var batW  = raw.match(/([↑↓]\d+(?:\.\d+)?W)/); if (batW)  parts.push(batW[1]);
+  return parts.join(' · ');
+}
+
+// ── Build event display info ───────────────────────────────────────────────
+function eventInfo(ev) {
+  if (ev.type === 'mode') {
+    var meta   = MODE_META[ev.event] || { label: ev.event, dot: 'dot-idle' };
+    var detail = fmtStatusDetail(ev.label) || '';
+    return { dot: meta.dot, label: meta.label, detail: detail };
+  }
+  if (ev.type === 'device') {
+    var isStart  = ev.event === 'start';
+    var devDetail = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
+    return {
+      dot:    isStart ? 'dot-dev-start' : 'dot-dev-stop',
+      label:  isStart ? 'Device started' : 'Device stopped',
+      detail: devDetail,
+    };
+  }
+  if (ev.type === 'charger') {
+    if (ev.event === 'start')    return { dot: 'dot-charger-start', label: 'Charger started',   detail: ev.label };
+    if (ev.event === 'set_amps') return { dot: 'dot-charger-amps',  label: 'Charger adjusted',  detail: '→ ' + ev.label };
+    if (ev.event === 'stop')     return { dot: 'dot-charger-stop',  label: 'Charger stopped',   detail: '' };
+  }
+  return { dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render(events) {
+  var tl   = document.getElementById('timeline');
+  var now  = Date.now();
+  var cutoff = now - hoursWindow * 3600 * 1000;
+
+  var filtered = events
+    .filter(function(e) { return e.ts >= cutoff; })
+    .slice()
+    .reverse(); // newest first
+
+  if (!filtered.length) {
+    tl.innerHTML = '<div class="empty">No events in the last ' + hoursWindow + 'h</div>';
+    return;
+  }
+
+  var html = '';
+  var lastDay = '';
+
+  for (var i = 0; i < filtered.length; i++) {
+    var ev  = filtered[i];
+    var day = fmtDayLabel(ev.ts);
+    if (day !== lastDay) {
+      html += '<div class="day-label">' + esc(day) + '</div>';
+      lastDay = day;
+    }
+    var info = eventInfo(ev);
+    html += '<div class="event-row">';
+    html += '<div class="dot ' + info.dot + '"></div>';
+    html += '<div class="event-body">';
+    html += '<div class="event-top">';
+    html += '<span class="event-mode">' + esc(info.label) + '</span>';
+    html += '<span class="event-time">' + fmtTime(ev.ts) + '</span>';
+    html += '</div>';
+    if (info.detail) {
+      html += '<div class="event-detail">' + esc(info.detail) + '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  tl.innerHTML = html;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+// ── Load ───────────────────────────────────────────────────────────────────
+async function load() {
+  try {
+    var settings = Homey.getSettings();
+    hoursWindow = parseInt(settings.hours || '6') || 6;
+
+    var result = await Homey.api('GET', '/history');
+    if (!result || result.error) {
+      document.getElementById('timeline').innerHTML =
+        '<div class="empty">' + esc((result && result.error) || 'Failed to load') + '</div>';
+      return;
+    }
+    render(result.events || []);
+  } catch (err) {
+    document.getElementById('timeline').innerHTML =
+      '<div class="empty">Error: ' + esc(err.message || String(err)) + '</div>';
+  }
+}
+
+document.getElementById('refresh-btn').addEventListener('click', load);
+
+// Auto-refresh every 30 s
+load();
+setInterval(load, 30000);
+
+Homey.ready();
+} // onHomeyReady
+</script>
+</body>
+</html>

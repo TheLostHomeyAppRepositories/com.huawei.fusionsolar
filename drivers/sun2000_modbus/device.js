@@ -238,107 +238,185 @@ class SUN2000ModbusDevice extends Device {
 
     this.homey.flow
       .getActionCard('sun2000_set_active_power_mode')
-      .registerRunListener(async ({ mode }) => {
+      .registerRunListener(({ mode }) => {
         const reg   = CONTROL_WRITE_MAP.activepower_controlmode;
         const value = parseInt(mode, 10);
         this.log(`Write start  [sun2000_set_active_power_mode → reg ${reg}] value=${value}`);
         this._writeInProgress = true;
-        try {
-          await writeModbusRegister(host(), port(), unitId(), reg, value);
-          this.log(`Write OK     [sun2000_set_active_power_mode → reg ${reg}]`);
-          this._updatingFromModbus = true;
-          await this._set('activepower_controlmode', mode).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_set_active_power_mode → reg ${reg}]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingFromModbus = false;
-          this._writeInProgress   = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), reg, value);
+            this.log(`Write OK     [sun2000_set_active_power_mode → reg ${reg}]`);
+            this._updatingFromModbus = true;
+            await this._set('activepower_controlmode', mode).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_active_power_mode → reg ${reg}]:`, err.message);
+          } finally {
+            this._updatingFromModbus = false;
+            this._writeInProgress   = false;
+          }
+        })();
       });
 
     this.homey.flow
       .getActionCard('sun2000_set_max_feed_in_power')
-      .registerRunListener(async ({ power }) => {
+      .registerRunListener(({ power }) => {
         const raw = Math.round(Math.max(0, parseFloat(power) || 0));
         this.log(`Write start  [sun2000_set_max_feed_in_power → reg 47416] value=${raw}W`);
         this._writeInProgress = true;
-        try {
-          await writeModbusU32(host(), port(), unitId(), 47416, raw);
-          this.log(`Write OK     [sun2000_set_max_feed_in_power → reg 47416]`);
-          this._updatingSettingFromModbus = true;
-          await this.setSettings({ max_feed_in_power: raw }).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_set_max_feed_in_power → reg 47416]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingSettingFromModbus = false;
-          this._writeInProgress           = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 47416, raw);
+            this.log(`Write OK     [sun2000_set_max_feed_in_power → reg 47416]`);
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ max_feed_in_power: raw }).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_max_feed_in_power → reg 47416]:`, err.message);
+          } finally {
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
       });
 
     this.homey.flow
       .getActionCard('sun2000_set_max_feed_in_power_pct')
-      .registerRunListener(async ({ percentage }) => {
+      .registerRunListener(({ percentage }) => {
         const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
         const raw = Math.round(pct * 10);
         this.log(`Write start  [sun2000_set_max_feed_in_power_pct → reg 47418] value=${pct}%`);
         this._writeInProgress = true;
-        try {
-          await writeModbusRegister(host(), port(), unitId(), 47418, raw);
-          this.log(`Write OK     [sun2000_set_max_feed_in_power_pct → reg 47418]`);
-          this._updatingSettingFromModbus = true;
-          await this.setSettings({ max_feed_in_power_pct: pct }).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_set_max_feed_in_power_pct → reg 47418]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingSettingFromModbus = false;
-          this._writeInProgress           = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47418, raw);
+            this.log(`Write OK     [sun2000_set_max_feed_in_power_pct → reg 47418]`);
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ max_feed_in_power_pct: pct }).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_max_feed_in_power_pct → reg 47418]:`, err.message);
+          } finally {
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
       });
 
     // Direct derating cards (40125/40126) — work standalone without a Smart Power
     // Sensor. Reference: ioBroker.sun2000 issue #176, confirmed by Huawei.
     this.homey.flow
       .getActionCard('sun2000_set_active_power_derating_w')
-      .registerRunListener(async ({ power }) => {
+      .registerRunListener(({ power }) => {
         const raw = Math.round(Math.max(0, parseFloat(power) || 0));
         this.log(`Write start  [sun2000_set_active_power_derating_w → reg 40126] value=${raw}W`);
         this._writeInProgress = true;
-        try {
-          await writeModbusU32(host(), port(), unitId(), 40126, raw);
-          this.log(`Write OK     [sun2000_set_active_power_derating_w → reg 40126]`);
-          this._updatingSettingFromModbus = true;
-          await this.setSettings({ output_limit_w: raw }).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_set_active_power_derating_w → reg 40126]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingSettingFromModbus = false;
-          this._writeInProgress           = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 40126, raw);
+            this.log(`Write OK     [sun2000_set_active_power_derating_w → reg 40126]`);
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ output_limit_w: raw }).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_active_power_derating_w → reg 40126]:`, err.message);
+          } finally {
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
       });
 
     this.homey.flow
       .getActionCard('sun2000_set_active_power_derating_pct')
-      .registerRunListener(async ({ percentage }) => {
+      .registerRunListener(({ percentage }) => {
         const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
         const raw = Math.round(pct * 10);
         this.log(`Write start  [sun2000_set_active_power_derating_pct → reg 40125] value=${pct}%`);
         this._writeInProgress = true;
-        try {
-          await writeModbusRegister(host(), port(), unitId(), 40125, raw);
-          this.log(`Write OK     [sun2000_set_active_power_derating_pct → reg 40125]`);
-          this._updatingSettingFromModbus = true;
-          await this.setSettings({ output_limit_pct: pct }).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_set_active_power_derating_pct → reg 40125]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingSettingFromModbus = false;
-          this._writeInProgress           = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 40125, raw);
+            this.log(`Write OK     [sun2000_set_active_power_derating_pct → reg 40125]`);
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ output_limit_pct: pct }).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_active_power_derating_pct → reg 40125]:`, err.message);
+          } finally {
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_export_limit_enabled')
+      .registerRunListener(({ onoff }) => {
+        const value = onoff === 'enable' ? 6 : 0;
+        const reg   = CONTROL_WRITE_MAP.activepower_controlmode;
+        this.log(`Write start  [sun2000_set_export_limit_enabled → reg ${reg}] value=${value} (${onoff})`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), reg, value);
+            this.log(`Write OK     [sun2000_set_export_limit_enabled → reg ${reg}]`);
+            this._updatingFromModbus = true;
+            await this._set('activepower_controlmode', String(value)).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_export_limit_enabled → reg ${reg}]:`, err.message);
+          } finally {
+            this._updatingFromModbus = false;
+            this._writeInProgress   = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_enable_zero_export')
+      .registerRunListener(() => {
+        const reg = CONTROL_WRITE_MAP.activepower_controlmode;
+        this.log('Write start  [sun2000_enable_zero_export] reg 47415=6, reg 47416=0');
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), reg, 6);
+            await writeModbusU32(host(), port(), unitId(), 47416, 0);
+            this.log('Write OK     [sun2000_enable_zero_export]');
+            this._updatingFromModbus = true;
+            await this._set('activepower_controlmode', '6').catch(() => {});
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ max_feed_in_power: 0 }).catch(() => {});
+          } catch (err) {
+            this.error('Write failed [sun2000_enable_zero_export]:', err.message);
+          } finally {
+            this._updatingFromModbus        = false;
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_disable_zero_export')
+      .registerRunListener(() => {
+        const reg = CONTROL_WRITE_MAP.activepower_controlmode;
+        this.log('Write start  [sun2000_disable_zero_export] reg 47415=0');
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), reg, 0);
+            this.log('Write OK     [sun2000_disable_zero_export]');
+            this._updatingFromModbus = true;
+            await this._set('activepower_controlmode', '0').catch(() => {});
+          } catch (err) {
+            this.error('Write failed [sun2000_disable_zero_export]:', err.message);
+          } finally {
+            this._updatingFromModbus = false;
+            this._writeInProgress   = false;
+          }
+        })();
       });
 
     // Resets both derating registers to "no limit": rated power × 1.1 (W) + 100 (%).
@@ -346,25 +424,27 @@ class SUN2000ModbusDevice extends Device {
     // will clamp it to its own ceiling on the next read).
     this.homey.flow
       .getActionCard('sun2000_reset_output_limit')
-      .registerRunListener(async () => {
+      .registerRunListener(() => {
         const ceilingW = this._ratedPowerW
           ? Math.round(this._ratedPowerW * 1.1)
           : 100000;
         this.log(`Write start  [sun2000_reset_output_limit] reg 40126=${ceilingW}W (rated×1.1), reg 40125=1000 (100%)`);
         this._writeInProgress = true;
-        try {
-          await writeModbusU32(host(), port(), unitId(), 40126, ceilingW);
-          await writeModbusRegister(host(), port(), unitId(), 40125, 1000);
-          this.log(`Write OK     [sun2000_reset_output_limit] inverter back to no cap`);
-          this._updatingSettingFromModbus = true;
-          await this.setSettings({ output_limit_w: ceilingW, output_limit_pct: 100 }).catch(() => {});
-        } catch (err) {
-          this.error(`Write failed [sun2000_reset_output_limit]:`, err.message);
-          throw err;
-        } finally {
-          this._updatingSettingFromModbus = false;
-          this._writeInProgress           = false;
-        }
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 40126, ceilingW);
+            await writeModbusRegister(host(), port(), unitId(), 40125, 1000);
+            this.log(`Write OK     [sun2000_reset_output_limit] inverter back to no cap`);
+            this._updatingSettingFromModbus = true;
+            await this.setSettings({ output_limit_w: ceilingW, output_limit_pct: 100 }).catch(() => {});
+          } catch (err) {
+            this.error(`Write failed [sun2000_reset_output_limit]:`, err.message);
+          } finally {
+            this._updatingSettingFromModbus = false;
+            this._writeInProgress           = false;
+          }
+        })();
       });
   }
 
