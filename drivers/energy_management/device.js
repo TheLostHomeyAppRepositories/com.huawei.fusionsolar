@@ -10,6 +10,7 @@ const FLIP_COOLDOWN_MS         = 5 * 60_000;
 const SIMPLE_MIN_RUN_MS        = 5 * 60_000;  // min run time for HP/boiler/pool before stop allowed
 const EMS_HISTORY_MAX          = 400;          // max history events kept in memory + settings
 const PHASE_SWITCH_COOLDOWN_MS = 10 * 60_000;
+const GRID_SENSOR_HOLD_TICKS   = 4;            // use last-valid gridW for up to 4 ticks (60 s) on sensor failure
 const IMPORT_ACT_W             = 200;
 const EXPORT_GUARD_W           = 200;
 const UP_MARGIN_W              = 250;
@@ -34,6 +35,21 @@ class EmsDevice extends Device {
     this._emsHistory      = JSON.parse(JSON.stringify(this.homey.settings.get('ems_history') || []));
     this._tickCount       = 0;
     this._lastLoggedMode  = null; // null forces first _setMode call to always log
+
+    // ── App start / update event ──────────────────────────────────────────────
+    const currentVersion = this.homey.app?.manifest?.version ?? '?';
+    const lastVersion    = this.homey.settings.get('ems_app_version') ?? null;
+    this.homey.settings.set('ems_app_version', currentVersion);
+    const isAppUpdate = lastVersion !== null && lastVersion !== currentVersion;
+    this._addHistoryEvent(
+      'system',
+      isAppUpdate ? 'app_update' : 'app_start',
+      isAppUpdate ? `v${lastVersion} → v${currentVersion}` : `v${currentVersion}`,
+    );
+    this._lastValidGridW   = null; // sensor failure protection: last known good grid value
+    this._lastValidGridWAt = null;
+    this._gridSensorFail   = 0;   // consecutive ticks without valid grid reading
+    this._exportLimitActive = false; // export limit coordinator state
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -211,11 +227,23 @@ class EmsDevice extends Device {
     }
     if (pvW !== null) await this._set('measure_pv_power', Math.round(pvW));
     if (battery.powerW !== null) await this._set('measure_battery_power', Math.round(battery.powerW));
+    let houseW = null;
     if (gridW !== null) {
-      const houseW = await this._getHouseW(cfg, gridW, pvW, battery);
+      houseW = await this._getHouseW(cfg, gridW, pvW, battery);
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
+
+    // ── Sensor failure guard ──────────────────────────────────────────────────
+    // _getGridW returns null after GRID_SENSOR_HOLD_TICKS consecutive failures.
+    // Hold all device control and report error; PV/battery display is still updated above.
+    if (gridW === null) {
+      const failSecs = this._gridSensorFail * Math.round(TICK_MS / 1000);
+      const msg = `Netzstrom-Sensor: ${failSecs}s kein Signal — EMS wartet`;
+      await this._setMode('error', msg);
+      await this._set('ems_status_text', msg);
+      return;
+    }
 
     const priorityOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
       ? cfg.device_priority_order
@@ -223,7 +251,7 @@ class EmsDevice extends Device {
     let effectiveGridW = gridW;
     for (const deviceType of priorityOrder) {
       if (deviceType === 'charger') {
-        const allocatedW = await this._evaluate(battery, effectiveGridW, chargers, cfg);
+        const allocatedW = await this._evaluate(battery, effectiveGridW, chargers, cfg, pvW, houseW);
         if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
       } else if (deviceType === 'heat_pump') {
         const allocatedW = await this._evaluateHeatPumps(battery, effectiveGridW, heatPumps, cfg);
@@ -235,6 +263,12 @@ class EmsDevice extends Device {
         const allocatedW = await this._evaluatePool(battery, effectiveGridW, pools, cfg);
         if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
       }
+    }
+
+    // ── Export limit coordinator ──────────────────────────────────────────────
+    if (this._warmupDone) {
+      await this._evaluateExportLimit(cfg, battery, gridW)
+        .catch((e) => this.log(`[EMS] export limit: ${e.message}`));
     }
 
     // When no chargers configured, _evaluate never sets mode/status — do it here
@@ -268,16 +302,20 @@ class EmsDevice extends Device {
 
   async _getBattery(cfg) {
     const devices = cfg.battery_devices || [];
-    if (!devices.length) return { soc: null, powerW: null };
+    if (!devices.length) return { soc: null, powerW: null, socPerDevice: {} };
     const [socs, powers] = await Promise.all([
       Promise.all(devices.map((d) => this._api.getCapability(d.id, d.cap_soc || 'measure_battery'))),
       Promise.all(devices.map((d) => d.cap_power ? this._api.getCapability(d.id, d.cap_power) : Promise.resolve(null))),
     ]);
+    // Build per-device SOC map so _checkBatteryTriggers can reuse already-fetched values
+    const socPerDevice = {};
+    devices.forEach((d, i) => { socPerDevice[d.id] = socs[i]; });
     const validSoc   = socs.filter((s) => s !== null);
     const validPower = powers.filter((p) => p !== null);
     return {
-      soc:    validSoc.length   ? Math.min(...validSoc)                 : null,
-      powerW: validPower.length ? validPower.reduce((a, b) => a + b, 0) : null,
+      soc:          validSoc.length   ? Math.min(...validSoc)                 : null,
+      powerW:       validPower.length ? validPower.reduce((a, b) => a + b, 0) : null,
+      socPerDevice,
     };
   }
 
@@ -287,7 +325,8 @@ class EmsDevice extends Device {
     const fullSoc    = Number(cfg.battery_full_soc ?? 95);
 
     for (const device of devices) {
-      const soc = await this._api.getCapability(device.id, device.cap_soc || 'measure_battery').catch(() => null);
+      // Reuse per-device SOC already fetched in _getBattery — avoids a second API round-trip
+      const soc = battery.socPerDevice?.[device.id] ?? null;
       if (soc === null) continue;
 
       if (!this._batteryStates.has(device.id)) {
@@ -330,9 +369,16 @@ class EmsDevice extends Device {
       const valid = vals.filter((v) => v !== null && v >= 0);
       return valid.length ? valid.reduce((a, b) => a + b, 0) : null;
     }
-    // Fallback: calculate from energy balance
+    // Fallback: energy balance PV + grid − battery − chargers = house
+    // Subtract EMS-known charger consumption so the displayed house load doesn't include the EV charger.
     if (gridW === null) return null;
-    return Math.max(0, (pvW ?? 0) + gridW - (battery.powerW ?? 0));
+    let chargerW = 0;
+    for (const st of this._chargerStates.values()) {
+      if (st.currentAmps != null && st.currentPhases != null) {
+        chargerW += st.currentAmps * st.currentPhases * 230;
+      }
+    }
+    return Math.max(0, (pvW ?? 0) + gridW - (battery.powerW ?? 0) - chargerW);
   }
 
   async _getPvW(cfg) {
@@ -356,8 +402,20 @@ class EmsDevice extends Device {
       return this._api.getCapability(d.id, cap);
     }));
     const valid = vals.filter((v) => v !== null);
-    if (!valid.length) this.log('[EMS] _getGridW: all capability reads returned null');
-    return valid.length ? valid.reduce((a, b) => a + b, 0) : null;
+    if (!valid.length) {
+      this._gridSensorFail += 1;
+      if (this._gridSensorFail <= GRID_SENSOR_HOLD_TICKS && this._lastValidGridW !== null) {
+        this.log(`[EMS] _getGridW: sensor fail #${this._gridSensorFail}/${GRID_SENSOR_HOLD_TICKS}, using cached ${this._lastValidGridW}W`);
+        return this._lastValidGridW; // stale but safe for a short window
+      }
+      this.log('[EMS] _getGridW: persistent failure, all reads returned null');
+      return null;
+    }
+    const result         = valid.reduce((a, b) => a + b, 0);
+    this._lastValidGridW   = result;
+    this._lastValidGridWAt = Date.now();
+    this._gridSensorFail   = 0;
+    return result;
   }
 
   async _getChargers(cfg) {
@@ -371,8 +429,13 @@ class EmsDevice extends Device {
         this._api.getCapability(c.id, capPower),
       ]);
       const st = this._getChargerState(c.id);
-      // Estimate power from known amps when cap_power returns null
-      const powerW     = rawPowerW ?? ((st.currentAmps ?? 0) * (st.currentPhases ?? (parseInt(c.ev_phases) || 3)) * 230);
+      // When EMS has amps set, use estimated power as a floor — prevents false "no surplus"
+      // stop during the startup lag where the charger reports 0 W but the grid meter already
+      // sees the draw, collapsing budgetW to near zero.
+      const estimatedW = st.currentAmps > 0
+        ? st.currentAmps * (st.currentPhases ?? (parseInt(c.ev_phases) || 3)) * 230
+        : 0;
+      const powerW     = rawPowerW != null ? Math.max(rawPowerW, estimatedW) : estimatedW;
       // "connected" = car is physically plugged in (Easee: plugged_in_paused / ready_to_charge / car_connected / completed / charging)
       const DISCONNECTED_STATES = new Set(['standby', 'plugged_out', 'unplugged', 'available', 'idle', null, undefined, false]);
       const connected  = !DISCONNECTED_STATES.has(rawState);
@@ -427,11 +490,14 @@ class EmsDevice extends Device {
 
     const now = Date.now();
     let allocatedDeltaW = 0;
+    // Track a running export budget so multiple devices of the same type share correctly:
+    // when device N starts this tick, device N+1 sees reduced surplus in the same loop.
+    let runningExportW = exportW;
     for (const device of devices) {
       const st           = stateMap.get(device.id);
       const wasOn        = st?.isOn ?? false;
       const hpPowerW     = (wasOn && device.powerW != null) ? device.powerW : 0;
-      const effectiveW   = exportW + hpPowerW;
+      const effectiveW   = runningExportW + hpPowerW;
       const surplusOk    = effectiveW >= device.minSurplusW;
       const inHoldTime   = !surplusOk && wasOn && st?.startedAt && (now - st.startedAt) < SIMPLE_MIN_RUN_MS;
       // Battery protection always overrides hold time; surplus check uses hold time as fallback
@@ -439,8 +505,11 @@ class EmsDevice extends Device {
       if (inHoldTime) this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round((now - st.startedAt) / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
       await this._simpleDeviceSetOn(device.id, wantOn, stateMap, startCard, stopCard, tokenName);
       // Device just switched on this tick: its consumption isn't in gridW yet.
-      // Use minSurplusW as an estimate so subsequent priority steps see reduced surplus.
-      if (!wasOn && wantOn) allocatedDeltaW += device.minSurplusW;
+      // Deduct minSurplusW from the running budget so the next device in this loop sees less.
+      if (!wasOn && wantOn) {
+        allocatedDeltaW += device.minSurplusW;
+        runningExportW  -= device.minSurplusW;
+      }
     }
     return allocatedDeltaW;
   }
@@ -456,6 +525,7 @@ class EmsDevice extends Device {
     const st = this._getChargerState(id);
     st.currentAmps = null; st.pendingStepAmps = null; st.pendingStepSince = null;
     st.currentPhases = null;
+    st.lastDownStepAt = Date.now(); // always apply FLIP_COOLDOWN_MS after any stop
   }
 
   async _chargerSetAmps(id, amps, phases) {
@@ -489,7 +559,7 @@ class EmsDevice extends Device {
 
   // ─── Evaluation ───────────────────────────────────────────────────────────
 
-  async _evaluate(battery, gridW, chargers, cfg) {
+  async _evaluate(battery, gridW, chargers, cfg, pvW = null, houseW = null) {
     if (!chargers.length) return 0;
     if (cfg.charger_control === false) return 0;
     const minSoc = Number(cfg.min_battery_soc ?? 80);
@@ -524,7 +594,16 @@ class EmsDevice extends Device {
     if (battery.soc !== null && minSoc > 0 && battery.soc < minSoc) {
       const batCharging    = battery.powerW !== null && battery.powerW > 0;
       const exportSurplusW = gridW !== null ? -gridW : 0;
-      const hasOverflow    = batCharging && exportSurplusW >= MIN_CHARGE_W;
+
+      // Hysteresis: require 2×MIN_CHARGE_W export to START overflow charging but only
+      // ½×MIN_CHARGE_W to CONTINUE. Without this, starting the charger reduces the
+      // apparent export (the EV wasn't yet drawing when the budget was computed), which
+      // causes the condition to flip false on the very next tick → start/stop oscillation.
+      const anyChargerRunning = chargers.some(
+        (c) => (this._getChargerState(c.id).currentAmps ?? 0) > 0,
+      );
+      const overflowThreshold = anyChargerRunning ? MIN_CHARGE_W / 2 : MIN_CHARGE_W * 2;
+      const hasOverflow       = batCharging && exportSurplusW >= overflowThreshold;
 
       if (!hasOverflow) {
         // Only stop chargers that EMS has running — avoids repeated stop triggers each tick
@@ -594,6 +673,25 @@ class EmsDevice extends Device {
     const batDischarging = battery.powerW !== null && battery.powerW < 0;
     const batCorr  = batDischarging && gridW !== null && gridW > 0 ? battery.powerW : 0;
     let budgetW    = totalW - (gridW ?? 0) + batCorr;
+
+    // PV-based budget: when battery SOC ≥ min_soc and the inverter absorbs all PV surplus
+    // into the battery (grid ≈ 0W), the grid-based budget reads ~0W. But the EV charger can
+    // still use PV energy — the inverter simply reduces battery charging proportionally.
+    // pvBudgetW = pvW − houseW represents the full PV surplus available after house load,
+    // regardless of where the inverter currently routes it (battery vs. grid export).
+    if (!batOverflowMode && pvW !== null && houseW !== null) {
+      const pvBudgetW = Math.max(0, pvW - houseW);
+      if (pvBudgetW > budgetW) {
+        this.log(`[EMS] PV budget ${Math.round(pvBudgetW)}W > grid budget ${Math.round(budgetW)}W — using PV`);
+        budgetW = pvBudgetW;
+      }
+    }
+
+    // In overflow mode keep the budget below the 3-phase threshold so _stepCharger never
+    // triggers a 1ph→3ph switch. That switch doubles the charger draw instantly, which
+    // pulls the battery out of charging and breaks the overflow condition on the next tick.
+    if (batOverflowMode) budgetW = Math.min(budgetW, MIN_3PH_W - 1);
+
     const statuses = [];
 
     for (const charger of chargers) {
@@ -717,7 +815,6 @@ class EmsDevice extends Device {
             return { amps: minRung.amps, phases, allocatedW: minRung.amps * phases * 230 };
           }
         }
-        st.lastDownStepAt = now;
         await this._chargerStop(charger.id);
       }
       return { amps: 0, phases, allocatedW: 0 };
@@ -810,8 +907,8 @@ class EmsDevice extends Device {
   _addHistoryEvent(type, event, label, deviceId = null) {
     this._emsHistory.push({ ts: Date.now(), type, event, label, deviceId });
     if (this._emsHistory.length > EMS_HISTORY_MAX) this._emsHistory.splice(0, this._emsHistory.length - EMS_HISTORY_MAX);
-    // Persist immediately for mode/device events — charger events are saved periodically
-    if (type === 'mode' || type === 'device') this._saveHistory();
+    // Persist immediately for mode/device/system events — charger events are saved periodically
+    if (type === 'mode' || type === 'device' || type === 'system') this._saveHistory();
   }
 
   _saveHistory() {
@@ -872,6 +969,54 @@ class EmsDevice extends Device {
   _parseTime(str) {
     const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(str ?? '').trim());
     return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  }
+
+  // ─── Export Limit Coordinator ─────────────────────────────────────────────
+  // Fires ems_inverter_export_limit_on / _off trigger cards automatically based on
+  // battery SOC + grid export. Users link those triggers to inverter action cards.
+
+  async _evaluateExportLimit(cfg, battery, gridW) {
+    if (!cfg.export_limit_enabled) {
+      // If the coordinator was just disabled while active, fire a deactivate to be safe
+      if (this._exportLimitActive) {
+        this._exportLimitActive = false;
+        const invId = (cfg.inverter_devices || [])[0]?.id;
+        if (invId) {
+          await this.homey.flow.getTriggerCard('ems_inverter_export_limit_off')
+            .trigger({ inverter_device_id: invId }, { inverter_device_id: invId })
+            .catch((e) => this.log(`[EMS] export limit OFF (disabled): ${e.message}`));
+        }
+      }
+      return;
+    }
+
+    const trigSoc  = Number(cfg.export_limit_trigger_soc    ?? 95);
+    const deactSoc = Number(cfg.export_limit_deactivate_soc ?? 90);
+    const invId    = (cfg.inverter_devices || [])[0]?.id;
+
+    if (!invId || battery.soc === null) return;
+
+    const batFull   = battery.soc >= trigSoc;
+    const exporting = gridW < -100; // at least 100 W export
+
+    const shouldActivate   = !this._exportLimitActive && batFull && exporting;
+    const shouldDeactivate = this._exportLimitActive && (battery.soc < deactSoc || !exporting);
+
+    if (shouldActivate) {
+      this._exportLimitActive = true;
+      this.log(`[EMS] export limit ON — SOC ${Math.round(battery.soc)}% ≥ ${trigSoc}%, export ${Math.round(-gridW)}W`);
+      this._addHistoryEvent('mode', 'export_limit_on', `SOC ${Math.round(battery.soc)}% · export ${Math.round(-gridW)}W`);
+      await this.homey.flow.getTriggerCard('ems_inverter_export_limit_on')
+        .trigger({ inverter_device_id: invId }, { inverter_device_id: invId })
+        .catch((e) => this.log(`[EMS] export limit ON trigger failed: ${e.message}`));
+    } else if (shouldDeactivate) {
+      this._exportLimitActive = false;
+      this.log(`[EMS] export limit OFF — SOC ${Math.round(battery.soc)}% < ${deactSoc}% or no export`);
+      this._addHistoryEvent('mode', 'export_limit_off', `SOC ${Math.round(battery.soc)}%`);
+      await this.homey.flow.getTriggerCard('ems_inverter_export_limit_off')
+        .trigger({ inverter_device_id: invId }, { inverter_device_id: invId })
+        .catch((e) => this.log(`[EMS] export limit OFF trigger failed: ${e.message}`));
+    }
   }
 
 }

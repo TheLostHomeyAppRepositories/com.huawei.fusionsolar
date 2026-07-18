@@ -368,6 +368,51 @@
     .ems-caps-info.warn { color:#9a5700; }
     .ems-caps-info:empty { min-height:0; }
 
+    /* ── EMS collapsible sections ─────────────────────────── */
+    details.ems-section {
+      background: #fff;
+      border: 1px solid #e5e5ea;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    details.ems-section > summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: #f9f9fb;
+      border-bottom: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    details.ems-section[open] > summary { border-bottom-color: #e5e5ea; }
+    details.ems-section > summary::-webkit-details-marker { display: none; }
+    details.ems-section > summary::marker { display: none; content: ''; }
+    .ems-section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6e6e73;
+    }
+    .ems-section-subtitle {
+      font-size: 10px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      color: #bbb;
+    }
+    .ems-section-chevron {
+      margin-left: auto;
+      font-size: 10px;
+      color: #c7c7cc;
+      transition: transform 0.2s;
+    }
+    details.ems-section[open] .ems-section-chevron { transform: rotate(180deg); }
+    details.ems-section > .ems-section-body { padding: 12px 14px 10px; }
+
     /* ── Tab toolbar (debugging tab) ─────────────────────── */
     .tab-toolbar {
       display: flex;
@@ -692,35 +737,41 @@
       </details>
 
       <!-- Inverter -->
-      <div class="section-title">Inverter
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">power is summed</span>
-      </div>
-      <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddDeviceRow('inverter')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add inverter</button>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Inverter</span><span class="ems-section-subtitle"> · power is summed</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddDeviceRow('inverter')" style="font-size:11px;padding:4px 10px">+ Add inverter</button>
+        </div>
+      </details>
 
       <!-- Power Meter (P1) -->
-      <div class="section-title">Power Meter (P1)
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">power is summed</span>
-      </div>
-      <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add meter</button>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Power Meter (P1)</span><span class="ems-section-subtitle"> · power is summed</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="font-size:11px;padding:4px 10px">+ Add meter</button>
+        </div>
+      </details>
 
       <!-- House Consumption Meter -->
-      <div class="section-title">Power Meter (House Consumption)
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">optional · overrides calculated value</span>
-      </div>
-      <div id="ems-house-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddDeviceRow('house')" style="margin-bottom:20px;font-size:11px;padding:4px 10px">+ Add house meter</button>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Power Meter (House Consumption)</span><span class="ems-section-subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-house-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddDeviceRow('house')" style="font-size:11px;padding:4px 10px">+ Add house meter</button>
+        </div>
+      </details>
 
       <!-- Home Batteries -->
-      <div class="section-title">Home Batteries
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">min SOC used · optional</span>
-      </div>
-      <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Home Batteries</span><span class="ems-section-subtitle"> · min SOC · optional</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
 
-      <!-- Battery priority -->
-      <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
+          <!-- Battery priority -->
+          <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
         <span class="ems-toggle-title" style="margin-bottom:6px">Minimum Battery SOC</span>
         <div style="display:flex;align-items:center;gap:8px">
           <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
@@ -731,13 +782,15 @@
         <div class="ems-soc-bar" style="margin-top:8px"><div id="ems-soc-bar-fill" class="ems-soc-bar-fill" style="width:80%"></div></div>
         <span class="ems-toggle-desc" style="margin-top:4px">All EMS optimisations (charging, heat pumps) pause until every battery exceeds this level. Set to 0 to disable.</span>
       </div>
+        </div>
+      </details>
 
       <!-- EV Chargers -->
-      <div class="section-title">EV Chargers
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">priority order — sequential start</span>
-      </div>
-      <div id="ems-charger-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add charger</button>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">EV Chargers</span><span class="ems-section-subtitle"> · priority order</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-charger-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add charger</button>
       <label class="ems-toggle-row">
         <span class="ems-toggle-switch">
           <input type="checkbox" id="ems-charger-control" onchange="emsGuardControl(this,'ems-charger-list','chargerStartCard',null,'ems-charger-control-hint')">
@@ -810,63 +863,73 @@
           </div>
         </div>
       </div>
+        </div>
+      </details>
 
       <!-- Heat Pumps -->
-      <div class="section-title">Heat Pumps
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
-      </div>
-      <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
-      <label class="ems-toggle-row" style="margin-bottom:20px">
-        <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-heatpump-control" onchange="emsGuardControl(this,'ems-heatpump-list','hpStartCard','hpStopCard','ems-heatpump-control-hint')">
-          <span class="ems-toggle-slider"></span>
-        </span>
-        <span>
-          <span class="ems-toggle-title">Enable EMS control</span>
-          <span class="ems-toggle-desc">The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually.</span>
-          <span id="ems-heatpump-control-hint" class="ems-control-hint"></span>
-        </span>
-      </label>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Heat Pumps</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
+          <label class="ems-toggle-row">
+            <span class="ems-toggle-switch">
+              <input type="checkbox" id="ems-heatpump-control" onchange="emsGuardControl(this,'ems-heatpump-list','hpStartCard','hpStopCard','ems-heatpump-control-hint')">
+              <span class="ems-toggle-slider"></span>
+            </span>
+            <span>
+              <span class="ems-toggle-title">Enable EMS control</span>
+              <span class="ems-toggle-desc">The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually.</span>
+              <span id="ems-heatpump-control-hint" class="ems-control-hint"></span>
+            </span>
+          </label>
+        </div>
+      </details>
 
       <!-- Boilers / Immersion Heaters -->
-      <div class="section-title">Boilers / Immersion Heaters
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
-      </div>
-      <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddBoilerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add boiler / heater</button>
-      <label class="ems-toggle-row" style="margin-bottom:20px">
-        <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-boiler-control" onchange="emsGuardControl(this,'ems-boiler-list','boilerStartCard','boilerStopCard','ems-boiler-control-hint')">
-          <span class="ems-toggle-slider"></span>
-        </span>
-        <span>
-          <span class="ems-toggle-title">Enable EMS control</span>
-          <span class="ems-toggle-desc">The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually.</span>
-          <span id="ems-boiler-control-hint" class="ems-control-hint"></span>
-        </span>
-      </label>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Boilers / Immersion Heaters</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddBoilerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add boiler / heater</button>
+          <label class="ems-toggle-row">
+            <span class="ems-toggle-switch">
+              <input type="checkbox" id="ems-boiler-control" onchange="emsGuardControl(this,'ems-boiler-list','boilerStartCard','boilerStopCard','ems-boiler-control-hint')">
+              <span class="ems-toggle-slider"></span>
+            </span>
+            <span>
+              <span class="ems-toggle-title">Enable EMS control</span>
+              <span class="ems-toggle-desc">The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually.</span>
+              <span id="ems-boiler-control-hint" class="ems-control-hint"></span>
+            </span>
+          </label>
+        </div>
+      </details>
 
       <!-- Pool / Whirlpool -->
-      <div class="section-title">Pool / Whirlpool
-        <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;font-size:10px;margin-left:4px">controlled via Homey Flow · solar surplus &amp; battery priority</span>
-      </div>
-      <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
-      <button class="btn-secondary" onclick="emsAddPoolRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add pool / whirlpool</button>
-      <label class="ems-toggle-row" style="margin-bottom:20px">
-        <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-pool-control" onchange="emsGuardControl(this,'ems-pool-list','poolStartCard','poolStopCard','ems-pool-control-hint')">
-          <span class="ems-toggle-slider"></span>
-        </span>
-        <span>
-          <span class="ems-toggle-title">Enable EMS control</span>
-          <span class="ems-toggle-desc">The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually.</span>
-          <span id="ems-pool-control-hint" class="ems-control-hint"></span>
-        </span>
-      </label>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Pool / Whirlpool</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddPoolRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add pool / whirlpool</button>
+          <label class="ems-toggle-row">
+            <span class="ems-toggle-switch">
+              <input type="checkbox" id="ems-pool-control" onchange="emsGuardControl(this,'ems-pool-list','poolStartCard','poolStopCard','ems-pool-control-hint')">
+              <span class="ems-toggle-slider"></span>
+            </span>
+            <span>
+              <span class="ems-toggle-title">Enable EMS control</span>
+              <span class="ems-toggle-desc">The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually.</span>
+              <span id="ems-pool-control-hint" class="ems-control-hint"></span>
+            </span>
+          </label>
+        </div>
+      </details>
 
       <!-- Device Priority -->
-      <div class="section-title">Device Priority</div>
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Device Priority</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body" style="padding-bottom:14px">
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
         <span class="ems-toggle-title">Evaluation order</span>
         <span class="ems-toggle-desc" style="margin-bottom:4px">Drag to reorder. Devices higher in the list get first claim on available solar surplus.</span>
@@ -897,6 +960,46 @@
           </div>
         </div>
       </div>
+        </div>
+      </details>
+
+      <!-- Export Limit Coordinator -->
+      <details class="ems-section">
+        <summary><span class="ems-section-label">Export Limit Coordinator</span><span class="ems-section-subtitle"> · automatic</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+      <label class="ems-toggle-row">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-export-limit-enabled"
+            onchange="document.getElementById('ems-export-limit-rows').style.display=this.checked?'block':'none'">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title">Auto-limit inverter when battery is full</span>
+          <span class="ems-toggle-desc">When battery SOC reaches the <em>Activate</em> level and solar is exporting to the grid, the EMS automatically fires the inverter <em>Enable export limit</em> trigger. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> level or export stops. Requires the inverter <em>Enable / Disable export limit</em> flows to be configured in the Inverter section above.</span>
+        </span>
+      </label>
+      <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Activate at SOC ≥ (%)</label>
+            <input id="ems-export-limit-trigger-soc" type="number" value="95" min="50" max="100" step="5"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Battery full — fire limit ON</div>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Deactivate at SOC &lt; (%)</label>
+            <input id="ems-export-limit-deactivate-soc" type="number" value="90" min="40" max="100" step="5"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Hysteresis — fire limit OFF</div>
+          </div>
+        </div>
+        <div class="ems-callout">
+          <span><strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed.</span>
+        </div>
+      </div>
+
+        </div>
+      </details>
 
       <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
       <button class="btn-primary" id="ems-save-btn" onclick="emsSave()">Save EMS Settings</button>
@@ -4852,6 +4955,13 @@
       document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control === true;
       document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control === true;
       document.getElementById('ems-pool-control').checked                                      = cfg.pool_control === true;
+      var _elEnabled = document.getElementById('ems-export-limit-enabled');
+      if (_elEnabled) {
+        _elEnabled.checked = !!cfg.export_limit_enabled;
+        document.getElementById('ems-export-limit-rows').style.display = cfg.export_limit_enabled ? 'block' : 'none';
+      }
+      if (cfg.export_limit_trigger_soc    !== undefined) document.getElementById('ems-export-limit-trigger-soc').value    = cfg.export_limit_trigger_soc;
+      if (cfg.export_limit_deactivate_soc !== undefined) document.getElementById('ems-export-limit-deactivate-soc').value = cfg.export_limit_deactivate_soc;
       if (Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length) {
         var pList = document.getElementById('ems-device-priority-list');
         cfg.device_priority_order.forEach(function(type) {
@@ -4917,12 +5027,15 @@
           offpeak_weekend_start: document.getElementById('ems-offpeak-weekend-start').value.trim() || '22:00',
           offpeak_weekend_end:   document.getElementById('ems-offpeak-weekend-end').value.trim() || '06:00',
         } : {}),
-        charger_control:         document.getElementById('ems-charger-control').checked,
-        heat_pump_control:       document.getElementById('ems-heatpump-control').checked,
-        boiler_control:          document.getElementById('ems-boiler-control').checked,
-        pool_control:            document.getElementById('ems-pool-control').checked,
-        offpeak_solar_first:     document.getElementById('ems-offpeak-solar-first').checked,
-        device_priority_order:   Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
+        charger_control:              document.getElementById('ems-charger-control').checked,
+        heat_pump_control:            document.getElementById('ems-heatpump-control').checked,
+        boiler_control:               document.getElementById('ems-boiler-control').checked,
+        pool_control:                 document.getElementById('ems-pool-control').checked,
+        offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
+        device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
+        export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,
+        export_limit_trigger_soc:     parseInt(document.getElementById('ems-export-limit-trigger-soc').value, 10) || 95,
+        export_limit_deactivate_soc:  parseInt(document.getElementById('ems-export-limit-deactivate-soc').value, 10) || 90,
       };
 
       var btn = document.getElementById('ems-save-btn');

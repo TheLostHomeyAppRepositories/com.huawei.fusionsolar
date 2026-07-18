@@ -86,6 +86,12 @@ html, body {
 }
 .event-row:last-child::before { display: none; }
 
+/* System events get a separator feel */
+.event-row.ev-system {
+  margin: 4px 0 2px;
+}
+.event-row.ev-system::before { background: #e8e8f0; }
+
 .dot {
   width: 13px;
   height: 13px;
@@ -94,6 +100,16 @@ html, body {
   margin-top: 2px;
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px #e0e0e0;
+}
+
+/* System events: diamond shape instead of circle */
+.ev-system .dot {
+  border-radius: 3px;
+  transform: rotate(45deg);
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  margin-left: 1px;
 }
 
 .event-body { flex: 1; min-width: 0; }
@@ -111,6 +127,13 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* System events dimmer label */
+.ev-system .event-mode {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #888;
 }
 
 .event-time {
@@ -142,22 +165,26 @@ html, body {
 }
 
 /* ── Dot colours ── */
-.dot-solar-ev      { background: #34c759; }
-.dot-solar-hp      { background: #30d158; }
-.dot-solar-boiler  { background: #32ade6; }
-.dot-solar-pool    { background: #00c7be; }
-.dot-offpeak-ev    { background: #007aff; }
-.dot-instant-ev    { background: #af52de; }
-.dot-battery       { background: #ff9500; }
-.dot-holding       { background: #c7c7cc; }
-.dot-idle          { background: #d1d1d6; }
-.dot-disabled      { background: #d1d1d6; }
-.dot-error         { background: #ff3b30; }
-.dot-dev-start     { background: #34c759; }
-.dot-dev-stop      { background: #ff6b6b; }
-.dot-charger-start { background: #007aff; }
-.dot-charger-amps  { background: #5ac8fa; }
-.dot-charger-stop  { background: #c7c7cc; }
+.dot-solar-ev           { background: #34c759; }
+.dot-solar-hp           { background: #30d158; }
+.dot-solar-boiler       { background: #32ade6; }
+.dot-solar-pool         { background: #00c7be; }
+.dot-offpeak-ev         { background: #007aff; }
+.dot-instant-ev         { background: #af52de; }
+.dot-battery            { background: #ff9500; }
+.dot-holding            { background: #c7c7cc; }
+.dot-idle               { background: #d1d1d6; }
+.dot-disabled           { background: #d1d1d6; }
+.dot-error              { background: #ff3b30; }
+.dot-dev-start          { background: #34c759; }
+.dot-dev-stop           { background: #ff6b6b; }
+.dot-charger-start      { background: #007aff; }
+.dot-charger-amps       { background: #5ac8fa; }
+.dot-charger-stop       { background: #c7c7cc; }
+.dot-export-limit-on    { background: #ff9f0a; }
+.dot-export-limit-off   { background: #aeaeb2; }
+.dot-app-start          { background: #8e8e93; }
+.dot-app-update         { background: #5e5ce6; }
 
 /* ── Dark mode ── */
 @media (prefers-color-scheme: dark) {
@@ -166,8 +193,10 @@ html, body {
   .refresh-btn { color: #666; }
   .refresh-btn:hover { color: #aaa; background: #2c2c31; }
   .event-row::before { background: #2e2e33; }
+  .ev-system::before { background: #38383d; }
   .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
   .event-mode { color: #f2f2f2; }
+  .ev-system .event-mode { color: #8a8a8f; }
   .event-time { color: #666; }
   .event-detail { color: #8a8a8f; }
   .empty { color: #555; }
@@ -175,14 +204,15 @@ html, body {
   .dot-holding  { background: #5a5a5f; }
   .dot-idle     { background: #4a4a4f; }
   .dot-disabled { background: #4a4a4f; }
-  .refresh-btn:hover { color: #ccc; }
 }
 
 :root[data-theme="dark"] .card { background: #1e1e22; }
 :root[data-theme="dark"] .title { color: #f2f2f2; }
 :root[data-theme="dark"] .event-row::before { background: #2e2e33; }
+:root[data-theme="dark"] .ev-system::before { background: #38383d; }
 :root[data-theme="dark"] .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
 :root[data-theme="dark"] .event-mode { color: #f2f2f2; }
+:root[data-theme="dark"] .ev-system .event-mode { color: #8a8a8f; }
 :root[data-theme="dark"] .event-time { color: #666; }
 :root[data-theme="dark"] .event-detail { color: #8a8a8f; }
 :root[data-theme="dark"] .empty { color: #555; }
@@ -191,6 +221,7 @@ html, body {
 :root[data-theme="light"] .card { background: #fff; }
 :root[data-theme="light"] .title { color: #1a1a1a; }
 :root[data-theme="light"] .event-mode { color: #1a1a1a; }
+:root[data-theme="light"] .ev-system .event-mode { color: #888; }
 :root[data-theme="light"] .event-time { color: #bbb; }
 :root[data-theme="light"] .event-detail { color: #888; }
 </style>
@@ -212,18 +243,24 @@ var hoursWindow = 6;
 
 // ── Mode metadata ──────────────────────────────────────────────────────────
 var MODE_META = {
-  solar_ev:        { label: 'Solar EV charging',        dot: 'dot-solar-ev'      },
-  solar_hp:        { label: 'Solar heat pump on',       dot: 'dot-solar-hp'      },
-  solar_boiler:    { label: 'Solar boiler on',          dot: 'dot-solar-boiler'  },
-  solar_pool:      { label: 'Solar pool pump on',       dot: 'dot-solar-pool'    },
-  offpeak_ev:      { label: 'Off-peak EV charging',     dot: 'dot-offpeak-ev'    },
-  instant_ev:      { label: 'Instant charge (max)',     dot: 'dot-instant-ev'    },
-  battery_priority:{ label: 'Battery priority',         dot: 'dot-battery'       },
-  holding:         { label: 'Waiting for solar surplus',dot: 'dot-holding'       },
-  idle:            { label: 'Idle — no EV connected',   dot: 'dot-idle'          },
-  disabled:        { label: 'EMS disabled',             dot: 'dot-disabled'      },
-  error:           { label: 'Error',                    dot: 'dot-error'         },
+  solar_ev:         { label: 'Solar EV charging',          dot: 'dot-solar-ev'         },
+  solar_hp:         { label: 'Solar heat pump',            dot: 'dot-solar-hp'         },
+  solar_boiler:     { label: 'Solar boiler',               dot: 'dot-solar-boiler'     },
+  solar_pool:       { label: 'Solar pool pump',            dot: 'dot-solar-pool'       },
+  offpeak_ev:       { label: 'Off-peak EV charging',       dot: 'dot-offpeak-ev'       },
+  instant_ev:       { label: 'Instant charge (max)',        dot: 'dot-instant-ev'       },
+  battery_priority: { label: 'Battery priority',           dot: 'dot-battery'          },
+  holding:          { label: 'Waiting — no surplus',       dot: 'dot-holding'          },
+  idle:             { label: 'Idle — no EV connected',     dot: 'dot-idle'             },
+  disabled:         { label: 'EMS disabled',               dot: 'dot-disabled'         },
+  not_configured:   { label: 'Not configured',             dot: 'dot-disabled'         },
+  error:            { label: 'Error',                      dot: 'dot-error'            },
+  export_limit_on:  { label: 'Export limit activated',     dot: 'dot-export-limit-on'  },
+  export_limit_off: { label: 'Export limit deactivated',   dot: 'dot-export-limit-off' },
 };
+
+// Modes where structured extraction makes sense (amps/bat% in label)
+var EXTRACT_MODES = { solar_ev:1, solar_hp:1, solar_boiler:1, solar_pool:1, offpeak_ev:1, instant_ev:1 };
 
 // ── Time formatting ────────────────────────────────────────────────────────
 function fmtTime(ts) {
@@ -244,15 +281,7 @@ function fmtDayLabel(ts) {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-function relTime(ts) {
-  var diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60)    return diff + 's ago';
-  if (diff < 3600)  return Math.floor(diff / 60) + 'min ago';
-  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-  return Math.floor(diff / 86400) + 'd ago';
-}
-
-// ── Extract numeric info from German status text ───────────────────────────
+// ── Extract numeric info from status text (amps, battery %, battery power) ─
 function fmtStatusDetail(raw) {
   if (!raw) return '';
   var parts = [];
@@ -264,32 +293,51 @@ function fmtStatusDetail(raw) {
 
 // ── Build event display info ───────────────────────────────────────────────
 function eventInfo(ev) {
+
+  if (ev.type === 'system') {
+    var isUpdate = ev.event === 'app_update';
+    return {
+      cls:    'ev-system',
+      dot:    isUpdate ? 'dot-app-update' : 'dot-app-start',
+      label:  isUpdate ? 'App updated'    : 'App started',
+      detail: ev.label || '',
+    };
+  }
+
   if (ev.type === 'mode') {
     var meta   = MODE_META[ev.event] || { label: ev.event, dot: 'dot-idle' };
-    var detail = fmtStatusDetail(ev.label) || '';
-    return { dot: meta.dot, label: meta.label, detail: detail };
+    // For active-charging modes: extract structured info (amps, bat%, bat power).
+    // For all other modes: the raw label text IS the relevant detail.
+    var detail = EXTRACT_MODES[ev.event]
+      ? (fmtStatusDetail(ev.label) || ev.label || '')
+      : (ev.label || '');
+    return { cls: '', dot: meta.dot, label: meta.label, detail: detail };
   }
+
   if (ev.type === 'device') {
-    var isStart  = ev.event === 'start';
+    var isStart   = ev.event === 'start';
     var devDetail = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
     return {
+      cls:    '',
       dot:    isStart ? 'dot-dev-start' : 'dot-dev-stop',
       label:  isStart ? 'Device started' : 'Device stopped',
       detail: devDetail,
     };
   }
+
   if (ev.type === 'charger') {
-    if (ev.event === 'start')    return { dot: 'dot-charger-start', label: 'Charger started',   detail: ev.label };
-    if (ev.event === 'set_amps') return { dot: 'dot-charger-amps',  label: 'Charger adjusted',  detail: '→ ' + ev.label };
-    if (ev.event === 'stop')     return { dot: 'dot-charger-stop',  label: 'Charger stopped',   detail: '' };
+    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: 'Charger started',  detail: ev.label };
+    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: 'Charger adjusted', detail: '→ ' + ev.label };
+    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: 'Charger stopped',  detail: '' };
   }
-  return { dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
+
+  return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
 function render(events) {
-  var tl   = document.getElementById('timeline');
-  var now  = Date.now();
+  var tl     = document.getElementById('timeline');
+  var now    = Date.now();
   var cutoff = now - hoursWindow * 3600 * 1000;
 
   var filtered = events
@@ -313,7 +361,7 @@ function render(events) {
       lastDay = day;
     }
     var info = eventInfo(ev);
-    html += '<div class="event-row">';
+    html += '<div class="event-row ' + info.cls + '">';
     html += '<div class="dot ' + info.dot + '"></div>';
     html += '<div class="event-body">';
     html += '<div class="event-top">';
