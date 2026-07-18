@@ -251,7 +251,7 @@ var MODE_META = {
   instant_ev:       { label: 'Instant charge (max)',        dot: 'dot-instant-ev'       },
   battery_priority: { label: 'Battery priority',           dot: 'dot-battery'          },
   holding:          { label: 'Waiting — no surplus',       dot: 'dot-holding'          },
-  idle:             { label: 'Idle — no EV connected',     dot: 'dot-idle'             },
+  idle:             { label: 'No EV connected',            dot: 'dot-idle'             },
   disabled:         { label: 'EMS disabled',               dot: 'dot-disabled'         },
   not_configured:   { label: 'Not configured',             dot: 'dot-disabled'         },
   error:            { label: 'Error',                      dot: 'dot-error'            },
@@ -259,8 +259,9 @@ var MODE_META = {
   export_limit_off: { label: 'Export limit deactivated',   dot: 'dot-export-limit-off' },
 };
 
-// Modes where structured extraction makes sense (amps/bat% in label)
-var EXTRACT_MODES = { solar_ev:1, solar_hp:1, solar_boiler:1, solar_pool:1, offpeak_ev:1, instant_ev:1 };
+// Modes where structured extraction makes sense (amps/bat% in label).
+// solar_hp/boiler/pool use a different format ("1 Gerät aktiv · Bat 95%") — do NOT extract.
+var EXTRACT_MODES = { solar_ev:1, offpeak_ev:1, instant_ev:1 };
 
 // ── Time formatting ────────────────────────────────────────────────────────
 function fmtTime(ts) {
@@ -306,29 +307,34 @@ function eventInfo(ev) {
 
   if (ev.type === 'mode') {
     var meta   = MODE_META[ev.event] || { label: ev.event, dot: 'dot-idle' };
-    // For active-charging modes: extract structured info (amps, bat%, bat power).
-    // For all other modes: the raw label text IS the relevant detail.
-    var detail = EXTRACT_MODES[ev.event]
+    var statusText = EXTRACT_MODES[ev.event]
       ? (fmtStatusDetail(ev.label) || ev.label || '')
       : (ev.label || '');
-    return { cls: '', dot: meta.dot, label: meta.label, detail: detail };
+    // Dynamic label: show status text as primary, mode name as context below
+    var hasStatus = statusText && statusText !== '—';
+    return {
+      cls:    '',
+      dot:    meta.dot,
+      label:  hasStatus ? statusText : meta.label,
+      detail: hasStatus ? meta.label : '',
+    };
   }
 
   if (ev.type === 'device') {
-    var isStart   = ev.event === 'start';
-    var devDetail = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
+    var isStart = ev.event === 'start';
+    var devName = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
     return {
       cls:    '',
       dot:    isStart ? 'dot-dev-start' : 'dot-dev-stop',
-      label:  isStart ? 'Device started' : 'Device stopped',
-      detail: devDetail,
+      label:  devName,
+      detail: isStart ? 'EMS started' : 'EMS stopped',
     };
   }
 
   if (ev.type === 'charger') {
-    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: 'Charger started',  detail: ev.label };
-    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: 'Charger adjusted', detail: '→ ' + ev.label };
-    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: 'Charger stopped',  detail: '' };
+    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || 'started', detail: 'Charger started'  };
+    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,      detail: 'Charger adjusted' };
+    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: 'Charger stopped',     detail: ''                 };
   }
 
   return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };

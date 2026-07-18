@@ -291,8 +291,27 @@ class EmsDevice extends Device {
         await this._setMode(mode, stTextActive);
         await this._set('ems_status_text', stTextActive);
       } else {
-        const stTextHolding = `kein Überschuss${socStr}`;
-        await this._setMode('holding', stTextHolding);
+        // Show battery-aware status when no device is active
+        const _minSoc    = Number(cfg.min_battery_soc     ?? 80);
+        const _minSocLow = Number(cfg.min_battery_soc_low ?? 0);
+        const _hasLow    = _minSocLow > 0 && _minSocLow < _minSoc;
+        const _batLow    = battery.soc !== null && _minSoc > 0 && battery.soc < _minSoc;
+        const _batThr    = _hasLow && battery.soc !== null
+                           && battery.soc >= _minSocLow && battery.soc < _minSoc;
+        const _batHard   = _batLow && !_batThr;
+        let stTextHolding, holdMode;
+        if (_batHard) {
+          const limit      = _hasLow ? _minSocLow : _minSoc;
+          stTextHolding    = `${Math.round(battery.soc)}% < ${limit}%`;
+          holdMode         = 'battery_priority';
+        } else if (_batThr) {
+          stTextHolding    = `gedrosselt · kein Überschuss${socStr}`;
+          holdMode         = 'battery_priority';
+        } else {
+          stTextHolding    = `kein Überschuss${socStr}`;
+          holdMode         = 'holding';
+        }
+        await this._setMode(holdMode, stTextHolding);
         await this._set('ems_status_text', stTextHolding);
       }
     }
@@ -338,6 +357,7 @@ class EmsDevice extends Device {
         st.fullFired = true;
         st.lowFired  = false;
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% ≥ ${fullSoc}% → ems_battery_full`);
+        this._postNotification(`EMS: Batterie voll — ${Math.round(soc)}%`);
         await this.homey.flow
           .getTriggerCard('ems_battery_full')
           .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
@@ -350,6 +370,7 @@ class EmsDevice extends Device {
         st.lowFired  = true;
         st.fullFired = false;
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% < ${minSoc}% → ems_battery_low`);
+        this._postNotification(`EMS: Batterie niedrig — ${Math.round(soc)}%`);
         await this.homey.flow
           .getTriggerCard('ems_battery_low')
           .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
@@ -456,20 +477,27 @@ class EmsDevice extends Device {
     const cfgs = cfg[devicesKey] || [];
     return Promise.all(cfgs.map(async (c) => {
       const powerW = c.cap_power ? await this._api.getCapability(c.id, c.cap_power) : null;
-      return { id: c.id, powerW, minSurplusW: Number(c.min_surplus_w) || 2000 };
+      return {
+        id:             c.id,
+        name:           c.name || c.id.slice(0, 8),
+        powerW,
+        minSurplusW:    Number(c.min_surplus_w)    || 2000,
+        startSustainMs: Number(c.start_sustain_s   || 0) * 1000,
+        stopGraceMs:    Number(c.stop_grace_s      || 0) * 1000,
+      };
     }));
   }
 
-  async _simpleDeviceSetOn(id, on, stateMap, startCard, stopCard, tokenName) {
-    if (!stateMap.has(id)) stateMap.set(id, { isOn: null, startedAt: null });
+  async _simpleDeviceSetOn(id, name, on, stateMap, startCard, stopCard, tokenName) {
+    if (!stateMap.has(id)) stateMap.set(id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null });
     const st = stateMap.get(id);
+    if (!this._warmupDone) { st.isOn = false; return; } // assume off; 2nd tick starts if surplus OK
     if (st.isOn === on) return;
     if (on) st.startedAt = Date.now();
     else st.startedAt = null;
-    st.isOn = on; // always update state so second tick sees correct baseline
-    if (!this._warmupDone) return; // first tick: observe only, no flows
-    const devName = await this.homey.devices.getDevice({ id }).then(d => d.name).catch(() => id.slice(0, 8));
-    this._addHistoryEvent('device', on ? 'start' : 'stop', devName, id);
+    st.isOn = on;
+    this._postNotification(`EMS: ${name} ${on ? 'gestartet' : 'gestoppt'}`);
+    this._addHistoryEvent('device', on ? 'start' : 'stop', name, id);
     const card = on ? startCard : stopCard;
     this.log(`[EMS] ${tokenName} ${id}: ${on ? 'start' : 'stop'}`);
     await this.homey.flow
@@ -482,11 +510,20 @@ class EmsDevice extends Device {
     if (!devices.length) return 0;
     if (cfg[cfgControlKey] === false) return 0;
 
-    const minSoc      = Number(cfg.min_battery_soc ?? 80);
+    const minSoc     = Number(cfg.min_battery_soc     ?? 80);
+    const minSocLow  = Number(cfg.min_battery_soc_low ?? 0);
+    const throttleW  = Number(cfg.throttle_budget_w   ?? MIN_CHARGE_W);
+    const hasLowZone = minSocLow > 0 && minSocLow < minSoc;
+
     const batLow      = battery.soc !== null && minSoc > 0 && battery.soc < minSoc;
+    // Throttle zone: soc ∈ [minSocLow, minSoc) — devices may run if minSurplusW ≤ throttleW
+    const batThrottle = hasLowZone && battery.soc !== null
+                        && battery.soc >= minSocLow && battery.soc < minSoc;
+    // Hard stop zone: soc < minSocLow (or no throttle configured) — only overflow exception applies
+    const batHardStop = batLow && !batThrottle;
     const batChg      = battery.powerW !== null && battery.powerW > 0;
     const exportW     = gridW !== null ? -gridW : 0;
-    const batOverflow = batLow && batChg && exportW >= MIN_CHARGE_W;
+    const batOverflow = batHardStop && batChg && exportW >= MIN_CHARGE_W;
 
     const now = Date.now();
     let allocatedDeltaW = 0;
@@ -494,16 +531,70 @@ class EmsDevice extends Device {
     // when device N starts this tick, device N+1 sees reduced surplus in the same loop.
     let runningExportW = exportW;
     for (const device of devices) {
-      const st           = stateMap.get(device.id);
-      const wasOn        = st?.isOn ?? false;
-      const hpPowerW     = (wasOn && device.powerW != null) ? device.powerW : 0;
-      const effectiveW   = runningExportW + hpPowerW;
-      const surplusOk    = effectiveW >= device.minSurplusW;
-      const inHoldTime   = !surplusOk && wasOn && st?.startedAt && (now - st.startedAt) < SIMPLE_MIN_RUN_MS;
-      // Battery protection always overrides hold time; surplus check uses hold time as fallback
-      const wantOn       = (batLow && !batOverflow) ? false : (surplusOk || inHoldTime);
-      if (inHoldTime) this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round((now - st.startedAt) / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
-      await this._simpleDeviceSetOn(device.id, wantOn, stateMap, startCard, stopCard, tokenName);
+      if (!stateMap.has(device.id)) {
+        stateMap.set(device.id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null });
+      }
+      const st         = stateMap.get(device.id);
+      const wasOn      = st.isOn ?? false;
+      const hpPowerW   = (wasOn && device.powerW != null) ? device.powerW : 0;
+      const effectiveW = runningExportW + hpPowerW;
+      const surplusOk  = effectiveW >= device.minSurplusW;
+      const pastMinRun = wasOn && st.startedAt !== null && (now - st.startedAt) >= SIMPLE_MIN_RUN_MS;
+      const inHoldTime = wasOn && !pastMinRun; // first SIMPLE_MIN_RUN_MS: always keep running
+
+      // ── Start-sustain / stop-grace timer maintenance ──────────────────────
+      if (!wasOn) {
+        // Track how long surplus has been continuously OK while device is off
+        if (surplusOk) { if (!st.surplusOkSince) st.surplusOkSince = now; }
+        else             st.surplusOkSince = null;
+        st.surplusBadSince = null;
+      } else {
+        st.surplusOkSince = null; // irrelevant while running
+        // Track how long surplus has been absent — only counts after min-run (hold time must not pre-consume grace)
+        if (pastMinRun) {
+          if (surplusOk) st.surplusBadSince = null;
+          else if (!st.surplusBadSince) st.surplusBadSince = now;
+        } else {
+          st.surplusBadSince = null;
+        }
+      }
+
+      const startOk       = !wasOn && surplusOk
+                            && st.surplusOkSince !== null
+                            && (now - st.surplusOkSince) >= device.startSustainMs;
+      const inGracePeriod = wasOn && pastMinRun && !surplusOk
+                            && st.surplusBadSince !== null
+                            && (now - st.surplusBadSince) < device.stopGraceMs;
+
+      // ── Battery protection hierarchy ──────────────────────────────────────
+      //   hard stop (no overflow) → off regardless of grace / hold time
+      //   throttle zone, device needs more than budget → off
+      //   otherwise → surplus / timer logic
+      let wantOn;
+      if (batHardStop && !batOverflow) {
+        wantOn = false;
+      } else if (batThrottle && device.minSurplusW > throttleW) {
+        wantOn = false;
+      } else {
+        wantOn = startOk || inHoldTime || (wasOn && (surplusOk || inGracePeriod));
+      }
+
+      // ── Diagnostic logging ────────────────────────────────────────────────
+      if (inHoldTime) {
+        this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round((now - st.startedAt) / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
+      } else if (!wasOn && surplusOk && !startOk && device.startSustainMs > 0 && st.surplusOkSince) {
+        this.log(`[EMS] ${tokenName} ${device.id}: start-sustain pending (${Math.round((now - st.surplusOkSince) / 1000)}s / ${device.startSustainMs / 1000}s)`);
+      } else if (inGracePeriod) {
+        this.log(`[EMS] ${tokenName} ${device.id}: stop-grace active (${Math.round((now - st.surplusBadSince) / 1000)}s / ${device.stopGraceMs / 1000}s)`);
+      }
+
+      // ── Power-drop: device finished its cycle ─────────────────────────────
+      if (wasOn && pastMinRun && device.powerW !== null && device.powerW < device.minSurplusW) {
+        wantOn = false;
+        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop`);
+      }
+
+      await this._simpleDeviceSetOn(device.id, device.name, wantOn, stateMap, startCard, stopCard, tokenName);
       // Device just switched on this tick: its consumption isn't in gridW yet.
       // Deduct minSurplusW from the running budget so the next device in this loop sees less.
       if (!wasOn && wantOn) {
@@ -571,8 +662,9 @@ class EmsDevice extends Device {
     // ── P0: Instant charging ─────────────────────────────────────────────────
     if (this.getCapabilityValue('charge_now') === true) {
       if (!anyConnected) {
-        await this._setMode('idle', 'Kein EV verbunden');
-        await this._set('ems_status_text', 'Kein EV verbunden');
+        const p0SocStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
+        await this._setMode('idle', `kein EV verbunden${p0SocStr}`);
+        await this._set('ems_status_text', `kein EV verbunden${p0SocStr}`);
         return 0;
       }
       for (const c of chargers) {
@@ -590,32 +682,47 @@ class EmsDevice extends Device {
     }
 
     // ── P1: Battery priority ─────────────────────────────────────────────────
-    let batOverflowMode = false;
+    // Three zones based on SOC vs. two thresholds (min_soc_low < min_soc):
+    //   soc ≥ min_soc          → normal operation
+    //   min_soc_low ≤ soc < min_soc → throttle zone: charger runs at minimum (6A/1ph)
+    //   soc < min_soc_low      → hard stop (with overflow exception for grid export)
+    const minSocLow   = Number(cfg.min_battery_soc_low ?? 0);
+    const hasLowZone  = minSocLow > 0 && minSocLow < minSoc;
+    let batOverflowMode  = false;
+    let batThrottleMode  = false;
+
     if (battery.soc !== null && minSoc > 0 && battery.soc < minSoc) {
-      const batCharging    = battery.powerW !== null && battery.powerW > 0;
-      const exportSurplusW = gridW !== null ? -gridW : 0;
+      if (hasLowZone && battery.soc >= minSocLow) {
+        // Throttle zone: let the charger run at minimum power, battery keeps priority
+        batThrottleMode = true;
+      } else {
+        // Hard stop zone: soc < minSocLow (or no low zone configured)
+        const batCharging    = battery.powerW !== null && battery.powerW > 0;
+        const exportSurplusW = gridW !== null ? -gridW : 0;
 
-      // Hysteresis: require 2×MIN_CHARGE_W export to START overflow charging but only
-      // ½×MIN_CHARGE_W to CONTINUE. Without this, starting the charger reduces the
-      // apparent export (the EV wasn't yet drawing when the budget was computed), which
-      // causes the condition to flip false on the very next tick → start/stop oscillation.
-      const anyChargerRunning = chargers.some(
-        (c) => (this._getChargerState(c.id).currentAmps ?? 0) > 0,
-      );
-      const overflowThreshold = anyChargerRunning ? MIN_CHARGE_W / 2 : MIN_CHARGE_W * 2;
-      const hasOverflow       = batCharging && exportSurplusW >= overflowThreshold;
+        // Hysteresis: require 2×MIN_CHARGE_W export to START overflow charging but only
+        // ½×MIN_CHARGE_W to CONTINUE. Without this, starting the charger reduces the
+        // apparent export (the EV wasn't yet drawing when the budget was computed), which
+        // causes the condition to flip false on the very next tick → start/stop oscillation.
+        const anyChargerRunning = chargers.some(
+          (c) => (this._getChargerState(c.id).currentAmps ?? 0) > 0,
+        );
+        const overflowThreshold = anyChargerRunning ? MIN_CHARGE_W / 2 : MIN_CHARGE_W * 2;
+        const hasOverflow       = batCharging && exportSurplusW >= overflowThreshold;
 
-      if (!hasOverflow) {
-        // Only stop chargers that EMS has running — avoids repeated stop triggers each tick
-        for (const c of chargers) {
-          if (this._getChargerState(c.id).currentAmps !== null) await this._chargerStop(c.id);
+        if (!hasOverflow) {
+          // Only stop chargers that EMS has running — avoids repeated stop triggers each tick
+          for (const c of chargers) {
+            if (this._getChargerState(c.id).currentAmps !== null) await this._chargerStop(c.id);
+          }
+          const socLimit  = hasLowZone ? minSocLow : minSoc;
+          const stTextBat = `${Math.round(battery.soc)}% < ${socLimit}%`;
+          await this._setMode('battery_priority', stTextBat);
+          await this._set('ems_status_text', stTextBat);
+          return 0;
         }
-        const stTextBat = `${Math.round(battery.soc)}% < ${minSoc}%`;
-        await this._setMode('battery_priority', stTextBat);
-        await this._set('ems_status_text', stTextBat);
-        return 0;
+        batOverflowMode = true;
       }
-      batOverflowMode = true;
     }
 
     // ── P2: No EV connected ──────────────────────────────────────────────────
@@ -624,14 +731,19 @@ class EmsDevice extends Device {
       for (const c of chargers) {
         if (this._getChargerState(c.id).currentAmps !== null) await this._chargerStop(c.id);
       }
-      await this._setMode('idle', 'Kein EV verbunden');
-      await this._set('ems_status_text', 'Kein EV verbunden');
+      const idleSocStr      = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
+      const idleSurplusW    = gridW !== null ? Math.round(-gridW) : null;
+      const idleSurplusStr  = idleSurplusW !== null && idleSurplusW > 0
+        ? `${idleSurplusW} W Überschuss${idleSocStr}`
+        : `kein Überschuss${idleSocStr}`;
+      await this._setMode('idle', idleSurplusStr);
+      await this._set('ems_status_text', idleSurplusStr);
       return 0;
     }
 
     // ── P3: Off-peak ──────────────────────────────────────────────────────────
     const offpeakWin = this._offpeakWindow(cfg);
-    if (!batOverflowMode && this.getCapabilityValue('offpeak_enabled') === true && offpeakWin.active) {
+    if (!batOverflowMode && !batThrottleMode && this.getCapabilityValue('offpeak_enabled') === true && offpeakWin.active) {
       // Solar-first: if there's enough export surplus to cover the minimum step,
       // let the solar logic handle it — free energy outranks cheap grid energy.
       const solarFirst    = cfg.offpeak_solar_first !== false; // default true
@@ -687,6 +799,10 @@ class EmsDevice extends Device {
       }
     }
 
+    // Throttle zone: cap budget to the user-configured max throttle power so the charger runs
+    // at reduced load while the battery absorbs the majority of remaining PV surplus.
+    if (batThrottleMode) budgetW = Math.min(budgetW, Number(cfg.throttle_budget_w ?? MIN_CHARGE_W));
+
     // In overflow mode keep the budget below the 3-phase threshold so _stepCharger never
     // triggers a 1ph→3ph switch. That switch doubles the charger draw instantly, which
     // pulls the battery out of charging and breaks the overflow condition on the next tick.
@@ -713,13 +829,16 @@ class EmsDevice extends Device {
     if (!active.length) {
       const stTextWait = batOverflowMode
         ? `Überschuss vorhanden · wartend${socStr}${batPwStr}`
-        : `kein Überschuss${socStr}${batPwStr}`;
-      await this._setMode(batOverflowMode ? 'battery_priority' : 'holding', stTextWait);
+        : batThrottleMode
+          ? `gedrosselt · kein Überschuss${socStr}${batPwStr}`
+          : `kein Überschuss${socStr}${batPwStr}`;
+      const waitMode = (batOverflowMode || batThrottleMode) ? 'battery_priority' : 'holding';
+      await this._setMode(waitMode, stTextWait);
       await this._set('ems_status_text', stTextWait);
       return 0;
     } else {
       const parts  = active.map((s) => `${s.amps}A/${s.phases}ph`).join(' + ');
-      const prefix = batOverflowMode ? 'Überschuss · ' : '';
+      const prefix = batOverflowMode ? 'Überschuss · ' : batThrottleMode ? 'gedrosselt · ' : '';
       const stTextSolar = `${prefix}${parts}${active.length > 1 ? ` (${active.length} Lader)` : ''}${socStr}${batPwStr}`;
       await this._setMode('solar_ev', stTextSolar);
       await this._set('ems_status_text', stTextSolar);
@@ -900,6 +1019,12 @@ class EmsDevice extends Device {
   async _set(cap, value) {
     if (!this.hasCapability(cap) || this.getCapabilityValue(cap) === value) return;
     await this.setCapabilityValue(cap, value).catch(() => {});
+  }
+
+  _postNotification(excerpt) {
+    if (!this.getSetting('enable_timeline_notifications')) return;
+    this.homey.notifications.createNotification({ excerpt })
+      .catch((e) => this.log(`[EMS] notification: ${e.message}`));
   }
 
   // ─── History ──────────────────────────────────────────────────────────────

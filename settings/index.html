@@ -328,6 +328,7 @@
       flex:1; padding:6px 8px; border:1px solid #d1d1d6; border-radius:6px;
       font-size:12px; outline:none; background:#fff; min-width:0;
     }
+    .ems-config-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-left:2px; }
     .ems-row-remove {
       padding:3px 8px; font-size:12px; border:1px solid #d1d1d6; border-radius:5px;
       background:#fff; cursor:pointer; color:#c0392b; line-height:1;
@@ -358,12 +359,11 @@
     }
     .ems-toggle-switch input:checked ~ .ems-toggle-slider { background:#34c759; }
     .ems-toggle-switch input:checked ~ .ems-toggle-slider::before { transform:translateX(16px); }
-    .ems-toggle-title { font-size:12px; font-weight:500; color:#1d1d1f; display:block; margin-bottom:2px; }
-    .ems-toggle-desc  { font-size:11px; color:#6e6e73; line-height:1.5; display:block; }
-    .ems-control-hint { font-size:11px; color:#c0392b; line-height:1.5; display:block; margin-top:2px; }
+    .ems-toggle-title { font-size:12px; font-weight:500; color:#1d1d1f; display:block; margin-bottom:2px; text-transform:none !important; letter-spacing:normal !important; }
+    .ems-toggle-desc  { font-size:11px; color:#6e6e73; line-height:1.5; display:block; text-transform:none !important; letter-spacing:normal !important; }
+    .ems-control-hint { font-size:11px; color:#c0392b; line-height:1.5; display:block; margin-top:2px; text-transform:none !important; }
     .ems-caps-info {
       font-size:10px; color:#1a7a3a; padding-left:2px; min-height:14px;
-      font-family:'SF Mono', Menlo, monospace; letter-spacing:0;
     }
     .ems-caps-info.warn { color:#9a5700; }
     .ems-caps-info:empty { min-height:0; }
@@ -403,6 +403,12 @@
       text-transform: none;
       letter-spacing: 0;
       color: #bbb;
+    }
+    .ems-hint {
+      font-size: 11px;
+      color: #6e6e73;
+      margin: 0 0 8px;
+      line-height: 1.5;
     }
     .ems-section-chevron {
       margin-left: auto;
@@ -738,8 +744,9 @@
 
       <!-- Inverter -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Inverter</span><span class="ems-section-subtitle"> · power is summed</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">☀️ Solar Inverter</span><span class="ems-section-subtitle"> · solar production source</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.</p>
           <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('inverter')" style="font-size:11px;padding:4px 10px">+ Add inverter</button>
         </div>
@@ -747,8 +754,9 @@
 
       <!-- Power Meter (P1) -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Power Meter (P1)</span><span class="ems-section-subtitle"> · power is summed</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">⚡ Grid Meter</span><span class="ems-section-subtitle"> · grid import / export source</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.</p>
           <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="font-size:11px;padding:4px 10px">+ Add meter</button>
         </div>
@@ -756,8 +764,9 @@
 
       <!-- House Consumption Meter -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Power Meter (House Consumption)</span><span class="ems-section-subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">🏠 House Consumption Meter</span><span class="ems-section-subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">Optional. Used to show house consumption in the device tile. If omitted, house load is derived from solar, grid, and battery readings.</p>
           <div id="ems-house-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('house')" style="font-size:11px;padding:4px 10px">+ Add house meter</button>
         </div>
@@ -765,29 +774,94 @@
 
       <!-- Home Batteries -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Home Batteries</span><span class="ems-section-subtitle"> · min SOC · optional</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">🔋 Home Batteries</span><span class="ems-section-subtitle"> · optional · protects battery SOC</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
           <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
 
-          <!-- Battery priority -->
+          <!-- Battery SOC zones — combined visual -->
           <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
-        <span class="ems-toggle-title" style="margin-bottom:6px">Minimum Battery SOC</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
-            style="width:80px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff"
-            oninput="emsUpdateSocBar(this.value)">
-          <span style="font-size:12px;color:#6e6e73">%</span>
-        </div>
-        <div class="ems-soc-bar" style="margin-top:8px"><div id="ems-soc-bar-fill" class="ems-soc-bar-fill" style="width:80%"></div></div>
-        <span class="ems-toggle-desc" style="margin-top:4px">All EMS optimisations (charging, heat pumps) pause until every battery exceeds this level. Set to 0 to disable.</span>
-      </div>
+            <span class="ems-toggle-title" style="margin-bottom:12px">Battery SOC Zones</span>
+
+            <!-- Zone bar -->
+            <div style="position:relative;margin-bottom:42px">
+              <div style="display:flex;height:18px;border-radius:9px;overflow:hidden">
+                <div id="soc-seg-stop"   style="height:100%;background:#ff3b30;transition:width .2s;width:80%"></div>
+                <div id="soc-seg-thr"    style="height:100%;background:#ff9f0a;transition:width .2s;width:0%"></div>
+                <div id="soc-seg-normal" style="height:100%;background:#34c759;flex:1;min-width:6px"></div>
+              </div>
+              <!-- Throttle marker -->
+              <div id="soc-marker-low" style="display:none;position:absolute;top:-3px;left:0;transform:translateX(-50%);pointer-events:none">
+                <div style="width:3px;height:24px;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.25);margin:0 auto"></div>
+                <div style="text-align:center;margin-top:5px">
+                  <div style="font-size:9px;font-weight:700;color:#ff9f0a;white-space:nowrap;letter-spacing:.3px">THROTTLE</div>
+                  <div style="font-size:10px;font-weight:600;color:#6e6e73;white-space:nowrap" id="soc-label-low">50%</div>
+                </div>
+              </div>
+              <!-- Min SOC marker -->
+              <div id="soc-marker-min" style="position:absolute;top:-3px;left:80%;transform:translateX(-50%);pointer-events:none">
+                <div style="width:3px;height:24px;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.25);margin:0 auto"></div>
+                <div style="text-align:center;margin-top:5px">
+                  <div style="font-size:9px;font-weight:700;color:#34c759;white-space:nowrap;letter-spacing:.3px">NORMAL ≥</div>
+                  <div style="font-size:10px;font-weight:600;color:#6e6e73;white-space:nowrap" id="soc-label-min">80%</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Zone legend chips -->
+            <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#fff5f5;border:1px solid #ffd0cc;border-radius:20px;padding:2px 8px">
+                <span style="width:7px;height:7px;border-radius:50%;background:#ff3b30;flex-shrink:0"></span>Hard stop
+              </span>
+              <span id="soc-chip-thr" style="display:none;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#fff8ef;border:1px solid #ffdfa8;border-radius:20px;padding:2px 8px">
+                <span style="width:7px;height:7px;border-radius:50%;background:#ff9f0a;flex-shrink:0"></span><span id="soc-chip-thr-label">Throttle · 1380 W</span>
+              </span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#f2fff6;border:1px solid #b6f0c6;border-radius:20px;padding:2px 8px">
+                <span style="width:7px;height:7px;border-radius:50%;background:#34c759;flex-shrink:0"></span>Normal · full budget
+              </span>
+            </div>
+
+            <!-- Number inputs -->
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+              <div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Throttle SOC <span style="font-weight:400;color:#bbb">(optional · 0 = off)</span></div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input id="ems-min-soc-low" type="number" value="0" min="0" max="100" step="5"
+                    style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
+                    oninput="emsUpdateSocZones()">
+                  <span style="font-size:12px;color:#6e6e73">%</span>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Min Battery SOC</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
+                    style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
+                    oninput="emsUpdateSocZones()">
+                  <span style="font-size:12px;color:#6e6e73">%</span>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Max throttle power</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input id="ems-throttle-budget-w" type="number" value="1380" min="230" max="11500" step="1"
+                    style="width:82px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
+                    oninput="emsUpdateSocZones()">
+                  <span style="font-size:12px;color:#6e6e73">W</span>
+                </div>
+                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">EV charger current reference:<br>1380 = 6A/1ph<br>1840 = 8A/1ph<br>2300 = 10A/1ph<br>2760 = 12A/1ph<br>3220 = 14A/1ph<br>3680 = 16A/1ph<br>4140 = 6A/3ph</div>
+              </div>
+            </div>
+            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Throttle → Min SOC): EV charger is limited to Max throttle power; heat pumps, boilers and pool only run if their minimum surplus threshold is ≤ Max throttle power. <span style="color:#ff3b30;font-weight:600">Red</span> (below Throttle SOC): all devices stop — battery charges at full speed. Set Throttle SOC to 0 to use only red and green.</span>
+            <div class="ems-callout" style="margin-top:6px"><span>3-phase only charger? Set Max throttle power to at least 4140 W (= 6A/3ph), otherwise the charger stays off in the orange zone.</span></div>
+          </div>
         </div>
       </details>
 
       <!-- EV Chargers -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">EV Chargers</span><span class="ems-section-subtitle"> · priority order</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">🚗 EV Chargers</span><span class="ems-section-subtitle"> · priority order</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <div id="ems-charger-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add charger</button>
@@ -809,14 +883,14 @@
         </span>
         <span>
           <span class="ems-toggle-title">Solar surplus priority</span>
-          <span class="ems-toggle-desc">When PV export surplus is available, EVs are charged from that surplus first — even during the off-peak window. Switches to grid automatically when solar isn't sufficient. When disabled, the off-peak window always charges from grid at the configured amperage, regardless of available surplus.</span>
+          <span class="ems-toggle-desc">When solar surplus is available, EVs are charged from it first — even during the off-peak window. When disabled, off-peak always charges at the configured limit regardless of solar.</span>
         </span>
       </label>
 
       <!-- Off-Peak Charging (sub-section of EV Chargers) -->
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px;gap:10px">
         <span class="ems-toggle-title">Off-Peak Charging</span>
-        <div class="ems-callout"><span>Enable/disable via the device toggle in the Homey app.</span></div>
+        <div class="ems-callout"><span>Enable/disable using the <b>Off-Peak</b> toggle on the EMS device tile in Homey.</span></div>
         <div style="font-size:11px;font-weight:600;color:#3a3a3c">Weekday</div>
         <div style="display:flex;gap:12px">
           <div style="flex:1">
@@ -830,10 +904,10 @@
               style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
           </div>
           <div style="flex:1">
-            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Current (A)</label>
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px">Charge limit (A)</label>
             <input id="ems-offpeak-amps" type="number" value="16" min="6" max="32" step="2"
               style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Per charger · both days</div>
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px">Per charger · applies to both days</div>
           </div>
         </div>
         <label class="ems-toggle-row" style="margin-top:0">
@@ -868,8 +942,9 @@
 
       <!-- Heat Pumps -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Heat Pumps</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">♨️ Heat Pumps</span><span class="ems-section-subtitle"> · EMS switches on/off when solar surplus is available</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p class="ems-hint">Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).</p>
           <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add heat pump</button>
           <label class="ems-toggle-row">
@@ -888,8 +963,9 @@
 
       <!-- Boilers / Immersion Heaters -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Boilers / Immersion Heaters</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">🚿 Boilers / Immersion Heaters</span><span class="ems-section-subtitle"> · EMS switches on/off when solar surplus is available</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p class="ems-hint">Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.</p>
           <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddBoilerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add boiler / heater</button>
           <label class="ems-toggle-row">
@@ -908,8 +984,9 @@
 
       <!-- Pool / Whirlpool -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Pool / Whirlpool</span><span class="ems-section-subtitle"> · via Flow · solar &amp; battery</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">💧 Pool / Whirlpool</span><span class="ems-section-subtitle"> · EMS switches on/off when solar surplus is available</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
+          <p class="ems-hint">Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddPoolRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add pool / whirlpool</button>
           <label class="ems-toggle-row">
@@ -928,7 +1005,7 @@
 
       <!-- Device Priority -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Device Priority</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">⚖️ Device Priority</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
         <span class="ems-toggle-title">Evaluation order</span>
@@ -965,7 +1042,7 @@
 
       <!-- Export Limit Coordinator -->
       <details class="ems-section">
-        <summary><span class="ems-section-label">Export Limit Coordinator</span><span class="ems-section-subtitle"> · automatic</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label">📤 Export Limit Coordinator</span><span class="ems-section-subtitle"> · automatic</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
       <label class="ems-toggle-row">
         <span class="ems-toggle-switch">
@@ -975,7 +1052,7 @@
         </span>
         <span>
           <span class="ems-toggle-title">Auto-limit inverter when battery is full</span>
-          <span class="ems-toggle-desc">When battery SOC reaches the <em>Activate</em> level and solar is exporting to the grid, the EMS automatically fires the inverter <em>Enable export limit</em> trigger. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> level or export stops. Requires the inverter <em>Enable / Disable export limit</em> flows to be configured in the Inverter section above.</span>
+          <span class="ems-toggle-desc">When battery SOC reaches the <em>Activate</em> threshold (default 95%) and solar is exporting to the grid, the EMS fires the inverter <em>Enable export limit</em> flow. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> threshold (default 90%) or export stops. Enable to adjust thresholds and review setup instructions.</span>
         </span>
       </label>
       <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
@@ -2104,9 +2181,52 @@
       });
     }
 
-    function emsUpdateSocBar(v) {
-      var el = document.getElementById('ems-soc-bar-fill');
-      if (el) el.style.width = Math.min(100, Math.max(0, parseInt(v) || 0)) + '%';
+    function emsUpdateSocZones() {
+      var elMin = document.getElementById('ems-min-soc');
+      var elLow = document.getElementById('ems-min-soc-low');
+      var minSoc    = Math.min(100, Math.max(0, parseInt(elMin.value) || 0));
+      var minSocLow = Math.min(100, Math.max(0, parseInt(elLow.value) || 0));
+
+      // Enforce throttle < min: clamp and write back so the bar always stays consistent
+      if (minSocLow > 0 && minSocLow >= minSoc) {
+        minSocLow = Math.max(0, minSoc - 5);
+        elLow.value = minSocLow;
+      }
+      // Keep browser spinner from allowing invalid values
+      elLow.max = minSoc > 0 ? minSoc - 1 : 0;
+      elMin.min = minSocLow > 0 ? minSocLow + 1 : 0;
+
+      var hasThrottle = minSocLow > 0 && minSocLow < minSoc;
+
+      var segStop    = document.getElementById('soc-seg-stop');
+      var segThr     = document.getElementById('soc-seg-thr');
+      var markerLow  = document.getElementById('soc-marker-low');
+      var markerMin  = document.getElementById('soc-marker-min');
+      var chipThr    = document.getElementById('soc-chip-thr');
+
+      if (hasThrottle) {
+        segStop.style.width = minSocLow + '%';
+        segThr.style.width  = (minSoc - minSocLow) + '%';
+        markerLow.style.display = 'block';
+        markerLow.style.left    = minSocLow + '%';
+        document.getElementById('soc-label-low').textContent = minSocLow + '%';
+        if (chipThr) {
+          chipThr.style.display = 'flex';
+          var budgetW = parseInt(document.getElementById('ems-throttle-budget-w').value, 10) || 1380;
+          var chipLabel = document.getElementById('soc-chip-thr-label');
+          if (chipLabel) chipLabel.textContent = 'Throttle · ' + budgetW + ' W';
+        }
+      } else {
+        segStop.style.width = minSoc + '%';
+        segThr.style.width  = '0%';
+        markerLow.style.display = 'none';
+        if (chipThr) chipThr.style.display = 'none';
+      }
+
+      if (markerMin) {
+        markerMin.style.left = minSoc + '%';
+        document.getElementById('soc-label-min').textContent = minSoc + '%';
+      }
     }
 
     // ── Capability detection ──────────────────────────────────────────────────
@@ -2215,7 +2335,8 @@
       if (defVal) row.dataset[dataKey] = defVal; else delete row.dataset[dataKey];
 
       var valSpan = document.createElement('span');
-      valSpan.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      valSpan.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap;flex-shrink:0;min-width:28px;text-align:right';
+      valSpan.title = 'Current live reading from this capability';
 
       sel.addEventListener('change', function() {
         if (sel.value) row.dataset[dataKey] = sel.value; else delete row.dataset[dataKey];
@@ -2254,12 +2375,12 @@
       var powerCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
 
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
-      infoEl.appendChild(_emsCapRow(row, 'State:', stateCaps.length ? stateCaps : caps, 'capState', defState));
+      infoEl.appendChild(_emsCapRow(row, 'Charging state:', stateCaps.length ? stateCaps : caps, 'capState', defState));
       infoEl.appendChild(_emsCapRow(row, 'Power (W):', powerCaps.length ? powerCaps : caps, 'capPower', defPower));
 
       var note = document.createElement('span');
-      note.style.cssText = 'font-size:11px;color:#6e6e73';
-      note.textContent = 'Charger control via Homey Flow — set up "When EMS sets current" trigger';
+      note.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.5';
+      note.innerHTML = '<b>Charging state</b> tells the EMS whether the car is connected and charging. <b>Power (W)</b> is used to track actual consumption. The EMS sends charging current commands via Flow — set up the trigger in the "Flow setup" section below.';
       infoEl.appendChild(note);
     }
 
@@ -2283,7 +2404,7 @@
         || emsDetectInverterPower(caps) || '';
 
       infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
-      infoEl.appendChild(_emsCapLabel('PV power (W):'));
+      infoEl.appendChild(_emsCapLabel('Solar production (W):'));
       infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
     }
 
@@ -2311,13 +2432,9 @@
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:2px;padding-top:4px';
       var capRow = document.createElement('div');
       capRow.style.cssText = 'display:flex;align-items:center;gap:6px';
-      capRow.appendChild(_emsCapLabel('Grid power (W):'));
+      capRow.appendChild(_emsCapLabel('Grid power (W):  + = import  − = export'));
       capRow.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
       infoEl.appendChild(capRow);
-      var hint = document.createElement('span');
-      hint.textContent = '+ = import  ·  − = export';
-      hint.style.cssText = 'font-size:10px;color:#aaa;padding-left:90px';
-      infoEl.appendChild(hint);
     }
 
     function emsRenderHouseCaps(row, caps, stored) {
@@ -2341,7 +2458,7 @@
       var defVal = (stored && stored.cap_power) || emsDetectGridPower(caps) || '';
 
       infoEl.style.cssText = 'display:flex;align-items:center;gap:6px;padding-top:4px';
-      infoEl.appendChild(_emsCapLabel('House power (W):'));
+      infoEl.appendChild(_emsCapLabel('House consumption (W):'));
       infoEl.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
     }
 
@@ -2350,25 +2467,26 @@
       if (!infoEl) return;
       infoEl.innerHTML = '';
       infoEl.className = 'ems-caps-info';
-      ['capSoc','capPower','capCharged','capDischarged'].forEach(function(k) { delete row.dataset[k]; });
+      ['capSoc','capPower'].forEach(function(k) { delete row.dataset[k]; });
 
       if (!caps.length) return;
 
       var storedSoc = typeof stored === 'string' ? stored : (stored && stored.cap_soc) || null;
       var defSoc = storedSoc || emsDetectBatterySoc(caps) || '';
-      var defPow = (stored && stored.cap_power)      || emsDetectCap(caps, ['measure_power']) || '';
-      var defChr = (stored && stored.cap_charged)    || emsDetectCap(caps, ['meter_power.charged']) || '';
-      var defDis = (stored && stored.cap_discharged) || emsDetectCap(caps, ['meter_power.discharged']) || '';
+      var defPow = (stored && stored.cap_power) || emsDetectCap(caps, ['measure_power']) || '';
 
-      var socCaps  = caps.filter(function(c) { return c.indexOf('measure_battery') === 0 || c.toLowerCase().indexOf('battery') !== -1 || c.indexOf('soc') !== -1; });
-      var pwCaps   = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
-      var mtrCaps  = caps.filter(function(c) { return c.indexOf('meter_power') === 0; });
+      var socCaps = caps.filter(function(c) { return c.indexOf('measure_battery') === 0 || c.toLowerCase().indexOf('battery') !== -1 || c.indexOf('soc') !== -1; });
+      var pwCaps  = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
 
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
-      infoEl.appendChild(_emsCapRow(row, 'SOC (%):', socCaps.length ? socCaps : caps, 'capSoc', defSoc));
-      if (pwCaps.length)  infoEl.appendChild(_emsCapRow(row, 'Power (W):',          pwCaps,  'capPower',      defPow));
-      if (mtrCaps.length) infoEl.appendChild(_emsCapRow(row, 'Charged (kWh):',      mtrCaps, 'capCharged',    defChr));
-      if (mtrCaps.length) infoEl.appendChild(_emsCapRow(row, 'Discharged (kWh):',   mtrCaps, 'capDischarged', defDis));
+      infoEl.appendChild(_emsCapRow(row, 'Battery SOC (%):', socCaps.length ? socCaps : caps, 'capSoc', defSoc));
+      if (pwCaps.length) {
+        infoEl.appendChild(_emsCapRow(row, 'Battery power (W):', pwCaps, 'capPower', defPow));
+        var pwHint = document.createElement('div');
+        pwHint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
+        pwHint.textContent = 'positive = charging (absorbing surplus)  ·  negative = discharging';
+        infoEl.appendChild(pwHint);
+      }
     }
 
     function emsRenderHeatPumpCaps(row, caps, stored) {
@@ -2601,7 +2719,7 @@
       var phaseChk = document.createElement('input');
       phaseChk.type = 'checkbox';
       phaseChk.className = 'ems-row-phase-switch';
-      phaseChk.title = 'Auto-Switch 1↔3 Phasen (< 4140 W → 1-phasig, ≥ 4140 W → 3-phasig)';
+      phaseChk.title = 'Auto phase-switching: below 4140 W (6A × 3ph) the EMS uses 1-phase charging; at or above it switches to 3-phase';
       phaseChk.style.cssText = 'margin-left:4px;cursor:pointer';
       if (stored && stored.phase_switch) phaseChk.checked = true;
 
@@ -2617,10 +2735,13 @@
       removeBtn.onclick = function() { entry.remove(); emsRenumberChargers(); };
 
       row.appendChild(badge); row.appendChild(sel);
-      row.appendChild(ampsInput); row.appendChild(ampsLabel);
-      row.appendChild(phasesSel);
-      row.appendChild(phaseChk); row.appendChild(phaseSwLabel);
       row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      configRow.appendChild(ampsInput); configRow.appendChild(ampsLabel);
+      configRow.appendChild(phasesSel);
+      configRow.appendChild(phaseChk); configRow.appendChild(phaseSwLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -2628,7 +2749,7 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
@@ -2658,14 +2779,39 @@
 
       var surplusInput = document.createElement('input');
       surplusInput.type = 'number';
+      surplusInput.dataset.field = 'min_surplus_w';
       surplusInput.value = (stored && stored.min_surplus_w) || 2000;
       surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
       surplusInput.title = 'Minimum solar surplus to turn on (W)';
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W solar min';
+      surplusLabel.textContent = 'W to start';
       surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var sustainInput = document.createElement('input');
+      sustainInput.type = 'number';
+      sustainInput.dataset.field = 'start_sustain_s';
+      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
+      sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
+      sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var sustainLabel = document.createElement('span');
+      sustainLabel.textContent = 's start delay';
+      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var graceInput = document.createElement('input');
+      graceInput.type = 'number';
+      graceInput.dataset.field = 'stop_grace_s';
+      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
+      graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
+      graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var graceLabel = document.createElement('span');
+      graceLabel.textContent = 's stop delay';
+      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -2673,8 +2819,13 @@
       removeBtn.onclick = function() { entry.remove(); };
 
       row.appendChild(sel);
-      row.appendChild(surplusInput); row.appendChild(surplusLabel);
       row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -2682,7 +2833,7 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       sel.addEventListener('change', function() {
@@ -2702,16 +2853,22 @@
     function emsGetHeatPumps() {
       var result = [];
       document.querySelectorAll('#ems-heatpump-list .ems-entry').forEach(function(entry) {
-        var row     = entry.querySelector('.ems-list-row');
-        var sel     = entry.querySelector('.ems-row-device');
-        var surplus = entry.querySelector('input[type=number]');
+        var row      = entry.querySelector('.ems-list-row');
+        var sel      = entry.querySelector('.ems-row-device');
+        var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
+        var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
+        var grace    = entry.querySelector('input[data-field=stop_grace_s]');
         if (sel && sel.value) {
+          var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           result.push({
-            id:            sel.value,
-            cap_power:     (row && row.dataset.capPower) || '',
-            min_surplus_w: parseInt(surplus ? surplus.value : 2000, 10) || 2000,
-            start_card:    entry.dataset.hpStartCard || '',
-            stop_card:     entry.dataset.hpStopCard  || '',
+            id:              sel.value,
+            name:            (dev && dev.name) || sel.value.slice(0, 8),
+            cap_power:       (row && row.dataset.capPower) || '',
+            min_surplus_w:   parseInt(surplus ? surplus.value : 2000, 10) || 2000,
+            start_sustain_s: parseInt(sustain ? sustain.value : 0, 10) || 0,
+            stop_grace_s:    parseInt(grace   ? grace.value   : 0, 10) || 0,
+            start_card:      entry.dataset.hpStartCard || '',
+            stop_card:       entry.dataset.hpStopCard  || '',
           });
         }
       });
@@ -2777,14 +2934,20 @@
       document.querySelectorAll('#' + listId + ' .ems-entry').forEach(function(entry) {
         var row     = entry.querySelector('.ems-list-row');
         var sel     = entry.querySelector('.ems-row-device');
-        var surplus = entry.querySelector('input[type=number]');
+        var surplus = entry.querySelector('input[data-field=min_surplus_w]');
+        var sustain = entry.querySelector('input[data-field=start_sustain_s]');
+        var grace   = entry.querySelector('input[data-field=stop_grace_s]');
         if (sel && sel.value) {
+          var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           result.push({
-            id:            sel.value,
-            cap_power:     (row && row.dataset.capPower) || '',
-            min_surplus_w: parseInt(surplus ? surplus.value : 2000, 10) || 2000,
-            start_card:    entry.dataset[startDataKey] || '',
-            stop_card:     entry.dataset[stopDataKey]  || '',
+            id:              sel.value,
+            name:            (dev && dev.name) || sel.value.slice(0, 8),
+            cap_power:       (row && row.dataset.capPower) || '',
+            min_surplus_w:   parseInt(surplus ? surplus.value : 2000, 10) || 2000,
+            start_sustain_s: parseInt(sustain ? sustain.value : 0, 10) || 0,
+            stop_grace_s:    parseInt(grace   ? grace.value   : 0, 10) || 0,
+            start_card:      entry.dataset[startDataKey] || '',
+            stop_card:       entry.dataset[stopDataKey]  || '',
           });
         }
       });
@@ -3091,14 +3254,39 @@
 
       var surplusInput = document.createElement('input');
       surplusInput.type = 'number';
+      surplusInput.dataset.field = 'min_surplus_w';
       surplusInput.value = (stored && stored.min_surplus_w) || 2000;
       surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
       surplusInput.title = 'Minimum solar surplus to turn on (W)';
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W solar min';
+      surplusLabel.textContent = 'W to start';
       surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var sustainInput = document.createElement('input');
+      sustainInput.type = 'number';
+      sustainInput.dataset.field = 'start_sustain_s';
+      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
+      sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
+      sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var sustainLabel = document.createElement('span');
+      sustainLabel.textContent = 's start delay';
+      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var graceInput = document.createElement('input');
+      graceInput.type = 'number';
+      graceInput.dataset.field = 'stop_grace_s';
+      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
+      graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
+      graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var graceLabel = document.createElement('span');
+      graceLabel.textContent = 's stop delay';
+      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3106,8 +3294,13 @@
       removeBtn.onclick = function() { entry.remove(); };
 
       row.appendChild(sel);
-      row.appendChild(surplusInput); row.appendChild(surplusLabel);
       row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -3115,7 +3308,7 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       sel.addEventListener('change', function() {
@@ -3159,14 +3352,39 @@
 
       var surplusInput = document.createElement('input');
       surplusInput.type = 'number';
+      surplusInput.dataset.field = 'min_surplus_w';
       surplusInput.value = (stored && stored.min_surplus_w) || 2000;
       surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
       surplusInput.title = 'Minimum solar surplus to turn on (W)';
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W solar min';
+      surplusLabel.textContent = 'W to start';
       surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var sustainInput = document.createElement('input');
+      sustainInput.type = 'number';
+      sustainInput.dataset.field = 'start_sustain_s';
+      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
+      sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
+      sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var sustainLabel = document.createElement('span');
+      sustainLabel.textContent = 's start delay';
+      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var graceInput = document.createElement('input');
+      graceInput.type = 'number';
+      graceInput.dataset.field = 'stop_grace_s';
+      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
+      graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
+      graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var graceLabel = document.createElement('span');
+      graceLabel.textContent = 's stop delay';
+      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3174,8 +3392,13 @@
       removeBtn.onclick = function() { entry.remove(); };
 
       row.appendChild(sel);
-      row.appendChild(surplusInput); row.appendChild(surplusLabel);
       row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -3183,7 +3406,7 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       sel.addEventListener('change', function() {
@@ -3544,7 +3767,7 @@
       arrow.textContent = '▶';
       arrow.style.cssText = 'font-size:9px;color:#6e6e73;transition:transform 0.15s';
       var label = document.createElement('span');
-      label.textContent = 'FLOW ACTIONS';
+      label.textContent = 'Flow setup';
       label.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.06em;color:#6e6e73';
       header.appendChild(arrow); header.appendChild(label);
       var body = document.createElement('div');
@@ -4783,13 +5006,14 @@
     function emsGetChargers() {
       var result = [];
       document.querySelectorAll('#ems-charger-list .ems-entry').forEach(function(entry) {
-        var row = entry.querySelector('.ems-list-row');
-        var id  = row.querySelector('.ems-row-device').value;
-        var ma  = parseInt(row.querySelector('input[type=number]').value, 10) || 16;
+        var row    = entry.querySelector('.ems-list-row');
+        var id     = row.querySelector('.ems-row-device').value;
+        var maEl   = entry.querySelector('input[type=number]');
+        var ma     = parseInt(maEl ? maEl.value : 16, 10) || 16;
         if (!id) return;
-        var phSel = row.querySelector('.ems-row-phases');
+        var phSel  = entry.querySelector('.ems-row-phases');
         var c = { id: id, max_amps: ma, ev_phases: phSel ? phSel.value : '3' };
-        var phkChk = row.querySelector('.ems-row-phase-switch');
+        var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
         if (row.dataset.capPower) c.cap_power = row.dataset.capPower;
@@ -4835,10 +5059,8 @@
         var id  = row.querySelector('.ems-row-device').value;
         if (!id) return;
         var d = { id: id };
-        if (row.dataset.capSoc)        d.cap_soc        = row.dataset.capSoc;
-        if (row.dataset.capPower)      d.cap_power      = row.dataset.capPower;
-        if (row.dataset.capCharged)    d.cap_charged    = row.dataset.capCharged;
-        if (row.dataset.capDischarged) d.cap_discharged = row.dataset.capDischarged;
+        if (row.dataset.capSoc)   d.cap_soc   = row.dataset.capSoc;
+        if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
         if (entry.dataset.batCards) { try { d.bat_cards = JSON.parse(entry.dataset.batCards); } catch(_) {} }
         result.push(d);
       });
@@ -4939,7 +5161,10 @@
       poolDevs.forEach(function(d) { emsAddPoolRow(d.id, d); });
 
       // ── Scalar settings ───────────────────────────────────────────────────────
-      if (cfg.min_battery_soc !== undefined) { document.getElementById('ems-min-soc').value = cfg.min_battery_soc; emsUpdateSocBar(cfg.min_battery_soc); }
+      if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
+      if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
+      if (cfg.throttle_budget_w     !== undefined) document.getElementById('ems-throttle-budget-w').value = cfg.throttle_budget_w;
+      emsUpdateSocZones();
       var _offpeakEl = document.getElementById('ems-offpeak-enabled');
       if (_offpeakEl) _offpeakEl.checked                                                       = !!cfg.offpeak_enabled;
       if (cfg.offpeak_start) document.getElementById('ems-offpeak-start').value                = cfg.offpeak_start;
@@ -4990,6 +5215,17 @@
         document.getElementById('ems-min-soc').focus();
         return;
       }
+      var _minSocLow = parseInt(document.getElementById('ems-min-soc-low').value, 10) || 0;
+      if (isNaN(_minSocLow) || _minSocLow < 0 || _minSocLow > 100) {
+        emsShowSaveStatus('✗ Throttle SOC must be 0–100', '#c0392b');
+        document.getElementById('ems-min-soc-low').focus();
+        return;
+      }
+      if (_minSocLow > 0 && _minSocLow >= _minSoc) {
+        emsShowSaveStatus('✗ Throttle SOC must be lower than Min SOC', '#c0392b');
+        document.getElementById('ems-min-soc-low').focus();
+        return;
+      }
 
       var _timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
       function _validateTime(id, label) {
@@ -5017,7 +5253,9 @@
         heat_pump_devices:   hpDevs,
         boiler_devices:      boilerDevs,
         pool_devices:        poolDevs,
-        min_battery_soc:    _minSoc,
+        min_battery_soc:      _minSoc,
+        min_battery_soc_low:  _minSocLow,
+        throttle_budget_w:    Math.max(230, parseInt(document.getElementById('ems-throttle-budget-w').value, 10) || 1380),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings
         offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
         offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',

@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.98",
+  "version": "1.1.99",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -5313,6 +5313,16 @@
             "de": "Erstellen in Homey → Einstellungen → System → API-Schlüssel. Der Schlüssel benötigt Lese- und Schreibzugriff auf Geräte und Flows. Alle EMS-Einstellungen erfolgen in den App-Einstellungen (EMS-Tab)."
           },
           "value": ""
+        },
+        {
+          "id": "enable_timeline_notifications",
+          "type": "checkbox",
+          "label": { "en": "Timeline notifications", "de": "Timeline-Benachrichtigungen", "nl": "Tijdlijn-meldingen" },
+          "hint": {
+            "en": "Post to the Homey Timeline when EMS starts or stops a device, or when the battery SOC crosses a threshold.",
+            "de": "Im Homey-Timeline posten wenn EMS ein Gerät ein- oder ausschaltet oder der Batterie-SOC einen Schwellenwert erreicht."
+          },
+          "value": true
         }
       ]
     }
@@ -7705,6 +7715,133 @@
         ]
       },
       {
+        "id": "sun2000_startup",
+        "title": {
+          "en": "Start inverter",
+          "de": "Wechselrichter starten"
+        },
+        "titleFormatted": {
+          "en": "Start [[device]]",
+          "de": "[[device]] starten"
+        },
+        "hint": {
+          "en": "Sends a startup command to the inverter via Modbus (register 40200). Verify that grid conditions are suitable before using.",
+          "de": "Sendet einen Startbefehl an den Wechselrichter über Modbus (Register 40200). Vor der Verwendung sicherstellen, dass die Netzbedingungen geeignet sind."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          }
+        ]
+      },
+      {
+        "id": "sun2000_shutdown",
+        "title": {
+          "en": "Shut down inverter",
+          "de": "Wechselrichter abschalten"
+        },
+        "titleFormatted": {
+          "en": "Shut down [[device]]",
+          "de": "[[device]] abschalten"
+        },
+        "hint": {
+          "en": "Sends a shutdown command to the inverter via Modbus (register 40201). The inverter stops feeding power to the grid.",
+          "de": "Sendet einen Abschaltbefehl an den Wechselrichter über Modbus (Register 40201). Der Wechselrichter hört auf, Strom ins Netz einzuspeisen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_mppt_multimodal",
+        "title": {
+          "en": "Set MPPT multimodal scanning",
+          "de": "MPPT-Multimodal-Scanning setzen"
+        },
+        "titleFormatted": {
+          "en": "Set MPPT multimodal scanning to [[mode]]",
+          "de": "MPPT-Multimodal-Scanning auf [[mode]] setzen"
+        },
+        "hint": {
+          "en": "Enables or disables MPPT multimodal scanning (register 42054). Useful for installations with partial shading where multiple power peaks may exist.",
+          "de": "Aktiviert oder deaktiviert das MPPT-Multimodal-Scanning (Register 42054). Nützlich bei Anlagen mit Teilverschattung, wo mehrere Leistungsmaxima auftreten können."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus"
+            },
+            "values": [
+              {
+                "id": "0",
+                "label": {
+                  "en": "Disabled",
+                  "de": "Deaktiviert"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Enabled",
+                  "de": "Aktiviert"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sun2000_set_mppt_interval",
+        "title": {
+          "en": "Set MPPT scanning interval",
+          "de": "MPPT-Scan-Intervall setzen"
+        },
+        "titleFormatted": {
+          "en": "Set MPPT scanning interval to [[interval]] min",
+          "de": "MPPT-Scan-Intervall auf [[interval]] min setzen"
+        },
+        "hint": {
+          "en": "Sets the MPPT scanning interval in minutes (register 42055). Shorter intervals improve response to changing conditions but increase inverter activity.",
+          "de": "Setzt das MPPT-Scan-Intervall in Minuten (Register 42055). Kürzere Intervalle verbessern die Reaktion auf wechselnde Bedingungen, erhöhen aber die Wechselrichteraktivität."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=sun2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "interval",
+            "title": {
+              "en": "Interval (min)",
+              "de": "Intervall (min)"
+            },
+            "min": 1,
+            "max": 60,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 5",
+              "de": "z.B. 5"
+            }
+          }
+        ]
+      },
+      {
         "id": "luna2000_emma_set_working_mode",
         "title": {
           "en": "Set storage working mode",
@@ -8573,6 +8710,357 @@
             "placeholder": {
               "en": "e.g. 5000",
               "de": "z.B. 5000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_charge_cutoff_soc",
+        "title": {
+          "en": "Set charge cutoff SoC",
+          "de": "Lade-Abbruch-SoC setzen"
+        },
+        "titleFormatted": {
+          "en": "Set charge cutoff SoC to [[target_soc]] %",
+          "de": "Lade-Abbruch-SoC auf [[target_soc]] % setzen"
+        },
+        "hint": {
+          "en": "Sets the maximum SoC the battery charges to during normal operation (register 47081). Example: set to 80 % in summer to extend battery life.",
+          "de": "Setzt den maximalen Ladezustand, bis zu dem die Batterie im Normalbetrieb lädt (Register 47081). Beispiel: im Sommer auf 80 % setzen, um die Batterie zu schonen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "target_soc",
+            "title": {
+              "en": "Cutoff SoC (%)",
+              "de": "Abbruch-Ladezustand (%)"
+            },
+            "min": 50,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 100",
+              "de": "z.B. 100"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_discharge_cutoff_soc",
+        "title": {
+          "en": "Set discharge cutoff SoC",
+          "de": "Entlade-Abbruch-SoC setzen"
+        },
+        "titleFormatted": {
+          "en": "Set discharge cutoff SoC to [[target_soc]] %",
+          "de": "Entlade-Abbruch-SoC auf [[target_soc]] % setzen"
+        },
+        "hint": {
+          "en": "Sets the minimum SoC the battery discharges to during normal operation (register 47082). Example: set to 20 % to keep a reserve.",
+          "de": "Setzt den minimalen Ladezustand, bis zu dem die Batterie im Normalbetrieb entlädt (Register 47082). Beispiel: auf 20 % setzen, um eine Reserve zu halten."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "target_soc",
+            "title": {
+              "en": "Cutoff SoC (%)",
+              "de": "Abbruch-Entladestand (%)"
+            },
+            "min": 0,
+            "max": 50,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 10",
+              "de": "z.B. 10"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_backup_reserve_soc",
+        "title": {
+          "en": "Set backup power reserve SoC",
+          "de": "Backup-Reserve-SoC setzen"
+        },
+        "titleFormatted": {
+          "en": "Set backup power reserve SoC to [[target_soc]] %",
+          "de": "Backup-Reserve-SoC auf [[target_soc]] % setzen"
+        },
+        "hint": {
+          "en": "Sets the SoC reserved for backup / off-grid operation (register 47102). The battery will not discharge below this level during normal grid-tied operation.",
+          "de": "Setzt den für den Backup-/Inselbetrieb reservierten Ladezustand (Register 47102). Die Batterie entlädt sich im normalen Netzbetrieb nicht unter diesen Wert."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "target_soc",
+            "title": {
+              "en": "Reserve SoC (%)",
+              "de": "Reserve-SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 20",
+              "de": "z.B. 20"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_max_grid_charge_power",
+        "title": {
+          "en": "Set max power charge from grid",
+          "de": "Maximale Netzladeleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "Set max power charge from grid to [[power]] W",
+          "de": "Maximale Netzladeleistung auf [[power]] W setzen"
+        },
+        "hint": {
+          "en": "Sets the hard upper limit for grid-charging power (register 47244, UINT32). Unlike the schedule-based grid charge power (register 47242), this cap applies at all times.",
+          "de": "Setzt die absolute Obergrenze für die Ladeleistung aus dem Netz (Register 47244, UINT32). Im Gegensatz zur zeitplanbasierten Netzladeleistung (Register 47242) gilt diese Grenze jederzeit."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 5000",
+              "de": "z.B. 5000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_force_discharge_power",
+        "title": {
+          "en": "Set force discharge power",
+          "de": "Zwangsentladeleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "Set force discharge power to [[power]] W",
+          "de": "Zwangsentladeleistung auf [[power]] W setzen"
+        },
+        "hint": {
+          "en": "Sets the power for forced discharging (register 47249, UINT32). Use before or instead of the combined 'Start force discharge' card when you need independent power control.",
+          "de": "Setzt die Leistung für die Zwangsentladung (Register 47249, UINT32). Vor oder anstelle der kombinierten 'Zwangsentladung starten'-Karte verwenden, wenn eine unabhängige Leistungssteuerung benötigt wird."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 2500",
+              "de": "z.B. 2500"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_power_limit_grid",
+        "title": {
+          "en": "Set grid-tied power limit",
+          "de": "Netzkopplungs-Leistungsgrenze setzen"
+        },
+        "titleFormatted": {
+          "en": "Set grid-tied power limit to [[power]] W",
+          "de": "Netzkopplungs-Leistungsgrenze auf [[power]] W setzen"
+        },
+        "hint": {
+          "en": "Sets the power limit at the grid connection point (register 47079, UINT32). Limits total system power flow at the grid-tied point.",
+          "de": "Setzt die Leistungsgrenze am Netzkopplungspunkt (Register 47079, UINT32). Begrenzt den gesamten Leistungsfluss am Netzanschluss."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "power",
+            "title": {
+              "en": "Power (W)",
+              "de": "Leistung (W)"
+            },
+            "min": 0,
+            "max": 100000,
+            "step": 100,
+            "placeholder": {
+              "en": "e.g. 10000",
+              "de": "z.B. 10000"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_backup_offgrid",
+        "title": {
+          "en": "Set backup off-grid switch",
+          "de": "Backup-Inselbetrieb setzen"
+        },
+        "titleFormatted": {
+          "en": "Set backup off-grid switch to [[mode]]",
+          "de": "Backup-Inselbetrieb auf [[mode]] setzen"
+        },
+        "hint": {
+          "en": "Enables or disables backup / off-grid mode (register 47604). Requires backup hardware to be installed.",
+          "de": "Aktiviert oder deaktiviert den Backup-/Inselbetrieb (Register 47604). Erfordert installierte Backup-Hardware."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus"
+            },
+            "values": [
+              {
+                "id": "0",
+                "label": {
+                  "en": "Disabled",
+                  "de": "Deaktiviert"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "Enabled",
+                  "de": "Aktiviert"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_capacity_control_mode",
+        "title": {
+          "en": "Set capacity control mode",
+          "de": "Kapazitätssteuerungsmodus setzen"
+        },
+        "titleFormatted": {
+          "en": "Set capacity control mode to [[mode]]",
+          "de": "Kapazitätssteuerungsmodus auf [[mode]] setzen"
+        },
+        "hint": {
+          "en": "Sets the battery capacity control mode (register 47954). 'SoC peak shaving' uses the configured SoC threshold (register 47955) to limit peak loads.",
+          "de": "Setzt den Kapazitätssteuerungsmodus der Batterie (Register 47954). 'SoC-Lastspitzenkappung' nutzt den konfigurierten SoC-Schwellenwert (Register 47955), um Lastspitzen zu begrenzen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "dropdown",
+            "name": "mode",
+            "title": {
+              "en": "Mode",
+              "de": "Modus"
+            },
+            "values": [
+              {
+                "id": "0",
+                "label": {
+                  "en": "Disabled",
+                  "de": "Deaktiviert"
+                }
+              },
+              {
+                "id": "1",
+                "label": {
+                  "en": "SoC peak shaving",
+                  "de": "SoC-Lastspitzenkappung"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "luna2000_set_capacity_control_soc",
+        "title": {
+          "en": "Set capacity control peak-shaving SoC",
+          "de": "Kapazitätssteuerung Lastspitzen-SoC setzen"
+        },
+        "titleFormatted": {
+          "en": "Set capacity control peak-shaving SoC to [[target_soc]] %",
+          "de": "Kapazitätssteuerung Lastspitzen-SoC auf [[target_soc]] % setzen"
+        },
+        "hint": {
+          "en": "Sets the SoC threshold for peak shaving (register 47955). Requires capacity control mode to be set to 'SoC peak shaving' (register 47954 = 1).",
+          "de": "Setzt den SoC-Schwellenwert für die Lastspitzenkappung (Register 47955). Erfordert, dass der Kapazitätssteuerungsmodus auf 'SoC-Lastspitzenkappung' gesetzt ist (Register 47954 = 1)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus"
+          },
+          {
+            "type": "number",
+            "name": "target_soc",
+            "title": {
+              "en": "Peak-shaving SoC (%)",
+              "de": "Lastspitzen-SoC (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 50",
+              "de": "z.B. 50"
             }
           }
         ]
@@ -10129,15 +10617,20 @@
   },
   "permissions": [],
   "changelog": {
+    "1.1.99": {
+      "en": "EMS: Start-Sustain / Stop-Grace timers for heat pumps, boilers and pool: configurable delay before starting (surplus must hold) and before stopping (grace period tolerates brief surplus drops) — prevents short cycling. Timeline notifications: EMS posts to the Homey Timeline when it starts or stops a device and when battery SOC crosses a threshold; can be disabled in EMS device settings. Settings page redesigned for clarity: emoji section headers, intro text per section, labels renamed from technical jargon (W min / s sustain / s grace) to plain language (W to start / s start delay / s stop delay), Battery SOC zone bar improved, layout fixes for device rows.",
+      "de": "EMS: Start-Sustain / Stop-Grace-Timer für Wärmepumpen, Boiler und Pool: konfigurierbarer Startverzögerungs-Timer (Überschuss muss für X Sekunden stabil sein) und Stoppverzögerung (kurze Überschuss-Einbrüche werden toleriert) — verhindert kurzes Takten. Timeline-Benachrichtigungen: EMS postet im Homey-Timeline, wenn ein Gerät gestartet oder gestoppt wird oder der Batterie-SOC einen Schwellenwert überschreitet; deaktivierbar in den EMS-Geräteeinstellungen. Einstellungsseite für normale Nutzer überarbeitet: Emoji-Sektionsüberschriften, Einführungstexte je Sektion, Bezeichnungen vereinfacht (W to start / s start delay / s stop delay), Batterie-SOC-Zonen-Balken verbessert, Layout-Fehler in Gerätezeilen behoben.",
+      "nl": "EMS: Start-Sustain / Stop-Grace-timers voor warmtepompen, boilers en zwembad: instelbare startvertraging (overschot moet X seconden aanhouden) en stopvertraging (korte overschotdruppels worden getolereerd) — voorkomt kort takten. Tijdlijnmeldingen: EMS plaatst een melding in de Homey-tijdlijn bij het starten of stoppen van een apparaat en bij het overschrijden van een batterij-SOC-drempelwaarde; uit te schakelen in de EMS-apparaatinstellingen. Instellingenpagina vereenvoudigd: emoji-sectiekoppen, inleiding per sectie, labels omgezet naar begrijpelijke taal (W to start / s start delay / s stop delay), batterij-SOC-zone verbeterd, lay-outproblemen in apparaatrijen opgelost."
+    },
     "1.1.98": {
-      "en": "EMS: Added PV-based budget for EV charging. When battery SOC is above the minimum threshold and the inverter absorbs all PV surplus into the battery (grid ≈ 0W), the EV charger now starts based on PV − house load rather than grid export. The inverter reduces battery charging proportionally, so no grid import occurs.",
-      "de": "EMS: PV-basiertes Budget für EV-Laden hinzugefügt. Wenn der Batterie-SOC über der Mindestgrenze liegt und der Wechselrichter den gesamten PV-Überschuss in die Batterie absorbiert (Netz ≈ 0W), startet der EV-Lader jetzt auf Basis von PV − Hausverbrauch statt Netzeinspeisung. Der Wechselrichter reduziert die Batterieladung proportional, sodass kein Netzbezug entsteht.",
-      "nl": "EMS: PV-gebaseerd budget voor EV-laden toegevoegd. Wanneer de batterij-SOC boven de minimumdrempel is en de omvormer al het PV-overschot in de batterij absorbeert (net ≈ 0W), start de EV-lader nu op basis van PV − huisverbruik in plaats van netexport. De omvormer vermindert het batterijladen proportioneel, zodat er geen netimport plaatsvindt."
+      "en": "EMS: Heat pump / boiler / pool now automatically stops when measured power drops below the configured minimum (W solar min) after running for at least 5 minutes. This detects when the device has finished its cycle and releases EMS control cleanly, without waiting for solar surplus to drop.",
+      "de": "EMS: Wärmepumpe / Boiler / Pool stoppt jetzt automatisch, wenn die gemessene Leistung nach mindestens 5 Minuten Laufzeit unter den konfigurierten Mindestwert (W solar min) fällt. Damit erkennt EMS das Ende des Gerätezyklus und gibt die Steuerung sauber frei, ohne auf sinkenden Solarüberschuss warten zu müssen.",
+      "nl": "EMS: Warmtepomp / boiler / zwembad stopt nu automatisch wanneer het gemeten vermogen na minimaal 5 minuten werking onder de geconfigureerde minimumwaarde (W solar min) daalt. Dit detecteert wanneer het apparaat zijn cyclus heeft voltooid en geeft EMS-controle netjes vrij zonder te wachten tot het zonne-overschot daalt."
     },
     "1.1.97": {
-      "en": "EMS: Fixed EV charger start/stop oscillation in battery-overflow mode. When battery SOC is below minimum but solar is exporting while the battery is still charging (overflow), the EMS previously used a fixed MIN_CHARGE_W threshold for both starting and stopping — this caused the charger to start, trigger a 1-phase→3-phase switch that doubled its draw, collapse the overflow condition, and stop again every 5 minutes. Fix: hysteresis added (2×MIN_CHARGE_W to start, ½×MIN_CHARGE_W to continue) and budget capped below MIN_3PH_W during overflow to prevent phase switching. EMS History widget: added collapsible sections to EMS settings page.",
-      "de": "EMS: EV-Lader Start/Stopp-Oszillation im Battery-Overflow-Modus behoben. Wenn der Batterie-SOC unter dem Minimum liegt, aber Solar einspeist während die Batterie noch lädt (Overflow), verwendete der EMS bisher eine feste MIN_CHARGE_W-Schwelle für Start und Stopp — der Lader startete, löste einen 1-Phasen→3-Phasen-Wechsel aus, der seine Leistung verdoppelte, die Overflow-Bedingung aufhob und alle 5 Minuten stoppte. Behebung: Hysterese hinzugefügt (2×MIN_CHARGE_W zum Starten, ½×MIN_CHARGE_W zum Weiterfahren) und Budget im Overflow auf unter MIN_3PH_W begrenzt um Phasenwechsel zu verhindern. EMS Verlauf Widget: einklappbare Sektionen in den EMS-Einstellungen hinzugefügt.",
-      "nl": "EMS: EV-lader start/stop oscillatie in battery-overflow modus opgelost. Wanneer de batterij-SOC onder het minimum ligt maar solar exporteert terwijl de batterij nog laadt (overflow), gebruikte de EMS voorheen een vaste MIN_CHARGE_W drempel voor zowel starten als stoppen. Oplossing: hysterese toegevoegd (2×MIN_CHARGE_W om te starten, ½×MIN_CHARGE_W om door te gaan) en budget beperkt tot onder MIN_3PH_W tijdens overflow om fasewisseling te voorkomen."
+      "en": "EMS: Multiple bug fixes and improvements. Fixed EV charger start/stop oscillation in battery-overflow mode (hysteresis + budget cap below MIN_3PH_W). Fixed heat pump / boiler / pool start flow never firing after restart — three nested bugs fixed: warmup state initialisation, crash on device name lookup (this.homey.devices undefined), and spurious 'Device stopped' events on app start. Device names now stored in config and shown correctly in EMS history. PV-based budget for EV charging: when the battery absorbs all PV surplus (grid ≈ 0W), the EV charger starts based on PV − house load. Graduated battery priority with configurable Throttle SOC zone: between Throttle SOC and Min SOC the EV charger runs at reduced power instead of stopping. Idle status shows live solar surplus and battery SOC. EMS History widget shows dynamic status text as primary label. EV charger power display fix in settings. Help text for 3-phase charger throttle zone. Settings: device sections are now collapsible.",
+      "de": "EMS: Mehrere Fehlerbehebungen und Verbesserungen. EV-Lader-Oszillation im Battery-Overflow-Modus behoben (Hysterese + Budget-Cap unter MIN_3PH_W). Start-Flow für Wärmepumpe/Boiler/Pool nach Neustart nie ausgelöst — drei verschachtelte Bugs behoben: Warmup-Status-Initialisierung, Absturz bei Gerätenamen-Abfrage (this.homey.devices undefined) und ungewollte 'Gerät gestoppt'-Ereignisse beim App-Start. Gerätename wird jetzt in der Config gespeichert und korrekt im EMS-Verlauf angezeigt. PV-basiertes Budget für EV-Laden: wenn die Batterie den gesamten PV-Überschuss absorbiert (Netz ≈ 0W), startet der EV-Lader auf Basis von PV − Hausverbrauch. Gestufte Batteriepriorität mit konfigurierbarer Drossel-SOC-Zone: zwischen Drossel-SOC und Min-SOC läuft der EV-Lader mit reduzierter Leistung statt vollständig zu stoppen. Idle-Status zeigt jetzt Solar-Überschuss und Batterie-SOC. EMS-Verlauf-Widget zeigt dynamischen Statustext als primäres Label. EV-Lader-Leistungswert in den Einstellungen korrekt dargestellt. Hilfetext für 3-Phasen-Lader in der Drossel-Zone hinzugefügt. Einstellungen: Geräte-Sektionen sind jetzt einklappbar.",
+      "nl": "EMS: Meerdere bugfixes en verbeteringen. EV-lader oscillatie in battery-overflow modus opgelost (hysterese + budget beperkt onder MIN_3PH_W). Start-flow voor warmtepomp/boiler/pool na herstart nooit geactiveerd — drie geneste bugs opgelost: warmup-status initialisatie, crash bij apparaatnaam-opzoeking (this.homey.devices undefined) en ongewenste 'Device stopped' events bij app-start. Apparaatnamen worden nu opgeslagen in de config en correct weergegeven in EMS-geschiedenis. PV-gebaseerd budget voor EV-laden: wanneer de batterij al het PV-overschot absorbeert (net ≈ 0W), start de EV-lader op basis van PV − huisverbruik. Getrapt batterijprioriteit met instelbare throttle-SOC-zone: tussen Throttle SOC en Min SOC laadt de EV-lader op gereduceerd vermogen in plaats van volledig te stoppen. Idle-status toont nu live solar-overschot en batterij-SOC. EMS History widget toont dynamische statustekst als primair label. EV-lader vermogenswaarde correct weergegeven in instellingen. Help tekst toegevoegd voor 3-fase lader throttle zone. Instellingen: apparaatsecties zijn nu inklapbaar."
     },
     "1.1.96": {
       "en": "EMS: Bug fixes and new Export Limit Coordinator. Bug 1 (multi-device budget): heat pumps / boilers / pools of the same type now correctly share the surplus budget within the priority loop — a second device of the same type no longer starts when there is only enough surplus for one. Bug 2 (double battery read): _getBattery now caches per-device SOC, eliminating a second API call per battery per tick in _checkBatteryTriggers. Bug 3 (house power display): the calculated house load no longer includes EV charger power in the fallback formula. Sensor failure protection: if the grid meter returns null for up to 60 s (4 ticks), the EMS uses the last valid reading and continues; after 60 s it halts device control and shows an error status. Export Limit Coordinator: when enabled in EMS settings, the EMS automatically fires the inverter 'Enable export limit' trigger when the battery reaches the configured SOC and solar is exporting, and 'Disable export limit' when SOC drops below the deactivate threshold.",

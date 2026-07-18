@@ -446,6 +446,76 @@ class SUN2000ModbusDevice extends Device {
           }
         })();
       });
+
+    this.homey.flow
+      .getActionCard('sun2000_startup')
+      .registerRunListener(() => {
+        this.log('Write start  [sun2000_startup → reg 40200] value=1');
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 40200, 1);
+            this.log('Write OK     [sun2000_startup]');
+          } catch (err) {
+            this.error('Write failed [sun2000_startup]:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_shutdown')
+      .registerRunListener(() => {
+        this.log('Write start  [sun2000_shutdown → reg 40201] value=1');
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 40201, 1);
+            this.log('Write OK     [sun2000_shutdown]');
+          } catch (err) {
+            this.error('Write failed [sun2000_shutdown]:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_mppt_multimodal')
+      .registerRunListener(({ mode }) => {
+        const value = parseInt(mode, 10);
+        this.log(`Write start  [sun2000_set_mppt_multimodal → reg 42054] value=${value}`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 42054, value);
+            this.log(`Write OK     [sun2000_set_mppt_multimodal]`);
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_mppt_multimodal]:`, err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('sun2000_set_mppt_interval')
+      .registerRunListener(({ interval }) => {
+        const raw = Math.round(Math.max(1, Math.min(60, parseInt(interval, 10) || 5)));
+        this.log(`Write start  [sun2000_set_mppt_interval → reg 42055] value=${raw}min`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 42055, raw);
+            this.log(`Write OK     [sun2000_set_mppt_interval]`);
+          } catch (err) {
+            this.error(`Write failed [sun2000_set_mppt_interval]:`, err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
   }
 
   // ─── Power threshold triggers ──────────────────────────────────────────────

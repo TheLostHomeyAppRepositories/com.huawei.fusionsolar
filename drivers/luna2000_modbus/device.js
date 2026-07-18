@@ -324,18 +324,24 @@ class LUNA2000ModbusDevice extends Device {
         this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-charge mode]' : ''}`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'charging', powerW, sentAt: Date.now() };
-        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
+        // Each register is written independently: a failure on one does not skip the rest.
+        // The mode write (47100) is the most critical and always attempted last.
         (async () => {
+          let anyFail = false;
           try {
             await writeModbusU32(h, p, u, 47247, powerW);
+          } catch (err) { this.error('Force charge: power write failed:', err.message); anyFail = true; }
+          try {
             await writeModbusRegister(h, p, u, 47101, socRaw);
-            if (!already) await writeModbusRegister(h, p, u, 47100, 1);
-            this.log('Force charge command sent');
-          } catch (err) {
-            this.error('Force charge failed:', err.message);
-          } finally {
-            this._writeInProgress = false;
+          } catch (err) { this.error('Force charge: SOC write failed:', err.message); anyFail = true; }
+          if (!already) {
+            try {
+              await writeModbusRegister(h, p, u, 47100, 1);
+            } catch (err) { this.error('Force charge: mode write failed:', err.message); anyFail = true; }
           }
+          this.log(anyFail ? 'Force charge command sent (with partial write failures)' : 'Force charge command sent');
+          this._writeInProgress = false;
         })();
       });
 
@@ -349,22 +355,28 @@ class LUNA2000ModbusDevice extends Device {
         this.log(`Force discharge: power=${powerW} W, stop at SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-discharge mode]' : ''}`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'discharging', powerW, sentAt: Date.now() };
-        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
+        // Each register is written independently: a failure on one does not skip the rest.
+        // The mode write (47100) is the most critical and always attempted last.
         (async () => {
+          let anyFail = false;
           try {
             await writeModbusU32(h, p, u, 47247, powerW);
-            // Reg 47101 is "Force CHARGE Target SOC" only — writing it during discharge
-            // causes Huawei firmware to interpret the value as a duration in minutes
-            // instead of a SOC target.  The correct discharge cutoff is reg 47082
-            // (Discharge Cutoff Capacity, gain ×10), which is also the persistent setting.
+          } catch (err) { this.error('Force discharge: power write failed:', err.message); anyFail = true; }
+          // Reg 47101 is "Force CHARGE Target SOC" only — writing it during discharge
+          // causes Huawei firmware to interpret the value as a duration in minutes
+          // instead of a SOC target.  The correct discharge cutoff is reg 47082
+          // (Discharge Cutoff Capacity, gain ×10), which is also the persistent setting.
+          try {
             await writeModbusRegister(h, p, u, 47082, socRaw);
-            if (!already) await writeModbusRegister(h, p, u, 47100, 2);
-            this.log('Force discharge command sent');
-          } catch (err) {
-            this.error('Force discharge failed:', err.message);
-          } finally {
-            this._writeInProgress = false;
+          } catch (err) { this.error('Force discharge: SOC cutoff write failed:', err.message); anyFail = true; }
+          if (!already) {
+            try {
+              await writeModbusRegister(h, p, u, 47100, 2);
+            } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
           }
+          this.log(anyFail ? 'Force discharge command sent (with partial write failures)' : 'Force discharge command sent');
+          this._writeInProgress = false;
         })();
       });
 
@@ -574,6 +586,168 @@ class LUNA2000ModbusDevice extends Device {
           } finally {
             this._updatingSettingFromModbus = false;
             this._writeInProgress           = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_charge_cutoff_soc')
+      .registerRunListener(({ device, target_soc }) => {
+        const socRaw = Math.round(Math.max(50, Math.min(100, target_soc)) * 10);
+        this.log(`Set charge cutoff SoC: ${target_soc}% (raw ${socRaw}, reg 47081)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47081, socRaw);
+            this.log('Charge cutoff SoC written');
+          } catch (err) {
+            this.error('Set charge cutoff SoC failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_discharge_cutoff_soc')
+      .registerRunListener(({ device, target_soc }) => {
+        const socRaw = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
+        this.log(`Set discharge cutoff SoC: ${target_soc}% (raw ${socRaw}, reg 47082)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47082, socRaw);
+            this.log('Discharge cutoff SoC written');
+          } catch (err) {
+            this.error('Set discharge cutoff SoC failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_backup_reserve_soc')
+      .registerRunListener(({ device, target_soc }) => {
+        const socRaw = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        this.log(`Set backup reserve SoC: ${target_soc}% (raw ${socRaw}, reg 47102)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47102, socRaw);
+            this.log('Backup reserve SoC written');
+          } catch (err) {
+            this.error('Set backup reserve SoC failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_max_grid_charge_power')
+      .registerRunListener(({ device, power }) => {
+        const powerW = Math.round(Math.max(0, power));
+        this.log(`Set max grid charge power: ${powerW} W → reg 47244`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 47244, powerW);
+            this.log('Max grid charge power written');
+          } catch (err) {
+            this.error('Set max grid charge power failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_force_discharge_power')
+      .registerRunListener(({ device, power }) => {
+        const powerW = Math.round(Math.max(0, power));
+        this.log(`Set force discharge power: ${powerW} W → reg 47249`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 47249, powerW);
+            this.log('Force discharge power written');
+          } catch (err) {
+            this.error('Set force discharge power failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_power_limit_grid')
+      .registerRunListener(({ device, power }) => {
+        const powerW = Math.round(Math.max(0, power));
+        this.log(`Set grid-tied power limit: ${powerW} W → reg 47079`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusU32(host(), port(), unitId(), 47079, powerW);
+            this.log('Grid-tied power limit written');
+          } catch (err) {
+            this.error('Set grid-tied power limit failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_backup_offgrid')
+      .registerRunListener(({ device, mode }) => {
+        const value = parseInt(mode, 10);
+        this.log(`Set backup off-grid: ${value === 1 ? 'Enable' : 'Disable'} (reg 47604)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47604, value);
+            this.log('Backup off-grid written');
+          } catch (err) {
+            this.error('Set backup off-grid failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_capacity_control_mode')
+      .registerRunListener(({ device, mode }) => {
+        const value = parseInt(mode, 10);
+        this.log(`Set capacity control mode: ${value} (reg 47954)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47954, value);
+            this.log('Capacity control mode written');
+          } catch (err) {
+            this.error('Set capacity control mode failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
+          }
+        })();
+      });
+
+    this.homey.flow
+      .getActionCard('luna2000_set_capacity_control_soc')
+      .registerRunListener(({ device, target_soc }) => {
+        const socRaw = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        this.log(`Set capacity control peak-shaving SoC: ${target_soc}% (raw ${socRaw}, reg 47955)`);
+        this._writeInProgress = true;
+        (async () => {
+          try {
+            await writeModbusRegister(host(), port(), unitId(), 47955, socRaw);
+            this.log('Capacity control SoC written');
+          } catch (err) {
+            this.error('Set capacity control SoC failed:', err.message);
+          } finally {
+            this._writeInProgress = false;
           }
         })();
       });
