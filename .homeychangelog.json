@@ -1,4 +1,9 @@
 {
+  "1.1.98": {
+    "en": "EMS: PV-based budget for EV charging. When battery SOC is above the minimum and the inverter absorbs all PV surplus into the battery (grid ≈ 0W), the EV charger now starts based on PV − house load. The inverter reduces battery charging proportionally — no grid import.",
+    "de": "EMS: PV-basiertes Budget für EV-Laden. Wenn der Batterie-SOC über der Mindestgrenze liegt und der Wechselrichter den gesamten PV-Überschuss in die Batterie absorbiert (Netz ≈ 0W), startet der EV-Lader jetzt auf Basis von PV − Hausverbrauch. Der Wechselrichter reduziert die Batterieladung proportional — kein Netzbezug.",
+    "nl": "EMS: PV-gebaseerd budget voor EV-laden. Wanneer de batterij-SOC boven het minimum is en de omvormer al het PV-overschot in de batterij absorbeert (net ≈ 0W), start de EV-lader op basis van PV − huisverbruik. De omvormer vermindert het batterijladen proportioneel — geen netimport."
+  },
   "1.1.97": {
     "en": "EMS: Fixed EV charger oscillation in battery-overflow mode. Added hysteresis (2×MIN to start, ½×MIN to continue) and capped budget below MIN_3PH_W during overflow to prevent the 1ph→3ph phase switch that was causing start/stop every 5 minutes. EMS settings: device sections are now collapsible.",
     "de": "EMS: EV-Lader Oszillation im Overflow-Modus behoben. Hysterese (2×MIN zum Starten, ½×MIN zum Weiterfahren) und Budget-Cap unter MIN_3PH_W im Overflow-Modus verhindern den Phasenwechsel der alle 5 Minuten Start/Stopp verursachte. EMS-Einstellungen: Geräte-Sektionen sind jetzt einklappbar.",
