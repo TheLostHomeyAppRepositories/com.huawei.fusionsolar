@@ -286,18 +286,24 @@ class SUN2000ModbusDevice extends Device {
       .registerRunListener(({ percentage }) => {
         const pct = Math.min(100, Math.max(0, parseFloat(percentage) || 0));
         const raw = Math.round(pct * 10);
-        this.log(`Write start  [sun2000_set_max_feed_in_power_pct → reg 47418] value=${pct}%`);
+        this.log(`Write start  [sun2000_set_max_feed_in_power_pct] reg 47415=7, reg 47418=${pct}%`);
         this._writeInProgress = true;
-        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
+        // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
+        // Must set mode 7 (Power-limited %) on reg 47415 before writing the % limit to 47418;
+        // otherwise the firmware ignores the 47418 value.
         (async () => {
           try {
+            await writeModbusRegister(host(), port(), unitId(), 47415, 7);
             await writeModbusRegister(host(), port(), unitId(), 47418, raw);
-            this.log(`Write OK     [sun2000_set_max_feed_in_power_pct → reg 47418]`);
+            this.log(`Write OK     [sun2000_set_max_feed_in_power_pct]`);
+            this._updatingFromModbus = true;
+            await this._set('activepower_controlmode', '7').catch(() => {});
             this._updatingSettingFromModbus = true;
             await this.setSettings({ max_feed_in_power_pct: pct }).catch(() => {});
           } catch (err) {
-            this.error(`Write failed [sun2000_set_max_feed_in_power_pct → reg 47418]:`, err.message);
+            this.error(`Write failed [sun2000_set_max_feed_in_power_pct]:`, err.message);
           } finally {
+            this._updatingFromModbus        = false;
             this._updatingSettingFromModbus = false;
             this._writeInProgress           = false;
           }
@@ -454,7 +460,7 @@ class SUN2000ModbusDevice extends Device {
         this._writeInProgress = true;
         (async () => {
           try {
-            await writeModbusRegister(host(), port(), unitId(), 40200, 1);
+            await writeModbusRegister(host(), port(), unitId(), 40200, 0);
             this.log('Write OK     [sun2000_startup]');
           } catch (err) {
             this.error('Write failed [sun2000_startup]:', err.message);
@@ -471,7 +477,7 @@ class SUN2000ModbusDevice extends Device {
         this._writeInProgress = true;
         (async () => {
           try {
-            await writeModbusRegister(host(), port(), unitId(), 40201, 1);
+            await writeModbusRegister(host(), port(), unitId(), 40201, 0);
             this.log('Write OK     [sun2000_shutdown]');
           } catch (err) {
             this.error('Write failed [sun2000_shutdown]:', err.message);

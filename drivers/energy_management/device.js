@@ -8,6 +8,7 @@ const STEP_HOLD_MS             = 30_000;
 const IMPORT_HOLD_MS           = 60_000;
 const FLIP_COOLDOWN_MS         = 5 * 60_000;
 const SIMPLE_MIN_RUN_MS        = 5 * 60_000;  // min run time for HP/boiler/pool before stop allowed
+const SIMPLE_RESTART_COOLDOWN_MS = 10 * 60_000; // min off time after a power-drop stop (prevents re-cycling)
 const EMS_HISTORY_MAX          = 400;          // max history events kept in memory + settings
 const PHASE_SWITCH_COOLDOWN_MS = 10 * 60_000;
 const GRID_SENSOR_HOLD_TICKS   = 4;            // use last-valid gridW for up to 4 ticks (60 s) on sensor failure
@@ -23,8 +24,9 @@ class EmsDevice extends Device {
   async onInit() {
     this._chargerStates   = new Map(); // deviceId → per-charger anti-thrash state
     this._heatPumpStates  = new Map(); // deviceId → { isOn: null | boolean }
-    this._boilerStates    = new Map();
-    this._poolStates      = new Map();
+    this._boilerStates        = new Map();
+    this._poolStates          = new Map();
+    this._dehumidifierStates  = new Map();
     this._batteryStates   = new Map(); // deviceId → { fullFired: boolean, lowFired: boolean }
     this._warmupDone      = false;     // first tick only reads state, no flows fired
     this._tickInProgress  = false;     // prevents overlapping concurrent ticks
@@ -212,7 +214,7 @@ class EmsDevice extends Device {
       return;
     }
 
-    const [battery, gridW, pvW, chargers, heatPumps, boilers, pools] = await Promise.all([
+    const [battery, gridW, pvW, chargers, heatPumps, boilers, pools, dehumidifiers] = await Promise.all([
       this._getBattery(cfg),
       this._getGridW(cfg),
       this._getPvW(cfg),
@@ -220,6 +222,7 @@ class EmsDevice extends Device {
       this._getSimpleDevices('heat_pump_devices', cfg),
       this._getSimpleDevices('boiler_devices', cfg),
       this._getSimpleDevices('pool_devices', cfg),
+      this._getSimpleDevices('dehumidifier_devices', cfg),
     ]);
     if (gridW !== null) {
       await this._set('measure_solar_surplus', Math.max(0, Math.round(-gridW)));
@@ -247,7 +250,7 @@ class EmsDevice extends Device {
 
     const priorityOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
       ? cfg.device_priority_order
-      : ['charger', 'heat_pump', 'boiler', 'pool'];
+      : ['charger', 'heat_pump', 'boiler', 'pool', 'dehumidifier'];
     let effectiveGridW = gridW;
     for (const deviceType of priorityOrder) {
       if (deviceType === 'charger') {
@@ -262,6 +265,9 @@ class EmsDevice extends Device {
       } else if (deviceType === 'pool') {
         const allocatedW = await this._evaluatePool(battery, effectiveGridW, pools, cfg);
         if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
+      } else if (deviceType === 'dehumidifier') {
+        const allocatedW = await this._evaluateDehumidifier(battery, effectiveGridW, dehumidifiers, cfg);
+        if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
       }
     }
 
@@ -272,15 +278,16 @@ class EmsDevice extends Device {
     }
 
     // When no chargers configured, _evaluate never sets mode/status — do it here
-    const simpleDevicesAll = [...heatPumps, ...boilers, ...pools];
+    const simpleDevicesAll = [...heatPumps, ...boilers, ...pools, ...dehumidifiers];
     if (!chargers.length && !simpleDevicesAll.length) {
       await this._setMode('not_configured', 'Konfiguriere EMS in App Settings');
       await this._set('ems_status_text', 'Konfiguriere EMS in App Settings');
     } else if (!chargers.length && simpleDevicesAll.length) {
-      const activeHpCount     = heatPumps.filter((d) => this._heatPumpStates.get(d.id)?.isOn).length;
-      const activeBoilerCount = boilers.filter((d)   => this._boilerStates.get(d.id)?.isOn).length;
-      const activePoolCount   = pools.filter((d)     => this._poolStates.get(d.id)?.isOn).length;
-      const activeCount       = activeHpCount + activeBoilerCount + activePoolCount;
+      const activeHpCount           = heatPumps.filter((d)     => this._heatPumpStates.get(d.id)?.isOn).length;
+      const activeBoilerCount       = boilers.filter((d)       => this._boilerStates.get(d.id)?.isOn).length;
+      const activePoolCount         = pools.filter((d)         => this._poolStates.get(d.id)?.isOn).length;
+      const activeDehumidifierCount = dehumidifiers.filter((d) => this._dehumidifierStates.get(d.id)?.isOn).length;
+      const activeCount             = activeHpCount + activeBoilerCount + activePoolCount + activeDehumidifierCount;
       const socStr            = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
       if (activeCount) {
         // Pick mode matching the single active device type; fall back to solar_hp for mixed
@@ -489,7 +496,7 @@ class EmsDevice extends Device {
   }
 
   async _simpleDeviceSetOn(id, name, on, stateMap, startCard, stopCard, tokenName) {
-    if (!stateMap.has(id)) stateMap.set(id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null });
+    if (!stateMap.has(id)) stateMap.set(id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null });
     const st = stateMap.get(id);
     if (!this._warmupDone) { st.isOn = false; return; } // assume off; 2nd tick starts if surplus OK
     if (st.isOn === on) return;
@@ -532,7 +539,7 @@ class EmsDevice extends Device {
     let runningExportW = exportW;
     for (const device of devices) {
       if (!stateMap.has(device.id)) {
-        stateMap.set(device.id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null });
+        stateMap.set(device.id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null });
       }
       const st         = stateMap.get(device.id);
       const wasOn      = st.isOn ?? false;
@@ -559,7 +566,8 @@ class EmsDevice extends Device {
         }
       }
 
-      const startOk       = !wasOn && surplusOk
+      const restartOk     = !st.powerDropStoppedAt || (now - st.powerDropStoppedAt) >= SIMPLE_RESTART_COOLDOWN_MS;
+      const startOk       = !wasOn && surplusOk && restartOk
                             && st.surplusOkSince !== null
                             && (now - st.surplusOkSince) >= device.startSustainMs;
       const inGracePeriod = wasOn && pastMinRun && !surplusOk
@@ -582,6 +590,8 @@ class EmsDevice extends Device {
       // ── Diagnostic logging ────────────────────────────────────────────────
       if (inHoldTime) {
         this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round((now - st.startedAt) / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
+      } else if (!wasOn && surplusOk && !restartOk) {
+        this.log(`[EMS] ${tokenName} ${device.id}: restart-cooldown active (${Math.round((now - st.powerDropStoppedAt) / 1000)}s / ${SIMPLE_RESTART_COOLDOWN_MS / 1000}s)`);
       } else if (!wasOn && surplusOk && !startOk && device.startSustainMs > 0 && st.surplusOkSince) {
         this.log(`[EMS] ${tokenName} ${device.id}: start-sustain pending (${Math.round((now - st.surplusOkSince) / 1000)}s / ${device.startSustainMs / 1000}s)`);
       } else if (inGracePeriod) {
@@ -591,7 +601,8 @@ class EmsDevice extends Device {
       // ── Power-drop: device finished its cycle ─────────────────────────────
       if (wasOn && pastMinRun && device.powerW !== null && device.powerW < device.minSurplusW) {
         wantOn = false;
-        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop`);
+        st.powerDropStoppedAt = now;
+        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop (restart cooldown ${SIMPLE_RESTART_COOLDOWN_MS / 60_000} min)`);
       }
 
       await this._simpleDeviceSetOn(device.id, device.name, wantOn, stateMap, startCard, stopCard, tokenName);
@@ -859,6 +870,11 @@ class EmsDevice extends Device {
   async _evaluatePool(battery, gridW, pools, cfg) {
     return this._evaluateSimpleDevices(battery, gridW, pools, this._poolStates,
       'ems_start_pool', 'ems_stop_pool', 'pool_device_id', 'pool_control', cfg);
+  }
+
+  async _evaluateDehumidifier(battery, gridW, dehumidifiers, cfg) {
+    return this._evaluateSimpleDevices(battery, gridW, dehumidifiers, this._dehumidifierStates,
+      'ems_start_dehumidifier', 'ems_stop_dehumidifier', 'dehumidifier_device_id', 'dehumidifier_control', cfg);
   }
 
   async _stepCharger(charger, budgetW, configPhases, now, gridW, forcedDown) {

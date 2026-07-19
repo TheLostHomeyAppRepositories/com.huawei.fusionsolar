@@ -275,51 +275,54 @@ class LUNA2000ModbusDevice extends Device {
     const port   = () => parseInt(this.getSetting('port'), 10) || 502;
     const unitId = () => parseIntSafe(this.getSetting('modbus_id'), 1);
 
-    const writeEnum = async (cardId, capabilityId, mode) => {
+    const writeEnum = (cardId, capabilityId, mode) => {
       const reg   = CONTROL_WRITE_MAP[capabilityId];
       const value = parseInt(mode, 10);
       this.log(`Write start  [${cardId} → reg ${reg}] value=${value}`);
       this._writeInProgress = true;
-      try {
-        await writeModbusRegister(host(), port(), unitId(), reg, value);
-        this.log(`Write OK     [${cardId} → reg ${reg}]`);
-        this._updatingFromModbus = true;
-        await this._set(capabilityId, mode).catch(() => {});
-      } catch (err) {
-        this.error(`Write failed [${cardId} → reg ${reg}]:`, err.message);
-        throw err;
-      } finally {
-        this._updatingFromModbus = false;
-        this._writeInProgress   = false;
-      }
+      // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
+      (async () => {
+        try {
+          await writeModbusRegister(host(), port(), unitId(), reg, value);
+          this.log(`Write OK     [${cardId} → reg ${reg}]`);
+          this._updatingFromModbus = true;
+          await this._set(capabilityId, mode).catch(() => {});
+        } catch (err) {
+          this.error(`Write failed [${cardId} → reg ${reg}]:`, err.message);
+        } finally {
+          this._updatingFromModbus = false;
+          this._writeInProgress   = false;
+        }
+      })();
     };
 
     this.homey.flow
       .getActionCard('luna2000_set_working_mode')
-      .registerRunListener(async ({ mode }) =>
+      .registerRunListener(({ mode }) =>
         writeEnum('luna2000_set_working_mode', 'storage_working_mode_settings', mode));
 
     this.homey.flow
       .getActionCard('luna2000_set_excess_pv')
-      .registerRunListener(async ({ mode }) =>
+      .registerRunListener(({ mode }) =>
         writeEnum('luna2000_set_excess_pv', 'storage_excess_pv_energy_use_in_tou', mode));
 
     this.homey.flow
       .getActionCard('luna2000_set_remote_mode')
-      .registerRunListener(async ({ mode }) =>
+      .registerRunListener(({ mode }) =>
         writeEnum('luna2000_set_remote_mode', 'remote_charge_discharge_control_mode', mode));
 
     this.homey.flow
       .getActionCard('luna2000_set_force_charge_discharge')
-      .registerRunListener(async ({ mode }) =>
+      .registerRunListener(({ mode }) =>
         writeEnum('luna2000_set_force_charge_discharge', 'storage_force_charge_discharge', mode));
 
     this.homey.flow
       .getActionCard('luna2000_start_force_charge')
       .registerRunListener(({ device, power, target_soc }) => {
         const h = host(), p = port(), u = unitId();
-        const powerW  = Math.round(Math.max(0, power));
-        const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        const maxChargeW = this.getSetting('max_charge_power') || 5000;
+        const powerW  = Math.round(Math.min(Math.max(0, power), maxChargeW));
+        const socRaw  = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
         const already = this.getCapabilityValue('storage_force_charge_discharge') === '1';
         this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-charge mode]' : ''}`);
         this._writeInProgress = true;
@@ -347,29 +350,24 @@ class LUNA2000ModbusDevice extends Device {
 
     this.homey.flow
       .getActionCard('luna2000_start_force_discharge')
-      .registerRunListener(({ device, power, target_soc }) => {
+      .registerRunListener(({ device, power }) => {
         const h = host(), p = port(), u = unitId();
-        const powerW  = Math.round(Math.max(0, power));
-        const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
+        const powerW  = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         const already = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge: power=${powerW} W, stop at SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-discharge mode]' : ''}`);
+        this.log(`Force discharge: power=${powerW} W${already ? ' [already in force-discharge mode]' : ''}`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'discharging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
-        // Each register is written independently: a failure on one does not skip the rest.
-        // The mode write (47100) is the most critical and always attempted last.
+        // Reg 47082 (persistent Discharge Cutoff Capacity) is NOT written here — the firmware
+        // rejects or times out writes to that register during force-discharge activation.
+        // Use luna2000_set_discharge_cutoff_soc to configure the cutoff separately beforehand.
+        // Reg 47247 = max charge power; reg 47249 = max discharge power (separate registers).
         (async () => {
           let anyFail = false;
           try {
-            await writeModbusU32(h, p, u, 47247, powerW);
+            await writeModbusU32(h, p, u, 47249, powerW);
           } catch (err) { this.error('Force discharge: power write failed:', err.message); anyFail = true; }
-          // Reg 47101 is "Force CHARGE Target SOC" only — writing it during discharge
-          // causes Huawei firmware to interpret the value as a duration in minutes
-          // instead of a SOC target.  The correct discharge cutoff is reg 47082
-          // (Discharge Cutoff Capacity, gain ×10), which is also the persistent setting.
-          try {
-            await writeModbusRegister(h, p, u, 47082, socRaw);
-          } catch (err) { this.error('Force discharge: SOC cutoff write failed:', err.message); anyFail = true; }
           if (!already) {
             try {
               await writeModbusRegister(h, p, u, 47100, 2);
@@ -384,7 +382,8 @@ class LUNA2000ModbusDevice extends Device {
       .getActionCard('luna2000_start_force_charge_duration')
       .registerRunListener(({ device, power, duration }) => {
         const h = host(), p = port(), u = unitId();
-        const powerW     = Math.round(Math.max(0, power));
+        const maxChargeW = this.getSetting('max_charge_power') || 5000;
+        const powerW     = Math.round(Math.min(Math.max(0, power), maxChargeW));
         const durationMs = Math.round(Math.max(1, duration) * 60 * 1000);
         const already    = this.getCapabilityValue('storage_force_charge_discharge') === '1';
         this.log(`Force charge for ${duration} min: power=${powerW} W${already ? ' [already in force-charge mode]' : ''}`);
@@ -418,7 +417,8 @@ class LUNA2000ModbusDevice extends Device {
       .getActionCard('luna2000_start_force_discharge_duration')
       .registerRunListener(({ device, power, duration }) => {
         const h = host(), p = port(), u = unitId();
-        const powerW     = Math.round(Math.max(0, power));
+        const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
+        const powerW     = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         const durationMs = Math.round(Math.max(1, duration) * 60 * 1000);
         const already    = this.getCapabilityValue('storage_force_charge_discharge') === '2';
         this.log(`Force discharge for ${duration} min: power=${powerW} W${already ? ' [already in force-discharge mode]' : ''}`);
@@ -428,7 +428,7 @@ class LUNA2000ModbusDevice extends Device {
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
         (async () => {
           try {
-            await writeModbusU32(h, p, u, 47247, powerW);
+            await writeModbusU32(h, p, u, 47249, powerW);
             if (!already) await writeModbusRegister(h, p, u, 47100, 2);
             this.log('Force discharge (timed) command sent');
             this._forceTimer = this.homey.setTimeout(async () => {
@@ -451,7 +451,8 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_force_charge_power')
       .registerRunListener(({ device, power }) => {
-        const powerW = Math.round(Math.max(0, power));
+        const maxChargeW = this.getSetting('max_charge_power') || 5000;
+        const powerW = Math.round(Math.min(Math.max(0, power), maxChargeW));
         this.log(`Set force charge power: ${powerW} W`);
         this._writeInProgress = true;
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
@@ -552,7 +553,7 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_force_charge_soc')
       .registerRunListener(({ device, target_soc }) => {
-        const socRaw = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        const socRaw = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
         this.log(`Set force charge target SoC: ${target_soc}% (raw ${socRaw})`);
         this._writeInProgress = true;
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit
@@ -593,7 +594,7 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_charge_cutoff_soc')
       .registerRunListener(({ device, target_soc }) => {
-        const socRaw = Math.round(Math.max(50, Math.min(100, target_soc)) * 10);
+        const socRaw = Math.round(Math.max(90, Math.min(100, target_soc)) * 10);
         this.log(`Set charge cutoff SoC: ${target_soc}% (raw ${socRaw}, reg 47081)`);
         this._writeInProgress = true;
         (async () => {
@@ -611,7 +612,7 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_discharge_cutoff_soc')
       .registerRunListener(({ device, target_soc }) => {
-        const socRaw = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
+        const socRaw = Math.round(Math.max(12, Math.min(20, target_soc)) * 10);
         this.log(`Set discharge cutoff SoC: ${target_soc}% (raw ${socRaw}, reg 47082)`);
         this._writeInProgress = true;
         (async () => {
@@ -629,7 +630,7 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_backup_reserve_soc')
       .registerRunListener(({ device, target_soc }) => {
-        const socRaw = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        const socRaw = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
         this.log(`Set backup reserve SoC: ${target_soc}% (raw ${socRaw}, reg 47102)`);
         this._writeInProgress = true;
         (async () => {
@@ -665,7 +666,8 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_force_discharge_power')
       .registerRunListener(({ device, power }) => {
-        const powerW = Math.round(Math.max(0, power));
+        const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
+        const powerW = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         this.log(`Set force discharge power: ${powerW} W → reg 47249`);
         this._writeInProgress = true;
         (async () => {
@@ -737,7 +739,7 @@ class LUNA2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('luna2000_set_capacity_control_soc')
       .registerRunListener(({ device, target_soc }) => {
-        const socRaw = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
+        const socRaw = Math.round(Math.max(0, Math.min(50, target_soc)) * 10);
         this.log(`Set capacity control peak-shaving SoC: ${target_soc}% (raw ${socRaw}, reg 47955)`);
         this._writeInProgress = true;
         (async () => {

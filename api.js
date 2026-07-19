@@ -68,6 +68,78 @@ const MODBUS_DRIVER_IDS = Object.keys(DRIVER_REGISTER_SETS);
 
 // ─── API handlers ─────────────────────────────────────────────────────────────
 
+async function _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startTokenName }) {
+  let apiKey = '', emsDeviceId = '';
+  try {
+    const driver = homey.drivers.getDriver('energy_management');
+    const devs   = driver.getDevices();
+    if (devs.length > 0) { apiKey = devs[0].getSetting('homey_api_key') || ''; emsDeviceId = devs[0].getData().id || ''; }
+  } catch { }
+  if (!apiKey) return { matched: [], error: 'No API key' };
+  const HomeyLocalApi = require('./lib/homey-local-api');
+  const api = new HomeyLocalApi({ homey, apiKey });
+  try {
+    const flows = await api.getFlows().catch(() => ({}));
+    const matched = [];
+    for (const [id, f] of Object.entries(flows || {})) {
+      const tid = f.trigger && f.trigger.id || '';
+      const APP = 'homey:app:com.huawei.fusionsolar';
+      if (tid === startCardId || tid === stopCardId || tid === `${APP}:${startCardId}` || tid === `${APP}:${stopCardId}`) {
+        const firstAction = (f.actions || [])[0];
+        let cardId = null, cardUri = null;
+        if (firstAction) {
+          const rawId = firstAction.id || '';
+          if (rawId.startsWith('homey:')) { const lc = rawId.lastIndexOf(':'); cardId = rawId.slice(lc + 1); cardUri = rawId.slice(0, lc); }
+          else { cardId = rawId; cardUri = firstAction.uri || ''; }
+        }
+        matched.push({ id, name: f.name || id, type: 'flow',
+          triggerType: (tid === startCardId || tid === `${APP}:${startCardId}`) ? 'start' : 'stop',
+          triggerDeviceId: (f.trigger && f.trigger.args && f.trigger.args[startTokenName]) || '',
+          actionCardId: cardId, actionCardUri: cardUri });
+      }
+    }
+    return { emsDeviceId, matched: matched.sort((a, b) => a.name.localeCompare(b.name)) };
+  } catch (e) { return { matched: [], error: e.message }; }
+}
+
+async function _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCardId, tokenName, labelSuffix }) {
+  const { emsDeviceId, deviceId, deviceName, startCardId: startActId, startCardUri, stopCardId: stopActId, stopCardUri } = body || {};
+  if (!emsDeviceId || !deviceId || !startActId || !startCardUri || !stopActId || !stopCardUri)
+    return { error: 'Missing required fields' };
+  let apiKey = '';
+  try {
+    const driver = homey.drivers.getDriver('energy_management');
+    const devs   = driver.getDevices();
+    if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
+  } catch { }
+  if (!apiKey) return { error: 'No API key' };
+  const HomeyLocalApi = require('./lib/homey-local-api');
+  const APP_URI = 'homey:app:com.huawei.fusionsolar';
+  const api = new HomeyLocalApi({ homey, apiKey });
+  let folderId = null;
+  try {
+    const folders  = await api.getFlowFolders();
+    const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+    folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+  } catch (_) { }
+  const baseName  = `EMS: ${deviceName || deviceId}`;
+  const startName = `${baseName} → ${labelSuffix} Start`;
+  const stopName  = `${baseName} → ${labelSuffix} Stop`;
+  const allFlows  = await api.getFlows().catch(() => ({}));
+  await Promise.all(Object.values(allFlows || {}).filter((f) => f.name === startName || f.name === stopName).map((f) => api.deleteFlow(f.id).catch(() => {})));
+  const makeAction = (cId, cUri) => ({ id: cId, uri: cUri, group: 'then', delay: null, duration: null, args: {} });
+  const results = {};
+  try {
+    const sf = await api.createFlow({ name: startName, folder: folderId, trigger: { id: `${APP_URI}:${startCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(startActId, startCardUri)] });
+    results.startFlowId = sf && sf.id;
+  } catch (e) { return { folderId, startFlowError: e.message }; }
+  try {
+    const ef = await api.createFlow({ name: stopName, folder: folderId, trigger: { id: `${APP_URI}:${stopCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(stopActId, stopCardUri)] });
+    results.stopFlowId = ef && ef.id;
+  } catch (e) { return { folderId, startFlowId: results.startFlowId, stopFlowError: e.message }; }
+  return { folderId, ...results };
+}
+
 module.exports = {
 
   /**
@@ -1231,79 +1303,6 @@ module.exports = {
     return { folderId, flowId: createdFlow && createdFlow.id, startFlowId };
   },
 
-  /** Shared helper: find flows using a pair of trigger card IDs */
-  async _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startTokenName }) {
-    let apiKey = '', emsDeviceId = '';
-    try {
-      const driver = homey.drivers.getDriver('energy_management');
-      const devs   = driver.getDevices();
-      if (devs.length > 0) { apiKey = devs[0].getSetting('homey_api_key') || ''; emsDeviceId = devs[0].getData().id || ''; }
-    } catch { }
-    if (!apiKey) return { matched: [], error: 'No API key' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
-    try {
-      const flows = await api.getFlows().catch(() => ({}));
-      const matched = [];
-      for (const [id, f] of Object.entries(flows || {})) {
-        const tid = f.trigger && f.trigger.id || '';
-        const APP = 'homey:app:com.huawei.fusionsolar';
-        if (tid === startCardId || tid === stopCardId || tid === `${APP}:${startCardId}` || tid === `${APP}:${stopCardId}`) {
-          const firstAction = (f.actions || [])[0];
-          let cardId = null, cardUri = null;
-          if (firstAction) {
-            const rawId = firstAction.id || '';
-            if (rawId.startsWith('homey:')) { const lc = rawId.lastIndexOf(':'); cardId = rawId.slice(lc + 1); cardUri = rawId.slice(0, lc); }
-            else { cardId = rawId; cardUri = firstAction.uri || ''; }
-          }
-          matched.push({ id, name: f.name || id, type: 'flow',
-            triggerType: (tid === startCardId || tid === `${APP}:${startCardId}`) ? 'start' : 'stop',
-            actionCardId: cardId, actionCardUri: cardUri });
-        }
-      }
-      return { emsDeviceId, matched: matched.sort((a, b) => a.name.localeCompare(b.name)) };
-    } catch (e) { return { matched: [], error: e.message }; }
-  },
-
-  /** Shared helper: create start + stop flows for a simple on/off device */
-  async _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCardId, tokenName, labelSuffix }) {
-    const { emsDeviceId, deviceId, deviceName, startCardId: startActId, startCardUri, stopCardId: stopActId, stopCardUri } = body || {};
-    if (!emsDeviceId || !deviceId || !startActId || !startCardUri || !stopActId || !stopCardUri)
-      return { error: 'Missing required fields' };
-    let apiKey = '';
-    try {
-      const driver = homey.drivers.getDriver('energy_management');
-      const devs   = driver.getDevices();
-      if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    const api = new HomeyLocalApi({ homey, apiKey });
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch (_) { }
-    const baseName  = `EMS: ${deviceName || deviceId}`;
-    const startName = `${baseName} → ${labelSuffix} Start`;
-    const stopName  = `${baseName} → ${labelSuffix} Stop`;
-    const allFlows  = await api.getFlows().catch(() => ({}));
-    await Promise.all(Object.values(allFlows || {}).filter((f) => f.name === startName || f.name === stopName).map((f) => api.deleteFlow(f.id).catch(() => {})));
-    const makeAction = (cId, cUri) => ({ id: cId, uri: cUri, group: 'then', delay: null, duration: null, args: {} });
-    const results = {};
-    try {
-      const sf = await api.createFlow({ name: startName, folder: folderId, trigger: { id: `${APP_URI}:${startCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(startActId, startCardUri)] });
-      results.startFlowId = sf && sf.id;
-    } catch (e) { return { folderId, startFlowError: e.message }; }
-    try {
-      const ef = await api.createFlow({ name: stopName, folder: folderId, trigger: { id: `${APP_URI}:${stopCardId}`, args: { [tokenName]: deviceId } }, conditions: [], actions: [makeAction(stopActId, stopCardUri)] });
-      results.stopFlowId = ef && ef.id;
-    } catch (e) { return { folderId, startFlowId: results.startFlowId, stopFlowError: e.message }; }
-    return { folderId, ...results };
-  },
-
   /** GET /ems/heatpump/action-cards?deviceId=xxx — action cards for a heat pump device */
   async getEmsHeatPumpActionCards({ homey, query }) {
     return this.getEmsChargerActionCards({ homey, query });
@@ -1522,22 +1521,33 @@ module.exports = {
   async getEmsBoilerActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
   /** GET /ems/boiler/flows */
   async getEmsBoilerFlows({ homey }) {
-    return this._getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', startTokenName: 'boiler_device_id' });
+    return _getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', startTokenName: 'boiler_device_id' });
   },
   /** POST /ems/boiler/setup-flows */
   async postEmsBoilerSetupFlows({ homey, body }) {
-    return this._postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', tokenName: 'boiler_device_id', labelSuffix: 'Boiler' });
+    return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_boiler', stopCardId: 'ems_stop_boiler', tokenName: 'boiler_device_id', labelSuffix: 'Boiler' });
   },
 
   /** GET /ems/pool/action-cards */
   async getEmsPoolActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
   /** GET /ems/pool/flows */
   async getEmsPoolFlows({ homey }) {
-    return this._getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', startTokenName: 'pool_device_id' });
+    return _getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', startTokenName: 'pool_device_id' });
   },
   /** POST /ems/pool/setup-flows */
   async postEmsPoolSetupFlows({ homey, body }) {
-    return this._postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', tokenName: 'pool_device_id', labelSuffix: 'Pool' });
+    return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_pool', stopCardId: 'ems_stop_pool', tokenName: 'pool_device_id', labelSuffix: 'Pool' });
+  },
+
+  /** GET /ems/dehumidifier/action-cards */
+  async getEmsDehumidifierActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
+  /** GET /ems/dehumidifier/flows */
+  async getEmsDehumidifierFlows({ homey }) {
+    return _getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_dehumidifier', stopCardId: 'ems_stop_dehumidifier', startTokenName: 'dehumidifier_device_id' });
+  },
+  /** POST /ems/dehumidifier/setup-flows */
+  async postEmsDehumidifierSetupFlows({ homey, body }) {
+    return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_dehumidifier', stopCardId: 'ems_stop_dehumidifier', tokenName: 'dehumidifier_device_id', labelSuffix: 'Dehumidifier' });
   },
 
   /**

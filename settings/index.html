@@ -299,7 +299,7 @@
     .ems-list-row { display:flex; align-items:center; gap:6px; }
     #ems-charger-list, #ems-inverter-list, #ems-meter-list,
     #ems-house-list, #ems-battery-list, #ems-heatpump-list,
-    #ems-boiler-list, #ems-pool-list { gap:8px !important; }
+    #ems-boiler-list, #ems-pool-list, #ems-dehumidifier-list { gap:8px !important; }
     .ems-priority-badge {
       display:inline-flex; align-items:center; justify-content:center;
       width:20px; height:20px; border-radius:50%; background:#e5e5ea;
@@ -1003,6 +1003,27 @@
         </div>
       </details>
 
+      <!-- Dehumidifier -->
+      <details class="ems-section">
+        <summary><span class="ems-section-label">💨 Dehumidifier</span><span class="ems-section-subtitle"> · EMS switches on/off when solar surplus is available</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <p class="ems-hint">Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
+          <div id="ems-dehumidifier-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddDehumidifierRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add dehumidifier</button>
+          <label class="ems-toggle-row">
+            <span class="ems-toggle-switch">
+              <input type="checkbox" id="ems-dehumidifier-control" onchange="emsGuardControl(this,'ems-dehumidifier-list','dehumidifierStartCard','dehumidifierStopCard','ems-dehumidifier-control-hint')">
+              <span class="ems-toggle-slider"></span>
+            </span>
+            <span>
+              <span class="ems-toggle-title">Enable EMS control</span>
+              <span class="ems-toggle-desc">The EMS automatically starts and stops the dehumidifier based on available solar surplus and battery state. Disable to control manually.</span>
+              <span id="ems-dehumidifier-control-hint" class="ems-control-hint"></span>
+            </span>
+          </label>
+        </div>
+      </details>
+
       <!-- Device Priority -->
       <details class="ems-section">
         <summary><span class="ems-section-label">⚖️ Device Priority</span><span class="ems-section-chevron">▼</span></summary>
@@ -1032,6 +1053,12 @@
           <div class="ems-priority-order-item" data-type="pool">
             <span class="priority-rank">4</span>
             <span class="priority-label">Pool / Whirlpool</span>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
+            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
+          </div>
+          <div class="ems-priority-order-item" data-type="dehumidifier">
+            <span class="priority-rank">5</span>
+            <span class="priority-label">Dehumidifier</span>
             <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up">▲</button>
             <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down">▼</button>
           </div>
@@ -2613,19 +2640,21 @@
       return _cls(d) === 'thermostat' || _cls(d) === 'heater';
     }
 
-    // Boilers and pools can be any smart switch/plug — no narrow filter, show all devices
-    function emsIsBoiler() { return false; }
-    function emsIsPool()   { return false; }
+    // Boilers, pools and dehumidifiers can be any smart switch/plug — no narrow filter, show all devices
+    function emsIsBoiler()       { return false; }
+    function emsIsPool()         { return false; }
+    function emsIsDehumidifier() { return false; }
 
     var EMS_FILTER = {
-      charger:   emsIsCharger,
-      inverter:  emsIsInverter,
-      meter:     emsIsPowerMeter,
-      house:     emsIsPowerMeter,
-      battery:   emsIsBattery,
-      heatpump:  emsIsHeatPump,
-      boiler:    emsIsBoiler,
-      pool:      emsIsPool,
+      charger:      emsIsCharger,
+      inverter:     emsIsInverter,
+      meter:        emsIsPowerMeter,
+      house:        emsIsPowerMeter,
+      battery:      emsIsBattery,
+      heatpump:     emsIsHeatPump,
+      boiler:       emsIsBoiler,
+      pool:         emsIsPool,
+      dehumidifier: emsIsDehumidifier,
     };
 
     // ── Select helpers ────────────────────────────────────────────────────────
@@ -2668,7 +2697,7 @@
 
     function emsRefreshAllSelects() {
       document.querySelectorAll(
-        '#ems-charger-list .ems-row-device, #ems-inverter-list .ems-row-device, #ems-meter-list .ems-row-device, #ems-house-list .ems-row-device, #ems-battery-list .ems-row-device, #ems-heatpump-list .ems-row-device, #ems-boiler-list .ems-row-device, #ems-pool-list .ems-row-device'
+        '#ems-charger-list .ems-row-device, #ems-inverter-list .ems-row-device, #ems-meter-list .ems-row-device, #ems-house-list .ems-row-device, #ems-battery-list .ems-row-device, #ems-heatpump-list .ems-row-device, #ems-boiler-list .ems-row-device, #ems-pool-list .ems-row-device, #ems-dehumidifier-list .ems-row-device'
       ).forEach(function(sel) {
         emsFillSelect(sel, undefined, EMS_FILTER[sel.dataset.filterType]);
       });
@@ -3036,7 +3065,7 @@
             flowsContainer.style.color = '#c0392b'; return;
           }
           var matched = (result.matched || []).filter(function(f) {
-            return !f.name || f.name.indexOf(deviceId.slice(0,8)) !== -1;
+            return !f.triggerDeviceId || f.triggerDeviceId === deviceId;
           });
           if (!matched.length) {
             var none = document.createElement('span');
@@ -3179,7 +3208,9 @@
         function _tryPrefill() {
           if (!_allCards.length || !_flowsCache) return;
           var existingStart = null, existingStop = null;
-          (_flowsCache.matched || []).forEach(function(f) {
+          (_flowsCache.matched || []).filter(function(f) {
+            return !f.triggerDeviceId || f.triggerDeviceId === deviceId;
+          }).forEach(function(f) {
             if (f.triggerType === 'start' && f.actionCardId && !existingStart) existingStart = f.actionCardId + '|' + (f.actionCardUri || '');
             if (f.triggerType === 'stop'  && f.actionCardId && !existingStop)  existingStop  = f.actionCardId + '|' + (f.actionCardUri || '');
           });
@@ -3430,6 +3461,104 @@
         'poolStartCard', 'poolStopCard', 'pool',
         'EMS: start pool', 'EMS: stop pool',
         '<b>How it works:</b> The EMS fires two separate triggers: "<b>EMS: start pool</b>" (solar surplus available) and "<b>EMS: stop pool</b>" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.'
+      );
+    }
+
+    // ── Dehumidifier row functions ─────────────────────────────────────────────
+
+    function emsAddDehumidifierRow(deviceId, stored) {
+      var list  = document.getElementById('ems-dehumidifier-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'dehumidifier';
+      emsFillSelect(sel, deviceId || '', null);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.dataset.field = 'min_surplus_w';
+      surplusInput.value = (stored && stored.min_surplus_w) || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = 'Minimum solar surplus to turn on (W)';
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = 'W to start';
+      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var sustainInput = document.createElement('input');
+      sustainInput.type = 'number';
+      sustainInput.dataset.field = 'start_sustain_s';
+      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
+      sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
+      sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var sustainLabel = document.createElement('span');
+      sustainLabel.textContent = 's start delay';
+      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var graceInput = document.createElement('input');
+      graceInput.type = 'number';
+      graceInput.dataset.field = 'stop_grace_s';
+      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
+      graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
+      graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var graceLabel = document.createElement('span');
+      graceLabel.textContent = 's stop delay';
+      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(sel.value), null, 'dehumidifier');
+        entry.dataset.dehumidifierStartCard = '';
+        entry.dataset.dehumidifierStopCard  = '';
+        emsRenderDehumidifierFlows(flowSection, sel.value, entry, {});
+      });
+      entry.dataset.dehumidifierStartCard = (stored && stored.start_card) || '';
+      entry.dataset.dehumidifierStopCard  = (stored && stored.stop_card)  || '';
+      if (deviceId) {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(deviceId), stored || null, 'dehumidifier');
+        emsRenderDehumidifierFlows(flowSection, deviceId, entry, stored);
+      }
+    }
+
+    function emsGetDehumidifiers() { return _emsGetSimpleRows('ems-dehumidifier-list', 'dehumidifierStartCard', 'dehumidifierStopCard'); }
+
+    function emsRenderDehumidifierFlows(container, deviceId, entry, stored) {
+      _emsRenderSimpleFlows(container, deviceId, entry, stored,
+        'dehumidifierStartCard', 'dehumidifierStopCard', 'dehumidifier',
+        'EMS: start dehumidifier', 'EMS: stop dehumidifier',
+        '<b>How it works:</b> The EMS fires two separate triggers: "<b>EMS: start dehumidifier</b>" (solar surplus available) and "<b>EMS: stop dehumidifier</b>" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.'
       );
     }
 
@@ -5160,6 +5289,11 @@
       var poolDevs = cfg.pool_devices || [];
       poolDevs.forEach(function(d) { emsAddPoolRow(d.id, d); });
 
+      // ── Dehumidifier devices ──────────────────────────────────────────────────
+      document.getElementById('ems-dehumidifier-list').innerHTML = '';
+      var dehumidifierDevs = cfg.dehumidifier_devices || [];
+      dehumidifierDevs.forEach(function(d) { emsAddDehumidifierRow(d.id, d); });
+
       // ── Scalar settings ───────────────────────────────────────────────────────
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
@@ -5180,6 +5314,7 @@
       document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control === true;
       document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control === true;
       document.getElementById('ems-pool-control').checked                                      = cfg.pool_control === true;
+      document.getElementById('ems-dehumidifier-control').checked                              = cfg.dehumidifier_control === true;
       var _elEnabled = document.getElementById('ems-export-limit-enabled');
       if (_elEnabled) {
         _elEnabled.checked = !!cfg.export_limit_enabled;
@@ -5205,7 +5340,8 @@
       var batDevs     = emsGetBatteryDevices();
       var hpDevs      = emsGetHeatPumps();
       var boilerDevs  = emsGetBoilers();
-      var poolDevs    = emsGetPools();
+      var poolDevs          = emsGetPools();
+      var dehumidifierDevs  = emsGetDehumidifiers();
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
 
@@ -5253,6 +5389,7 @@
         heat_pump_devices:   hpDevs,
         boiler_devices:      boilerDevs,
         pool_devices:        poolDevs,
+        dehumidifier_devices: dehumidifierDevs,
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
         throttle_budget_w:    Math.max(230, parseInt(document.getElementById('ems-throttle-budget-w').value, 10) || 1380),
@@ -5269,6 +5406,7 @@
         heat_pump_control:            document.getElementById('ems-heatpump-control').checked,
         boiler_control:               document.getElementById('ems-boiler-control').checked,
         pool_control:                 document.getElementById('ems-pool-control').checked,
+        dehumidifier_control:         document.getElementById('ems-dehumidifier-control').checked,
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
         device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
         export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,

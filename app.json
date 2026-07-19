@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.1.99",
+  "version": "1.2.0",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -68,6 +68,9 @@
     "getEmsPoolActionCards":         { "method": "GET",  "path": "/ems/pool/action-cards"         },
     "postEmsPoolSetupFlows":         { "method": "POST", "path": "/ems/pool/setup-flows"          },
     "getEmsPoolFlows":               { "method": "GET",  "path": "/ems/pool/flows"                },
+    "getEmsDehumidifierActionCards": { "method": "GET",  "path": "/ems/dehumidifier/action-cards" },
+    "postEmsDehumidifierSetupFlows": { "method": "POST", "path": "/ems/dehumidifier/setup-flows"  },
+    "getEmsDehumidifierFlows":       { "method": "GET",  "path": "/ems/dehumidifier/flows"        },
     "getEmsBatteryActionCards":      { "method": "GET",  "path": "/ems/battery/action-cards"      },
     "postEmsBatterySetupFlows":      { "method": "POST", "path": "/ems/battery/setup-flows"       },
     "getEmsBatteryFlows":            { "method": "GET",  "path": "/ems/battery/flows"             },
@@ -572,9 +575,17 @@
         {
           "id": "6",
           "title": {
-            "en": "Limited by Power",
-            "de": "Leistungsbegrenzt",
-            "nl": "Vermogensbegrensd"
+            "en": "Limited by Power (kW)",
+            "de": "Leistungsbegrenzt (kW)",
+            "nl": "Vermogensbegrensd (kW)"
+          }
+        },
+        {
+          "id": "7",
+          "title": {
+            "en": "Limited by Power (%)",
+            "de": "Leistungsbegrenzt (%)",
+            "nl": "Vermogensbegrensd (%)"
           }
         }
       ]
@@ -6861,6 +6872,22 @@
         "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
       },
       {
+        "id": "ems_start_dehumidifier",
+        "title": { "en": "EMS wants to start dehumidifier", "de": "EMS möchte Luftentfeuchter starten" },
+        "titleFormatted": { "en": "EMS wants to start dehumidifier [[dehumidifier_device_id]]", "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] starten" },
+        "hint": { "en": "Fires when the EMS wants to turn the dehumidifier on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
+        "args": [{ "name": "dehumidifier_device_id", "type": "text", "placeholder": { "en": "Paste Dehumidifier Device ID from EMS settings", "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "dehumidifier_device_id", "type": "string", "title": { "en": "Dehumidifier Device ID", "de": "Luftentfeuchter Geräte-ID" } }]
+      },
+      {
+        "id": "ems_stop_dehumidifier",
+        "title": { "en": "EMS wants to stop dehumidifier", "de": "EMS möchte Luftentfeuchter stoppen" },
+        "titleFormatted": { "en": "EMS wants to stop dehumidifier [[dehumidifier_device_id]]", "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] stoppen" },
+        "hint": { "en": "Fires when the EMS wants to turn the dehumidifier off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
+        "args": [{ "name": "dehumidifier_device_id", "type": "text", "placeholder": { "en": "Paste Dehumidifier Device ID from EMS settings", "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "tokens": [{ "name": "dehumidifier_device_id", "type": "string", "title": { "en": "Dehumidifier Device ID", "de": "Luftentfeuchter Geräte-ID" } }]
+      },
+      {
         "id": "ems_battery_full",
         "title": { "en": "EMS: battery is full", "de": "EMS: Batterie ist voll", "nl": "EMS: batterij is vol" },
         "titleFormatted": { "en": "EMS: battery [[battery_device_id]] is full", "de": "EMS: Batterie [[battery_device_id]] ist voll", "nl": "EMS: batterij [[battery_device_id]] is vol" },
@@ -7446,8 +7473,15 @@
               {
                 "id": "6",
                 "label": {
-                  "en": "Limited by Power",
-                  "de": "Leistungsbegrenzt"
+                  "en": "Limited by Power (kW)",
+                  "de": "Leistungsbegrenzt (kW)"
+                }
+              },
+              {
+                "id": "7",
+                "label": {
+                  "en": "Limited by Power (%)",
+                  "de": "Leistungsbegrenzt (%)"
                 }
               }
             ]
@@ -8293,16 +8327,16 @@
       {
         "id": "luna2000_start_force_discharge",
         "title": {
-          "en": "Start discharging until SoC %",
-          "de": "Entladen bis SoC % starten"
+          "en": "Start force discharging",
+          "de": "Zwangsentladen starten"
         },
         "titleFormatted": {
-          "en": "Start discharging with [[power]] W until [[target_soc]] %",
-          "de": "Entladen mit [[power]] W bis [[target_soc]] % starten"
+          "en": "Start force discharging with [[power]] W",
+          "de": "Zwangsentladen mit [[power]] W starten"
         },
         "hint": {
-          "en": "Starts force discharging the LUNA2000 at the given power until the target SoC is reached (registers 47247, 47101, 47100).",
-          "de": "Startet das Zwangsentladen der LUNA2000 mit der angegebenen Leistung bis der Ziel-SoC erreicht ist (Register 47247, 47101, 47100)."
+          "en": "Starts force discharging the LUNA2000 at the given power (registers 47249, 47100). Set the discharge cutoff SoC separately using 'Set discharge cutoff SoC'.",
+          "de": "Startet das Zwangsentladen der LUNA2000 mit der angegebenen Leistung (Register 47249, 47100). Den Entlade-Cutoff SoC separat mit 'Entlade-Cutoff SoC setzen' konfigurieren."
         },
         "args": [
           {
@@ -8323,21 +8357,6 @@
             "placeholder": {
               "en": "e.g. 2500",
               "de": "z.B. 2500"
-            }
-          },
-          {
-            "type": "number",
-            "name": "target_soc",
-            "title": {
-              "en": "Stop at SoC (%)",
-              "de": "Stoppen bei SoC (%)"
-            },
-            "min": 0,
-            "max": 100,
-            "step": 1,
-            "placeholder": {
-              "en": "e.g. 10",
-              "de": "z.B. 10"
             }
           }
         ]
@@ -8725,8 +8744,8 @@
           "de": "Lade-Abbruch-SoC auf [[target_soc]] % setzen"
         },
         "hint": {
-          "en": "Sets the maximum SoC the battery charges to during normal operation (register 47081). Example: set to 80 % in summer to extend battery life.",
-          "de": "Setzt den maximalen Ladezustand, bis zu dem die Batterie im Normalbetrieb lädt (Register 47081). Beispiel: im Sommer auf 80 % setzen, um die Batterie zu schonen."
+          "en": "Sets the maximum SoC the battery charges to during normal operation (register 47081). Valid range: 90–100 %, default 100 %.",
+          "de": "Setzt den maximalen Ladezustand, bis zu dem die Batterie im Normalbetrieb lädt (Register 47081). Gültiger Bereich: 90–100 %, Standard 100 %."
         },
         "args": [
           {
@@ -8741,7 +8760,7 @@
               "en": "Cutoff SoC (%)",
               "de": "Abbruch-Ladezustand (%)"
             },
-            "min": 50,
+            "min": 90,
             "max": 100,
             "step": 1,
             "placeholder": {
@@ -8762,8 +8781,8 @@
           "de": "Entlade-Abbruch-SoC auf [[target_soc]] % setzen"
         },
         "hint": {
-          "en": "Sets the minimum SoC the battery discharges to during normal operation (register 47082). Example: set to 20 % to keep a reserve.",
-          "de": "Setzt den minimalen Ladezustand, bis zu dem die Batterie im Normalbetrieb entlädt (Register 47082). Beispiel: auf 20 % setzen, um eine Reserve zu halten."
+          "en": "Sets the minimum SoC the battery discharges to (register 47082). Valid range: 12–20 %, default 15 %.",
+          "de": "Setzt den minimalen Ladezustand, bis zu dem die Batterie entlädt (Register 47082). Gültiger Bereich: 12–20 %, Standard 15 %."
         },
         "args": [
           {
@@ -8778,12 +8797,12 @@
               "en": "Cutoff SoC (%)",
               "de": "Abbruch-Entladestand (%)"
             },
-            "min": 0,
-            "max": 50,
+            "min": 12,
+            "max": 20,
             "step": 1,
             "placeholder": {
-              "en": "e.g. 10",
-              "de": "z.B. 10"
+              "en": "e.g. 15",
+              "de": "z.B. 15"
             }
           }
         ]
@@ -10617,6 +10636,11 @@
   },
   "permissions": [],
   "changelog": {
+    "1.2.0": {
+      "en": "EMS: New Dehumidifier device type — works like Boiler/Pool, runs when solar surplus is available, configurable via Settings and Flow cards. Fixed Boiler/Pool/Dehumidifier flow display in Settings (flows were not shown due to wrong filter logic). LUNA2000: Fixed Force Discharge — all flow actions now return immediately (no more 10 s timeout). Corrected Modbus register for discharge power (47249 instead of 47247). Register range fixes based on official Modbus Port Definitions: charging cutoff capacity reg 47081 clamped to [90, 100]%, discharge cutoff capacity reg 47082 clamped to [12, 20]%. SUN2000: Set Max Feed-in Power (%) now correctly sets active power control mode to 7 before writing the limit (previously the firmware silently ignored the value). Startup/Shutdown commands corrected to write value 0 per protocol spec. Active power control mode 7 (Limited by Power %) added to flow card and capability picker.",
+      "de": "EMS: Neuer Gerätetyp Luftentfeuchter — funktioniert wie Boiler/Pool, läuft wenn Solarüberschuss verfügbar ist, konfigurierbar über Einstellungen und Flow-Karten. Anzeige der Boiler/Pool/Luftentfeuchter-Flows in den Einstellungen korrigiert (Flows wurden durch fehlerhafte Filter-Logik nicht angezeigt). LUNA2000: Zwangsentladung korrigiert — alle Flow-Aktionen kehren sofort zurück (kein 10-s-Timeout mehr). Modbus-Register für Entladeleistung korrigiert (47249 statt 47247). Register-Bereichskorrekturen basierend auf offizieller Modbus-Port-Dokumentation: Lade-Cutoff-Kapazität Register 47081 begrenzt auf [90, 100]%, Entlade-Cutoff-Kapazität Register 47082 begrenzt auf [12, 20]%. SUN2000: Max. Einspeiseleistung (%) setzt jetzt korrekt den Steuermodus auf 7 vor dem Schreiben des Limits (zuvor hat die Firmware den Wert ignoriert). Start-/Shutdown-Befehle gemäß Protokollspezifikation auf Wert 0 korrigiert. Steuermodus 7 (Leistungsbegrenzt %) in Flow-Karte und Capability-Picker ergänzt.",
+      "nl": "EMS: Nieuw apparaattype Luchtontvochtiger — werkt zoals Boiler/Pool, draait wanneer zonne-overschot beschikbaar is, instelbaar via Instellingen en Flow-kaarten. Weergave van Boiler/Pool/Luchtontvochtiger-flows in Instellingen gecorrigeerd (flows werden niet getoond door foutieve filterlogica). LUNA2000: Gedwongen ontlading gecorrigeerd — alle flow-acties keren nu direct terug (geen 10 s-timeout meer). Modbus-register voor ontlaadvermogen gecorrigeerd (47249 in plaats van 47247). Registerbereiken gecorrigeerd op basis van officiële Modbus-Port-documentatie: laad-cutoff register 47081 begrensd op [90, 100]%, ontlaad-cutoff register 47082 begrensd op [12, 20]%. SUN2000: Max. netinspeling (%) stelt nu correct de stuurmodus in op 7 vóór het schrijven van de limiet (eerder negeerde de firmware de waarde stilzwijgend). Start-/Shutdown-opdrachten gecorrigeerd naar waarde 0 conform protocolspecificatie. Stuurmodus 7 (Vermogensbegrensd %) toegevoegd aan flow-kaart en capability-kiezer."
+    },
     "1.1.99": {
       "en": "EMS: Start-Sustain / Stop-Grace timers for heat pumps, boilers and pool: configurable delay before starting (surplus must hold) and before stopping (grace period tolerates brief surplus drops) — prevents short cycling. Timeline notifications: EMS posts to the Homey Timeline when it starts or stops a device and when battery SOC crosses a threshold; can be disabled in EMS device settings. Settings page redesigned for clarity: emoji section headers, intro text per section, labels renamed from technical jargon (W min / s sustain / s grace) to plain language (W to start / s start delay / s stop delay), Battery SOC zone bar improved, layout fixes for device rows.",
       "de": "EMS: Start-Sustain / Stop-Grace-Timer für Wärmepumpen, Boiler und Pool: konfigurierbarer Startverzögerungs-Timer (Überschuss muss für X Sekunden stabil sein) und Stoppverzögerung (kurze Überschuss-Einbrüche werden toleriert) — verhindert kurzes Takten. Timeline-Benachrichtigungen: EMS postet im Homey-Timeline, wenn ein Gerät gestartet oder gestoppt wird oder der Batterie-SOC einen Schwellenwert überschreitet; deaktivierbar in den EMS-Geräteeinstellungen. Einstellungsseite für normale Nutzer überarbeitet: Emoji-Sektionsüberschriften, Einführungstexte je Sektion, Bezeichnungen vereinfacht (W to start / s start delay / s stop delay), Batterie-SOC-Zonen-Balken verbessert, Layout-Fehler in Gerätezeilen behoben.",

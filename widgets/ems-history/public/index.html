@@ -17,17 +17,23 @@ html, body {
   border-radius: 16px;
   padding: 12px 14px 4px;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+/* Dots have a 1px box-shadow — give them 2px breathing room so the shadow isn't clipped */
+.timeline {
+  padding-left: 2px;
+  margin-left: -2px;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   flex-shrink: 0;
 }
 .title {
@@ -47,6 +53,41 @@ html, body {
   line-height: 1;
 }
 .refresh-btn:hover { color: #555; background: #f4f4f4; }
+
+/* ── Day nav ── */
+.day-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  gap: 4px;
+}
+.nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #007aff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.nav-btn:hover { background: #f0f5ff; }
+.nav-btn:disabled { color: #c7c7cc; cursor: default; }
+.nav-btn:disabled:hover { background: none; }
+
+.day-label-nav {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3a3a3c;
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Timeline */
 .timeline {
@@ -186,28 +227,11 @@ html, body {
 .dot-app-start          { background: #8e8e93; }
 .dot-app-update         { background: #5e5ce6; }
 
-/* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
-  .card { background: #1e1e22; }
-  .title { color: #f2f2f2; }
-  .refresh-btn { color: #666; }
-  .refresh-btn:hover { color: #aaa; background: #2c2c31; }
-  .event-row::before { background: #2e2e33; }
-  .ev-system::before { background: #38383d; }
-  .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
-  .event-mode { color: #f2f2f2; }
-  .ev-system .event-mode { color: #8a8a8f; }
-  .event-time { color: #666; }
-  .event-detail { color: #8a8a8f; }
-  .empty { color: #555; }
-  .day-label { color: #555; }
-  .dot-holding  { background: #5a5a5f; }
-  .dot-idle     { background: #4a4a4f; }
-  .dot-disabled { background: #4a4a4f; }
-}
-
+/* ── Dark mode (only via Homey data-theme attribute) ── */
 :root[data-theme="dark"] .card { background: #1e1e22; }
 :root[data-theme="dark"] .title { color: #f2f2f2; }
+:root[data-theme="dark"] .refresh-btn { color: #666; }
+:root[data-theme="dark"] .refresh-btn:hover { color: #aaa; background: #2c2c31; }
 :root[data-theme="dark"] .event-row::before { background: #2e2e33; }
 :root[data-theme="dark"] .ev-system::before { background: #38383d; }
 :root[data-theme="dark"] .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
@@ -217,13 +241,13 @@ html, body {
 :root[data-theme="dark"] .event-detail { color: #8a8a8f; }
 :root[data-theme="dark"] .empty { color: #555; }
 :root[data-theme="dark"] .day-label { color: #555; }
-
-:root[data-theme="light"] .card { background: #fff; }
-:root[data-theme="light"] .title { color: #1a1a1a; }
-:root[data-theme="light"] .event-mode { color: #1a1a1a; }
-:root[data-theme="light"] .ev-system .event-mode { color: #888; }
-:root[data-theme="light"] .event-time { color: #bbb; }
-:root[data-theme="light"] .event-detail { color: #888; }
+:root[data-theme="dark"] .dot-holding  { background: #5a5a5f; }
+:root[data-theme="dark"] .dot-idle     { background: #4a4a4f; }
+:root[data-theme="dark"] .dot-disabled { background: #4a4a4f; }
+:root[data-theme="dark"] .day-label-nav { color: #c7c7cc; }
+:root[data-theme="dark"] .nav-btn { color: #0a84ff; }
+:root[data-theme="dark"] .nav-btn:hover { background: #1c2a3a; }
+:root[data-theme="dark"] .nav-btn:disabled { color: #3a3a3f; }
 </style>
 </head>
 <body>
@@ -232,6 +256,11 @@ html, body {
     <div class="title">⚡ EMS History</div>
     <button class="refresh-btn" id="refresh-btn" title="Refresh">↻</button>
   </div>
+  <div class="day-nav">
+    <button class="nav-btn" id="nav-prev" title="Previous day">◀</button>
+    <div class="day-label-nav" id="nav-day-label">Heute</div>
+    <button class="nav-btn" id="nav-next" title="Next day" disabled>▶</button>
+  </div>
   <div class="timeline" id="timeline">
     <div class="empty">Loading…</div>
   </div>
@@ -239,7 +268,9 @@ html, body {
 
 <script type="text/javascript">
 function onHomeyReady(Homey) {
-var hoursWindow = 6;
+
+var dayOffset = 0;   // 0 = today, 1 = yesterday, 2 = two days ago, …
+var allEvents = [];
 
 // ── Mode metadata ──────────────────────────────────────────────────────────
 var MODE_META = {
@@ -259,8 +290,6 @@ var MODE_META = {
   export_limit_off: { label: 'Export limit deactivated',   dot: 'dot-export-limit-off' },
 };
 
-// Modes where structured extraction makes sense (amps/bat% in label).
-// solar_hp/boiler/pool use a different format ("1 Gerät aktiv · Bat 95%") — do NOT extract.
 var EXTRACT_MODES = { solar_ev:1, offpeak_ev:1, instant_ev:1 };
 
 // ── Time formatting ────────────────────────────────────────────────────────
@@ -271,18 +300,36 @@ function fmtTime(ts) {
   return h + ':' + m;
 }
 
+function dayStart(offset) {
+  var d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() - offset * 86400000;
+}
+
+function dayEnd(offset) {
+  if (offset === 0) return Date.now();
+  return dayStart(offset) + 86400000 - 1;
+}
+
+function navLabel(offset) {
+  if (offset === 0) return 'Heute';
+  if (offset === 1) return 'Gestern';
+  var d = new Date(dayStart(offset));
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function fmtDayLabel(ts) {
   var d   = new Date(ts);
   var now = new Date();
   var today     = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   var yesterday = today - 86400000;
-  var dayStart  = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  if (dayStart === today)     return 'Today';
-  if (dayStart === yesterday) return 'Yesterday';
+  var ds        = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  if (ds === today)     return 'Today';
+  if (ds === yesterday) return 'Yesterday';
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-// ── Extract numeric info from status text (amps, battery %, battery power) ─
+// ── Extract numeric info from status text ──────────────────────────────────
 function fmtStatusDetail(raw) {
   if (!raw) return '';
   var parts = [];
@@ -294,7 +341,6 @@ function fmtStatusDetail(raw) {
 
 // ── Build event display info ───────────────────────────────────────────────
 function eventInfo(ev) {
-
   if (ev.type === 'system') {
     var isUpdate = ev.event === 'app_update';
     return {
@@ -304,13 +350,11 @@ function eventInfo(ev) {
       detail: ev.label || '',
     };
   }
-
   if (ev.type === 'mode') {
     var meta   = MODE_META[ev.event] || { label: ev.event, dot: 'dot-idle' };
     var statusText = EXTRACT_MODES[ev.event]
       ? (fmtStatusDetail(ev.label) || ev.label || '')
       : (ev.label || '');
-    // Dynamic label: show status text as primary, mode name as context below
     var hasStatus = statusText && statusText !== '—';
     return {
       cls:    '',
@@ -319,7 +363,6 @@ function eventInfo(ev) {
       detail: hasStatus ? meta.label : '',
     };
   }
-
   if (ev.type === 'device') {
     var isStart = ev.event === 'start';
     var devName = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
@@ -330,29 +373,27 @@ function eventInfo(ev) {
       detail: isStart ? 'EMS started' : 'EMS stopped',
     };
   }
-
   if (ev.type === 'charger') {
     if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || 'started', detail: 'Charger started'  };
     if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,      detail: 'Charger adjusted' };
     if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: 'Charger stopped',     detail: ''                 };
   }
-
   return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
-function render(events) {
-  var tl     = document.getElementById('timeline');
-  var now    = Date.now();
-  var cutoff = now - hoursWindow * 3600 * 1000;
+function render() {
+  var tl    = document.getElementById('timeline');
+  var start = dayStart(dayOffset);
+  var end   = dayEnd(dayOffset);
 
-  var filtered = events
-    .filter(function(e) { return e.ts >= cutoff; })
+  var filtered = allEvents
+    .filter(function(e) { return e.ts >= start && e.ts <= end; })
     .slice()
     .reverse(); // newest first
 
   if (!filtered.length) {
-    tl.innerHTML = '<div class="empty">No events in the last ' + hoursWindow + 'h</div>';
+    tl.innerHTML = '<div class="empty">No events for ' + esc(navLabel(dayOffset)) + '</div>';
     return;
   }
 
@@ -390,19 +431,32 @@ function esc(s) {
     .replace(/>/g,'&gt;');
 }
 
+// ── Nav ────────────────────────────────────────────────────────────────────
+function updateNav() {
+  document.getElementById('nav-day-label').textContent = navLabel(dayOffset);
+  document.getElementById('nav-next').disabled = (dayOffset === 0);
+  render();
+}
+
+document.getElementById('nav-prev').addEventListener('click', function() {
+  dayOffset++;
+  updateNav();
+});
+document.getElementById('nav-next').addEventListener('click', function() {
+  if (dayOffset > 0) { dayOffset--; updateNav(); }
+});
+
 // ── Load ───────────────────────────────────────────────────────────────────
 async function load() {
   try {
-    var settings = Homey.getSettings();
-    hoursWindow = parseInt(settings.hours || '6') || 6;
-
     var result = await Homey.api('GET', '/history');
     if (!result || result.error) {
       document.getElementById('timeline').innerHTML =
         '<div class="empty">' + esc((result && result.error) || 'Failed to load') + '</div>';
       return;
     }
-    render(result.events || []);
+    allEvents = result.events || [];
+    render();
   } catch (err) {
     document.getElementById('timeline').innerHTML =
       '<div class="empty">Error: ' + esc(err.message || String(err)) + '</div>';
@@ -411,7 +465,7 @@ async function load() {
 
 document.getElementById('refresh-btn').addEventListener('click', load);
 
-// Auto-refresh every 30 s
+// Auto-refresh every 30 s (only re-fetches, keeps current day view)
 load();
 setInterval(load, 30000);
 
