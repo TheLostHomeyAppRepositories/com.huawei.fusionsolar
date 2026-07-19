@@ -8,7 +8,6 @@ const STEP_HOLD_MS             = 30_000;
 const IMPORT_HOLD_MS           = 60_000;
 const FLIP_COOLDOWN_MS         = 5 * 60_000;
 const SIMPLE_MIN_RUN_MS        = 5 * 60_000;  // min run time for HP/boiler/pool before stop allowed
-const SIMPLE_RESTART_COOLDOWN_MS = 10 * 60_000; // min off time after a power-drop stop (prevents re-cycling)
 const EMS_HISTORY_MAX          = 400;          // max history events kept in memory + settings
 const PHASE_SWITCH_COOLDOWN_MS = 10 * 60_000;
 const GRID_SENSOR_HOLD_TICKS   = 4;            // use last-valid gridW for up to 4 ticks (60 s) on sensor failure
@@ -485,12 +484,14 @@ class EmsDevice extends Device {
     return Promise.all(cfgs.map(async (c) => {
       const powerW = c.cap_power ? await this._api.getCapability(c.id, c.cap_power) : null;
       return {
-        id:             c.id,
-        name:           c.name || c.id.slice(0, 8),
+        id:                  c.id,
+        name:                c.name || c.id.slice(0, 8),
         powerW,
-        minSurplusW:    Number(c.min_surplus_w)    || 2000,
-        startSustainMs: Number(c.start_sustain_s   || 0) * 1000,
-        stopGraceMs:    Number(c.stop_grace_s      || 0) * 1000,
+        minSurplusW:         Number(c.min_surplus_w)         || 2000,
+        startSustainMs:      Number(c.start_sustain_s        || 60) * 1000,
+        stopGraceMs:         Number(c.stop_grace_s           || 60) * 1000,
+        maxRunMs:            Number(c.max_run_min            || 0)  * 60_000,
+        restartCooldownMs:   Number(c.restart_cooldown_min   || 5)  * 60_000,
       };
     }));
   }
@@ -546,8 +547,11 @@ class EmsDevice extends Device {
       const hpPowerW   = (wasOn && device.powerW != null) ? device.powerW : 0;
       const effectiveW = runningExportW + hpPowerW;
       const surplusOk  = effectiveW >= device.minSurplusW;
-      const pastMinRun = wasOn && st.startedAt !== null && (now - st.startedAt) >= SIMPLE_MIN_RUN_MS;
-      const inHoldTime = wasOn && !pastMinRun; // first SIMPLE_MIN_RUN_MS: always keep running
+      const runElapsedMs = wasOn && st.startedAt !== null ? (now - st.startedAt) : 0;
+      const pastMinRun   = wasOn && runElapsedMs >= SIMPLE_MIN_RUN_MS;
+      const inMaxRun     = wasOn && device.maxRunMs > 0 && runElapsedMs < device.maxRunMs;
+      const maxRunDone   = wasOn && device.maxRunMs > 0 && runElapsedMs >= device.maxRunMs;
+      const inHoldTime   = wasOn && !pastMinRun && !inMaxRun; // first SIMPLE_MIN_RUN_MS (when no maxRun)
 
       // ── Start-sustain / stop-grace timer maintenance ──────────────────────
       if (!wasOn) {
@@ -557,8 +561,10 @@ class EmsDevice extends Device {
         st.surplusBadSince = null;
       } else {
         st.surplusOkSince = null; // irrelevant while running
-        // Track how long surplus has been absent — only counts after min-run (hold time must not pre-consume grace)
-        if (pastMinRun) {
+        // Track how long surplus has been absent — only counts after min-run; reset during max-run window
+        if (inMaxRun) {
+          st.surplusBadSince = null; // max-run overrides stop logic
+        } else if (pastMinRun) {
           if (surplusOk) st.surplusBadSince = null;
           else if (!st.surplusBadSince) st.surplusBadSince = now;
         } else {
@@ -566,7 +572,7 @@ class EmsDevice extends Device {
         }
       }
 
-      const restartOk     = !st.powerDropStoppedAt || (now - st.powerDropStoppedAt) >= SIMPLE_RESTART_COOLDOWN_MS;
+      const restartOk     = !device.restartCooldownMs || !st.powerDropStoppedAt || (now - st.powerDropStoppedAt) >= device.restartCooldownMs;
       const startOk       = !wasOn && surplusOk && restartOk
                             && st.surplusOkSince !== null
                             && (now - st.surplusOkSince) >= device.startSustainMs;
@@ -575,34 +581,46 @@ class EmsDevice extends Device {
                             && (now - st.surplusBadSince) < device.stopGraceMs;
 
       // ── Battery protection hierarchy ──────────────────────────────────────
-      //   hard stop (no overflow) → off regardless of grace / hold time
+      //   hard stop (no overflow) → off regardless of grace / max-run / hold time
       //   throttle zone, device needs more than budget → off
+      //   inMaxRun → keep on (overrides surplus shortage)
       //   otherwise → surplus / timer logic
       let wantOn;
       if (batHardStop && !batOverflow) {
         wantOn = false;
       } else if (batThrottle && device.minSurplusW > throttleW) {
         wantOn = false;
+      } else if (inMaxRun) {
+        wantOn = true; // max-run window: ignore surplus drop
       } else {
         wantOn = startOk || inHoldTime || (wasOn && (surplusOk || inGracePeriod));
       }
 
+      // ── Max-run expired → force stop ──────────────────────────────────────
+      if (maxRunDone) {
+        wantOn = false;
+        st.powerDropStoppedAt = now;
+        this.log(`[EMS] ${tokenName} ${device.id}: max run time reached (${device.maxRunMs / 60_000} min) → stop`);
+      }
+
       // ── Diagnostic logging ────────────────────────────────────────────────
-      if (inHoldTime) {
-        this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round((now - st.startedAt) / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
+      if (inMaxRun) {
+        this.log(`[EMS] ${tokenName} ${device.id}: max-run active (${Math.round(runElapsedMs / 1000)}s / ${device.maxRunMs / 1000}s)`);
+      } else if (inHoldTime) {
+        this.log(`[EMS] ${tokenName} ${device.id}: hold-time active (${Math.round(runElapsedMs / 1000)}s < ${SIMPLE_MIN_RUN_MS / 1000}s)`);
       } else if (!wasOn && surplusOk && !restartOk) {
-        this.log(`[EMS] ${tokenName} ${device.id}: restart-cooldown active (${Math.round((now - st.powerDropStoppedAt) / 1000)}s / ${SIMPLE_RESTART_COOLDOWN_MS / 1000}s)`);
+        this.log(`[EMS] ${tokenName} ${device.id}: restart-cooldown active (${Math.round((now - st.powerDropStoppedAt) / 1000)}s / ${device.restartCooldownMs / 1000}s)`);
       } else if (!wasOn && surplusOk && !startOk && device.startSustainMs > 0 && st.surplusOkSince) {
         this.log(`[EMS] ${tokenName} ${device.id}: start-sustain pending (${Math.round((now - st.surplusOkSince) / 1000)}s / ${device.startSustainMs / 1000}s)`);
       } else if (inGracePeriod) {
         this.log(`[EMS] ${tokenName} ${device.id}: stop-grace active (${Math.round((now - st.surplusBadSince) / 1000)}s / ${device.stopGraceMs / 1000}s)`);
       }
 
-      // ── Power-drop: device finished its cycle ─────────────────────────────
-      if (wasOn && pastMinRun && device.powerW !== null && device.powerW < device.minSurplusW) {
+      // ── Power-drop: device finished its cycle (disabled during max-run) ───
+      if (!inMaxRun && wasOn && pastMinRun && device.powerW !== null && device.powerW < device.minSurplusW) {
         wantOn = false;
         st.powerDropStoppedAt = now;
-        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop (restart cooldown ${SIMPLE_RESTART_COOLDOWN_MS / 60_000} min)`);
+        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop (restart cooldown ${device.restartCooldownMs / 60_000} min)`);
       }
 
       await this._simpleDeviceSetOn(device.id, device.name, wantOn, stateMap, startCard, stopCard, tokenName);

@@ -328,7 +328,8 @@
       flex:1; padding:6px 8px; border:1px solid #d1d1d6; border-radius:6px;
       font-size:12px; outline:none; background:#fff; min-width:0;
     }
-    .ems-config-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-left:2px; }
+    .ems-config-row { display:grid; grid-template-columns:80px 1fr; gap:5px 10px; align-items:center; padding:4px 0 2px 2px; }
+    .ems-config-row input { width:80px !important; }
     .ems-row-remove {
       padding:3px 8px; font-size:12px; border:1px solid #d1d1d6; border-radius:5px;
       background:#fff; cursor:pointer; color:#c0392b; line-height:1;
@@ -1102,6 +1103,24 @@
         </div>
       </div>
 
+        </div>
+      </details>
+
+      <!-- EMS History -->
+      <details class="ems-section" id="ems-history-section" onToggle="if(this.open) emsHistoryLoad()">
+        <summary><span class="ems-section-label">📋 EMS History</span><span class="ems-section-subtitle"> · recent events</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body" style="padding-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-secondary" id="ems-hist-prev" style="padding:3px 10px;font-size:12px" onclick="emsHistoryNav(1)">◀</button>
+              <span id="ems-hist-day-label" style="font-size:12px;font-weight:600;color:#3a3a3c;min-width:80px;text-align:center">Today</span>
+              <button class="btn-secondary" id="ems-hist-next" style="padding:3px 10px;font-size:12px" onclick="emsHistoryNav(-1)" disabled>▶</button>
+            </div>
+            <button class="btn-secondary" onclick="emsHistoryLoad()" style="padding:3px 10px;font-size:12px">↻ Refresh</button>
+          </div>
+          <div id="ems-hist-timeline" style="display:flex;flex-direction:column;gap:0;max-height:400px;overflow-y:auto;border:1px solid #e5e5ea;border-radius:8px;padding:8px 10px;background:#fff">
+            <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0">Open to load…</div>
+          </div>
         </div>
       </details>
 
@@ -2767,10 +2786,21 @@
       row.appendChild(removeBtn);
 
       var configRow = document.createElement('div');
-      configRow.className = 'ems-config-row';
-      configRow.appendChild(ampsInput); configRow.appendChild(ampsLabel);
-      configRow.appendChild(phasesSel);
-      configRow.appendChild(phaseChk); configRow.appendChild(phaseSwLabel);
+      configRow.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:4px 0 2px 2px;';
+
+      // Amps row
+      var ampsGroup = document.createElement('div');
+      ampsGroup.style.cssText = 'display:flex;align-items:center;gap:6px;flex:0 0 auto;';
+      ampsGroup.appendChild(ampsInput); ampsGroup.appendChild(ampsLabel);
+
+      // Phases row
+      var phasesGroup = document.createElement('div');
+      phasesGroup.style.cssText = 'display:flex;align-items:center;gap:6px;flex:0 0 auto;';
+      phasesGroup.appendChild(phasesSel);
+      phasesGroup.appendChild(phaseChk); phasesGroup.appendChild(phaseSwLabel);
+
+      configRow.appendChild(ampsGroup);
+      configRow.appendChild(phasesGroup);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -2815,32 +2845,56 @@
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W to start';
-      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      surplusLabel.textContent = 'W — minimum solar surplus required to turn on';
+      surplusLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var sustainInput = document.createElement('input');
       sustainInput.type = 'number';
       sustainInput.dataset.field = 'start_sustain_s';
-      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.value = (stored && stored.start_sustain_s) || 60;
       sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
       sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
       sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var sustainLabel = document.createElement('span');
-      sustainLabel.textContent = 's start delay';
-      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      sustainLabel.textContent = 'sec — start delay (surplus must hold for this long before turning on)';
+      sustainLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var graceInput = document.createElement('input');
       graceInput.type = 'number';
       graceInput.dataset.field = 'stop_grace_s';
-      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.value = (stored && stored.stop_grace_s) || 60;
       graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
       graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
       graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var graceLabel = document.createElement('span');
-      graceLabel.textContent = 's stop delay';
-      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
+      graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var maxRunInput = document.createElement('input');
+      maxRunInput.type = 'number';
+      maxRunInput.dataset.field = 'max_run_min';
+      maxRunInput.value = (stored && stored.max_run_min) || 0;
+      maxRunInput.min = 0; maxRunInput.max = 1440; maxRunInput.step = 10;
+      maxRunInput.title = 'When set, device runs for exactly this duration and ignores surplus drops during that time (0 = run while surplus is available)';
+      maxRunInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var maxRunLabel = document.createElement('span');
+      maxRunLabel.textContent = 'min — max. run time (when set, device runs for this duration and only stops when time is up; 0 = run while surplus available)';
+      maxRunLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var cooldownInput = document.createElement('input');
+      cooldownInput.type = 'number';
+      cooldownInput.dataset.field = 'restart_cooldown_min';
+      cooldownInput.value = (stored && stored.restart_cooldown_min) || 5;
+      cooldownInput.min = 0; cooldownInput.max = 480; cooldownInput.step = 10;
+      cooldownInput.title = 'Minimum minutes before EMS may restart after a power-drop stop (0 = no limit)';
+      cooldownInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var cooldownLabel = document.createElement('span');
+      cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
+      cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -2852,9 +2906,11 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
-      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
-      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
-      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
+      configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
+      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -2887,16 +2943,20 @@
         var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
+        var maxRun   = entry.querySelector('input[data-field=max_run_min]');
+        var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           result.push({
-            id:              sel.value,
-            name:            (dev && dev.name) || sel.value.slice(0, 8),
-            cap_power:       (row && row.dataset.capPower) || '',
-            min_surplus_w:   parseInt(surplus ? surplus.value : 2000, 10) || 2000,
-            start_sustain_s: parseInt(sustain ? sustain.value : 0, 10) || 0,
-            stop_grace_s:    parseInt(grace   ? grace.value   : 0, 10) || 0,
-            start_card:      entry.dataset.hpStartCard || '',
+            id:                    sel.value,
+            name:                  (dev && dev.name) || sel.value.slice(0, 8),
+            cap_power:             (row && row.dataset.capPower) || '',
+            min_surplus_w:         parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
+            start_sustain_s:       parseInt(sustain  ? sustain.value  : 0,    10) || 0,
+            stop_grace_s:          parseInt(grace    ? grace.value    : 0,    10) || 0,
+            max_run_min:           parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
+            restart_cooldown_min:  parseInt(cooldown ? cooldown.value : 0,    10) || 0,
+            start_card:            entry.dataset.hpStartCard || '',
             stop_card:       entry.dataset.hpStopCard  || '',
           });
         }
@@ -2965,18 +3025,22 @@
         var sel     = entry.querySelector('.ems-row-device');
         var surplus = entry.querySelector('input[data-field=min_surplus_w]');
         var sustain = entry.querySelector('input[data-field=start_sustain_s]');
-        var grace   = entry.querySelector('input[data-field=stop_grace_s]');
+        var grace    = entry.querySelector('input[data-field=stop_grace_s]');
+        var maxRun   = entry.querySelector('input[data-field=max_run_min]');
+        var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           result.push({
-            id:              sel.value,
-            name:            (dev && dev.name) || sel.value.slice(0, 8),
-            cap_power:       (row && row.dataset.capPower) || '',
-            min_surplus_w:   parseInt(surplus ? surplus.value : 2000, 10) || 2000,
-            start_sustain_s: parseInt(sustain ? sustain.value : 0, 10) || 0,
-            stop_grace_s:    parseInt(grace   ? grace.value   : 0, 10) || 0,
-            start_card:      entry.dataset[startDataKey] || '',
-            stop_card:       entry.dataset[stopDataKey]  || '',
+            id:                   sel.value,
+            name:                 (dev && dev.name) || sel.value.slice(0, 8),
+            cap_power:            (row && row.dataset.capPower) || '',
+            min_surplus_w:        parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
+            start_sustain_s:      parseInt(sustain  ? sustain.value  : 0,    10) || 0,
+            stop_grace_s:         parseInt(grace    ? grace.value    : 0,    10) || 0,
+            max_run_min:          parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
+            restart_cooldown_min: parseInt(cooldown ? cooldown.value : 0,    10) || 0,
+            start_card:           entry.dataset[startDataKey] || '',
+            stop_card:            entry.dataset[stopDataKey]  || '',
           });
         }
       });
@@ -3292,32 +3356,56 @@
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W to start';
-      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      surplusLabel.textContent = 'W — minimum solar surplus required to turn on';
+      surplusLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var sustainInput = document.createElement('input');
       sustainInput.type = 'number';
       sustainInput.dataset.field = 'start_sustain_s';
-      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.value = (stored && stored.start_sustain_s) || 60;
       sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
       sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
       sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var sustainLabel = document.createElement('span');
-      sustainLabel.textContent = 's start delay';
-      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      sustainLabel.textContent = 'sec — start delay (surplus must hold for this long before turning on)';
+      sustainLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var graceInput = document.createElement('input');
       graceInput.type = 'number';
       graceInput.dataset.field = 'stop_grace_s';
-      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.value = (stored && stored.stop_grace_s) || 60;
       graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
       graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
       graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var graceLabel = document.createElement('span');
-      graceLabel.textContent = 's stop delay';
-      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
+      graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var maxRunInput = document.createElement('input');
+      maxRunInput.type = 'number';
+      maxRunInput.dataset.field = 'max_run_min';
+      maxRunInput.value = (stored && stored.max_run_min) || 0;
+      maxRunInput.min = 0; maxRunInput.max = 1440; maxRunInput.step = 10;
+      maxRunInput.title = 'When set, device runs for exactly this duration and ignores surplus drops during that time (0 = run while surplus is available)';
+      maxRunInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var maxRunLabel = document.createElement('span');
+      maxRunLabel.textContent = 'min — max. run time (when set, device runs for this duration and only stops when time is up; 0 = run while surplus available)';
+      maxRunLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var cooldownInput = document.createElement('input');
+      cooldownInput.type = 'number';
+      cooldownInput.dataset.field = 'restart_cooldown_min';
+      cooldownInput.value = (stored && stored.restart_cooldown_min) || 5;
+      cooldownInput.min = 0; cooldownInput.max = 480; cooldownInput.step = 10;
+      cooldownInput.title = 'Minimum minutes before EMS may restart after a power-drop stop (0 = no limit)';
+      cooldownInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var cooldownLabel = document.createElement('span');
+      cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
+      cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3329,9 +3417,11 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
-      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
-      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
-      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
+      configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
+      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -3390,32 +3480,56 @@
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W to start';
-      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      surplusLabel.textContent = 'W — minimum solar surplus required to turn on';
+      surplusLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var sustainInput = document.createElement('input');
       sustainInput.type = 'number';
       sustainInput.dataset.field = 'start_sustain_s';
-      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.value = (stored && stored.start_sustain_s) || 60;
       sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
       sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
       sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var sustainLabel = document.createElement('span');
-      sustainLabel.textContent = 's start delay';
-      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      sustainLabel.textContent = 'sec — start delay (surplus must hold for this long before turning on)';
+      sustainLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var graceInput = document.createElement('input');
       graceInput.type = 'number';
       graceInput.dataset.field = 'stop_grace_s';
-      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.value = (stored && stored.stop_grace_s) || 60;
       graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
       graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
       graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var graceLabel = document.createElement('span');
-      graceLabel.textContent = 's stop delay';
-      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
+      graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var maxRunInput = document.createElement('input');
+      maxRunInput.type = 'number';
+      maxRunInput.dataset.field = 'max_run_min';
+      maxRunInput.value = (stored && stored.max_run_min) || 0;
+      maxRunInput.min = 0; maxRunInput.max = 1440; maxRunInput.step = 10;
+      maxRunInput.title = 'When set, device runs for exactly this duration and ignores surplus drops during that time (0 = run while surplus is available)';
+      maxRunInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var maxRunLabel = document.createElement('span');
+      maxRunLabel.textContent = 'min — max. run time (when set, device runs for this duration and only stops when time is up; 0 = run while surplus available)';
+      maxRunLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var cooldownInput = document.createElement('input');
+      cooldownInput.type = 'number';
+      cooldownInput.dataset.field = 'restart_cooldown_min';
+      cooldownInput.value = (stored && stored.restart_cooldown_min) || 5;
+      cooldownInput.min = 0; cooldownInput.max = 480; cooldownInput.step = 10;
+      cooldownInput.title = 'Minimum minutes before EMS may restart after a power-drop stop (0 = no limit)';
+      cooldownInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var cooldownLabel = document.createElement('span');
+      cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
+      cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3427,9 +3541,11 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
-      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
-      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
-      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
+      configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
+      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -3488,32 +3604,56 @@
       surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var surplusLabel = document.createElement('span');
-      surplusLabel.textContent = 'W to start';
-      surplusLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      surplusLabel.textContent = 'W — minimum solar surplus required to turn on';
+      surplusLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var sustainInput = document.createElement('input');
       sustainInput.type = 'number';
       sustainInput.dataset.field = 'start_sustain_s';
-      sustainInput.value = (stored && stored.start_sustain_s) || 0;
+      sustainInput.value = (stored && stored.start_sustain_s) || 60;
       sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
       sustainInput.title = 'Surplus must hold for this many seconds before EMS turns it on (0 = start immediately)';
       sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var sustainLabel = document.createElement('span');
-      sustainLabel.textContent = 's start delay';
-      sustainLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      sustainLabel.textContent = 'sec — start delay (surplus must hold for this long before turning on)';
+      sustainLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var graceInput = document.createElement('input');
       graceInput.type = 'number';
       graceInput.dataset.field = 'stop_grace_s';
-      graceInput.value = (stored && stored.stop_grace_s) || 0;
+      graceInput.value = (stored && stored.stop_grace_s) || 60;
       graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
       graceInput.title = 'Surplus may drop for this many seconds before EMS turns it off (0 = stop immediately)';
       graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var graceLabel = document.createElement('span');
-      graceLabel.textContent = 's stop delay';
-      graceLabel.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap';
+      graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
+      graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var maxRunInput = document.createElement('input');
+      maxRunInput.type = 'number';
+      maxRunInput.dataset.field = 'max_run_min';
+      maxRunInput.value = (stored && stored.max_run_min) || 0;
+      maxRunInput.min = 0; maxRunInput.max = 1440; maxRunInput.step = 10;
+      maxRunInput.title = 'When set, device runs for exactly this duration and ignores surplus drops during that time (0 = run while surplus is available)';
+      maxRunInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var maxRunLabel = document.createElement('span');
+      maxRunLabel.textContent = 'min — max. run time (when set, device runs for this duration and only stops when time is up; 0 = run while surplus available)';
+      maxRunLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var cooldownInput = document.createElement('input');
+      cooldownInput.type = 'number';
+      cooldownInput.dataset.field = 'restart_cooldown_min';
+      cooldownInput.value = (stored && stored.restart_cooldown_min) || 5;
+      cooldownInput.min = 0; cooldownInput.max = 480; cooldownInput.step = 10;
+      cooldownInput.title = 'Minimum minutes before EMS may restart after a power-drop stop (0 = no limit)';
+      cooldownInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var cooldownLabel = document.createElement('span');
+      cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
+      cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3525,9 +3665,11 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
-      configRow.appendChild(surplusInput); configRow.appendChild(surplusLabel);
-      configRow.appendChild(sustainInput); configRow.appendChild(sustainLabel);
-      configRow.appendChild(graceInput);   configRow.appendChild(graceLabel);
+      configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
+      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -5425,6 +5567,129 @@
         } else {
           emsShowSaveStatus('✓ Settings saved — EMS restarts automatically', '#1a7a3a');
         }
+      });
+    }
+
+    // ── EMS History (settings panel) ──────────────────────────────────────────
+
+    var _emsHistEvents  = [];
+    var _emsHistOffset  = 0; // 0=today, 1=yesterday, …
+
+    var _HIST_MODE_META = {
+      solar_ev:         { label: 'Solar EV charging',        dot: '#34c759' },
+      solar_hp:         { label: 'Solar heat pump',          dot: '#30d158' },
+      solar_boiler:     { label: 'Solar boiler',             dot: '#32ade6' },
+      solar_pool:       { label: 'Solar pool pump',          dot: '#00c7be' },
+      offpeak_ev:       { label: 'Off-peak EV charging',     dot: '#007aff' },
+      instant_ev:       { label: 'Instant charge (max)',      dot: '#af52de' },
+      battery_priority: { label: 'Battery priority',         dot: '#ff9500' },
+      holding:          { label: 'Waiting — no surplus',     dot: '#c7c7cc' },
+      idle:             { label: 'No EV connected',          dot: '#d1d1d6' },
+      disabled:         { label: 'EMS disabled',             dot: '#d1d1d6' },
+      not_configured:   { label: 'Not configured',           dot: '#d1d1d6' },
+      error:            { label: 'Error',                    dot: '#ff3b30' },
+      export_limit_on:  { label: 'Export limit activated',   dot: '#ff9f0a' },
+      export_limit_off: { label: 'Export limit deactivated', dot: '#aeaeb2' },
+    };
+
+    function _emsHistDayStart(offset) {
+      var d = new Date(); d.setHours(0,0,0,0);
+      return d.getTime() - offset * 86400000;
+    }
+    function _emsHistDayEnd(offset) {
+      return offset === 0 ? Date.now() : _emsHistDayStart(offset) + 86400000 - 1;
+    }
+    function _emsHistNavLabel(offset) {
+      if (offset === 0) return 'Today';
+      if (offset === 1) return 'Yesterday';
+      var d = new Date(_emsHistDayStart(offset));
+      return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+    function _emsHistFmt(ts) {
+      var d = new Date(ts);
+      return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+    }
+    function _emsHistEsc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function emsHistoryRender() {
+      var tl    = document.getElementById('ems-hist-timeline');
+      var start = _emsHistDayStart(_emsHistOffset);
+      var end   = _emsHistDayEnd(_emsHistOffset);
+      var evs   = _emsHistEvents.filter(function(e){ return e.ts >= start && e.ts <= end; })
+                    .slice().reverse();
+
+      document.getElementById('ems-hist-day-label').textContent = _emsHistNavLabel(_emsHistOffset);
+      document.getElementById('ems-hist-next').disabled = (_emsHistOffset === 0);
+
+      if (!evs.length) {
+        tl.innerHTML = '<div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0">No events for ' + _emsHistEsc(_emsHistNavLabel(_emsHistOffset)) + '</div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < evs.length; i++) {
+        var ev   = evs[i];
+        var dot  = '#d1d1d6';
+        var label = ev.event || '?';
+        var detail = '';
+        var isSystem = ev.type === 'system';
+
+        if (isSystem) {
+          dot   = ev.event === 'app_update' ? '#5e5ce6' : '#8e8e93';
+          label = ev.event === 'app_update' ? 'App updated' : 'App started';
+          detail = ev.label || '';
+        } else if (ev.type === 'mode') {
+          var meta = _HIST_MODE_META[ev.event];
+          dot   = meta ? meta.dot : '#d1d1d6';
+          label = (ev.label && ev.label !== '—') ? ev.label : (meta ? meta.label : ev.event);
+          detail = (meta && ev.label && ev.label !== '—') ? meta.label : '';
+        } else if (ev.type === 'device') {
+          dot   = ev.event === 'start' ? '#34c759' : '#ff6b6b';
+          label = ev.label || (ev.deviceId ? ev.deviceId.slice(0,8) : '');
+          detail = ev.event === 'start' ? 'EMS started' : 'EMS stopped';
+        } else if (ev.type === 'charger') {
+          if (ev.event === 'start')    { dot = '#007aff'; label = ev.label || 'started';      detail = 'Charger started';  }
+          if (ev.event === 'set_amps') { dot = '#5ac8fa'; label = '→ ' + (ev.label || '');   detail = 'Charger adjusted'; }
+          if (ev.event === 'stop')     { dot = '#c7c7cc'; label = 'Charger stopped';           detail = ''; }
+        }
+
+        var dotStyle = 'width:10px;height:10px;border-radius:' + (isSystem ? '2px' : '50%') +
+          ';background:' + dot + ';flex-shrink:0;margin-top:3px' +
+          (isSystem ? ';transform:rotate(45deg)' : '');
+
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #f0f0f0">';
+        html += '<div style="' + dotStyle + '"></div>';
+        html += '<div style="flex:1;min-width:0">';
+        html += '<div style="display:flex;align-items:baseline;gap:6px">';
+        html += '<span style="font-size:12px;font-weight:600;color:' + (isSystem?'#888':'#1a1a1a') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _emsHistEsc(label) + '</span>';
+        html += '<span style="font-size:10px;color:#bbb;white-space:nowrap;margin-left:auto">' + _emsHistFmt(ev.ts) + '</span>';
+        html += '</div>';
+        if (detail) html += '<div style="font-size:10px;color:#888;margin-top:1px">' + _emsHistEsc(detail) + '</div>';
+        html += '</div></div>';
+      }
+
+      tl.innerHTML = html;
+    }
+
+    function emsHistoryNav(dir) {
+      _emsHistOffset = Math.max(0, _emsHistOffset + dir);
+      emsHistoryRender();
+    }
+
+    function emsHistoryLoad() {
+      var tl = document.getElementById('ems-hist-timeline');
+      tl.innerHTML = '<div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0">Loading…</div>';
+      _H.api('GET', '/ems/history', null, function(err, result) {
+        if (err || !result || result.error) {
+          tl.innerHTML = '<div style="color:#ff3b30;font-size:12px;text-align:center;padding:16px 0">' +
+            _emsHistEsc((result && result.error) || (err && err.message) || 'Failed to load') + '</div>';
+          return;
+        }
+        _emsHistEvents  = result.events || [];
+        _emsHistOffset  = 0;
+        emsHistoryRender();
       });
     }
 
