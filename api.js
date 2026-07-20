@@ -32,16 +32,52 @@ const { version: APP_VERSION } = require('./app.json');
 // Each entry maps a human-readable group name → register map.
 // Used by the debug settings page to do live register reads.
 
+// Display-only register sets for the Settings → Registers tab.
+// Mirror the polling subsets used by each driver, plus the flow-writable registers.
+const _pick = (keys) => Object.fromEntries(keys.map(k => [k, CONTROL_REGISTERS[k]]));
+
+const INVERTER_CONTROL_DISPLAY = _pick([
+  'activePowerControlMode',
+  'activePowerMaxFeedIn',
+  'activePowerMaxFeedInPct',
+  'activePowerPercentageDerating',
+  'activePowerFixedValueDerating',
+  'mpptMultimodal',
+  'mpptScanInterval',
+]);
+
+const BATTERY_CONTROL_DISPLAY = _pick([
+  'storageWorkingMode',
+  'storageMaxChargePower',
+  'storageMaxDischargePower',
+  'storageChargingCutoffCapacity',
+  'storageDischargeCutoffCapacity',
+  'storageChargeFromGrid',
+  'storageGridChargeCutoffSoc',
+  'storageGridChargePower',
+  'storageMaxGridChargePower',
+  'storageBackupPowerSoc',
+  'storageUnit1No',
+  'storageUnit2No',
+  'remoteChargeDischargeControlMode',
+  'storageExcessPvEnergyUseInTou',
+  'storageForceChargeDischarge',
+  'storageForceTargetSoc',
+  'storageForceChargePower',
+  'storageForceDisChargePower',
+  'storageForceChargeDischargeDuration',
+]);
+
 const DRIVER_REGISTER_SETS = {
   sun2000_modbus: {
     'Inverter Data':       REGISTERS,
     'Power Meter Data':    POWER_METER_REGISTERS,
-    'Control Registers':   CONTROL_REGISTERS,
+    'Inverter Control':    INVERTER_CONTROL_DISPLAY,
   },
   luna2000_modbus: {
     'Battery Data':        BATTERY_REGISTERS,
     'Battery Modules':     BATTERY_MODULE_REGISTERS,
-    'Control Registers':   CONTROL_REGISTERS,
+    'Battery Control':     BATTERY_CONTROL_DISPLAY,
   },
   dtsu666_modbus: {
     'Power Meter Data':    POWER_METER_REGISTERS,
@@ -168,7 +204,7 @@ module.exports = {
         const registerDefs = {};
         for (const [groupName, registers] of Object.entries(DRIVER_REGISTER_SETS[driverId] || {})) {
           registerDefs[groupName] = Object.entries(registers)
-            .map(([key, def]) => ({ key, address: def[0], length: def[1], type: def[2], label: def[3] }))
+            .map(([key, def]) => ({ key, address: def[0], length: def[1], type: def[2], label: def[3], decimalPower: def[4] ?? 0 }))
             .sort((a, b) => a.address - b.address);
         }
 
@@ -304,6 +340,69 @@ module.exports = {
         unitId,
         groups:    result,
       };
+    } catch (err) {
+      return { error: `Unexpected error: ${err.message}` };
+    }
+  },
+
+  /**
+   * POST /debug/register-single
+   * Body: { driverId, deviceId, address, length, type }
+   * Reads a single Modbus register without touching any other registers.
+   * Pauses polling on the device first so the TCP slot is free.
+   */
+  async postDebugRegisterSingle({ homey, body }) {
+    const log = (...a) => homey.log('[API /debug/register-single]', ...a);
+    try {
+      const { driverId, deviceId, address, length, type, decimalPower } = body;
+      if (!driverId || !deviceId || address == null || !length || !type) {
+        return { error: 'Missing required fields: driverId, deviceId, address, length, type' };
+      }
+
+      let driver;
+      try { driver = homey.drivers.getDriver(driverId); } catch {
+        return { error: `Driver not found: ${driverId}` };
+      }
+      const device = driver.getDevices().find(d => d.getId() === deviceId);
+      if (!device) return { error: 'Device not found' };
+
+      const settings = device.getSettings();
+      const host     = settings.address;
+      const port     = parseInt(settings.port,      10) || 502;
+      const unitId   = parseInt(settings.modbus_id, 10) || 1;
+      if (!host) return { error: 'No IP address configured for this device' };
+
+      // Pause polling so the TCP slot is free
+      const pausedDevices = [];
+      for (const dId of MODBUS_DRIVER_IDS) {
+        let drv;
+        try { drv = homey.drivers.getDriver(dId); } catch { continue; }
+        for (const dev of drv.getDevices()) {
+          try {
+            if ((dev.getSetting('address') || '').trim() !== host) continue;
+            if (typeof dev._stopPolling === 'function') {
+              await dev._stopPolling();
+              pausedDevices.push(dev);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      const deadline = Date.now() + 2000;
+      for (const dev of pausedDevices) {
+        while (dev._fetchInProgress && Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 100)); // eslint-disable-line no-promise-executor-return
+        }
+      }
+
+      log(`reading register ${address} (len=${length} type=${type}) from ${host}:${port} unit=${unitId}`);
+      const raw = await probeModbusUnit(host, port, unitId, { r: [address, length, type, '', decimalPower ?? 0] }, 8000);
+
+      for (const dev of pausedDevices) {
+        try { if (typeof dev._startPolling === 'function') await dev._startPolling(); } catch { /* ignore */ }
+      }
+
+      if (raw === null) return { error: 'Connection failed or timed out' };
+      return { value: raw.r ?? null };
     } catch (err) {
       return { error: `Unexpected error: ${err.message}` };
     }

@@ -496,11 +496,15 @@ class EmsDevice extends Device {
   async _getSimpleDevices(devicesKey, cfg) {
     const cfgs = cfg[devicesKey] || [];
     return Promise.all(cfgs.map(async (c) => {
-      const powerW = c.cap_power ? await this._api.getCapability(c.id, c.cap_power) : null;
+      const [powerW, onoff] = await Promise.all([
+        c.cap_power ? this._api.getCapability(c.id, c.cap_power) : Promise.resolve(null),
+        this._api.getCapability(c.id, 'onoff'),
+      ]);
       return {
         id:                  c.id,
         name:                c.name || c.id.slice(0, 8),
         powerW,
+        onoff,
         minSurplusW:         Number(c.min_surplus_w)         || 2000,
         startSustainMs:      Number(c.start_sustain_s        || 60) * 1000,
         stopGraceMs:         Number(c.stop_grace_s           || 60) * 1000,
@@ -512,7 +516,7 @@ class EmsDevice extends Device {
 
   async _simpleDeviceSetOn(id, name, on, stateMap, startCard, stopCard, tokenName) {
     const st = stateMap.get(id); // guaranteed initialized by _evaluateSimpleDevices
-    if (!this._warmupDone) { st.isOn = false; return; } // assume off; 2nd tick starts if surplus OK
+    if (!this._warmupDone) { return; } // first tick: state already initialised from actual device, no flows fired
     if (st.isOn === on) return;
     if (on) st.startedAt = Date.now();
     else st.startedAt = null;
@@ -555,7 +559,10 @@ class EmsDevice extends Device {
     let runningExportW = exportW;
     for (const device of devices) {
       if (!stateMap.has(device.id)) {
-        stateMap.set(device.id, { isOn: null, startedAt: null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null });
+        // Pre-initialise from the actual device state so a restart does not re-fire
+        // start flows for devices that were already running before the app restarted.
+        const actuallyOn = device.onoff === true;
+        stateMap.set(device.id, { isOn: actuallyOn, startedAt: actuallyOn ? Date.now() : null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null });
       }
       const st         = stateMap.get(device.id);
       const wasOn      = st.isOn ?? false;

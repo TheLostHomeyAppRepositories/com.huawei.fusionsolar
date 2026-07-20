@@ -156,6 +156,9 @@
     }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #f9f9fb; }
+    tr.reg-row { cursor: pointer; }
+    tr.reg-row:hover td { background: #eef4ff; }
+    tr.reg-row:active td { background: #ddeaff; }
 
     .key-cell {
       font-family: 'SF Mono', Menlo, monospace;
@@ -420,6 +423,14 @@
     details.ems-section[open] .ems-section-chevron { transform: rotate(180deg); }
     details.ems-section > .ems-section-body { padding: 12px 14px 10px; }
 
+    /* ── Tab intro description ───────────────────────────── */
+    .tab-intro {
+      font-size: 12px;
+      color: #6e6e73;
+      line-height: 1.5;
+      padding: 10px 16px 6px;
+    }
+
     /* ── Tab toolbar (debugging tab) ─────────────────────── */
     .tab-toolbar {
       display: flex;
@@ -612,13 +623,16 @@
   <div id="tab-modbus">
     <div class="sub-tab-bar">
       <button class="sub-tab active" id="sub-tab-btn-tool" onclick="showSubTab('tool')">Tester</button>
-      <button class="sub-tab" id="sub-tab-btn-cap" onclick="showSubTab('cap')">Values</button>
+      <button class="sub-tab" id="sub-tab-btn-cap" onclick="showSubTab('cap')">Capabilities</button>
       <button class="sub-tab" id="sub-tab-btn-registers" onclick="showSubTab('registers')">Registers</button>
     </div>
   </div>
 
   <!-- ── Tab: Capabilities ── -->
   <div id="tab-cap" style="display:none">
+    <div class="tab-intro">
+      Shows the current live values of all Homey capabilities for each Modbus device.
+    </div>
     <div class="tab-toolbar">
       <span id="last-update"></span>
       <button class="btn-secondary" onclick="downloadDebugText()" title="Export all values as text">⬇ Export text</button>
@@ -631,6 +645,9 @@
 
   <!-- ── Tab: Modbus Registers ── -->
   <div id="tab-registers" style="display:none">
+    <div class="tab-intro">
+      Lists all Modbus registers the app reads or writes. Click a row to read that single register directly — useful when the Modbus port is busy.
+    </div>
     <div class="tab-toolbar">
       <span id="last-update-reg"></span>
       <button class="btn-primary" id="refresh-reg-btn" onclick="loadDevices()">↻ Refresh</button>
@@ -642,6 +659,11 @@
 
   <!-- ── Tab: OpenAPI Debugger ── -->
   <div id="tab-openapi" style="display:none">
+    <div class="tab-intro">
+      The <strong style="color:#3a3a3c">Huawei FusionSolar Northbound API</strong> provides read-only access to plant data via the cloud — useful for checking what the API returns for your installation.
+      Enter your Northbound API credentials and click <em>Fetch All</em> to inspect the raw response.
+      Note: the OpenAPI is read-only; all write operations (force charge, active power control, etc.) go through Modbus.
+    </div>
     <div class="tool-card">
       <div class="tool-card-title">OpenAPI Credentials</div>
       <div style="display:flex;flex-direction:column;gap:8px;max-width:420px">
@@ -1131,6 +1153,9 @@
 
   <!-- ── Tab: Device Tester ── -->
   <div id="tab-tool">
+    <div class="tab-intro">
+      Scans the local network for Huawei Modbus devices and verifies the connection (IP, port, unit ID). Use this to find the correct settings for a new device.
+    </div>
 
     <!-- Step 1: Network info -->
     <div class="tool-card" id="step-network">
@@ -1165,6 +1190,7 @@
   <script>
     let _H;         // Homey instance — set in onHomeyReady (avoids conflict with homey.js global)
     let _devices;   // last getDebugDevices result
+    let _devs = []; // flat list of {driverId, deviceId} indexed by card index (for single-register reads)
     let _regValues = {}; // idx → last readDebugRegisters result
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1229,21 +1255,18 @@
 
       for (const [groupName, rows] of Object.entries(registerDefs)) {
         html += `<div class="reg-group-title">${escHtml(groupName)}</div>`;
-        html += `<table style="table-layout:auto"><thead><tr>
+        html += `<table style="table-layout:auto;width:100%"><thead><tr>
           <th style="white-space:nowrap">Reg ID</th>
-          <th>Len</th>
           <th>Type</th>
-          <th>Key</th>
-          <th style="min-width:160px">Label</th>
-          <th style="min-width:80px">Live Value</th>
+          <th style="width:100%">Label</th>
+          <th style="min-width:80px;white-space:nowrap">Live Value</th>
         </tr></thead><tbody>`;
         for (const r of rows) {
-          const cid = regCellId(idx, groupName, r.key);
-          html += `<tr>
+          const cid  = regCellId(idx, groupName, r.key);
+          const args = `'${escHtml(_devs[idx]?.driverId||'')}','${escHtml(_devs[idx]?.deviceId||'')}',${r.address},${r.length},'${r.type}',${r.decimalPower ?? 0},'${cid}'`;
+          html += `<tr class="reg-row" onclick="readSingleRegister(${args})" title="Click to read register ${r.address}">
             <td class="addr-cell">${escHtml(String(r.address))}</td>
-            <td class="addr-cell">${escHtml(String(r.length))}</td>
             <td class="type-cell">${escHtml(r.type)}</td>
-            <td class="key-cell">${escHtml(r.key)}</td>
             <td class="label-cell">${escHtml(r.label)}</td>
             <td id="${cid}"><span class="val val-null">—</span></td>
           </tr>`;
@@ -1288,6 +1311,26 @@
             const cell = document.getElementById(regCellId(idx, groupName, key));
             if (cell) cell.innerHTML = fmtVal(r.value);
           }
+        }
+      });
+    }
+
+    // ── Single register read (click on row) ───────────────────────────────────
+
+    function readSingleRegister(driverId, deviceId, address, length, type, decimalPower, cellId) {
+      const cell = document.getElementById(cellId);
+      if (!cell) return;
+      // Prevent concurrent reads on same cell
+      if (cell.dataset.reading === '1') return;
+      cell.dataset.reading = '1';
+      cell.innerHTML = '<span class="spinner"></span>';
+
+      _H.api('POST', '/debug/register-single', { driverId, deviceId, address, length, type, decimalPower }, (err, result) => {
+        cell.dataset.reading = '';
+        if (err || !result || result.error) {
+          cell.innerHTML = `<span class="val val-error" title="${escHtml(err ? err.message : (result?.error || 'error'))}">✗</span>`;
+        } else {
+          cell.innerHTML = fmtVal(result.value);
         }
       });
     }
@@ -1337,6 +1380,7 @@
 
     function buildRegCard(dev, idx) {
       const id          = `reg-${idx}`;
+      _devs[idx]        = { driverId: dev.driverId, deviceId: dev.deviceId };
       const regDefsHtml = buildRegDefsTable(dev.registerDefs, idx);
       return `
         <div class="device-card">
