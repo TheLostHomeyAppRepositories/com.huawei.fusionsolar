@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.10",
+  "version": "1.2.12",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -1266,8 +1266,9 @@
         { "id": "solar_ev",         "title": { "en": "Solar EV Charging",       "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"    } },
         { "id": "solar_hp",         "title": { "en": "Solar Heat Pump",         "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"  } },
         { "id": "solar_boiler",     "title": { "en": "Solar Boiler/Heater",     "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"       } },
-        { "id": "solar_pool",       "title": { "en": "Solar Pool Pump",         "de": "Solar-Pool-Pumpe",     "nl": "Zonne-zwembadpomp" } },
-        { "id": "offpeak_ev",       "title": { "en": "Off-Peak EV Charging",    "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"   } },
+        { "id": "solar_pool",         "title": { "en": "Solar Pool Pump",         "de": "Solar-Pool-Pumpe",        "nl": "Zonne-zwembadpomp"     } },
+        { "id": "solar_dehumidifier","title": { "en": "Solar Dehumidifier",      "de": "Solar-Entfeuchter",       "nl": "Zonne-ontvochtiger"    } },
+        { "id": "offpeak_ev",        "title": { "en": "Off-Peak EV Charging",    "de": "Nebenzeit-EV-Laden",      "nl": "Daltarief laden"        } },
         { "id": "instant_ev",       "title": { "en": "Instant Charging",        "de": "Sofortladen",          "nl": "Direct laden"      } },
         { "id": "holding",          "title": { "en": "Waiting for Surplus",     "de": "Warte auf Überschuss", "nl": "Wachten op surplus"} },
         { "id": "error",            "title": { "en": "Error",                   "de": "Fehler",               "nl": "Fout"              } }
@@ -2726,6 +2727,46 @@
               "hint": {
                 "en": "Maximum AC output as percentage of rated power (register 40125). This is a ceiling — actual production stays at the natural PV level when sun is weaker, and is throttled to this percentage only when sun would otherwise produce more. Example on a 4 kW inverter: 50 % = 2 kW cap. Set to 0 to fully shut down, 100 to remove the limit. Works WITHOUT a Smart Power Sensor. Synced from the inverter every 5 poll cycles.",
                 "de": "Maximale AC-Ausgangsleistung als Prozentsatz der Nennleistung (Register 40125). Dies ist eine Obergrenze — die tatsächliche Erzeugung folgt der PV-Leistung wenn sie geringer ist, und wird nur auf diesen Prozentsatz begrenzt wenn die Sonne sonst mehr liefern würde. Beispiel bei einem 4-kW-Wechselrichter: 50 % = 2 kW Obergrenze. Auf 0 setzen schaltet komplett ab, 100 hebt die Begrenzung auf. Funktioniert OHNE Smart Power Sensor. Wird alle 5 Abfragezyklen synchronisiert."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "MPPT",
+            "de": "MPPT"
+          },
+          "children": [
+            {
+              "id": "mppt_multimodal",
+              "type": "checkbox",
+              "label": {
+                "en": "MPPT multimodal scanning",
+                "de": "MPPT-Multimodal-Scanning"
+              },
+              "hint": {
+                "en": "Enables MPPT multi-peak scanning (register 42054). When PV strings are obviously shaded, the inverter sweeps its full voltage range at regular intervals to locate the global maximum power point — avoiding local peaks caused by bypass diodes. ⚠️ Only enable if your strings experience recurring shading (chimney, trees, etc.). If panels are never shaded, leave this OFF: each scan causes a brief power dip that wastes energy unnecessarily. Typical scan interval: 10–30 min. Synced from the inverter every 5 poll cycles.",
+                "de": "Aktiviert das MPPT-Multimodal-Scanning (Register 42054). Bei offensichtlicher Teilverschattung der PV-Strings durchsucht der Wechselrichter in regelmässigen Abständen den gesamten Spannungsbereich, um den globalen Leistungspunkt zu finden — und vermeidet so lokale Maxima durch Bypass-Dioden. ⚠️ Nur aktivieren wenn die Strings wiederkehrend verschattet werden (Schornstein, Bäume usw.). Bei unverschatteten Anlagen ausgeschaltet lassen: jeder Scan verursacht einen kurzen Leistungseinbruch und verschwendet unnötig Energie. Typisches Scan-Intervall: 10–30 min. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
+              }
+            },
+            {
+              "id": "mppt_scan_interval",
+              "type": "number",
+              "label": {
+                "en": "MPPT scanning interval",
+                "de": "MPPT-Scan-Intervall"
+              },
+              "units": {
+                "en": "min",
+                "de": "min"
+              },
+              "min": 1,
+              "max": 60,
+              "step": 1,
+              "hint": {
+                "en": "How often the MPPT multi-peak scan runs (register 42055). Only relevant when MPPT multimodal scanning is enabled. Typical range: 10–30 min. Shorter intervals react faster to changing shade patterns but cause more frequent power dips. Longer intervals reduce losses but may miss a better power point for longer. Synced from the inverter every 5 poll cycles.",
+                "de": "Wie häufig der MPPT-Multimodal-Scan durchgeführt wird (Register 42055). Nur relevant wenn MPPT-Multimodal-Scanning aktiviert ist. Typischer Bereich: 10–30 min. Kürzere Intervalle reagieren schneller auf wechselnde Verschattung, verursachen aber häufigere Leistungseinbrüche. Längere Intervalle reduzieren die Verluste, können aber einen besseren Arbeitspunkt länger verpassen. Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert."
               }
             }
           ]
@@ -8544,8 +8585,8 @@
           "de": "Zwangslade-Leistung auf [[power]] W setzen"
         },
         "hint": {
-          "en": "Sets the maximum charge power limit for force charging (register 47102). Does not start force charging — use 'Start force charge' or 'Set force charge/discharge' for that.",
-          "de": "Setzt das Ladeleistungslimit für das Zwangsladen (Register 47102). Startet kein Zwangsladen — verwende dafür 'Zwangsladen starten' oder 'Zwangsladen/Entladen steuern'."
+          "en": "Sets the maximum charge power limit for force charging (register 47247). Does not start force charging — use 'Start force charge' or 'Set force charge/discharge' for that.",
+          "de": "Setzt das Ladeleistungslimit für das Zwangsladen (Register 47247). Startet kein Zwangsladen — verwende dafür 'Zwangsladen starten' oder 'Zwangsladen/Entladen steuern'."
         },
         "args": [
           {
@@ -10288,8 +10329,9 @@
               { "id": "solar_ev",         "label": { "en": "Solar EV Charging",    "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"     } },
               { "id": "solar_hp",         "label": { "en": "Solar Heat Pump",      "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"   } },
               { "id": "solar_boiler",     "label": { "en": "Solar Boiler/Heater",  "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"        } },
-              { "id": "solar_pool",       "label": { "en": "Solar Pool Pump",      "de": "Solar-Pool-Pumpe",     "nl": "Zonne-zwembadpomp"  } },
-              { "id": "offpeak_ev",       "label": { "en": "Off-Peak EV Charging", "de": "Nebenzeit-EV-Laden",   "nl": "Daltarief laden"    } },
+              { "id": "solar_pool",         "label": { "en": "Solar Pool Pump",      "de": "Solar-Pool-Pumpe",        "nl": "Zonne-zwembadpomp"     } },
+              { "id": "solar_dehumidifier","label": { "en": "Solar Dehumidifier",   "de": "Solar-Entfeuchter",       "nl": "Zonne-ontvochtiger"    } },
+              { "id": "offpeak_ev",        "label": { "en": "Off-Peak EV Charging", "de": "Nebenzeit-EV-Laden",      "nl": "Daltarief laden"        } },
               { "id": "holding",          "label": { "en": "Waiting for Surplus",  "de": "Warte auf Überschuss", "nl": "Wachten op surplus" } },
               { "id": "error",            "label": { "en": "Error",                "de": "Fehler",               "nl": "Fout"               } }
             ]

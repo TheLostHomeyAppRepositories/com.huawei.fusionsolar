@@ -323,13 +323,13 @@ class LUNA2000ModbusDevice extends Device {
         const maxChargeW = this.getSetting('max_charge_power') || 5000;
         const powerW  = Math.round(Math.min(Math.max(0, power), maxChargeW));
         const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
-        const already = this.getCapabilityValue('storage_force_charge_discharge') === '1';
-        this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-charge mode]' : ''}`);
+        this.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'charging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
         // Each register is written independently: a failure on one does not skip the rest.
-        // The mode write (47100) is the most critical and always attempted last.
+        // The mode write (47100) is always attempted last so new power/SoC values are
+        // applied even when the battery is already in force-charge mode.
         (async () => {
           let anyFail = false;
           try {
@@ -338,11 +338,9 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusRegister(h, p, u, 47101, socRaw);
           } catch (err) { this.error('Force charge: SOC write failed:', err.message); anyFail = true; }
-          if (!already) {
-            try {
-              await writeModbusRegister(h, p, u, 47100, 1);
-            } catch (err) { this.error('Force charge: mode write failed:', err.message); anyFail = true; }
-          }
+          try {
+            await writeModbusRegister(h, p, u, 47100, 1);
+          } catch (err) { this.error('Force charge: mode write failed:', err.message); anyFail = true; }
           this.log(anyFail ? 'Force charge command sent (with partial write failures)' : 'Force charge command sent');
           this._writeInProgress = false;
         })();
@@ -355,13 +353,13 @@ class LUNA2000ModbusDevice extends Device {
         const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
         const powerW  = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         const socRaw  = Math.round(Math.max(0, Math.min(99, target_soc)) * 10);
-        const already = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-discharge mode]' : ''}`);
+        this.log(`Force discharge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'discharging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
         // Each register is written independently: a failure on one does not skip the rest.
-        // The mode write (47100) is the most critical and always attempted last.
+        // The mode write (47100) is always attempted last so new power/SoC values are
+        // applied even when the battery is already in force-discharge mode.
         (async () => {
           let anyFail = false;
           try {
@@ -370,11 +368,9 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusRegister(h, p, u, 47101, socRaw);
           } catch (err) { this.error('Force discharge: SOC write failed:', err.message); anyFail = true; }
-          if (!already) {
-            try {
-              await writeModbusRegister(h, p, u, 47100, 2);
-            } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
-          }
+          try {
+            await writeModbusRegister(h, p, u, 47100, 2);
+          } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
           this.log(anyFail ? 'Force discharge command sent (with partial write failures)' : 'Force discharge command sent');
           this._writeInProgress = false;
         })();
@@ -387,13 +383,13 @@ class LUNA2000ModbusDevice extends Device {
         const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
         const powerW  = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         const socRaw  = Math.round(Math.max(0, Math.min(99, target_soc)) * 10);
-        const already = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})${already ? ' [already in force-discharge mode]' : ''}`);
+        this.log(`Force discharge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'discharging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
         // Each register is written independently: a failure on one does not skip the rest.
-        // The mode write (47100) is the most critical and always attempted last.
+        // The mode write (47100) is always attempted last so new power/SoC values are
+        // applied even when the battery is already in force-discharge mode.
         (async () => {
           let anyFail = false;
           try {
@@ -402,11 +398,9 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusRegister(h, p, u, 47101, socRaw);
           } catch (err) { this.error('Force discharge: SOC write failed:', err.message); anyFail = true; }
-          if (!already) {
-            try {
-              await writeModbusRegister(h, p, u, 47100, 2);
-            } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
-          }
+          try {
+            await writeModbusRegister(h, p, u, 47100, 2);
+          } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
           this.log(anyFail ? 'Force discharge command sent (with partial write failures)' : 'Force discharge command sent');
           this._writeInProgress = false;
         })();
@@ -419,13 +413,13 @@ class LUNA2000ModbusDevice extends Device {
         const maxChargeW  = this.getSetting('max_charge_power') || 5000;
         const powerW      = Math.round(Math.min(Math.max(0, power), maxChargeW));
         const durationMin = Math.round(Math.max(1, Math.min(1440, duration)));
-        const already     = this.getCapabilityValue('storage_force_charge_discharge') === '1';
-        this.log(`Force charge for ${durationMin} min: power=${powerW} W${already ? ' [already in force-charge mode]' : ''}`);
+        this.log(`Force charge for ${durationMin} min: power=${powerW} W`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'charging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
         // Each register is written independently: a failure on one does not skip the rest.
         // Reg 47083 (hardware timer) stops force mode after the specified minutes — no software timer needed.
+        // 47100 is always written so new power/duration values take effect even if already active.
         (async () => {
           let anyFail = false;
           try {
@@ -434,11 +428,9 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusRegister(h, p, u, 47083, durationMin);
           } catch (err) { this.error('Force charge (timed): duration write failed:', err.message); anyFail = true; }
-          if (!already) {
-            try {
-              await writeModbusRegister(h, p, u, 47100, 1);
-            } catch (err) { this.error('Force charge (timed): mode write failed:', err.message); anyFail = true; }
-          }
+          try {
+            await writeModbusRegister(h, p, u, 47100, 1);
+          } catch (err) { this.error('Force charge (timed): mode write failed:', err.message); anyFail = true; }
           this.log(anyFail ? 'Force charge (timed) command sent (with partial write failures)' : `Force charge (timed) command sent: ${powerW} W for ${durationMin} min`);
           this._writeInProgress = false;
         })();
@@ -451,13 +443,13 @@ class LUNA2000ModbusDevice extends Device {
         const maxDischargeW = this.getSetting('max_discharge_power') || 5000;
         const powerW        = Math.round(Math.min(Math.max(0, power), maxDischargeW));
         const durationMin   = Math.round(Math.max(1, Math.min(1440, duration)));
-        const already       = this.getCapabilityValue('storage_force_charge_discharge') === '2';
-        this.log(`Force discharge for ${durationMin} min: power=${powerW} W${already ? ' [already in force-discharge mode]' : ''}`);
+        this.log(`Force discharge for ${durationMin} min: power=${powerW} W`);
         this._writeInProgress = true;
         this._pendingForceMode = { direction: 'discharging', powerW, sentAt: Date.now() };
         // Fire-and-forget — return immediately so Homey's 10 s flow timeout is never hit.
         // Each register is written independently: a failure on one does not skip the rest.
         // Reg 47083 (hardware timer) stops force mode after the specified minutes — no software timer needed.
+        // 47100 is always written so new power/duration values take effect even if already active.
         (async () => {
           let anyFail = false;
           try {
@@ -466,11 +458,9 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusRegister(h, p, u, 47083, durationMin);
           } catch (err) { this.error('Force discharge (timed): duration write failed:', err.message); anyFail = true; }
-          if (!already) {
-            try {
-              await writeModbusRegister(h, p, u, 47100, 2);
-            } catch (err) { this.error('Force discharge (timed): mode write failed:', err.message); anyFail = true; }
-          }
+          try {
+            await writeModbusRegister(h, p, u, 47100, 2);
+          } catch (err) { this.error('Force discharge (timed): mode write failed:', err.message); anyFail = true; }
           this.log(anyFail ? 'Force discharge (timed) command sent (with partial write failures)' : `Force discharge (timed) command sent: ${powerW} W for ${durationMin} min`);
           this._writeInProgress = false;
         })();

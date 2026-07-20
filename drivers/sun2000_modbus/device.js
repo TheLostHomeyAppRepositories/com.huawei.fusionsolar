@@ -86,6 +86,8 @@ const INVERTER_CONTROL_REGISTERS = {
   activePowerMaxFeedInPct:       CONTROL_REGISTERS.activePowerMaxFeedInPct,
   activePowerFixedValueDerating: CONTROL_REGISTERS.activePowerFixedValueDerating,
   activePowerPercentageDerating: CONTROL_REGISTERS.activePowerPercentageDerating,
+  mpptMultimodal:                CONTROL_REGISTERS.mpptMultimodal,
+  mpptScanInterval:              CONTROL_REGISTERS.mpptScanInterval,
 };
 
 // Maps writable enum capability → Modbus register address (47xxx)
@@ -159,6 +161,20 @@ class SUN2000ModbusDevice extends Device {
         this.log(`Write output_limit_pct: ${pct} % → reg 40125 raw=${raw}`);
         writeModbusRegister(address, port, modbusId, 40125, raw)
           .catch((err) => this.error('output_limit_pct write failed:', err.message));
+      }
+
+      if (changedKeys.includes('mppt_multimodal')) {
+        const raw = newSettings.mppt_multimodal ? 1 : 0;
+        this.log(`Write mppt_multimodal: ${newSettings.mppt_multimodal} → reg 42054 raw=${raw}`);
+        writeModbusRegister(address, port, modbusId, 42054, raw)
+          .catch((err) => this.error('mppt_multimodal write failed:', err.message));
+      }
+
+      if (changedKeys.includes('mppt_scan_interval')) {
+        const raw = Math.round(Math.max(1, Math.min(60, parseFloat(newSettings.mppt_scan_interval) || 5)));
+        this.log(`Write mppt_scan_interval: ${raw} min → reg 42055`);
+        writeModbusRegister(address, port, modbusId, 42055, raw)
+          .catch((err) => this.error('mppt_scan_interval write failed:', err.message));
       }
     }
   }
@@ -748,6 +764,7 @@ class SUN2000ModbusDevice extends Device {
         ['activePowerMaxFeedInPct',       'max_feed_in_power_pct', 0.5],
         ['activePowerFixedValueDerating', 'output_limit_w',        1  ],
         ['activePowerPercentageDerating', 'output_limit_pct',      0.5],
+        ['mpptScanInterval',              'mppt_scan_interval',    0.5],
       ];
       for (const [key, settingId, tolerance] of numericSync) {
         const v = ctrl[key];
@@ -755,6 +772,12 @@ class SUN2000ModbusDevice extends Device {
           const current = parseFloat(this.getSetting(settingId));
           if (!Number.isFinite(current) || Math.abs(v - current) > tolerance) settingUpdates[settingId] = v;
         }
+      }
+
+      // MPPT multimodal: raw 0 → false (disabled), raw 1 → true (enabled) — checkbox setting
+      if (ctrl.mpptMultimodal !== null && ctrl.mpptMultimodal !== undefined) {
+        const mpptBool = ctrl.mpptMultimodal === 1;
+        if (this.getSetting('mppt_multimodal') !== mpptBool) settingUpdates['mppt_multimodal'] = mpptBool;
       }
       if (Object.keys(settingUpdates).length > 0) {
         this._updatingSettingFromModbus = true;

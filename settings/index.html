@@ -792,11 +792,11 @@
                 <div id="soc-seg-thr"    style="height:100%;background:#ff9f0a;transition:width .2s;width:0%"></div>
                 <div id="soc-seg-normal" style="height:100%;background:#34c759;flex:1;min-width:6px"></div>
               </div>
-              <!-- Throttle marker -->
+              <!-- Reserve marker -->
               <div id="soc-marker-low" style="display:none;position:absolute;top:-3px;left:0;transform:translateX(-50%);pointer-events:none">
                 <div style="width:3px;height:24px;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.25);margin:0 auto"></div>
                 <div style="text-align:center;margin-top:5px">
-                  <div style="font-size:9px;font-weight:700;color:#ff9f0a;white-space:nowrap;letter-spacing:.3px">THROTTLE</div>
+                  <div style="font-size:9px;font-weight:700;color:#ff9f0a;white-space:nowrap;letter-spacing:.3px">RESERVE</div>
                   <div style="font-size:10px;font-weight:600;color:#6e6e73;white-space:nowrap" id="soc-label-low">50%</div>
                 </div>
               </div>
@@ -816,7 +816,7 @@
                 <span style="width:7px;height:7px;border-radius:50%;background:#ff3b30;flex-shrink:0"></span>Hard stop
               </span>
               <span id="soc-chip-thr" style="display:none;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#fff8ef;border:1px solid #ffdfa8;border-radius:20px;padding:2px 8px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#ff9f0a;flex-shrink:0"></span><span id="soc-chip-thr-label">Throttle · 1380 W</span>
+                <span style="width:7px;height:7px;border-radius:50%;background:#ff9f0a;flex-shrink:0"></span><span id="soc-chip-thr-label">Reserve · 1380 W</span>
               </span>
               <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#f2fff6;border:1px solid #b6f0c6;border-radius:20px;padding:2px 8px">
                 <span style="width:7px;height:7px;border-radius:50%;background:#34c759;flex-shrink:0"></span>Normal · full budget
@@ -826,7 +826,7 @@
             <!-- Number inputs -->
             <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
               <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Throttle SOC <span style="font-weight:400;color:#bbb">(optional · 0 = off)</span></div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Reserve SOC <span style="font-weight:400;color:#bbb">(optional · 0 = off)</span></div>
                 <div style="display:flex;align-items:center;gap:6px">
                   <input id="ems-min-soc-low" type="number" value="0" min="0" max="100" step="5"
                     style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
@@ -844,9 +844,9 @@
                 </div>
               </div>
               <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Max throttle power</div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">EV reserve power</div>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input id="ems-throttle-budget-w" type="number" value="1380" min="230" max="11500" step="1"
+                  <input id="ems-ev-reserve-w" type="number" value="1380" min="230" max="11500" step="1"
                     style="width:82px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
                     oninput="emsUpdateSocZones()">
                   <span style="font-size:12px;color:#6e6e73">W</span>
@@ -854,8 +854,8 @@
                 <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">EV charger current reference:<br>1380 = 6A/1ph<br>1840 = 8A/1ph<br>2300 = 10A/1ph<br>2760 = 12A/1ph<br>3220 = 14A/1ph<br>3680 = 16A/1ph<br>4140 = 6A/3ph</div>
               </div>
             </div>
-            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Throttle → Min SOC): EV charger is limited to Max throttle power; heat pumps, boilers and pool only run if their minimum surplus threshold is ≤ Max throttle power. <span style="color:#ff3b30;font-weight:600">Red</span> (below Throttle SOC): all devices stop — battery charges at full speed. Set Throttle SOC to 0 to use only red and green.</span>
-            <div class="ems-callout" style="margin-top:6px"><span>3-phase only charger? Set Max throttle power to at least 4140 W (= 6A/3ph), otherwise the charger stays off in the orange zone.</span></div>
+            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Min SOC): EV charger is guaranteed EV reserve power (drawn from grid if needed); heat pumps, boilers and pool only run if their minimum surplus threshold is ≤ EV reserve power. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
+            <div class="ems-callout" style="margin-top:6px"><span>3-phase only charger? Set EV reserve power to at least 4140 W (= 6A/3ph), otherwise the charger stays off in the orange zone.</span></div>
           </div>
         </div>
       </details>
@@ -2233,7 +2233,7 @@
       var minSoc    = Math.min(100, Math.max(0, parseInt(elMin.value) || 0));
       var minSocLow = Math.min(100, Math.max(0, parseInt(elLow.value) || 0));
 
-      // Enforce throttle < min: clamp and write back so the bar always stays consistent
+      // Enforce reserve < min: clamp and write back so the bar always stays consistent
       if (minSocLow > 0 && minSocLow >= minSoc) {
         minSocLow = Math.max(0, minSoc - 5);
         elLow.value = minSocLow;
@@ -2242,7 +2242,7 @@
       elLow.max = minSoc > 0 ? minSoc - 1 : 0;
       elMin.min = minSocLow > 0 ? minSocLow + 1 : 0;
 
-      var hasThrottle = minSocLow > 0 && minSocLow < minSoc;
+      var hasReserve = minSocLow > 0 && minSocLow < minSoc;
 
       var segStop    = document.getElementById('soc-seg-stop');
       var segThr     = document.getElementById('soc-seg-thr');
@@ -2250,7 +2250,7 @@
       var markerMin  = document.getElementById('soc-marker-min');
       var chipThr    = document.getElementById('soc-chip-thr');
 
-      if (hasThrottle) {
+      if (hasReserve) {
         segStop.style.width = minSocLow + '%';
         segThr.style.width  = (minSoc - minSocLow) + '%';
         markerLow.style.display = 'block';
@@ -2258,9 +2258,9 @@
         document.getElementById('soc-label-low').textContent = minSocLow + '%';
         if (chipThr) {
           chipThr.style.display = 'flex';
-          var budgetW = parseInt(document.getElementById('ems-throttle-budget-w').value, 10) || 1380;
+          var budgetW = parseInt(document.getElementById('ems-ev-reserve-w').value, 10) || 1380;
           var chipLabel = document.getElementById('soc-chip-thr-label');
-          if (chipLabel) chipLabel.textContent = 'Throttle · ' + budgetW + ' W';
+          if (chipLabel) chipLabel.textContent = 'Reserve · ' + budgetW + ' W';
         }
       } else {
         segStop.style.width = minSoc + '%';
@@ -5439,7 +5439,7 @@
       // ── Scalar settings ───────────────────────────────────────────────────────
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
-      if (cfg.throttle_budget_w     !== undefined) document.getElementById('ems-throttle-budget-w').value = cfg.throttle_budget_w;
+      if (cfg.ev_reserve_w          !== undefined) document.getElementById('ems-ev-reserve-w').value = cfg.ev_reserve_w;
       emsUpdateSocZones();
       var _offpeakEl = document.getElementById('ems-offpeak-enabled');
       if (_offpeakEl) _offpeakEl.checked                                                       = !!cfg.offpeak_enabled;
@@ -5495,12 +5495,12 @@
       }
       var _minSocLow = parseInt(document.getElementById('ems-min-soc-low').value, 10) || 0;
       if (isNaN(_minSocLow) || _minSocLow < 0 || _minSocLow > 100) {
-        emsShowSaveStatus('✗ Throttle SOC must be 0–100', '#c0392b');
+        emsShowSaveStatus('✗ Reserve SOC must be 0–100', '#c0392b');
         document.getElementById('ems-min-soc-low').focus();
         return;
       }
       if (_minSocLow > 0 && _minSocLow >= _minSoc) {
-        emsShowSaveStatus('✗ Throttle SOC must be lower than Min SOC', '#c0392b');
+        emsShowSaveStatus('✗ Reserve SOC must be lower than Min SOC', '#c0392b');
         document.getElementById('ems-min-soc-low').focus();
         return;
       }
@@ -5534,7 +5534,7 @@
         dehumidifier_devices: dehumidifierDevs,
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
-        throttle_budget_w:    Math.max(230, parseInt(document.getElementById('ems-throttle-budget-w').value, 10) || 1380),
+        ev_reserve_w:         Math.max(230, parseInt(document.getElementById('ems-ev-reserve-w').value, 10) || 1380),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings
         offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
         offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',
