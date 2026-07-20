@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -60,6 +60,7 @@
     "getEmsChargerActionCards":    { "method": "GET",  "path": "/ems/charger/action-cards"   },
     "postEmsCapabilityValue":      { "method": "POST", "path": "/ems/capability"              },
     "getEmsFlows":                 { "method": "GET",  "path": "/ems/flows"                  },
+    "getEmsSchedulerFlows":        { "method": "GET",  "path": "/ems/scheduler/flows"         },
     "getEmsTriggerCards":          { "method": "GET",  "path": "/ems/trigger-cards"           },
     "getEmsDebugFlow":               { "method": "GET",  "path": "/ems/debug/flow"                },
     "getEmsChargerConditionCards":   { "method": "GET",  "path": "/ems/charger/condition-cards"   },

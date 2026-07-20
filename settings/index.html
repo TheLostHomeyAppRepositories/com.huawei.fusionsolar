@@ -327,6 +327,16 @@
     .ems-priority-move-btn:hover { background:#f0f0f5; }
     .ems-priority-move-btn:disabled { opacity:.3; cursor:default; }
     #ems-device-priority-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+    .ems-scheduler-task { background:#f5f5f7; border:1px solid #e5e5ea; border-radius:8px; padding:10px 12px; }
+    .ems-scheduler-task + .ems-scheduler-task { margin-top:0; }
+    .sched-text-input { flex:1; padding:4px 8px; border:1px solid #d1d1d6; border-radius:5px; font-size:12px; background:#fff; min-width:80px; }
+    .sched-time-input { padding:4px 6px; border:1px solid #d1d1d6; border-radius:5px; font-size:12px; background:#fff; width:84px; }
+    .sched-type-select { padding:4px 6px; border:1px solid #d1d1d6; border-radius:5px; font-size:12px; background:#fff; }
+    .sched-flow-select { width:100%; padding:5px 8px; border:1px solid #d1d1d6; border-radius:5px; font-size:12px; background:#fff; margin-top:6px; }
+    .sched-day-chip { display:inline-flex; align-items:center; justify-content:center; width:26px; height:22px; border-radius:4px; border:1px solid #d1d1d6; background:#fff; font-size:10px; font-weight:600; cursor:pointer; user-select:none; color:#3a3a3c; }
+    .sched-day-chip.active { background:#007aff; border-color:#007aff; color:#fff; }
+    .sched-delete-btn { background:none; border:none; cursor:pointer; font-size:14px; color:#c0392b; padding:2px 4px; line-height:1; }
+    .sched-delete-btn:hover { color:#e74c3c; }
     .ems-row-device {
       flex:1; padding:6px 8px; border:1px solid #d1d1d6; border-radius:6px;
       font-size:12px; outline:none; background:#fff; min-width:0;
@@ -866,18 +876,17 @@
                 </div>
               </div>
               <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">EV reserve power</div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Orange Budget</div>
                 <div style="display:flex;align-items:center;gap:6px">
-                  <input id="ems-ev-reserve-w" type="number" value="1380" min="230" max="11500" step="1"
+                  <input id="ems-orange-budget-w" type="number" value="0" min="0" max="11500" step="100"
                     style="width:82px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
                     oninput="emsUpdateSocZones()">
                   <span style="font-size:12px;color:#6e6e73">W</span>
                 </div>
-                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">EV charger current reference:<br>1380 = 6A/1ph<br>1840 = 8A/1ph<br>2300 = 10A/1ph<br>2760 = 12A/1ph<br>3220 = 14A/1ph<br>3680 = 16A/1ph<br>4140 = 6A/3ph</div>
+                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">Extra W devices may use<br>beyond current export</div>
               </div>
             </div>
-            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Min SOC): EV charger is guaranteed EV reserve power (drawn from grid if needed); heat pumps, boilers and pool only run if their minimum surplus threshold is ≤ EV reserve power. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
-            <div class="ems-callout" style="margin-top:6px"><span>3-phase only charger? Set EV reserve power to at least 4140 W (= 6A/3ph), otherwise the charger stays off in the orange zone.</span></div>
+            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Min SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
           </div>
         </div>
       </details>
@@ -1087,6 +1096,16 @@
           </div>
         </div>
       </div>
+        </div>
+      </details>
+
+      <!-- Scheduler -->
+      <details class="ems-section">
+        <summary><span class="ems-section-label">⏱ Scheduler</span><span class="ems-section-subtitle"> · <span id="ems-scheduler-count">no tasks</span></span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body" style="padding-bottom:14px">
+          <div id="ems-scheduler-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+          <button class="btn-secondary" onclick="emsAddSchedulerTask()" style="font-size:11px;padding:4px 12px">+ Add task</button>
+          <span id="ems-scheduler-flow-hint" style="font-size:11px;color:#6e6e73;margin-left:8px"></span>
         </div>
       </details>
 
@@ -2271,6 +2290,151 @@
       });
     }
 
+    // ── Scheduler ─────────────────────────────────────────────────────────────
+    var _schedFlows = []; // cached flow list from API
+
+    function emsSchedulerLoadFlows(cb) {
+      if (_schedFlows.length) { if (cb) cb(); return; }
+      var hint = document.getElementById('ems-scheduler-flow-hint');
+      if (hint) hint.textContent = 'Loading flows…';
+      _H.api('GET', '/ems/scheduler/flows', function(err, res) {
+        _schedFlows = (res && res.flows) || [];
+        if (hint) hint.textContent = _schedFlows.length ? '' : (res && res.error ? '⚠ ' + res.error : 'No flows found in _Huawei EMS folder');
+        // Populate all existing dropdowns
+        document.querySelectorAll('.sched-flow-select').forEach(function(sel) {
+          emsSchedulerPopulateSelect(sel);
+        });
+        if (cb) cb();
+      });
+    }
+
+    function emsSchedulerPopulateSelect(sel) {
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">Select flow…</option>';
+      _schedFlows.forEach(function(f) {
+        var o = document.createElement('option');
+        o.value = f.id; o.textContent = f.name;
+        sel.appendChild(o);
+      });
+      if (cur) sel.value = cur;
+    }
+
+    function emsSchedulerUpdateCount() {
+      var n = document.querySelectorAll('.ems-scheduler-task').length;
+      var el = document.getElementById('ems-scheduler-count');
+      if (el) el.textContent = n ? n + ' task' + (n > 1 ? 's' : '') : 'no tasks';
+    }
+
+    function emsAddSchedulerTask(task) {
+      task = task || {};
+      var id = task.id || 'sched_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      var list = document.getElementById('ems-scheduler-list');
+      var div = document.createElement('div');
+      div.className = 'ems-scheduler-task';
+      div.dataset.id = id;
+
+      var days = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+      var dayChips = days.map(function(d, i) {
+        var active = !task.weekdays || task.weekdays.indexOf(i) !== -1 ? ' active' : '';
+        return '<span class="sched-day-chip' + active + '" data-day="' + i + '" onclick="this.classList.toggle(\'active\')">' + d + '</span>';
+      }).join('');
+
+      var isWeekday  = task.type === 'weekday';
+      var timeVal    = task.time || '07:00';
+      var nameVal    = escHtml(task.name || '');
+      var flowId     = task.flow_id || '';
+      var flowName   = escHtml(task.flow_name || '');
+      var enabled    = task.enabled !== false;
+
+      div.innerHTML =
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+          '<input type="checkbox" class="sched-enabled" ' + (enabled ? 'checked' : '') + ' title="Enable task" style="margin:0;cursor:pointer">' +
+          '<input type="text" class="sched-text-input sched-name" value="' + nameVal + '" placeholder="Task name">' +
+          '<button class="ems-priority-move-btn" onclick="emsSchedulerMove(this,-1)" title="Move up">▲</button>' +
+          '<button class="ems-priority-move-btn" onclick="emsSchedulerMove(this,1)"  title="Move down">▼</button>' +
+          '<button class="sched-delete-btn" onclick="emsSchedulerDelete(this)" title="Delete">✕</button>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<select class="sched-type-select sched-type" onchange="emsSchedulerTypeChange(this)">' +
+            '<option value="daily"'   + (!isWeekday ? ' selected' : '') + '>Daily</option>' +
+            '<option value="weekday"' + ( isWeekday ? ' selected' : '') + '>Weekday</option>' +
+          '</select>' +
+          '<div class="sched-days" style="display:' + (isWeekday ? 'flex' : 'none') + ';gap:3px">' + dayChips + '</div>' +
+          '<input type="time" class="sched-time-input sched-time" value="' + timeVal + '">' +
+        '</div>' +
+        '<select class="sched-flow-select sched-flow" data-flow-id="' + flowId + '" data-flow-name="' + flowName + '">' +
+          '<option value="">Select flow…</option>' +
+        '</select>';
+
+      list.appendChild(div);
+      // Populate flow dropdown
+      var sel = div.querySelector('.sched-flow');
+      emsSchedulerPopulateSelect(sel);
+      if (flowId) sel.value = flowId;
+
+      emsSchedulerUpdateCount();
+      emsSchedulerUpdateMoveButtons();
+      // Load flows if not yet done
+      emsSchedulerLoadFlows();
+    }
+
+    function emsSchedulerTypeChange(sel) {
+      var days = sel.closest('.ems-scheduler-task').querySelector('.sched-days');
+      days.style.display = sel.value === 'weekday' ? 'flex' : 'none';
+    }
+
+    function emsSchedulerDelete(btn) {
+      btn.closest('.ems-scheduler-task').remove();
+      emsSchedulerUpdateCount();
+      emsSchedulerUpdateMoveButtons();
+    }
+
+    function emsSchedulerMove(btn, dir) {
+      var task = btn.closest('.ems-scheduler-task');
+      var list = task.parentNode;
+      var items = Array.from(list.children);
+      var idx = items.indexOf(task);
+      var target = items[idx + dir];
+      if (!target) return;
+      if (dir === -1) list.insertBefore(task, target);
+      else list.insertBefore(target, task);
+      emsSchedulerUpdateMoveButtons();
+    }
+
+    function emsSchedulerUpdateMoveButtons() {
+      var list = document.getElementById('ems-scheduler-list');
+      Array.from(list.children).forEach(function(el, i) {
+        var btns = el.querySelectorAll('.ems-priority-move-btn');
+        if (btns[0]) btns[0].disabled = i === 0;
+        if (btns[1]) btns[1].disabled = i === list.children.length - 1;
+      });
+    }
+
+    function emsGetSchedulerTasks() {
+      return Array.from(document.querySelectorAll('.ems-scheduler-task')).map(function(div) {
+        var sel   = div.querySelector('.sched-flow');
+        var selOpt = sel ? sel.options[sel.selectedIndex] : null;
+        var chips = Array.from(div.querySelectorAll('.sched-day-chip.active')).map(function(c) { return parseInt(c.dataset.day, 10); });
+        return {
+          id:        div.dataset.id,
+          name:      (div.querySelector('.sched-name') || {}).value || '',
+          enabled:   !!(div.querySelector('.sched-enabled') || {}).checked,
+          type:      (div.querySelector('.sched-type') || {}).value || 'daily',
+          weekdays:  chips,
+          time:      (div.querySelector('.sched-time') || {}).value || '00:00',
+          flow_id:   sel ? sel.value : '',
+          flow_name: selOpt && sel.value ? selOpt.textContent : '',
+        };
+      });
+    }
+
+    function emsRenderSchedulerTasks(tasks) {
+      document.getElementById('ems-scheduler-list').innerHTML = '';
+      (tasks || []).forEach(function(t) { emsAddSchedulerTask(t); });
+      emsSchedulerLoadFlows();
+    }
+    // ── End Scheduler ──────────────────────────────────────────────────────────
+
     function emsUpdateSocZones() {
       var elMin = document.getElementById('ems-min-soc');
       var elLow = document.getElementById('ems-min-soc-low');
@@ -2302,9 +2466,9 @@
         document.getElementById('soc-label-low').textContent = minSocLow + '%';
         if (chipThr) {
           chipThr.style.display = 'flex';
-          var budgetW = parseInt(document.getElementById('ems-ev-reserve-w').value, 10) || 1380;
+          var budgetW = parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0;
           var chipLabel = document.getElementById('soc-chip-thr-label');
-          if (chipLabel) chipLabel.textContent = 'Reserve · ' + budgetW + ' W';
+          if (chipLabel) chipLabel.textContent = 'Orange Budget · ' + budgetW + ' W';
         }
       } else {
         segStop.style.width = minSoc + '%';
@@ -5483,7 +5647,8 @@
       // ── Scalar settings ───────────────────────────────────────────────────────
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
-      if (cfg.ev_reserve_w          !== undefined) document.getElementById('ems-ev-reserve-w').value = cfg.ev_reserve_w;
+      if (cfg.orange_budget_w       !== undefined) document.getElementById('ems-orange-budget-w').value = cfg.orange_budget_w;
+      emsRenderSchedulerTasks(cfg.scheduled_tasks || []);
       emsUpdateSocZones();
       var _offpeakEl = document.getElementById('ems-offpeak-enabled');
       if (_offpeakEl) _offpeakEl.checked                                                       = !!cfg.offpeak_enabled;
@@ -5578,7 +5743,7 @@
         dehumidifier_devices: dehumidifierDevs,
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
-        ev_reserve_w:         Math.max(230, parseInt(document.getElementById('ems-ev-reserve-w').value, 10) || 1380),
+        orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings
         offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
         offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',
@@ -5595,6 +5760,7 @@
         dehumidifier_control:         document.getElementById('ems-dehumidifier-control').checked,
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
         device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
+        scheduled_tasks:              emsGetSchedulerTasks(),
         export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,
         export_limit_trigger_soc:     parseInt(document.getElementById('ems-export-limit-trigger-soc').value, 10) || 95,
         export_limit_deactivate_soc:  parseInt(document.getElementById('ems-export-limit-deactivate-soc').value, 10) || 90,

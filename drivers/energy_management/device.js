@@ -53,6 +53,7 @@ class EmsDevice extends Device {
     this._exportLimitActive      = false; // export limit coordinator state
     this._exportLimitActivatedAt = null;  // hold timer: when export limit was last activated
     this._loggedNoMeterDevices   = false; // one-shot log flag for missing meter config
+    this._schedulerFired         = new Map(); // taskId → Date of last fire
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -132,9 +133,14 @@ class EmsDevice extends Device {
     if (!cfg.meter_devices)  { cfg.meter_devices  = []; changed = true; }
     if (!cfg.house_devices)  { cfg.house_devices  = []; changed = true; }
 
-    if (cfg.throttle_budget_w !== undefined && cfg.ev_reserve_w === undefined) {
-      cfg.ev_reserve_w = cfg.throttle_budget_w;
+    if (cfg.throttle_budget_w !== undefined && cfg.orange_budget_w === undefined) {
+      cfg.orange_budget_w = cfg.throttle_budget_w;
       delete cfg.throttle_budget_w;
+      changed = true;
+    }
+    if (cfg.ev_reserve_w !== undefined && cfg.orange_budget_w === undefined) {
+      cfg.orange_budget_w = cfg.ev_reserve_w;
+      delete cfg.ev_reserve_w;
       changed = true;
     }
 
@@ -247,6 +253,7 @@ class EmsDevice extends Device {
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
+    if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 
     // ── Sensor failure guard ──────────────────────────────────────────────────
     // _getGridW returns null after GRID_SENSOR_HOLD_TICKS consecutive failures.
@@ -263,6 +270,14 @@ class EmsDevice extends Device {
       ? cfg.device_priority_order
       : ['charger', 'heat_pump', 'boiler', 'pool', 'dehumidifier'];
     let effectiveGridW = gridW;
+    // Orange zone: expand effective surplus by orange budget so devices can borrow from battery charging.
+    // The budget is shared across all device types via effectiveGridW — as each type allocates power,
+    // effectiveGridW rises (less virtual export), naturally limiting subsequent types.
+    const { batReserve: _isOrangeZone } = this._batteryZones(cfg, battery);
+    const _orangeBudgetW = Number(cfg.orange_budget_w ?? 0);
+    if (_isOrangeZone && _orangeBudgetW > 0 && effectiveGridW !== null) {
+      effectiveGridW -= _orangeBudgetW;
+    }
     for (const deviceType of priorityOrder) {
       if (deviceType === 'charger') {
         const prevChargerW = chargers.reduce((s, c) => s + c.powerW, 0);
@@ -546,8 +561,7 @@ class EmsDevice extends Device {
     if (!devices.length) return 0;
     if (cfg[cfgControlKey] === false) return 0;
 
-    const { batReserve, batHardStop } = this._batteryZones(cfg, battery);
-    const reserveW  = Number(cfg.ev_reserve_w ?? MIN_CHARGE_W);
+    const { batHardStop } = this._batteryZones(cfg, battery);
     const batChg     = battery.powerW !== null && battery.powerW > 0;
     const exportW     = gridW !== null ? -gridW : 0;
     const batOverflow = batHardStop && batChg && exportW >= MIN_CHARGE_W;
@@ -609,8 +623,6 @@ class EmsDevice extends Device {
       //   otherwise → surplus / timer logic
       let wantOn;
       if (batHardStop && !batOverflow) {
-        wantOn = false;
-      } else if (batReserve && device.minSurplusW > reserveW) {
         wantOn = false;
       } else if (inMaxRun) {
         wantOn = true; // max-run window: ignore surplus drop
@@ -738,14 +750,14 @@ class EmsDevice extends Device {
     // ── P1: Battery priority ─────────────────────────────────────────────────
     // Three zones based on SOC vs. two thresholds (min_soc_low < min_soc):
     //   soc ≥ min_soc               → normal operation
-    //   min_soc_low ≤ soc < min_soc → reserve zone: charger gets guaranteed EV reserve power
+    //   min_soc_low ≤ soc < min_soc → orange zone: devices share orange budget
     //   soc < min_soc_low           → hard stop (with overflow exception for grid export)
     let batOverflowMode = false;
     let batReserveMode = false;
 
     if (batLow) {
       if (batReserve) {
-        // Reserve zone: guarantee the charger its EV reserve power; battery keeps solar priority
+        // Orange zone: devices share the orange budget; battery keeps solar priority
         batReserveMode = true;
       } else {
         // Hard stop zone: soc < minSocLow (or no low zone configured)
@@ -857,11 +869,8 @@ class EmsDevice extends Device {
       }
     }
 
-    // Reserve zone: guarantee the charger gets exactly ev_reserve_w regardless of solar
-    // surplus. The battery absorbs the majority of PV; the charger draws the remainder from the
-    // grid if needed. We do NOT cap here (Math.min) because that would leave budgetW at zero
-    // when there is no surplus, preventing the charger from starting at all.
-    if (batReserveMode) budgetW = Number(cfg.ev_reserve_w ?? MIN_CHARGE_W);
+    // Orange zone: budget already expanded by orangeBudget via effectiveGridW (injected in main tick).
+    // No override needed; batReserveMode only suppresses battery-boost addition below.
 
     // In overflow mode keep the budget below the 3-phase threshold so _stepCharger never
     // triggers a 1ph→3ph switch. That switch doubles the charger draw instantly, which
@@ -875,9 +884,7 @@ class EmsDevice extends Device {
         if (this._getChargerState(charger.id).currentAmps !== null) await this._chargerStop(charger.id);
         continue;
       }
-      // In reserve mode we intentionally draw from grid — suppress the import-guard forced
-      // step-down so it cannot undo the guaranteed EV reserve budget.
-      const result = await this._stepCharger(charger, budgetW, charger.phases, now, gridW, batReserveMode ? false : sustainedImport);
+      const result = await this._stepCharger(charger, budgetW, charger.phases, now, gridW, sustainedImport);
       statuses.push(result);
       budgetW = Math.max(0, budgetW - result.allocatedW);
     }
@@ -889,11 +896,10 @@ class EmsDevice extends Device {
       : '';
     const active = statuses.filter((s) => s.allocatedW > 0);
     if (!active.length) {
-      const reserveW  = Number(cfg.ev_reserve_w ?? MIN_CHARGE_W);
       const stTextWait = batOverflowMode
         ? `Überschuss vorhanden · wartend${socStr}${batPwStr}`
         : batReserveMode
-          ? `Reserve · Budget ${Math.round(reserveW)}W < Lader-Minimum${socStr}${batPwStr}`
+          ? `Orange Budget · kein Überschuss${socStr}${batPwStr}`
           : `kein Überschuss${socStr}${batPwStr}`;
       const waitMode = (batOverflowMode || batReserveMode) ? 'battery_priority' : 'holding';
       await this._setMode(waitMode, stTextWait);
@@ -1063,6 +1069,28 @@ class EmsDevice extends Device {
     if (!flowId) return;
     try { await this._api.triggerFlow(flowId); } catch (err) {
       this.log(`[EMS] flow trigger failed: ${err.message}`);
+    }
+  }
+
+  // ─── Scheduler ───────────────────────────────────────────────────────────
+
+  async _checkScheduler(cfg) {
+    const tasks = Array.isArray(cfg.scheduled_tasks) ? cfg.scheduled_tasks : [];
+    if (!tasks.length) return;
+    const now        = new Date();
+    const dayOfWeek  = now.getDay(); // 0=Sun, 1=Mon … 6=Sat
+    const timeStr    = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    for (const task of tasks) {
+      if (!task.enabled || !task.flow_id || task.time !== timeStr) continue;
+      const lastFired = this._schedulerFired.get(task.id);
+      if (lastFired && (now - lastFired) < 60_000) continue; // already fired this minute
+      const shouldFire = task.type === 'daily' ||
+        (task.type === 'weekday' && Array.isArray(task.weekdays) && task.weekdays.includes(dayOfWeek));
+      if (!shouldFire) continue;
+      this._schedulerFired.set(task.id, now);
+      this.log(`[EMS] Scheduler: "${task.name}" → flow ${task.flow_id}`);
+      this._api.triggerFlow(task.flow_id).catch((err) =>
+        this.error(`[EMS] Scheduler: "${task.name}" trigger failed: ${err.message}`));
     }
   }
 

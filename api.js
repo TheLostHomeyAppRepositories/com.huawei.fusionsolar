@@ -1100,6 +1100,35 @@ module.exports = {
     }
   },
 
+  /** GET /ems/scheduler/flows — flows in the _Huawei EMS folder available to the scheduler */
+  async getEmsSchedulerFlows({ homey }) {
+    let apiKey = '';
+    try {
+      const devs = homey.drivers.getDriver('energy_management').getDevices();
+      if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
+    } catch {}
+    if (!apiKey) return { flows: [], error: 'No API key' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    try {
+      const [allFlows, folders] = await Promise.all([
+        api.getFlows().catch(() => ({})),
+        api.getFlowFolders().catch(() => ({})),
+      ]);
+      const emsFolder   = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      const emsFolderId = emsFolder ? emsFolder.id : null;
+      const flows = [];
+      for (const [id, f] of Object.entries(allFlows || {})) {
+        if (emsFolderId && f.folder !== emsFolderId) continue;
+        flows.push({ id, name: f.name || id });
+      }
+      flows.sort((a, b) => a.name.localeCompare(b.name));
+      return { flows };
+    } catch (e) {
+      return { flows: [], error: e.message };
+    }
+  },
+
   /** GET /ems/config — returns current EMS config from homey.settings */
   async getEmsConfig({ homey }) {
     return homey.settings.get('ems_config') || {};
