@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.14",
+  "version": "1.2.15",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -51,37 +51,130 @@
       "method": "POST",
       "path": "/debug/openapi"
     },
-    "getEmsDevices":             { "method": "GET",  "path": "/ems/devices"              },
-    "getEmsDebug":               { "method": "GET",  "path": "/ems/debug"                },
-    "getEmsConfig":              { "method": "GET",  "path": "/ems/config"               },
-    "getEmsHistory":             { "method": "GET",  "path": "/ems/history"              },
-    "putEmsConfig":              { "method": "PUT",  "path": "/ems/config"               },
-    "postEmsChargerSetupFlows":    { "method": "POST", "path": "/ems/charger/setup-flows"    },
-    "getEmsChargerActionCards":    { "method": "GET",  "path": "/ems/charger/action-cards"   },
-    "postEmsCapabilityValue":      { "method": "POST", "path": "/ems/capability"              },
-    "getEmsFlows":                 { "method": "GET",  "path": "/ems/flows"                  },
-    "getEmsSchedulerFlows":        { "method": "GET",  "path": "/ems/scheduler/flows"         },
-    "getEmsTriggerCards":          { "method": "GET",  "path": "/ems/trigger-cards"           },
-    "getEmsDebugFlow":               { "method": "GET",  "path": "/ems/debug/flow"                },
-    "getEmsChargerConditionCards":   { "method": "GET",  "path": "/ems/charger/condition-cards"   },
-    "getEmsHeatPumpActionCards":     { "method": "GET",  "path": "/ems/heatpump/action-cards"     },
-    "postEmsHeatPumpSetupFlows":     { "method": "POST", "path": "/ems/heatpump/setup-flows"      },
-    "getEmsHeatPumpFlows":           { "method": "GET",  "path": "/ems/heatpump/flows"            },
-    "getEmsBoilerActionCards":       { "method": "GET",  "path": "/ems/boiler/action-cards"       },
-    "postEmsBoilerSetupFlows":       { "method": "POST", "path": "/ems/boiler/setup-flows"        },
-    "getEmsBoilerFlows":             { "method": "GET",  "path": "/ems/boiler/flows"              },
-    "getEmsPoolActionCards":         { "method": "GET",  "path": "/ems/pool/action-cards"         },
-    "postEmsPoolSetupFlows":         { "method": "POST", "path": "/ems/pool/setup-flows"          },
-    "getEmsPoolFlows":               { "method": "GET",  "path": "/ems/pool/flows"                },
-    "getEmsDehumidifierActionCards": { "method": "GET",  "path": "/ems/dehumidifier/action-cards" },
-    "postEmsDehumidifierSetupFlows": { "method": "POST", "path": "/ems/dehumidifier/setup-flows"  },
-    "getEmsDehumidifierFlows":       { "method": "GET",  "path": "/ems/dehumidifier/flows"        },
-    "getEmsBatteryActionCards":      { "method": "GET",  "path": "/ems/battery/action-cards"      },
-    "postEmsBatterySetupFlows":      { "method": "POST", "path": "/ems/battery/setup-flows"       },
-    "getEmsBatteryFlows":            { "method": "GET",  "path": "/ems/battery/flows"             },
-    "getInverterActionCards":        { "method": "GET",  "path": "/inverter/action-cards"         },
-    "getInverterFlows":              { "method": "GET",  "path": "/inverter/flows"                },
-    "postInverterSetupFlow":         { "method": "POST", "path": "/inverter/setup-flow"           }
+    "getEmsDevices": {
+      "method": "GET",
+      "path": "/ems/devices"
+    },
+    "getEmsDebug": {
+      "method": "GET",
+      "path": "/ems/debug"
+    },
+    "getEmsConfig": {
+      "method": "GET",
+      "path": "/ems/config"
+    },
+    "getEmsHistory": {
+      "method": "GET",
+      "path": "/ems/history"
+    },
+    "putEmsConfig": {
+      "method": "PUT",
+      "path": "/ems/config"
+    },
+    "postEmsChargerSetupFlows": {
+      "method": "POST",
+      "path": "/ems/charger/setup-flows"
+    },
+    "getEmsChargerActionCards": {
+      "method": "GET",
+      "path": "/ems/charger/action-cards"
+    },
+    "postEmsCapabilityValue": {
+      "method": "POST",
+      "path": "/ems/capability"
+    },
+    "getEmsFlows": {
+      "method": "GET",
+      "path": "/ems/flows"
+    },
+    "getEmsSchedulerFlows": {
+      "method": "GET",
+      "path": "/ems/scheduler/flows"
+    },
+    "getEmsTriggerCards": {
+      "method": "GET",
+      "path": "/ems/trigger-cards"
+    },
+    "getEmsDebugFlow": {
+      "method": "GET",
+      "path": "/ems/debug/flow"
+    },
+    "getEmsChargerConditionCards": {
+      "method": "GET",
+      "path": "/ems/charger/condition-cards"
+    },
+    "getEmsHeatPumpActionCards": {
+      "method": "GET",
+      "path": "/ems/heatpump/action-cards"
+    },
+    "postEmsHeatPumpSetupFlows": {
+      "method": "POST",
+      "path": "/ems/heatpump/setup-flows"
+    },
+    "getEmsHeatPumpFlows": {
+      "method": "GET",
+      "path": "/ems/heatpump/flows"
+    },
+    "getEmsBoilerActionCards": {
+      "method": "GET",
+      "path": "/ems/boiler/action-cards"
+    },
+    "postEmsBoilerSetupFlows": {
+      "method": "POST",
+      "path": "/ems/boiler/setup-flows"
+    },
+    "getEmsBoilerFlows": {
+      "method": "GET",
+      "path": "/ems/boiler/flows"
+    },
+    "getEmsPoolActionCards": {
+      "method": "GET",
+      "path": "/ems/pool/action-cards"
+    },
+    "postEmsPoolSetupFlows": {
+      "method": "POST",
+      "path": "/ems/pool/setup-flows"
+    },
+    "getEmsPoolFlows": {
+      "method": "GET",
+      "path": "/ems/pool/flows"
+    },
+    "getEmsDehumidifierActionCards": {
+      "method": "GET",
+      "path": "/ems/dehumidifier/action-cards"
+    },
+    "postEmsDehumidifierSetupFlows": {
+      "method": "POST",
+      "path": "/ems/dehumidifier/setup-flows"
+    },
+    "getEmsDehumidifierFlows": {
+      "method": "GET",
+      "path": "/ems/dehumidifier/flows"
+    },
+    "getEmsBatteryActionCards": {
+      "method": "GET",
+      "path": "/ems/battery/action-cards"
+    },
+    "postEmsBatterySetupFlows": {
+      "method": "POST",
+      "path": "/ems/battery/setup-flows"
+    },
+    "getEmsBatteryFlows": {
+      "method": "GET",
+      "path": "/ems/battery/flows"
+    },
+    "getInverterActionCards": {
+      "method": "GET",
+      "path": "/inverter/action-cards"
+    },
+    "getInverterFlows": {
+      "method": "GET",
+      "path": "/inverter/flows"
+    },
+    "postInverterSetupFlow": {
+      "method": "POST",
+      "path": "/inverter/setup-flow"
+    }
   },
   "brandColor": "#CF0A2C",
   "name": {
@@ -838,16 +931,19 @@
     "measure_battery_power": {
       "type": "number",
       "title": {
-        "en": "Battery Power (legacy)",
-        "de": "Batterieleistung (veraltet)",
-        "nl": "Batterijvermogen (verouderd)"
+        "en": "Battery Power",
+        "de": "Batterieleistung",
+        "nl": "Batterijvermogen"
       },
-      "units": "W",
+      "units": {
+        "en": "W"
+      },
       "decimals": 0,
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
-      "insights": false
+      "insights": true,
+      "icon": "/assets/capabilities/measure_battery_power.svg"
     },
     "meter_battery_charge_today": {
       "type": "number",
@@ -1214,18 +1310,6 @@
       "uiComponent": "button",
       "icon": "/assets/capabilities/release_charger.svg"
     },
-    "resume_automation": {
-      "type": "boolean",
-      "title": {
-        "en": "Resume Automation",
-        "de": "Automatik fortsetzen",
-        "nl": "Automatisering hervatten"
-      },
-      "getable": false,
-      "setable": true,
-      "uiComponent": "button",
-      "icon": "/assets/capabilities/resume_automation.svg"
-    },
     "meter_session_energy": {
       "type": "number",
       "title": {
@@ -1264,19 +1348,110 @@
         "nl": "EMS-modus"
       },
       "values": [
-        { "id": "idle",             "title": { "en": "Idle",                    "de": "Bereit",               "nl": "Inactief"          } },
-        { "id": "not_configured",   "title": { "en": "Not Configured",          "de": "Nicht konfiguriert",   "nl": "Niet geconfigureerd"} },
-        { "id": "disabled",         "title": { "en": "Disabled",                "de": "Deaktiviert",          "nl": "Uitgeschakeld"     } },
-        { "id": "battery_priority", "title": { "en": "Battery Priority",        "de": "Batterie-Priorität",   "nl": "Batterijprioriteit"} },
-        { "id": "solar_ev",         "title": { "en": "Solar EV Charging",       "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"    } },
-        { "id": "solar_hp",         "title": { "en": "Solar Heat Pump",         "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"  } },
-        { "id": "solar_boiler",     "title": { "en": "Solar Boiler/Heater",     "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"       } },
-        { "id": "solar_pool",         "title": { "en": "Solar Pool Pump",         "de": "Solar-Pool-Pumpe",        "nl": "Zonne-zwembadpomp"     } },
-        { "id": "solar_dehumidifier","title": { "en": "Solar Dehumidifier",      "de": "Solar-Entfeuchter",       "nl": "Zonne-ontvochtiger"    } },
-        { "id": "offpeak_ev",        "title": { "en": "Off-Peak EV Charging",    "de": "Nebenzeit-EV-Laden",      "nl": "Daltarief laden"        } },
-        { "id": "instant_ev",       "title": { "en": "Instant Charging",        "de": "Sofortladen",          "nl": "Direct laden"      } },
-        { "id": "holding",          "title": { "en": "Waiting for Surplus",     "de": "Warte auf Überschuss", "nl": "Wachten op surplus"} },
-        { "id": "error",            "title": { "en": "Error",                   "de": "Fehler",               "nl": "Fout"              } }
+        {
+          "id": "idle",
+          "title": {
+            "en": "Idle",
+            "de": "Bereit",
+            "nl": "Inactief"
+          }
+        },
+        {
+          "id": "not_configured",
+          "title": {
+            "en": "Not Configured",
+            "de": "Nicht konfiguriert",
+            "nl": "Niet geconfigureerd"
+          }
+        },
+        {
+          "id": "disabled",
+          "title": {
+            "en": "Disabled",
+            "de": "Deaktiviert",
+            "nl": "Uitgeschakeld"
+          }
+        },
+        {
+          "id": "battery_priority",
+          "title": {
+            "en": "Battery Priority",
+            "de": "Batterie-Priorität",
+            "nl": "Batterijprioriteit"
+          }
+        },
+        {
+          "id": "solar_ev",
+          "title": {
+            "en": "Solar EV Charging",
+            "de": "Solar-EV-Laden",
+            "nl": "Zonne-EV-laden"
+          }
+        },
+        {
+          "id": "solar_hp",
+          "title": {
+            "en": "Solar Heat Pump",
+            "de": "Solar-Wärmepumpe",
+            "nl": "Zonne-warmtepomp"
+          }
+        },
+        {
+          "id": "solar_boiler",
+          "title": {
+            "en": "Solar Boiler/Heater",
+            "de": "Solar-Boiler/Heizstab",
+            "nl": "Zonne-boiler"
+          }
+        },
+        {
+          "id": "solar_pool",
+          "title": {
+            "en": "Solar Pool Pump",
+            "de": "Solar-Pool-Pumpe",
+            "nl": "Zonne-zwembadpomp"
+          }
+        },
+        {
+          "id": "solar_dehumidifier",
+          "title": {
+            "en": "Solar Dehumidifier",
+            "de": "Solar-Entfeuchter",
+            "nl": "Zonne-ontvochtiger"
+          }
+        },
+        {
+          "id": "offpeak_ev",
+          "title": {
+            "en": "Off-Peak EV Charging",
+            "de": "Nebenzeit-EV-Laden",
+            "nl": "Daltarief laden"
+          }
+        },
+        {
+          "id": "instant_ev",
+          "title": {
+            "en": "Instant Charging",
+            "de": "Sofortladen",
+            "nl": "Direct laden"
+          }
+        },
+        {
+          "id": "holding",
+          "title": {
+            "en": "Waiting for Surplus",
+            "de": "Warte auf Überschuss",
+            "nl": "Wachten op surplus"
+          }
+        },
+        {
+          "id": "error",
+          "title": {
+            "en": "Error",
+            "de": "Fehler",
+            "nl": "Fout"
+          }
+        }
       ],
       "getable": true,
       "setable": false,
@@ -1317,9 +1492,10 @@
         "de": "Sofortladen",
         "nl": "Direct laden"
       },
-      "getable": true,
+      "getable": false,
       "setable": true,
-      "uiComponent": "toggle",
+      "uiComponent": "button",
+      "uiQuickAction": true,
       "insights": false,
       "icon": "/assets/capabilities/charge_now.svg"
     },
@@ -1330,7 +1506,9 @@
         "de": "Netzleistung",
         "nl": "Netvermogen"
       },
-      "units": { "en": "W" },
+      "units": {
+        "en": "W"
+      },
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1345,7 +1523,9 @@
         "de": "PV-Leistung",
         "nl": "PV-vermogen"
       },
-      "units": { "en": "W" },
+      "units": {
+        "en": "W"
+      },
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1360,7 +1540,9 @@
         "de": "Hausverbrauch",
         "nl": "Huisverbruik"
       },
-      "units": { "en": "W" },
+      "units": {
+        "en": "W"
+      },
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1375,28 +1557,15 @@
         "de": "Solar-Überschuss",
         "nl": "Zonne-overschot"
       },
-      "units": { "en": "W" },
+      "units": {
+        "en": "W"
+      },
       "decimals": 0,
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
       "insights": true,
       "icon": "/assets/capabilities/measure_solar_surplus.svg"
-    },
-    "measure_battery_power": {
-      "type": "number",
-      "title": {
-        "en": "Battery Power",
-        "de": "Batterieleistung",
-        "nl": "Batterijvermogen"
-      },
-      "units": { "en": "W" },
-      "decimals": 0,
-      "getable": true,
-      "setable": false,
-      "uiComponent": "sensor",
-      "insights": true,
-      "icon": "/assets/capabilities/measure_battery_power.svg"
     }
   },
   "drivers": [
@@ -1681,7 +1850,6 @@
         "resume_charging",
         "charge_now",
         "release_charger",
-        "resume_automation",
         "meter_session_energy",
         "session_duration"
       ],
@@ -1856,19 +2024,6 @@
             "en": "Forces the connector back to Operative. Use if the charger is stuck Unavailable or the cable is locked after a pause.",
             "de": "Setzt den Anschluss auf Operative zurueck. Verwenden wenn die Ladestation feststeckt.",
             "nl": "Zet de connector terug op Operative. Gebruik dit als de lader vastzit op Niet beschikbaar."
-          }
-        },
-        "resume_automation": {
-          "maintenanceAction": true,
-          "title": {
-            "en": "Resume Automation",
-            "de": "Automatik fortsetzen",
-            "nl": "Automatisering hervatten"
-          },
-          "desc": {
-            "en": "After manually stopping a solar or off-peak session, clears the suppression so automation can restart when conditions are met.",
-            "de": "Nach manuellem Stopp einer Solar- oder Nebenzeitsitzung wird die Unterdrueckung aufgehoben.",
-            "nl": "Na handmatig stoppen van een sessie wordt de onderdrukking opgeheven zodat automatisering opnieuw kan starten."
           }
         }
       },
@@ -2086,11 +2241,27 @@
               }
             },
             {
+              "id": "7",
+              "label": {
+                "en": "7A",
+                "de": "7A",
+                "nl": "7A"
+              }
+            },
+            {
               "id": "8",
               "label": {
                 "en": "8A",
                 "de": "8A",
                 "nl": "8A"
+              }
+            },
+            {
+              "id": "9",
+              "label": {
+                "en": "9A",
+                "de": "9A",
+                "nl": "9A"
               }
             },
             {
@@ -2102,6 +2273,14 @@
               }
             },
             {
+              "id": "11",
+              "label": {
+                "en": "11A",
+                "de": "11A",
+                "nl": "11A"
+              }
+            },
+            {
               "id": "12",
               "label": {
                 "en": "12A",
@@ -2110,11 +2289,27 @@
               }
             },
             {
+              "id": "13",
+              "label": {
+                "en": "13A",
+                "de": "13A",
+                "nl": "13A"
+              }
+            },
+            {
               "id": "14",
               "label": {
                 "en": "14A",
                 "de": "14A",
                 "nl": "14A"
+              }
+            },
+            {
+              "id": "15",
+              "label": {
+                "en": "15A",
+                "de": "15A",
+                "nl": "15A"
               }
             },
             {
@@ -2130,311 +2325,6 @@
             "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value.",
             "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird.",
             "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde."
-          }
-        },
-        {
-          "id": "solar_enabled",
-          "type": "checkbox",
-          "label": {
-            "en": "Enable solar surplus charging",
-            "de": "Solarueberschuss-Laden aktivieren",
-            "nl": "Zonne-overschot laden inschakelen"
-          },
-          "value": false,
-          "hint": {
-            "en": "Requires one flow you build once: it must send your live energy data with the four Update cards (solar production, grid power, battery SOC, battery power). Without fresh data (at most 5 minutes old) solar charging safely does nothing. When data arrives: when enough surplus lasts long enough to cover the minimum charging power, charging starts at the highest step the surplus can pay for, follows the sun up and down through the 6/8/10/12/14/16A steps, pauses on clouds and resumes by itself — one session in your history. Requires Smart Charging mode (auto-start OFF).",
-            "de": "Erfordert einen Flow, den du einmalig baust: Er muss deine Live-Energiedaten mit den vier Aktualisierungs-Karten senden (Solarproduktion, Netzleistung, Batteriestand, Batterieleistung). Ohne frische Daten (hoechstens 5 Minuten alt) tut das Solarladen sicher nichts. Mit Daten: Sobald genug Ueberschuss lange genug anhaelt, startet das Laden auf der hoechsten Stufe, die der Ueberschuss bezahlen kann, folgt der Sonne ueber die Stufen 6/8/10/12/14/16A auf und ab, pausiert bei Wolken und setzt fort — eine Sitzung in deiner Historie. Erfordert Smart-Charging-Modus (Auto-Start AUS).",
-            "nl": "Vereist een eenmalig gemaakte flow: die moet je live energiedata sturen met de vier Update-kaarten (zonneproductie, netvermogen, batterij-SOC, batterijvermogen). Zonder verse data (maximaal 5 minuten oud) doet zonneladen veilig niets. Met data: zodra genoeg overschot lang genoeg aanhoudt, start het laden op de hoogste stap die het overschot kan bekostigen, volgt de zon via de stappen 6/8/10/12/14/16A, pauzeert bij wolken en hervat vanzelf — een sessie in je geschiedenis. Vereist slimme laadmodus (auto-start UIT)."
-          }
-        },
-        {
-          "id": "solar_has_battery",
-          "type": "checkbox",
-          "label": {
-            "en": "System has a home battery",
-            "de": "System hat eine Hausbatterie",
-            "nl": "Systeem heeft een thuisbatterij"
-          },
-          "value": true,
-          "hint": {
-            "en": "Whether your solar system includes a home battery. Off: the two battery settings below are ignored, the battery flow cards are not needed, and solar charging runs on production and grid data alone.",
-            "de": "Ob deine Solaranlage einen Heimspeicher hat. Aus: Die zwei Batterie-Einstellungen unten werden ignoriert, die Batterie-Flow-Karten sind nicht noetig, und das Solarladen laeuft nur mit Produktions- und Netzdaten.",
-            "nl": "Of je zonnesysteem een thuisbatterij heeft. Uit: de twee batterij-instellingen hieronder worden genegeerd, de batterij-flowkaarten zijn niet nodig, en zonneladen draait alleen op productie- en netdata."
-          }
-        },
-        {
-          "id": "solar_min_battery_soc",
-          "type": "number",
-          "label": {
-            "en": "Minimum battery SOC (%)",
-            "de": "Minimaler Batteriestand (%)",
-            "nl": "Minimale batterijlading (%)"
-          },
-          "value": 90,
-          "min": 0,
-          "max": 100,
-          "step": 5,
-          "hint": {
-            "en": "The home battery comes first: no solar goes to the car until your home battery reaches this level (sent via the Update battery SOC card). Set to 0 to skip this rule. Ignored when Home battery installed is off.",
-            "de": "Die Hausbatterie kommt zuerst: Es geht kein Solarstrom ans Auto, bis deine Hausbatterie diesen Stand erreicht (uebermittelt ueber die Karte Batterie-SOC aktualisieren). Auf 0 setzen, um diese Regel zu ueberspringen. Ignoriert, wenn Heimspeicher vorhanden aus ist.",
-            "nl": "De thuisbatterij gaat voor: er gaat geen zonnestroom naar de auto totdat je thuisbatterij dit niveau bereikt (doorgegeven via de kaart Batterij-SOC bijwerken). Zet op 0 om deze regel over te slaan. Genegeerd wanneer Thuisbatterij aanwezig uit staat."
-          }
-        },
-        {
-          "id": "solar_count_battery_discharge",
-          "type": "checkbox",
-          "label": {
-            "en": "Count battery discharge as consumed surplus",
-            "de": "Batterieentladung als verbrauchten Ueberschuss zaehlen",
-            "nl": "Batterij ontlading als verbruikt overschot tellen"
-          },
-          "value": true,
-          "hint": {
-            "en": "Your energy manager keeps the grid meter near zero by covering house loads from the home battery — so the grid meter alone can miss that the solar surplus is gone while the car quietly charges on stored energy. With this on (recommended), power drawn from the home battery counts as if it were bought from the grid, so charging steps down or pauses honestly. Small readings under 100W are ignored. Only works while the Update battery power card is wired (positive when charging, negative when discharging). Ignored when Home battery installed is off.",
-            "de": "Dein Energiemanager haelt den Netzzaehler nahe null, indem er Hausverbrauch aus der Hausbatterie deckt — der Netzzaehler allein kann also uebersehen, dass der Solarueberschuss weg ist. Wenn aktiviert (empfohlen), zaehlt Strom aus der Hausbatterie als waere er vom Netz gekauft. Kleine Werte unter 100W werden ignoriert. Wirkt nur, solange die Karte Batterieleistung aktualisieren verbunden ist (positiv beim Laden, negativ beim Entladen). Ignoriert, wenn Heimspeicher vorhanden aus ist.",
-            "nl": "Je energiemanager houdt de netmeter rond nul door huisverbruik uit de thuisbatterij te dekken — de netmeter alleen kan dus missen dat het zonneoverschot weg is. Met dit aan (aanbevolen) telt stroom uit de thuisbatterij alsof die van het net gekocht is. Kleine waarden onder 100W worden genegeerd. Werkt alleen zolang de kaart Batterijvermogen bijwerken is aangesloten (positief bij laden, negatief bij ontladen). Genegeerd wanneer Thuisbatterij aanwezig uit staat."
-          }
-        },
-        {
-          "id": "solar_grid_tolerance_w",
-          "type": "number",
-          "label": {
-            "en": "Grid import tolerance (W)",
-            "de": "Netzbezugstoleranz (W)",
-            "nl": "Netimporttolerantie (W)"
-          },
-          "value": 0,
-          "min": 0,
-          "max": 10000,
-          "step": 50,
-          "hint": {
-            "en": "How much grid import to tolerate before considering the surplus gone. 0 = purist surplus-only charging. A small value (e.g. 300) keeps a session on the current step through brief dips instead of stepping down or pausing.",
-            "de": "Wie viel Netzbezug toleriert wird, bevor der Ueberschuss als weg gilt. 0 = puristisches Laden nur mit Ueberschuss. Ein kleiner Wert (z. B. 300) haelt eine Sitzung bei kurzen Einbruechen auf der aktuellen Stufe, statt herunterzuschalten oder zu pausieren.",
-            "nl": "Hoeveel netimport wordt getolereerd voordat het overschot als verdwenen geldt. 0 = puristisch laden op alleen overschot. Een kleine waarde (bijv. 300) houdt een sessie op de huidige stap bij korte dips in plaats van terug te schakelen of te pauzeren."
-          }
-        },
-        {
-          "id": "solar_start_sustain_s",
-          "type": "number",
-          "label": {
-            "en": "Start sustain time (s)",
-            "de": "Starthaltezeit (s)",
-            "nl": "Startaanhoudtijd (s)"
-          },
-          "value": 180,
-          "min": 30,
-          "max": 1800,
-          "step": 30,
-          "hint": {
-            "en": "The surplus must cover the minimum charging power for this long before charging starts (or resumes after a pause) — so a short burst of sun does not start a session that stops a minute later.",
-            "de": "Der Ueberschuss muss so lange die minimale Ladeleistung decken, bevor das Laden startet (oder nach einer Pause fortsetzt) — damit eine kurze sonnige Phase keine Sitzung startet, die eine Minute spaeter wieder stoppt.",
-            "nl": "Het overschot moet zo lang het minimale laadvermogen dekken voordat het laden start (of hervat na een pauze) — zodat een korte zonnige periode geen sessie start die een minuut later weer stopt."
-          }
-        },
-        {
-          "id": "solar_step_hold_s",
-          "type": "number",
-          "label": {
-            "en": "Step hold time (s)",
-            "de": "Schritthaltezeit (s)",
-            "nl": "Stappaanhoudtijd (s)"
-          },
-          "value": 120,
-          "min": 30,
-          "max": 1800,
-          "step": 30,
-          "hint": {
-            "en": "A higher or lower power step must stay justified for this long before the charging power actually changes — prevents constant up-and-down on fast-moving clouds.",
-            "de": "Eine hoehere oder niedrigere Leistungsstufe muss so lange gerechtfertigt bleiben, bevor sich die Ladeleistung aendert — verhindert staendiges Auf und Ab bei schnell ziehenden Wolken.",
-            "nl": "Een hogere of lagere vermogensstap moet zo lang gerechtvaardigd blijven voordat het laadvermogen echt verandert — voorkomt constant op en neer bij snel bewegende wolken."
-          }
-        },
-        {
-          "id": "solar_stop_grace_s",
-          "type": "number",
-          "label": {
-            "en": "Stop grace time (s)",
-            "de": "Stopptoleranzzeit (s)",
-            "nl": "Stopleeglooptijd (s)"
-          },
-          "value": 300,
-          "min": 60,
-          "max": 3600,
-          "step": 60,
-          "hint": {
-            "en": "How long the surplus may stay below the minimum charging power before charging pauses. When the sun returns, charging resumes by itself, and your history still shows one continuous session.",
-            "de": "Wie lange der Ueberschuss unter der minimalen Ladeleistung bleiben darf, bevor das Laden pausiert. Kehrt die Sonne zurueck, setzt das Laden von selbst fort, und deine Historie zeigt weiterhin eine durchgehende Sitzung.",
-            "nl": "Hoe lang het overschot onder het minimale laadvermogen mag blijven voordat het laden pauzeert. Zodra de zon terugkeert, hervat het laden vanzelf, en je geschiedenis toont een doorlopende sessie."
-          }
-        },
-        {
-          "id": "offpeak_enabled",
-          "type": "checkbox",
-          "label": {
-            "en": "Enable off-peak charging",
-            "de": "Nebenzeiten-Laden aktivieren",
-            "nl": "Dal-uur laden inschakelen"
-          },
-          "value": false,
-          "hint": {
-            "en": "Starts charging automatically at the off-peak current whenever the car is connected, no session is running, and the time window below is open — and stops ONLY sessions this scheduler started when the window ends. Sessions you start manually are never touched, even across the window boundary. Requires Smart Charging mode (auto-start OFF), so plugging in waits for the window instead of charging immediately.",
-            "de": "Startet das Laden automatisch mit dem Niedertarif-Strom, wenn das Auto angeschlossen ist, keine Sitzung laeuft und das Zeitfenster offen ist — und stoppt am Fensterende NUR Sitzungen, die dieser Planer gestartet hat. Manuell gestartete Sitzungen werden nie beendet, auch nicht ueber die Fenstergrenze. Erfordert Smart-Charging-Modus (Auto-Start AUS).",
-            "nl": "Start het laden automatisch met de daltariefstroom wanneer de auto is aangesloten, er geen sessie loopt en het tijdvenster open is — en stopt ALLEEN sessies die deze planner heeft gestart wanneer het venster sluit. Handmatig gestarte sessies worden nooit aangeraakt. Vereist slimme laadmodus (auto-start UIT)."
-          }
-        },
-        {
-          "id": "offpeak_amps",
-          "type": "dropdown",
-          "label": {
-            "en": "Off-peak charging current",
-            "de": "Nebenzeit-Ladestrom",
-            "nl": "Dal-uur laadstroom"
-          },
-          "value": "16",
-          "values": [
-            {
-              "id": "6",
-              "label": {
-                "en": "6A",
-                "de": "6A",
-                "nl": "6A"
-              }
-            },
-            {
-              "id": "8",
-              "label": {
-                "en": "8A",
-                "de": "8A",
-                "nl": "8A"
-              }
-            },
-            {
-              "id": "10",
-              "label": {
-                "en": "10A",
-                "de": "10A",
-                "nl": "10A"
-              }
-            },
-            {
-              "id": "12",
-              "label": {
-                "en": "12A",
-                "de": "12A",
-                "nl": "12A"
-              }
-            },
-            {
-              "id": "14",
-              "label": {
-                "en": "14A",
-                "de": "14A",
-                "nl": "14A"
-              }
-            },
-            {
-              "id": "16",
-              "label": {
-                "en": "16A",
-                "de": "16A",
-                "nl": "16A"
-              }
-            }
-          ],
-          "hint": {
-            "en": "Current for scheduler-started sessions. Default 16A — cheap electricity, so take whatever the charger and car can offer. Actual wattage depends on your Number of phases setting.",
-            "de": "Strom fuer vom Planer gestartete Sitzungen. Standard 16A — guenstiger Strom, also nimm, was Ladestation und Auto bieten koennen. Die Wattzahl haengt von der Einstellung Anzahl Phasen ab.",
-            "nl": "Stroom voor door de planner gestarte sessies. Standaard 16A — goedkope stroom, dus neem wat de lader en auto kunnen bieden. Het wattage hangt af van je instelling Aantal fasen."
-          }
-        },
-        {
-          "id": "offpeak_solar_first",
-          "type": "checkbox",
-          "label": {
-            "en": "Solar first (defer off-peak when solar can start)",
-            "de": "Solar zuerst (Nebenzeit verschieben, wenn Solar starten kann)",
-            "nl": "Zonne-energie eerst (dal-uur uitstellen als zonne-energie kan starten)"
-          },
-          "value": true,
-          "hint": {
-            "en": "When your off-peak hours fall in daytime (weekend tariffs), your own solar power and the cheap grid rate can compete for the same plug-in. With this on (recommended), off-peak waits whenever solar charging could start right now — sun is out, data is current, home battery full enough, enough surplus. When it is cloudy or dark, off-peak starts at full power as usual. Only matters when both modes are on.",
-            "de": "Wenn deine Niedertarifstunden am Tag liegen (Wochenendtarife), koennen kostenlose Sonne und guenstiger Netzstrom um denselben Ladeplatz konkurrieren. Wenn aktiviert (empfohlen), wartet Niedertarifladen, wenn Solarladen gerade starten koennte. Bei Wolken oder Dunkelheit startet Niedertarifladen wie gewohnt. Nur relevant wenn beide Modi aktiv sind.",
-            "nl": "Wanneer je daltariefuren overdag vallen kunnen gratis zon en goedkope netstroom concurreren. Met dit aan (aanbevolen) wacht daltariefladen wanneer zonneladen nu zou kunnen starten. Bij bewolking of donker start daltariefladen normaal. Alleen relevant als beide modi aanstaan."
-          }
-        },
-        {
-          "id": "offpeak_weekday_start",
-          "type": "text",
-          "label": {
-            "en": "Off-peak start (weekdays)",
-            "de": "Nebenzeit-Start (Wochentage)",
-            "nl": "Dal-uur start (weekdagen)"
-          },
-          "value": "22:00",
-          "hint": {
-            "en": "24h format, e.g. 22:00. Each day is off-peak BEFORE its own morning end and AFTER its own evening start — overnight windows are supported naturally. If weekends differ, this is the weekday definition.",
-            "de": "24h-Format, z. B. 22:00. Jeder Tag ist VOR seinem Morgenende und NACH seinem Abendbeginn im Niedertarif — Nachtfenster werden natuerlich unterstuetzt. Falls Wochenenden abweichen, ist dies die Werktagsdefinition.",
-            "nl": "24-uursformaat, bijv. 22:00. Elke dag is daltarief VOOR zijn eigen ochtendeinde en NA zijn eigen avondstart — nachtvensters worden vanzelf ondersteund. Als weekenden afwijken, is dit de doordeweekse definitie."
-          }
-        },
-        {
-          "id": "offpeak_weekday_end",
-          "type": "text",
-          "label": {
-            "en": "Off-peak end (weekdays)",
-            "de": "Nebenzeit-Ende (Wochentage)",
-            "nl": "Dal-uur einde (weekdagen)"
-          },
-          "value": "06:00",
-          "hint": {
-            "en": "24h format, e.g. 06:00. A night window ends at the END time of the day it lands on: with weekday 22:00-07:00 and weekend 22:00-17:00, Friday night runs until Saturday 17:00, and Sunday night until Monday 07:00.",
-            "de": "24h-Format, z. B. 06:00. Ein Nachtfenster endet zur ENDZEIT des Tages, auf den es faellt: mit Werktag 22:00-07:00 und Wochenende 22:00-17:00 laeuft die Freitagnacht bis Samstag 17:00, Sonntagsnacht bis Montag 07:00.",
-            "nl": "24-uursformaat, bijv. 06:00. Een nachtvenster eindigt op de EINDTIJD van de dag waarop het uitkomt: met doordeweeks 22:00-07:00 en weekend 22:00-17:00 loopt vrijdagnacht tot zaterdag 17:00, zondagnacht tot maandag 07:00."
-          }
-        },
-        {
-          "id": "offpeak_weekend_differs",
-          "type": "checkbox",
-          "label": {
-            "en": "Weekend has different off-peak hours",
-            "de": "Wochenende hat andere Nebenzeiten",
-            "nl": "Weekend heeft andere dal-uren"
-          },
-          "value": false,
-          "hint": {
-            "en": "Tick if Saturday/Sunday have a different (often longer) off-peak window. Covers single-tariff and most EU tariffs; exotic per-day or holiday tariffs are better built as your own flows.",
-            "de": "Ankreuzen, wenn Samstag/Sonntag ein anderes (oft laengeres) Niedertariffenster haben. Deckt Einheitstarif und die meisten EU-Tarife ab; exotische Tages- oder Feiertagstarife baust du besser als eigene Flows.",
-            "nl": "Aanvinken als zaterdag/zondag een ander (vaak langer) daltariefvenster hebben. Dekt enkeltarief en de meeste EU-tarieven; exotische per-dag- of feestdagtarieven bouw je beter als eigen flows."
-          }
-        },
-        {
-          "id": "offpeak_weekend_start",
-          "type": "text",
-          "label": {
-            "en": "Off-peak start (weekends)",
-            "de": "Nebenzeit-Start (Wochenende)",
-            "nl": "Dal-uur start (weekend)"
-          },
-          "value": "22:00",
-          "hint": {
-            "en": "Only used when Weekend window differs is ticked.",
-            "de": "Nur genutzt, wenn Wochenendfenster weicht ab angekreuzt ist.",
-            "nl": "Alleen gebruikt als Weekendvenster wijkt af is aangevinkt."
-          }
-        },
-        {
-          "id": "offpeak_weekend_end",
-          "type": "text",
-          "label": {
-            "en": "Off-peak end (weekends)",
-            "de": "Nebenzeit-Ende (Wochenende)",
-            "nl": "Dal-uur einde (weekend)"
-          },
-          "value": "06:00",
-          "hint": {
-            "en": "Only used when Weekend window differs is ticked.",
-            "de": "Nur genutzt, wenn Wochenendfenster weicht ab angekreuzt ist.",
-            "nl": "Alleen gebruikt als Weekendvenster wijkt af is aangevinkt."
           }
         }
       ]
@@ -5314,7 +5204,18 @@
         "nl": "Energiebeheersysteem"
       },
       "class": "other",
-      "capabilities": ["onoff", "offpeak_enabled", "charge_now", "ems_mode", "ems_status_text", "measure_solar_surplus", "measure_pv_power", "measure_house_power", "measure_grid_power", "measure_battery_power"],
+      "capabilities": [
+        "onoff",
+        "offpeak_enabled",
+        "charge_now",
+        "ems_mode",
+        "ems_status_text",
+        "measure_solar_surplus",
+        "measure_pv_power",
+        "measure_house_power",
+        "measure_grid_power",
+        "measure_battery_power"
+      ],
       "capabilitiesOptions": {
         "onoff": {
           "title": {
@@ -5353,18 +5254,24 @@
         }
       },
       "images": {
-        "small":  "/drivers/energy_management/assets/images/small.png",
-        "large":  "/drivers/energy_management/assets/images/large.png",
+        "small": "/drivers/energy_management/assets/images/small.png",
+        "large": "/drivers/energy_management/assets/images/large.png",
         "xlarge": "/drivers/energy_management/assets/images/xlarge.png"
       },
       "pair": [
-        { "id": "start" }
+        {
+          "id": "start"
+        }
       ],
       "settings": [
         {
           "id": "homey_api_key",
           "type": "password",
-          "label": { "en": "Homey API Key", "de": "Homey API-Schlüssel", "nl": "Homey API-sleutel" },
+          "label": {
+            "en": "Homey API Key",
+            "de": "Homey API-Schlüssel",
+            "nl": "Homey API-sleutel"
+          },
           "hint": {
             "en": "Create in Homey → Settings → System → API Keys. The key requires read/write access to Devices and Flows. All EMS configuration is done in the app settings (EMS tab).",
             "de": "Erstellen in Homey → Einstellungen → System → API-Schlüssel. Der Schlüssel benötigt Lese- und Schreibzugriff auf Geräte und Flows. Alle EMS-Einstellungen erfolgen in den App-Einstellungen (EMS-Tab)."
@@ -5374,7 +5281,11 @@
         {
           "id": "enable_timeline_notifications",
           "type": "checkbox",
-          "label": { "en": "Timeline notifications", "de": "Timeline-Benachrichtigungen", "nl": "Tijdlijn-meldingen" },
+          "label": {
+            "en": "Timeline notifications",
+            "de": "Timeline-Benachrichtigungen",
+            "nl": "Tijdlijn-meldingen"
+          },
           "hint": {
             "en": "Post to the Homey Timeline when EMS starts or stops a device, or when the battery SOC crosses a threshold.",
             "de": "Im Homey-Timeline posten wenn EMS ein Gerät ein- oder ausschaltet oder der Batterie-SOC einen Schwellenwert erreicht."
@@ -6733,7 +6644,11 @@
           {
             "name": "mode",
             "type": "string",
-            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" }
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            }
           }
         ]
       },
@@ -6765,27 +6680,42 @@
           {
             "name": "amps",
             "type": "number",
-            "title": { "en": "Current total (A)", "de": "Strom gesamt (A)" }
+            "title": {
+              "en": "Current total (A)",
+              "de": "Strom gesamt (A)"
+            }
           },
           {
             "name": "phase1",
             "type": "number",
-            "title": { "en": "Phase 1 (A)", "de": "Phase 1 (A)" }
+            "title": {
+              "en": "Phase 1 (A)",
+              "de": "Phase 1 (A)"
+            }
           },
           {
             "name": "phase2",
             "type": "number",
-            "title": { "en": "Phase 2 (A)", "de": "Phase 2 (A)" }
+            "title": {
+              "en": "Phase 2 (A)",
+              "de": "Phase 2 (A)"
+            }
           },
           {
             "name": "phase3",
             "type": "number",
-            "title": { "en": "Phase 3 (A)", "de": "Phase 3 (A)" }
+            "title": {
+              "en": "Phase 3 (A)",
+              "de": "Phase 3 (A)"
+            }
           },
           {
             "name": "charger_device_id",
             "type": "string",
-            "title": { "en": "Charger Device ID", "de": "Charger Geräte-ID" }
+            "title": {
+              "en": "Charger Device ID",
+              "de": "Charger Geräte-ID"
+            }
           }
         ]
       },
@@ -6817,7 +6747,10 @@
           {
             "name": "charger_device_id",
             "type": "string",
-            "title": { "en": "Charger Device ID", "de": "Charger Geräte-ID" }
+            "title": {
+              "en": "Charger Device ID",
+              "de": "Charger Geräte-ID"
+            }
           }
         ]
       },
@@ -6849,7 +6782,10 @@
           {
             "name": "heat_pump_device_id",
             "type": "string",
-            "title": { "en": "Heat Pump Device ID", "de": "Wärmepumpen Geräte-ID" }
+            "title": {
+              "en": "Heat Pump Device ID",
+              "de": "Wärmepumpen Geräte-ID"
+            }
           }
         ]
       },
@@ -6881,119 +6817,489 @@
           {
             "name": "heat_pump_device_id",
             "type": "string",
-            "title": { "en": "Heat Pump Device ID", "de": "Wärmepumpen Geräte-ID" }
+            "title": {
+              "en": "Heat Pump Device ID",
+              "de": "Wärmepumpen Geräte-ID"
+            }
           }
         ]
       },
       {
         "id": "ems_start_boiler",
-        "title": { "en": "EMS wants to start boiler/heater", "de": "EMS möchte Boiler/Heizstab starten" },
-        "titleFormatted": { "en": "EMS wants to start boiler/heater [[boiler_device_id]]", "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] starten" },
-        "hint": { "en": "Fires when the EMS wants to turn the boiler/heater on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
-        "args": [{ "name": "boiler_device_id", "type": "text", "placeholder": { "en": "Paste Boiler Device ID from EMS settings", "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "boiler_device_id", "type": "string", "title": { "en": "Boiler Device ID", "de": "Boiler Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to start boiler/heater",
+          "de": "EMS möchte Boiler/Heizstab starten"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to start boiler/heater [[boiler_device_id]]",
+          "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] starten"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the boiler/heater on (sufficient solar surplus available).",
+          "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab einschalten möchte (ausreichend Solar-Überschuss verfügbar)."
+        },
+        "args": [
+          {
+            "name": "boiler_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Boiler Device ID from EMS settings",
+              "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "boiler_device_id",
+            "type": "string",
+            "title": {
+              "en": "Boiler Device ID",
+              "de": "Boiler Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_stop_boiler",
-        "title": { "en": "EMS wants to stop boiler/heater", "de": "EMS möchte Boiler/Heizstab stoppen" },
-        "titleFormatted": { "en": "EMS wants to stop boiler/heater [[boiler_device_id]]", "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] stoppen" },
-        "hint": { "en": "Fires when the EMS wants to turn the boiler/heater off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
-        "args": [{ "name": "boiler_device_id", "type": "text", "placeholder": { "en": "Paste Boiler Device ID from EMS settings", "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "boiler_device_id", "type": "string", "title": { "en": "Boiler Device ID", "de": "Boiler Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to stop boiler/heater",
+          "de": "EMS möchte Boiler/Heizstab stoppen"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to stop boiler/heater [[boiler_device_id]]",
+          "de": "EMS möchte Boiler/Heizstab [[boiler_device_id]] stoppen"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the boiler/heater off (battery priority or no surplus).",
+          "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab ausschalten möchte (Batterie-Priorität oder kein Überschuss)."
+        },
+        "args": [
+          {
+            "name": "boiler_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Boiler Device ID from EMS settings",
+              "de": "Boiler Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "boiler_device_id",
+            "type": "string",
+            "title": {
+              "en": "Boiler Device ID",
+              "de": "Boiler Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_start_pool",
-        "title": { "en": "EMS wants to start pool pump", "de": "EMS möchte Pool-Pumpe starten" },
-        "titleFormatted": { "en": "EMS wants to start pool pump [[pool_device_id]]", "de": "EMS möchte Pool-Pumpe [[pool_device_id]] starten" },
-        "hint": { "en": "Fires when the EMS wants to turn the pool pump on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
-        "args": [{ "name": "pool_device_id", "type": "text", "placeholder": { "en": "Paste Pool Device ID from EMS settings", "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to start pool pump",
+          "de": "EMS möchte Pool-Pumpe starten"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to start pool pump [[pool_device_id]]",
+          "de": "EMS möchte Pool-Pumpe [[pool_device_id]] starten"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the pool pump on (sufficient solar surplus available).",
+          "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe einschalten möchte (ausreichend Solar-Überschuss verfügbar)."
+        },
+        "args": [
+          {
+            "name": "pool_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Pool Device ID from EMS settings",
+              "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "pool_device_id",
+            "type": "string",
+            "title": {
+              "en": "Pool Device ID",
+              "de": "Pool Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_stop_pool",
-        "title": { "en": "EMS wants to stop pool pump", "de": "EMS möchte Pool-Pumpe stoppen" },
-        "titleFormatted": { "en": "EMS wants to stop pool pump [[pool_device_id]]", "de": "EMS möchte Pool-Pumpe [[pool_device_id]] stoppen" },
-        "hint": { "en": "Fires when the EMS wants to turn the pool pump off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
-        "args": [{ "name": "pool_device_id", "type": "text", "placeholder": { "en": "Paste Pool Device ID from EMS settings", "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "pool_device_id", "type": "string", "title": { "en": "Pool Device ID", "de": "Pool Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to stop pool pump",
+          "de": "EMS möchte Pool-Pumpe stoppen"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to stop pool pump [[pool_device_id]]",
+          "de": "EMS möchte Pool-Pumpe [[pool_device_id]] stoppen"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the pool pump off (battery priority or no surplus).",
+          "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss)."
+        },
+        "args": [
+          {
+            "name": "pool_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Pool Device ID from EMS settings",
+              "de": "Pool Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "pool_device_id",
+            "type": "string",
+            "title": {
+              "en": "Pool Device ID",
+              "de": "Pool Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_start_dehumidifier",
-        "title": { "en": "EMS wants to start dehumidifier", "de": "EMS möchte Luftentfeuchter starten" },
-        "titleFormatted": { "en": "EMS wants to start dehumidifier [[dehumidifier_device_id]]", "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] starten" },
-        "hint": { "en": "Fires when the EMS wants to turn the dehumidifier on (sufficient solar surplus available).", "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter einschalten möchte (ausreichend Solar-Überschuss verfügbar)." },
-        "args": [{ "name": "dehumidifier_device_id", "type": "text", "placeholder": { "en": "Paste Dehumidifier Device ID from EMS settings", "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "dehumidifier_device_id", "type": "string", "title": { "en": "Dehumidifier Device ID", "de": "Luftentfeuchter Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to start dehumidifier",
+          "de": "EMS möchte Luftentfeuchter starten"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to start dehumidifier [[dehumidifier_device_id]]",
+          "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] starten"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the dehumidifier on (sufficient solar surplus available).",
+          "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter einschalten möchte (ausreichend Solar-Überschuss verfügbar)."
+        },
+        "args": [
+          {
+            "name": "dehumidifier_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Dehumidifier Device ID from EMS settings",
+              "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "dehumidifier_device_id",
+            "type": "string",
+            "title": {
+              "en": "Dehumidifier Device ID",
+              "de": "Luftentfeuchter Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_stop_dehumidifier",
-        "title": { "en": "EMS wants to stop dehumidifier", "de": "EMS möchte Luftentfeuchter stoppen" },
-        "titleFormatted": { "en": "EMS wants to stop dehumidifier [[dehumidifier_device_id]]", "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] stoppen" },
-        "hint": { "en": "Fires when the EMS wants to turn the dehumidifier off (battery priority or no surplus).", "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter ausschalten möchte (Batterie-Priorität oder kein Überschuss)." },
-        "args": [{ "name": "dehumidifier_device_id", "type": "text", "placeholder": { "en": "Paste Dehumidifier Device ID from EMS settings", "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen" } }],
-        "tokens": [{ "name": "dehumidifier_device_id", "type": "string", "title": { "en": "Dehumidifier Device ID", "de": "Luftentfeuchter Geräte-ID" } }]
+        "title": {
+          "en": "EMS wants to stop dehumidifier",
+          "de": "EMS möchte Luftentfeuchter stoppen"
+        },
+        "titleFormatted": {
+          "en": "EMS wants to stop dehumidifier [[dehumidifier_device_id]]",
+          "de": "EMS möchte Luftentfeuchter [[dehumidifier_device_id]] stoppen"
+        },
+        "hint": {
+          "en": "Fires when the EMS wants to turn the dehumidifier off (battery priority or no surplus).",
+          "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter ausschalten möchte (Batterie-Priorität oder kein Überschuss)."
+        },
+        "args": [
+          {
+            "name": "dehumidifier_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Dehumidifier Device ID from EMS settings",
+              "de": "Luftentfeuchter Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "dehumidifier_device_id",
+            "type": "string",
+            "title": {
+              "en": "Dehumidifier Device ID",
+              "de": "Luftentfeuchter Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_battery_full",
-        "title": { "en": "EMS: battery is full", "de": "EMS: Batterie ist voll", "nl": "EMS: batterij is vol" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] is full", "de": "EMS: Batterie [[battery_device_id]] ist voll", "nl": "EMS: batterij [[battery_device_id]] is vol" },
-        "hint": { "en": "Fires when the battery SOC first rises above the configured 'Battery Full SOC' threshold. Use to start force-discharging the battery (e.g. into the EV charger).", "de": "Wird ausgelöst, wenn der Batterie-SOC erstmals den konfigurierten 'Batterie voll'-Schwellenwert überschreitet. Nutzbar um die Batterie zu entladen (z.B. in den EV-Lader).", "nl": "Wordt geactiveerd als de batterij-SOC voor het eerst boven de geconfigureerde 'Batterij vol'-drempelwaarde stijgt." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Paste Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "title": {
+          "en": "EMS: battery is full",
+          "de": "EMS: Batterie ist voll",
+          "nl": "EMS: batterij is vol"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] is full",
+          "de": "EMS: Batterie [[battery_device_id]] ist voll",
+          "nl": "EMS: batterij [[battery_device_id]] is vol"
+        },
+        "hint": {
+          "en": "Fires when the battery SOC first rises above the configured 'Battery Full SOC' threshold. Use to start force-discharging the battery (e.g. into the EV charger).",
+          "de": "Wird ausgelöst, wenn der Batterie-SOC erstmals den konfigurierten 'Batterie voll'-Schwellenwert überschreitet. Nutzbar um die Batterie zu entladen (z.B. in den EV-Lader).",
+          "nl": "Wordt geactiveerd als de batterij-SOC voor het eerst boven de geconfigureerde 'Batterij vol'-drempelwaarde stijgt."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
         "tokens": [
-          { "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } },
-          { "name": "soc", "type": "number", "title": { "en": "SOC (%)", "de": "Ladestand (%)" } }
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SOC (%)",
+              "de": "Ladestand (%)"
+            }
+          }
         ]
       },
       {
         "id": "ems_battery_low",
-        "title": { "en": "EMS: battery is low", "de": "EMS: Batterie ist leer", "nl": "EMS: batterij is leeg" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] is low", "de": "EMS: Batterie [[battery_device_id]] ist leer", "nl": "EMS: batterij [[battery_device_id]] is leeg" },
-        "hint": { "en": "Fires when the battery SOC drops below the configured minimum SOC. Use to stop force-discharging.", "de": "Wird ausgelöst, wenn der Batterie-SOC unter das konfigurierte Minimum fällt. Nutzbar um die Zwangsentladung zu stoppen.", "nl": "Wordt geactiveerd als de batterij-SOC onder de geconfigureerde minimum-SOC daalt." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Paste Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen" } }],
+        "title": {
+          "en": "EMS: battery is low",
+          "de": "EMS: Batterie ist leer",
+          "nl": "EMS: batterij is leeg"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] is low",
+          "de": "EMS: Batterie [[battery_device_id]] ist leer",
+          "nl": "EMS: batterij [[battery_device_id]] is leeg"
+        },
+        "hint": {
+          "en": "Fires when the battery SOC drops below the configured minimum SOC. Use to stop force-discharging.",
+          "de": "Wird ausgelöst, wenn der Batterie-SOC unter das konfigurierte Minimum fällt. Nutzbar um die Zwangsentladung zu stoppen.",
+          "nl": "Wordt geactiveerd als de batterij-SOC onder de geconfigureerde minimum-SOC daalt."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Paste Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen einfügen"
+            }
+          }
+        ],
         "tokens": [
-          { "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } },
-          { "name": "soc", "type": "number", "title": { "en": "SOC (%)", "de": "Ladestand (%)" } }
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          },
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "SOC (%)",
+              "de": "Ladestand (%)"
+            }
+          }
         ]
       },
       {
         "id": "ems_battery_force_charge",
-        "title": { "en": "EMS: battery — force charge", "de": "EMS: Batterie — Zwangsladen" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — force charge", "de": "EMS: Batterie [[battery_device_id]] — Zwangsladen" },
-        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Force Charge'. Replace with your own trigger (e.g. energy price, time schedule) in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsladen'. Ersetze ihn durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan)." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
-        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+        "title": {
+          "en": "EMS: battery — force charge",
+          "de": "EMS: Batterie — Zwangsladen"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] — force charge",
+          "de": "EMS: Batterie [[battery_device_id]] — Zwangsladen"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Force Charge'. Replace with your own trigger (e.g. energy price, time schedule) in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsladen'. Ersetze ihn durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan)."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_battery_force_discharge",
-        "title": { "en": "EMS: battery — force discharge", "de": "EMS: Batterie — Zwangsentladen" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — force discharge", "de": "EMS: Batterie [[battery_device_id]] — Zwangsentladen" },
-        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Force Discharge'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsentladen'. Ersetze ihn durch einen eigenen Trigger." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
-        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+        "title": {
+          "en": "EMS: battery — force discharge",
+          "de": "EMS: Batterie — Zwangsentladen"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] — force discharge",
+          "de": "EMS: Batterie [[battery_device_id]] — Zwangsentladen"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Force Discharge'. Replace with your own trigger in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsentladen'. Ersetze ihn durch einen eigenen Trigger."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_battery_normal_mode",
-        "title": { "en": "EMS: battery — normal mode", "de": "EMS: Batterie — Normalbetrieb" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — normal mode", "de": "EMS: Batterie [[battery_device_id]] — Normalbetrieb" },
-        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Normal Mode'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Normalbetrieb'. Ersetze ihn durch einen eigenen Trigger." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
-        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+        "title": {
+          "en": "EMS: battery — normal mode",
+          "de": "EMS: Batterie — Normalbetrieb"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] — normal mode",
+          "de": "EMS: Batterie [[battery_device_id]] — Normalbetrieb"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Normal Mode'. Replace with your own trigger in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Normalbetrieb'. Ersetze ihn durch einen eigenen Trigger."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_battery_max_charge_power",
-        "title": { "en": "EMS: battery — set max charge power", "de": "EMS: Batterie — max. Ladeleistung setzen" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — set max charge power", "de": "EMS: Batterie [[battery_device_id]] — max. Ladeleistung setzen" },
-        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Max Charge Power'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Ladeleistung'. Ersetze ihn durch einen eigenen Trigger." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
-        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+        "title": {
+          "en": "EMS: battery — set max charge power",
+          "de": "EMS: Batterie — max. Ladeleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] — set max charge power",
+          "de": "EMS: Batterie [[battery_device_id]] — max. Ladeleistung setzen"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Max Charge Power'. Replace with your own trigger in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Ladeleistung'. Ersetze ihn durch einen eigenen Trigger."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_battery_max_discharge_power",
-        "title": { "en": "EMS: battery — set max discharge power", "de": "EMS: Batterie — max. Entladeleistung setzen" },
-        "titleFormatted": { "en": "EMS: battery [[battery_device_id]] — set max discharge power", "de": "EMS: Batterie [[battery_device_id]] — max. Entladeleistung setzen" },
-        "hint": { "en": "Placeholder trigger created by EMS Setup Flows for 'Max Discharge Power'. Replace with your own trigger in Homey.", "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Entladeleistung'. Ersetze ihn durch einen eigenen Trigger." },
-        "args": [{ "name": "battery_device_id", "type": "text", "placeholder": { "en": "Battery Device ID from EMS settings", "de": "Batterie Geräte-ID aus EMS-Einstellungen" } }],
-        "tokens": [{ "name": "battery_device_id", "type": "string", "title": { "en": "Battery Device ID", "de": "Batterie Geräte-ID" } }]
+        "title": {
+          "en": "EMS: battery — set max discharge power",
+          "de": "EMS: Batterie — max. Entladeleistung setzen"
+        },
+        "titleFormatted": {
+          "en": "EMS: battery [[battery_device_id]] — set max discharge power",
+          "de": "EMS: Batterie [[battery_device_id]] — max. Entladeleistung setzen"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Max Discharge Power'. Replace with your own trigger in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Entladeleistung'. Ersetze ihn durch einen eigenen Trigger."
+        },
+        "args": [
+          {
+            "name": "battery_device_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Battery Device ID from EMS settings",
+              "de": "Batterie Geräte-ID aus EMS-Einstellungen"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "battery_device_id",
+            "type": "string",
+            "title": {
+              "en": "Battery Device ID",
+              "de": "Batterie Geräte-ID"
+            }
+          }
+        ]
       },
       {
         "id": "ems_inverter_export_limit_on",
@@ -7009,11 +7315,21 @@
           {
             "name": "inverter_device_id",
             "type": "text",
-            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+            "placeholder": {
+              "en": "Inverter Device ID from EMS settings",
+              "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen"
+            }
           }
         ],
         "tokens": [
-          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+          {
+            "name": "inverter_device_id",
+            "type": "string",
+            "title": {
+              "en": "Inverter Device ID",
+              "de": "Wechselrichter-Geräte-ID"
+            }
+          }
         ]
       },
       {
@@ -7030,11 +7346,21 @@
           {
             "name": "inverter_device_id",
             "type": "text",
-            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+            "placeholder": {
+              "en": "Inverter Device ID from EMS settings",
+              "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen"
+            }
           }
         ],
         "tokens": [
-          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+          {
+            "name": "inverter_device_id",
+            "type": "string",
+            "title": {
+              "en": "Inverter Device ID",
+              "de": "Wechselrichter-Geräte-ID"
+            }
+          }
         ]
       },
       {
@@ -7051,11 +7377,21 @@
           {
             "name": "inverter_device_id",
             "type": "text",
-            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+            "placeholder": {
+              "en": "Inverter Device ID from EMS settings",
+              "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen"
+            }
           }
         ],
         "tokens": [
-          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+          {
+            "name": "inverter_device_id",
+            "type": "string",
+            "title": {
+              "en": "Inverter Device ID",
+              "de": "Wechselrichter-Geräte-ID"
+            }
+          }
         ]
       },
       {
@@ -7072,11 +7408,21 @@
           {
             "name": "inverter_device_id",
             "type": "text",
-            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+            "placeholder": {
+              "en": "Inverter Device ID from EMS settings",
+              "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen"
+            }
           }
         ],
         "tokens": [
-          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+          {
+            "name": "inverter_device_id",
+            "type": "string",
+            "title": {
+              "en": "Inverter Device ID",
+              "de": "Wechselrichter-Geräte-ID"
+            }
+          }
         ]
       },
       {
@@ -7093,11 +7439,21 @@
           {
             "name": "inverter_device_id",
             "type": "text",
-            "placeholder": { "en": "Inverter Device ID from EMS settings", "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen" }
+            "placeholder": {
+              "en": "Inverter Device ID from EMS settings",
+              "de": "Wechselrichter-Geräte-ID aus EMS-Einstellungen"
+            }
           }
         ],
         "tokens": [
-          { "name": "inverter_device_id", "type": "string", "title": { "en": "Inverter Device ID", "de": "Wechselrichter-Geräte-ID" } }
+          {
+            "name": "inverter_device_id",
+            "type": "string",
+            "title": {
+              "en": "Inverter Device ID",
+              "de": "Wechselrichter-Geräte-ID"
+            }
+          }
         ]
       }
     ],
@@ -9199,172 +9555,11 @@
         ]
       },
       {
-        "id": "ocpp_update_solar_production_w",
-        "title": {
-          "en": "Update solar production",
-          "de": "Solarproduktion aktualisieren",
-          "nl": "Zonne-productie bijwerken"
-        },
-        "titleFormatted": {
-          "en": "Set solar production to [[value]] W",
-          "de": "Solarproduktion auf [[value]] W setzen",
-          "nl": "Zonneproductie instellen op [[value]] W"
-        },
-        "args": [
-          {
-            "name": "device",
-            "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
-          },
-          {
-            "name": "value",
-            "type": "number",
-            "title": {
-              "en": "Production (W)",
-              "de": "Produktion (W)",
-              "nl": "Productie (W)"
-            },
-            "placeholder": {
-              "en": "0",
-              "de": "0",
-              "nl": "0"
-            }
-          }
-        ]
-      },
-      {
-        "id": "ocpp_update_solar_grid_w",
-        "title": {
-          "en": "Update grid power",
-          "de": "Netzleistung aktualisieren",
-          "nl": "Netvermogen bijwerken"
-        },
-        "titleFormatted": {
-          "en": "Set grid power to [[value]] W",
-          "de": "Netzleistung auf [[value]] W setzen",
-          "nl": "Netvermogen instellen op [[value]] W"
-        },
-        "hint": {
-          "en": "Positive = importing from grid, negative = exporting to grid.",
-          "de": "Positiv = Netzbezug, negativ = Einspeisung.",
-          "nl": "Positief = netimport, negatief = netexport."
-        },
-        "args": [
-          {
-            "name": "device",
-            "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
-          },
-          {
-            "name": "value",
-            "type": "number",
-            "title": {
-              "en": "Grid power (W)",
-              "de": "Netzleistung (W)",
-              "nl": "Netvermogen (W)"
-            },
-            "placeholder": {
-              "en": "0",
-              "de": "0",
-              "nl": "0"
-            }
-          }
-        ]
-      },
-      {
-        "id": "ocpp_update_solar_battery_soc",
-        "title": {
-          "en": "Update battery SOC",
-          "de": "Batteriestand aktualisieren",
-          "nl": "Batterijlading bijwerken"
-        },
-        "titleFormatted": {
-          "en": "Set battery SOC to [[value]] %",
-          "de": "Batteriestand auf [[value]] % setzen",
-          "nl": "Batterijlading instellen op [[value]] %"
-        },
-        "args": [
-          {
-            "name": "device",
-            "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
-          },
-          {
-            "name": "value",
-            "type": "number",
-            "title": {
-              "en": "Battery SOC (%)",
-              "de": "Batteriestand (%)",
-              "nl": "Batterijlading (%)"
-            },
-            "placeholder": {
-              "en": "0",
-              "de": "0",
-              "nl": "0"
-            }
-          }
-        ]
-      },
-      {
-        "id": "ocpp_update_solar_battery_power_w",
-        "title": {
-          "en": "Update battery power",
-          "de": "Batterieleistung aktualisieren",
-          "nl": "Batterijvermogen bijwerken"
-        },
-        "titleFormatted": {
-          "en": "Set battery power to [[value]] W",
-          "de": "Batterieleistung auf [[value]] W setzen",
-          "nl": "Batterijvermogen instellen op [[value]] W"
-        },
-        "hint": {
-          "en": "Positive = charging battery, negative = discharging battery.",
-          "de": "Positiv = Batterie laedt, negativ = Batterie entlaedt.",
-          "nl": "Positief = batterij opladen, negatief = batterij ontladen."
-        },
-        "args": [
-          {
-            "name": "device",
-            "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
-          },
-          {
-            "name": "value",
-            "type": "number",
-            "title": {
-              "en": "Battery power (W)",
-              "de": "Batterieleistung (W)",
-              "nl": "Batterijvermogen (W)"
-            },
-            "placeholder": {
-              "en": "0",
-              "de": "0",
-              "nl": "0"
-            }
-          }
-        ]
-      },
-      {
         "id": "ocpp_charge_now",
         "title": {
           "en": "Charge now at 16A",
           "de": "Jetzt laden mit 16A",
           "nl": "Nu laden op 16A"
-        },
-        "args": [
-          {
-            "name": "device",
-            "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
-          }
-        ]
-      },
-      {
-        "id": "ocpp_resume_automation",
-        "title": {
-          "en": "Resume automatic charging",
-          "de": "Automatisches Laden fortsetzen",
-          "nl": "Automatisch laden hervatten"
         },
         "args": [
           {
@@ -9395,10 +9590,28 @@
           {
             "name": "enabled",
             "type": "dropdown",
-            "title": { "en": "State", "de": "Zustand", "nl": "Status" },
+            "title": {
+              "en": "State",
+              "de": "Zustand",
+              "nl": "Status"
+            },
             "values": [
-              { "id": "true",  "label": { "en": "Enable",  "de": "Aktivieren",   "nl": "Inschakelen"   } },
-              { "id": "false", "label": { "en": "Disable", "de": "Deaktivieren", "nl": "Uitschakelen"  } }
+              {
+                "id": "true",
+                "label": {
+                  "en": "Enable",
+                  "de": "Aktivieren",
+                  "nl": "Inschakelen"
+                }
+              },
+              {
+                "id": "false",
+                "label": {
+                  "en": "Disable",
+                  "de": "Deaktivieren",
+                  "nl": "Uitschakelen"
+                }
+              }
             ]
           }
         ]
@@ -10325,20 +10538,108 @@
           {
             "name": "mode",
             "type": "dropdown",
-            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "title": {
+              "en": "Mode",
+              "de": "Modus",
+              "nl": "Modus"
+            },
             "values": [
-              { "id": "idle",             "label": { "en": "Idle",                 "de": "Bereit",               "nl": "Inactief"           } },
-              { "id": "not_configured",   "label": { "en": "Not Configured",       "de": "Nicht konfiguriert",   "nl": "Niet geconfigureerd" } },
-              { "id": "disabled",         "label": { "en": "Disabled",             "de": "Deaktiviert",          "nl": "Uitgeschakeld"      } },
-              { "id": "battery_priority", "label": { "en": "Battery Priority",     "de": "Batterie-Priorität",   "nl": "Batterijprioriteit" } },
-              { "id": "solar_ev",         "label": { "en": "Solar EV Charging",    "de": "Solar-EV-Laden",       "nl": "Zonne-EV-laden"     } },
-              { "id": "solar_hp",         "label": { "en": "Solar Heat Pump",      "de": "Solar-Wärmepumpe",     "nl": "Zonne-warmtepomp"   } },
-              { "id": "solar_boiler",     "label": { "en": "Solar Boiler/Heater",  "de": "Solar-Boiler/Heizstab","nl": "Zonne-boiler"        } },
-              { "id": "solar_pool",         "label": { "en": "Solar Pool Pump",      "de": "Solar-Pool-Pumpe",        "nl": "Zonne-zwembadpomp"     } },
-              { "id": "solar_dehumidifier","label": { "en": "Solar Dehumidifier",   "de": "Solar-Entfeuchter",       "nl": "Zonne-ontvochtiger"    } },
-              { "id": "offpeak_ev",        "label": { "en": "Off-Peak EV Charging", "de": "Nebenzeit-EV-Laden",      "nl": "Daltarief laden"        } },
-              { "id": "holding",          "label": { "en": "Waiting for Surplus",  "de": "Warte auf Überschuss", "nl": "Wachten op surplus" } },
-              { "id": "error",            "label": { "en": "Error",                "de": "Fehler",               "nl": "Fout"               } }
+              {
+                "id": "idle",
+                "label": {
+                  "en": "Idle",
+                  "de": "Bereit",
+                  "nl": "Inactief"
+                }
+              },
+              {
+                "id": "not_configured",
+                "label": {
+                  "en": "Not Configured",
+                  "de": "Nicht konfiguriert",
+                  "nl": "Niet geconfigureerd"
+                }
+              },
+              {
+                "id": "disabled",
+                "label": {
+                  "en": "Disabled",
+                  "de": "Deaktiviert",
+                  "nl": "Uitgeschakeld"
+                }
+              },
+              {
+                "id": "battery_priority",
+                "label": {
+                  "en": "Battery Priority",
+                  "de": "Batterie-Priorität",
+                  "nl": "Batterijprioriteit"
+                }
+              },
+              {
+                "id": "solar_ev",
+                "label": {
+                  "en": "Solar EV Charging",
+                  "de": "Solar-EV-Laden",
+                  "nl": "Zonne-EV-laden"
+                }
+              },
+              {
+                "id": "solar_hp",
+                "label": {
+                  "en": "Solar Heat Pump",
+                  "de": "Solar-Wärmepumpe",
+                  "nl": "Zonne-warmtepomp"
+                }
+              },
+              {
+                "id": "solar_boiler",
+                "label": {
+                  "en": "Solar Boiler/Heater",
+                  "de": "Solar-Boiler/Heizstab",
+                  "nl": "Zonne-boiler"
+                }
+              },
+              {
+                "id": "solar_pool",
+                "label": {
+                  "en": "Solar Pool Pump",
+                  "de": "Solar-Pool-Pumpe",
+                  "nl": "Zonne-zwembadpomp"
+                }
+              },
+              {
+                "id": "solar_dehumidifier",
+                "label": {
+                  "en": "Solar Dehumidifier",
+                  "de": "Solar-Entfeuchter",
+                  "nl": "Zonne-ontvochtiger"
+                }
+              },
+              {
+                "id": "offpeak_ev",
+                "label": {
+                  "en": "Off-Peak EV Charging",
+                  "de": "Nebenzeit-EV-Laden",
+                  "nl": "Daltarief laden"
+                }
+              },
+              {
+                "id": "holding",
+                "label": {
+                  "en": "Waiting for Surplus",
+                  "de": "Warte auf Überschuss",
+                  "nl": "Wachten op surplus"
+                }
+              },
+              {
+                "id": "error",
+                "label": {
+                  "en": "Error",
+                  "de": "Fehler",
+                  "nl": "Fout"
+                }
+              }
             ]
           }
         ]
@@ -10435,14 +10736,53 @@
         {
           "id": "hours",
           "type": "dropdown",
-          "title": { "en": "Time window", "de": "Zeitfenster", "nl": "Tijdvenster" },
+          "title": {
+            "en": "Time window",
+            "de": "Zeitfenster",
+            "nl": "Tijdvenster"
+          },
           "value": "6",
           "values": [
-            { "id": "1",  "title": { "en": "Last 1 hour",   "de": "Letzte 1 Std",  "nl": "Laatste 1 uur"  } },
-            { "id": "3",  "title": { "en": "Last 3 hours",  "de": "Letzte 3 Std",  "nl": "Laatste 3 uur"  } },
-            { "id": "6",  "title": { "en": "Last 6 hours",  "de": "Letzte 6 Std",  "nl": "Laatste 6 uur"  } },
-            { "id": "12", "title": { "en": "Last 12 hours", "de": "Letzte 12 Std", "nl": "Laatste 12 uur" } },
-            { "id": "24", "title": { "en": "Last 24 hours", "de": "Letzte 24 Std", "nl": "Laatste 24 uur" } }
+            {
+              "id": "1",
+              "title": {
+                "en": "Last 1 hour",
+                "de": "Letzte 1 Std",
+                "nl": "Laatste 1 uur"
+              }
+            },
+            {
+              "id": "3",
+              "title": {
+                "en": "Last 3 hours",
+                "de": "Letzte 3 Std",
+                "nl": "Laatste 3 uur"
+              }
+            },
+            {
+              "id": "6",
+              "title": {
+                "en": "Last 6 hours",
+                "de": "Letzte 6 Std",
+                "nl": "Laatste 6 uur"
+              }
+            },
+            {
+              "id": "12",
+              "title": {
+                "en": "Last 12 hours",
+                "de": "Letzte 12 Std",
+                "nl": "Laatste 12 uur"
+              }
+            },
+            {
+              "id": "24",
+              "title": {
+                "en": "Last 24 hours",
+                "de": "Letzte 24 Std",
+                "nl": "Laatste 24 uur"
+              }
+            }
           ]
         }
       ],

@@ -2,9 +2,9 @@
 
 const { Device } = require('homey');
 const OcppServer = require('../../lib/ocpp-server');
-const SolarOffpeakEngine = require('../../lib/solar-offpeak-engine');
 
-const VALID_AMPS          = [6, 8, 10, 12, 14, 16];
+const MIN_AMPS            = 6;
+const MAX_AMPS            = 32;
 const AMPS_TO_WATTS       = (amps, phases = 3) => Math.round(amps * phases * 230);
 const BLOCK_AMPS          = 0; // server converts 0A → 1W (Huawei firmware bug workaround)
 const IDLE_GUARD_MS       = 300_000;
@@ -51,16 +51,18 @@ const REQUIRED_CAPABILITIES = [
   'resume_charging',
   'charge_now',
   'release_charger',
-  'resume_automation',
   'meter_session_energy',
   'session_duration',
 ];
 
-// Old button capabilities to remove during migration
+// Old capabilities to remove during migration.
+// resume_automation: the built-in solar/off-peak engine moved to the EMS device —
+// this driver is now a pure charger interface.
 const REMOVE_CAPABILITIES = [
   'button.pause_charging',
   'button.resume_charging',
   'button.release_charger',
+  'resume_automation',
 ];
 
 class SmartChargerOcppDevice extends Device {
@@ -96,7 +98,6 @@ class SmartChargerOcppDevice extends Device {
       const DROPDOWN_DEFAULTS = {
         number_of_phases: '3',
         default_charging_amps: '16',
-        offpeak_amps: '16',
         charger_model: 'other',
       };
       const fixes = {};
@@ -127,7 +128,7 @@ class SmartChargerOcppDevice extends Device {
     this._lastNonZero          = null;
 
     // ── Session ownership (tracks who started the current session) ──────────
-    this.sessionOwner = null; // 'user' | 'solar' | 'offpeak' | null
+    this.sessionOwner = null; // 'user' | null ('solar'/'offpeak' were pre-EMS engine owners, may still appear in old stored sessions)
 
     // ── Adaptive car-phase memory ───────────────────────────────────────────
     this._rememberedCarPhases = null;
@@ -230,10 +231,8 @@ class SmartChargerOcppDevice extends Device {
     const wasCharging = this.getCapabilityValue('evcharger_charging_state') === 'charging';
     this.assumeActiveFromRestart = wasCharging;
 
-    // ── Solar / off-peak automation engine ─────────────────────────────────
-    this.automationEngine = new SolarOffpeakEngine(this);
-    await this.automationEngine.restoreInputs();
-    this.automationEngine.start();
+    // Charging automation lives in the Energy Management System device —
+    // this driver is a pure charger interface (control + telemetry only).
 
     // Session tile sensors: 60s refresh so the tile shows live numbers
     // during a session; one immediate pass to show restored session on boot.
@@ -290,63 +289,6 @@ class SmartChargerOcppDevice extends Device {
     }
     if (newSettings.charger_model === '22kt' && String(newSettings.number_of_phases) === '1') {
       throw new Error('SCharger-22KT-S0 requires Tri-Phase wiring — please set "Number of phases" to 3.');
-    }
-
-    // Validate HH:MM format for off-peak time fields
-    const timeRe = /^([01]?\d|2[0-3]):[0-5]\d$/;
-    for (const key of ['offpeak_weekday_start', 'offpeak_weekday_end', 'offpeak_weekend_start', 'offpeak_weekend_end']) {
-      if (changedKeys.includes(key) && newSettings[key]) {
-        if (!timeRe.test(newSettings[key].trim())) {
-          throw new Error(`"${key}" must be in HH:MM format (e.g. 22:00 or 06:00), got "${newSettings[key]}".`);
-        }
-      }
-    }
-    // A zero-length window (start === end) would never open — catch it early.
-    if (newSettings.offpeak_weekday_start && newSettings.offpeak_weekday_end
-      && newSettings.offpeak_weekday_start.trim() === newSettings.offpeak_weekday_end.trim()) {
-      throw new Error('Off-peak weekday start and end time must differ — a zero-length window is always closed.');
-    }
-    if (newSettings.offpeak_weekend_differs === true
-      && newSettings.offpeak_weekend_start && newSettings.offpeak_weekend_end
-      && newSettings.offpeak_weekend_start.trim() === newSettings.offpeak_weekend_end.trim()) {
-      throw new Error('Off-peak weekend start and end time must differ — a zero-length window is always closed.');
-    }
-
-    // Solar / off-peak require smart charging (auto_start OFF)
-    const willAutoStart = newSettings.auto_start_charging !== false;
-    if (willAutoStart) {
-      if (newSettings.solar_enabled === true) {
-        throw new Error('Solar charging requires smart charging mode — please disable "Auto-start charging" first.');
-      }
-      if (newSettings.offpeak_enabled === true) {
-        throw new Error('Off-peak charging requires smart charging mode — please disable "Auto-start charging" first.');
-      }
-    }
-
-    // Engine restart when solar/offpeak settings toggle
-    const engineKeys = ['solar_enabled', 'offpeak_enabled', 'offpeak_weekday_start', 'offpeak_weekday_end',
-      'offpeak_weekend_differs', 'offpeak_weekend_start', 'offpeak_weekend_end', 'offpeak_amps',
-      'offpeak_solar_first', 'solar_has_battery', 'solar_min_battery_soc', 'solar_count_battery_discharge',
-      'solar_grid_tolerance_w', 'solar_start_sustain_s', 'solar_step_hold_s', 'solar_stop_grace_s'];
-    if (changedKeys.some((k) => engineKeys.includes(k))) {
-      // When a mode is disabled while it owns the current session, hand back to user
-      if (changedKeys.includes('solar_enabled') && newSettings.solar_enabled !== true
-        && this.sessionOwner === 'solar') {
-        this.sessionOwner = 'user';
-        this.log('[OCPP] Solar disabled — session ownership transferred to user');
-      }
-      if (changedKeys.includes('offpeak_enabled') && newSettings.offpeak_enabled !== true
-        && this.sessionOwner === 'offpeak') {
-        this.sessionOwner = 'user';
-        this.log('[OCPP] Off-peak disabled — session ownership transferred to user');
-      }
-      // Suppression clearance: toggling a mode off→on resets engine state
-      if (changedKeys.includes('solar_enabled') && newSettings.solar_enabled === true) {
-        this.automationEngine.clearSuppression('solar');
-      }
-      if (changedKeys.includes('offpeak_enabled') && newSettings.offpeak_enabled === true) {
-        this.automationEngine.clearSuppression('offpeak');
-      }
     }
 
     if (changedKeys.includes('auto_start_charging')) {
@@ -413,7 +355,6 @@ class SmartChargerOcppDevice extends Device {
 
   _clearTimers() {
     this._clearIdleGuard();
-    if (this.automationEngine) this.automationEngine.stop();
     if (this._sessionTileInterval) {
       this.homey.clearInterval(this._sessionTileInterval);
       this._sessionTileInterval = null;
@@ -1039,21 +980,12 @@ class SmartChargerOcppDevice extends Device {
     if (!this._txnId) {
       if (this.stitchedSession && this.stitchedSession.paused) {
         this.log('[OCPP] Stop during masked pause — finalizing logical session');
-        if (source !== 'engine' && this.automationEngine
-          && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
-          this.automationEngine.noteUserStop(this.sessionOwner);
-        }
         await this._finalizeStitchedSession('Remote');
         await this._updateSessionStatus('connected');
         return;
       }
       this.log('[OCPP] No active transaction to stop');
       return;
-    }
-    // User stopped an engine session — signal the engine to back off
-    if (source !== 'engine' && this.automationEngine
-      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
-      this.automationEngine.noteUserStop(this.sessionOwner);
     }
     try {
       const response = await OcppServer.getInstance(this.homey).remoteStopAsync(this.getSetting('station_id'));
@@ -1075,11 +1007,7 @@ class SmartChargerOcppDevice extends Device {
       throw new Error('No active charging session to pause.');
     }
 
-    // User manually pausing an engine session → hand ownership to user
     if (!context || context === 'user') {
-      if (this.automationEngine && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
-        this.automationEngine.noteUserStop(this.sessionOwner);
-      }
       this.sessionOwner = 'user';
     }
 
@@ -1103,14 +1031,7 @@ class SmartChargerOcppDevice extends Device {
 
     this.log(`[OCPP] Masked pause: stopping transaction ${this._txnId} (context=${context || 'user'}, will resume at ${resumeAmps}A)`);
 
-    let pauseMessage;
-    if (context === 'solar-stale') {
-      pauseMessage = 'Solar charging paused — energy data is stale (check update flows)';
-    } else if (context === 'solar') {
-      pauseMessage = 'Solar charging paused — surplus below floor';
-    } else {
-      pauseMessage = 'Charging paused';
-    }
+    const pauseMessage = 'Charging paused';
 
     try {
       const stopResponse = await OcppServer.getInstance(this.homey).remoteStopAsync(this.getSetting('station_id'));
@@ -1137,14 +1058,6 @@ class SmartChargerOcppDevice extends Device {
         return;
       }
       throw new Error('No paused charging session to resume.');
-    }
-
-    // User manually resuming an engine-paused session → transfer ownership
-    if (source !== 'engine' && this.automationEngine
-      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
-      this.automationEngine.noteUserStop(this.sessionOwner);
-      this.sessionOwner = 'user';
-      if (this.stitchedSession) this.stitchedSession.owner = 'user';
     }
 
     const { resumeAmps, resumePhases } = this.stitchedSession;
@@ -1220,8 +1133,7 @@ class SmartChargerOcppDevice extends Device {
         this.stitchedSession.resuming = false;
         await this._persistStitched();
       }
-      const ownerEmoji = this.sessionOwner === 'solar' ? '☀️ ' : this.sessionOwner === 'offpeak' ? '🌙 ' : '';
-      const message = `${ownerEmoji}Charging resumed · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
+      const message = `Charging resumed · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
       await this._postNotification('▶️', 'Charging Resumed', message);
       this.homey.flow.getDeviceTriggerCard('ocpp_charging_resumed')
         .trigger(this, { amps, phases, phase_label: this._phaseLabel(phases), message })
@@ -1229,10 +1141,8 @@ class SmartChargerOcppDevice extends Device {
       return;
     }
 
-    const ownerEmoji = this.sessionOwner === 'solar' ? '☀️ ' : this.sessionOwner === 'offpeak' ? '🌙 ' : '';
-    const message = `${ownerEmoji}Charging started · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
-    const emoji = this.sessionOwner === 'solar' ? '☀️' : this.sessionOwner === 'offpeak' ? '🌙' : '🔋';
-    await this._postNotification(emoji, 'Charging Started', message);
+    const message = `Charging started · ${this._kwLabel(amps, phases)} (${amps}A) / ${this._phaseLabel(phases)}`;
+    await this._postNotification('🔋', 'Charging Started', message);
     this.homey.flow.getDeviceTriggerCard('ocpp_charging_started')
       .trigger(this, { amps, phases, phase_label: this._phaseLabel(phases), message,
         transaction_id: this._txnId || 0, meter_start: this._txnMeterStart || 0 })
@@ -1283,16 +1193,6 @@ class SmartChargerOcppDevice extends Device {
     await this.startCharging(targetAmps, undefined, 'user');
   }
 
-  // ─── Resume Automation ────────────────────────────────────────────────────
-  // Clears engine suppression from a user-stopped solar/off-peak session.
-
-  async resumeAutomation() {
-    if (this.automationEngine) {
-      this.automationEngine.clearSuppression('all');
-    }
-    this.log('[OCPP] Resume automation: engine suppression cleared');
-  }
-
   // ─── Reboot charger ──────────────────────────────────────────────────────
   // A reboot takes 2–3 minutes of silence — suppress the offline watchdog alert.
 
@@ -1307,15 +1207,8 @@ class SmartChargerOcppDevice extends Device {
   // ─── Set charging limit ───────────────────────────────────────────────────
 
   async setChargingLimit(amps, overridePhases, source) {
-    if (!VALID_AMPS.includes(amps)) {
-      throw new Error(`Invalid amps: ${amps}. Must be one of ${VALID_AMPS.join(', ')}.`);
-    }
-
-    // User changing limit on an engine session → transfer ownership
-    if (source !== 'solar' && source !== 'engine' && this.automationEngine
-      && (this.sessionOwner === 'solar' || this.sessionOwner === 'offpeak')) {
-      this.automationEngine.noteUserStop(this.sessionOwner);
-      this.sessionOwner = 'user';
+    if (!Number.isInteger(amps) || amps < MIN_AMPS || amps > MAX_AMPS) {
+      throw new Error(`Invalid amps: ${amps}. Must be a whole number between ${MIN_AMPS} and ${MAX_AMPS}.`);
     }
 
     // Set phase override first so _getPhases() returns the right value for validate
@@ -1507,11 +1400,6 @@ class SmartChargerOcppDevice extends Device {
       });
     }
 
-    if (this.hasCapability('resume_automation')) {
-      this.registerCapabilityListener('resume_automation', async () => {
-        await this.resumeAutomation();
-      });
-    }
   }
 
   // ─── Flow actions ─────────────────────────────────────────────────────────
@@ -1583,41 +1471,6 @@ class SmartChargerOcppDevice extends Device {
         await this.chargeNow();
       });
 
-    this.homey.flow.getActionCard('ocpp_resume_automation')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.resumeAutomation();
-      });
-
-    for (const key of ['production_w', 'grid_w', 'battery_soc', 'battery_power_w']) {
-      this.homey.flow.getActionCard(`ocpp_update_solar_${key}`)
-        .registerRunListener(async (args) => {
-          if (args.device.id !== this.id) return;
-          this.updateSolarInput(key, args.value);
-        });
-    }
-  }
-
-  // ─── Solar input (with batched log debounce) ──────────────────────────────
-
-  updateSolarInput(key, value) {
-    if (!this.automationEngine) throw new Error('Solar engine not initialized');
-    this.automationEngine.feedInput(key, value);
-    // Batch all updates that arrive within 1200ms into one log line
-    this._solarInputBatch = this._solarInputBatch || {};
-    this._solarInputBatch[key] = value;
-    if (this._solarInputLogTimer) this.homey.clearTimeout(this._solarInputLogTimer);
-    this._solarInputLogTimer = this.homey.setTimeout(() => {
-      const b = this._solarInputBatch || {};
-      this._solarInputBatch = {};
-      this._solarInputLogTimer = null;
-      const parts = [];
-      if ('production_w'   in b) parts.push(`production ${b.production_w} W`);
-      if ('grid_w'         in b) parts.push(`grid ${b.grid_w > 0 ? '+' : ''}${b.grid_w} W`);
-      if ('battery_soc'    in b) parts.push(`battery ${b.battery_soc}%`);
-      if ('battery_power_w' in b) parts.push(`battery power ${b.battery_power_w} W`);
-      if (parts.length) this.log(`[OCPP] Solar data in: ${parts.join(' · ')}`);
-    }, 1200);
   }
 
   // ─── Capabilities management ─────────────────────────────────────────────
@@ -1651,8 +1504,6 @@ class SmartChargerOcppDevice extends Device {
     if (this.stitchedSession && this.stitchedSession.paused && chargingState !== 'idle') return 'paused';
     if (chargingState === 'charging') {
       if (this._lowPowerSince && (Date.now() - this._lowPowerSince) >= LOW_POWER_FINISH_MS) return 'finishing';
-      if (this.sessionOwner === 'solar') return 'solar_charging';
-      if (this.sessionOwner === 'offpeak') return 'offpeak_charging';
       return 'charging';
     }
     if (chargingState === 'idle') return 'not_connected';
@@ -1675,14 +1526,6 @@ class SmartChargerOcppDevice extends Device {
   _composeStatusSummary(status) {
     const session = this.getCurrentSessionInfo();
     switch (status) {
-      case 'solar_charging': {
-        const powerW = this.getCapabilityValue('measure_power') || 0;
-        return `☀️ ${(powerW / 1000).toFixed(1)} kW`;
-      }
-      case 'offpeak_charging': {
-        const powerW = this.getCapabilityValue('measure_power') || 0;
-        return `🌙 ${(powerW / 1000).toFixed(1)} kW`;
-      }
       case 'charging': {
         const powerW = this.getCapabilityValue('measure_power') || 0;
         return `Charging · ${(powerW / 1000).toFixed(1)} kW`;

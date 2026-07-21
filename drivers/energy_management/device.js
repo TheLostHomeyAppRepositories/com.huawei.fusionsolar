@@ -15,7 +15,7 @@ const IMPORT_ACT_W             = 200;
 const EXPORT_GUARD_W           = 200;
 const UP_MARGIN_W              = 250;
 const MIN_3PH_W                = 6 * 3 * 230;      // 4140 W — minimum viable 3-phase load
-const AMPS_LADDER              = [6, 8, 10, 12, 14, 16, 20, 25, 32];
+const AMPS_LADDER              = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
 const MIN_CHARGE_W             = AMPS_LADDER[0] * 230; // 1380 W — single-phase minimum
 
 class EmsDevice extends Device {
@@ -521,6 +521,7 @@ class EmsDevice extends Device {
         powerW,
         onoff,
         minSurplusW:         Number(c.min_surplus_w)         || 2000,
+        minPowerW:           Number(c.min_power_w)           || 0,
         startSustainMs:      Number(c.start_sustain_s        || 60) * 1000,
         stopGraceMs:         Number(c.stop_grace_s           || 60) * 1000,
         maxRunMs:            Number(c.max_run_min            || 0)  * 60_000,
@@ -651,10 +652,12 @@ class EmsDevice extends Device {
       }
 
       // ── Power-drop: device finished its cycle (skip when battery protection already stopped it) ───
-      if (!inMaxRun && !batHardStop && wasOn && pastMinRun && device.powerW !== null && device.powerW < device.minSurplusW) {
+      // Only active when minPowerW > 0 (user-configured). minSurplusW is start-only; minPowerW is the
+      // running threshold (e.g. pool heater done → drops to filter-only draw below minPowerW → stop).
+      if (!inMaxRun && !batHardStop && wasOn && pastMinRun && device.powerW !== null && device.minPowerW > 0 && device.powerW < device.minPowerW) {
         wantOn = false;
         st.powerDropStoppedAt = now;
-        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minSurplusW}W → stop (restart cooldown ${device.restartCooldownMs / 60_000} min)`);
+        this.log(`[EMS] ${tokenName} ${device.id}: power dropped to ${device.powerW}W < ${device.minPowerW}W (minPowerW) → stop (restart cooldown ${device.restartCooldownMs / 60_000} min)`);
       }
 
       await this._simpleDeviceSetOn(device.id, device.name, wantOn, stateMap, startCard, stopCard, tokenName);

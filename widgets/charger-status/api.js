@@ -1,20 +1,20 @@
 'use strict';
 
-const OcppServer = require('../../lib/ocpp-server');
+const { getDevice } = require('../../lib/widget-data');
 
-function getDevice(homey) {
-  const server = OcppServer.getInstance(homey);
-  if (!server || !server.devices) return null;
-  for (const dev of server.devices.values()) {
-    return dev;
-  }
-  return null;
+// Charger lookup: OCPP first (full session data), then EMMA Modbus
+// (telemetry-only — getWidgetStatus degrades gracefully). Uses the driver
+// registry rather than OcppServer.getInstance() so merely opening the
+// widget never boots the OCPP WebSocket server.
+function getChargerDevice(homey) {
+  return getDevice(homey, 'smartcharger_ocpp')
+    || getDevice(homey, 'smartcharger_emma_modbus');
 }
 
 module.exports = {
   async getStatus({ homey }) {
-    const device = getDevice(homey);
-    if (!device || !device.getWidgetStatus) {
+    const device = getChargerDevice(homey);
+    if (!device || typeof device.getWidgetStatus !== 'function') {
       return { error: 'No charger registered' };
     }
     return device.getWidgetStatus();

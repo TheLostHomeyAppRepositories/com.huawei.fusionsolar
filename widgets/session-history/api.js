@@ -1,19 +1,13 @@
 'use strict';
 
-const OcppServer = require('../../lib/ocpp-server');
-
-function getDevice(homey) {
-  const server = OcppServer.getInstance(homey);
-  if (!server || !server.devices) return null;
-  for (const dev of server.devices.values()) {
-    return dev;
-  }
-  return null;
-}
+const { getDevice } = require('../../lib/widget-data');
 
 module.exports = {
   async getSessions({ homey }) {
-    const device = getDevice(homey);
+    // OCPP charger only — the EMMA Modbus driver has no session history.
+    // Driver-registry lookup so opening the widget never boots the OCPP
+    // WebSocket server as a side effect.
+    const device = getDevice(homey, 'smartcharger_ocpp');
     if (!device || !device.getSessionHistory) {
       return { error: 'No charger registered' };
     }

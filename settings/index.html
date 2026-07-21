@@ -2752,22 +2752,31 @@
       if (!caps.length) return;
       var pwCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      var _updateMinPowerHP = function(hasCap) {
+        var _e = row.parentElement;
+        if (_e) _e.querySelectorAll('.ems-min-power-field').forEach(function(el) { el.style.display = hasCap ? '' : 'none'; });
+      };
       if (pwCaps.length) {
         var defVal = (stored && stored.cap_power) || emsDetectCap(caps, ['measure_power']) || '';
         var r = document.createElement('div');
         r.style.cssText = 'display:flex;align-items:center;gap:6px';
         r.appendChild(_emsCapLabel('Power (W):'));
-        r.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+        var capWrap = _emsCapSelect(row, pwCaps, 'capPower', defVal);
+        r.appendChild(capWrap);
+        var capSel = capWrap.querySelector('select');
+        if (capSel) capSel.addEventListener('change', function() { _updateMinPowerHP(!!row.dataset.capPower); });
         infoEl.appendChild(r);
         var hint = document.createElement('div');
         hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
         hint.textContent = 'Used for anti-oscillation: EMS adds measured HP load back to available surplus when deciding to keep the heat pump running.';
         infoEl.appendChild(hint);
+        setTimeout(function() { _updateMinPowerHP(!!row.dataset.capPower); }, 0);
       } else {
         var note = document.createElement('div');
         note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
         note.textContent = 'No power capability — anti-oscillation disabled. Heat pump switches on/off based on raw solar surplus only.';
         infoEl.appendChild(note);
+        _updateMinPowerHP(false);
       }
     }
 
@@ -3104,6 +3113,20 @@
       cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
       cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var minPowerInput = document.createElement('input');
+      minPowerInput.type = 'number';
+      minPowerInput.className = 'ems-min-power-field';
+      minPowerInput.dataset.field = 'min_power_w';
+      minPowerInput.value = (stored && stored.min_power_w) || 0;
+      minPowerInput.min = 0; minPowerInput.max = 10000; minPowerInput.step = 100;
+      minPowerInput.title = 'While running: stop if measured power drops below this value (0 = disabled; requires Power (W) capability)';
+      minPowerInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      var minPowerLabel = document.createElement('span');
+      minPowerLabel.className = 'ems-min-power-field';
+      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
       removeBtn.textContent = '✕';
@@ -3115,6 +3138,7 @@
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
@@ -3149,6 +3173,7 @@
         var row      = entry.querySelector('.ems-list-row');
         var sel      = entry.querySelector('.ems-row-device');
         var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
+        var minPower = entry.querySelector('input[data-field=min_power_w]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
@@ -3160,6 +3185,7 @@
             name:                  (dev && dev.name) || sel.value.slice(0, 8),
             cap_power:             (row && row.dataset.capPower) || '',
             min_surplus_w:         parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
+            min_power_w:           parseInt(minPower ? minPower.value : 0,    10) || 0,
             start_sustain_s:       parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:          parseInt(grace    ? grace.value    : 0,    10) || 0,
             max_run_min:           parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
@@ -3231,8 +3257,9 @@
       document.querySelectorAll('#' + listId + ' .ems-entry').forEach(function(entry) {
         var row     = entry.querySelector('.ems-list-row');
         var sel     = entry.querySelector('.ems-row-device');
-        var surplus = entry.querySelector('input[data-field=min_surplus_w]');
-        var sustain = entry.querySelector('input[data-field=start_sustain_s]');
+        var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
+        var minPower = entry.querySelector('input[data-field=min_power_w]');
+        var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
         var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
@@ -3243,6 +3270,7 @@
             name:                 (dev && dev.name) || sel.value.slice(0, 8),
             cap_power:            (row && row.dataset.capPower) || '',
             min_surplus_w:        parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
+            min_power_w:          parseInt(minPower ? minPower.value : 0,    10) || 0,
             start_sustain_s:      parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:         parseInt(grace    ? grace.value    : 0,    10) || 0,
             max_run_min:          parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
@@ -3264,22 +3292,31 @@
       if (!caps || !caps.length) return;
       var pwCaps = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
+      var _updateMinPower = function(hasCap) {
+        var _e = row.parentElement;
+        if (_e) _e.querySelectorAll('.ems-min-power-field').forEach(function(el) { el.style.display = hasCap ? '' : 'none'; });
+      };
       if (pwCaps.length) {
         var defVal = (stored && stored.cap_power) || emsDetectCap(caps, ['measure_power']) || '';
         var r = document.createElement('div');
         r.style.cssText = 'display:flex;align-items:center;gap:6px';
         r.appendChild(_emsCapLabel('Power (W):'));
-        r.appendChild(_emsCapSelect(row, pwCaps, 'capPower', defVal));
+        var capWrap = _emsCapSelect(row, pwCaps, 'capPower', defVal);
+        r.appendChild(capWrap);
+        var capSel = capWrap.querySelector('select');
+        if (capSel) capSel.addEventListener('change', function() { _updateMinPower(!!row.dataset.capPower); });
         infoEl.appendChild(r);
         var hint = document.createElement('div');
         hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
         hint.textContent = 'Used for anti-oscillation: EMS adds measured ' + label + ' load back to available surplus when deciding to keep it running.';
         infoEl.appendChild(hint);
+        setTimeout(function() { _updateMinPower(!!row.dataset.capPower); }, 0);
       } else {
         var note = document.createElement('div');
         note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
         note.textContent = 'No power capability — anti-oscillation disabled. Device switches on/off based on raw solar surplus only.';
         infoEl.appendChild(note);
+        _updateMinPower(false);
       }
     }
 
@@ -3615,6 +3652,20 @@
       cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
       cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var minPowerInput = document.createElement('input');
+      minPowerInput.type = 'number';
+      minPowerInput.className = 'ems-min-power-field';
+      minPowerInput.dataset.field = 'min_power_w';
+      minPowerInput.value = (stored && stored.min_power_w) || 0;
+      minPowerInput.min = 0; minPowerInput.max = 10000; minPowerInput.step = 100;
+      minPowerInput.title = 'While running: stop if measured power drops below this value (0 = disabled; requires Power (W) capability)';
+      minPowerInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      var minPowerLabel = document.createElement('span');
+      minPowerLabel.className = 'ems-min-power-field';
+      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
       removeBtn.textContent = '✕';
@@ -3626,6 +3677,7 @@
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
@@ -3739,6 +3791,20 @@
       cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
       cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var minPowerInput = document.createElement('input');
+      minPowerInput.type = 'number';
+      minPowerInput.className = 'ems-min-power-field';
+      minPowerInput.dataset.field = 'min_power_w';
+      minPowerInput.value = (stored && stored.min_power_w) || 0;
+      minPowerInput.min = 0; minPowerInput.max = 10000; minPowerInput.step = 100;
+      minPowerInput.title = 'While running: stop if measured power drops below this value (0 = disabled; requires Power (W) capability)';
+      minPowerInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      var minPowerLabel = document.createElement('span');
+      minPowerLabel.className = 'ems-min-power-field';
+      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
       removeBtn.textContent = '✕';
@@ -3750,6 +3816,7 @@
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
@@ -3863,6 +3930,20 @@
       cooldownLabel.textContent = 'min — restart cooldown after automatic stop (prevents short-cycling)';
       cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var minPowerInput = document.createElement('input');
+      minPowerInput.type = 'number';
+      minPowerInput.className = 'ems-min-power-field';
+      minPowerInput.dataset.field = 'min_power_w';
+      minPowerInput.value = (stored && stored.min_power_w) || 0;
+      minPowerInput.min = 0; minPowerInput.max = 10000; minPowerInput.step = 100;
+      minPowerInput.title = 'While running: stop if measured power drops below this value (0 = disabled; requires Power (W) capability)';
+      minPowerInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      var minPowerLabel = document.createElement('span');
+      minPowerLabel.className = 'ems-min-power-field';
+      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
       removeBtn.textContent = '✕';
@@ -3874,6 +3955,7 @@
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
