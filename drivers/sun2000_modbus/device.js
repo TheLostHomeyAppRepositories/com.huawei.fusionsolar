@@ -469,10 +469,13 @@ class SUN2000ModbusDevice extends Device {
         })();
       });
 
+    // Registers 40200 (Startup) / 40201 (Shutdown) are command registers:
+    // writing 0 triggers the action (field-verified; the register value itself
+    // carries no state).
     this.homey.flow
       .getActionCard('sun2000_startup')
       .registerRunListener(() => {
-        this.log('Write start  [sun2000_startup → reg 40200] value=1');
+        this.log('Write start  [sun2000_startup → reg 40200] value=0');
         this._writeInProgress = true;
         (async () => {
           try {
@@ -489,7 +492,7 @@ class SUN2000ModbusDevice extends Device {
     this.homey.flow
       .getActionCard('sun2000_shutdown')
       .registerRunListener(() => {
-        this.log('Write start  [sun2000_shutdown → reg 40201] value=1');
+        this.log('Write start  [sun2000_shutdown → reg 40201] value=0');
         this._writeInProgress = true;
         (async () => {
           try {

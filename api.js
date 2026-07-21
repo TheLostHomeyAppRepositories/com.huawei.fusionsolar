@@ -1678,6 +1678,120 @@ module.exports = {
     return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_dehumidifier', stopCardId: 'ems_stop_dehumidifier', tokenName: 'dehumidifier_device_id', labelSuffix: 'Dehumidifier' });
   },
 
+  /** GET /ems/car/action-cards?deviceId=xxx — flat list of the vehicle's action cards,
+   *  each with the name of its first numeric argument (for the Target charge token). */
+  async getEmsCarActionCards({ homey, query }) {
+    const res = await this.getEmsChargerActionCards({ homey, query });
+    if (res.error) return res;
+    const cards = [];
+    for (const g of res.groups || []) {
+      for (const c of g.cards || []) {
+        const numArg = (c.args || []).find((a) => a.type === 'number' || a.type === 'range');
+        cards.push({ id: c.id, uri: c.uri, title: c.title, groupLabel: g.label, suggested: !!c.suggested, numberArg: numArg ? numArg.name : null });
+      }
+    }
+    // Cards with a numeric field first, then suggested (device-owned) first
+    cards.sort((a, b) => (a.numberArg ? 0 : 1) - (b.numberArg ? 0 : 1) || (a.suggested ? 0 : 1) - (b.suggested ? 0 : 1));
+    return { cards };
+  },
+
+  /** GET /ems/car/flows?deviceId=xxx — flows in _Huawei EMS whose first action targets this vehicle */
+  async getEmsCarFlows({ homey, query }) {
+    const { deviceId } = query || {};
+    let apiKey = '';
+    try {
+      const devs = homey.drivers.getDriver('energy_management').getDevices();
+      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { matched: [], error: 'No API key' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    try {
+      const all = await api.getFlows();
+      const matched = Object.values(all || {})
+        .filter((f) => {
+          if (!f.name || !f.name.startsWith('EMS: ')) return false;
+          const act = (f.actions || [])[0];
+          const argDev = act && act.args && act.args.device && act.args.device.id;
+          return deviceId ? argDev === deviceId : true;
+        })
+        .filter((f) => /Set charge/i.test(f.name))
+        .map((f) => ({ id: f.id, name: f.name, type: 'flow' }));
+      return { matched };
+    } catch (e) { return { matched: [], error: e.message }; }
+  },
+
+  /** POST /ems/car/setup-flows — creates one flow per target value:
+   *  THEN <vehicle action> with the fixed charge target filled in. The WHEN
+   *  trigger is a placeholder ("this flow started") for the user to replace. */
+  async postEmsCarSetupFlows({ homey, body }) {
+    const { carId, deviceId, deviceName, flows } = body || {};
+    const flowDefs = (Array.isArray(flows) ? flows : [])
+      .filter((f) => f && Number.isFinite(Number(f.pct)) && f.actionCard && f.actionUri);
+    if (!carId || !deviceId || !flowDefs.length) return { error: 'Missing required fields' };
+    let apiKey = '';
+    try {
+      const devs = homey.drivers.getDriver('energy_management').getDevices();
+      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
+    } catch { }
+    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+
+    // Robust numeric-argument detection per action card: prefer number/range
+    // types, then an arg whose name looks like a charge target, then the sole
+    // non-device argument.
+    let rawCards = [];
+    try { rawCards = Object.values(await api._req('GET', '/manager/flow/flowcardaction') || {}); } catch { }
+    const detectNumArg = (actionCard, actionUri) => {
+      const card = rawCards.find((c) => c.id === actionCard && (c.ownerUri || c.uri) === actionUri) || rawCards.find((c) => c.id === actionCard);
+      const args = (card && card.args || []).filter((a) => a.name !== 'device' && a.name !== 'droptoken');
+      const a = args.find((x) => x.type === 'number' || x.type === 'range')
+        || args.find((x) => /soc|charge|limit|percent|prozent|target|level|ziel|value/i.test(x.name || ''))
+        || (args.length === 1 ? args[0] : null);
+      return a ? a.name : null;
+    };
+
+    let folderId = null;
+    try {
+      const folders  = await api.getFlowFolders();
+      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+    } catch (_) { }
+
+    const APP_URI  = 'homey:app:com.huawei.fusionsolar';
+    const baseName = `EMS: ${deviceName || deviceId}`;
+    const allFlows = await api.getFlows().catch(() => ({}));
+    const results  = [];
+    let anyArgFilled = false;
+    for (const def of flowDefs) {
+      const val = Number(def.pct);
+      const numberArg = detectNumArg(def.actionCard, def.actionUri);
+      if (numberArg) anyArgFilled = true;
+      const flowName = `${baseName} → Set charge ${val}%`;
+      await Promise.all(Object.values(allFlows || {}).filter((f) => f.name === flowName).map((f) => api.deleteFlow(f.id).catch(() => {})));
+      const args = { device: { id: deviceId } };
+      if (numberArg) args[numberArg] = val;
+      const action  = { id: def.actionCard, uri: def.actionUri, group: 'then', delay: null, duration: null, args };
+      // WHEN comes from the app: the EMS fires "set car target charge" filtered by
+      // this car id + this target %, so only the matching flow fires.
+      const trigger = { id: `${APP_URI}:ems_set_car_target`, args: { car_device_id: carId, target_pct: String(val) } };
+      let created = null; let err = null;
+      try { created = await api.createFlow({ name: flowName, folder: folderId, trigger, conditions: [], actions: [action] }); } catch (e) { err = e.message; }
+      results.push({ name: flowName, flowId: created && created.id, ok: !!(created && created.id), error: err, argFilled: !!numberArg });
+    }
+    const ok = results.filter((r) => r.ok).length;
+    if (ok === 0) return { error: `Flow creation failed: ${results[0] && results[0].error || 'rejected by Homey'}`, results };
+    return {
+      created: ok,
+      results,
+      argFilled: anyArgFilled,
+      argNote: anyArgFilled
+        ? 'charge value filled into the action'
+        : 'no numeric field detected — set the charge % manually in each flow',
+    };
+  },
+
   /**
    * GET /inverter/action-cards?deviceId=xxx
    * Like getEmsChargerActionCards but marks sun2000 export-limit cards as suggested.
@@ -1951,6 +2065,24 @@ module.exports = {
     }
 
     return result;
+  },
+
+  /**
+   * GET /log
+   * Returns the app-wide log ring buffer (all drivers/devices, ~1500 lines)
+   * as [{ line, level }] — captured from stdout/stderr in app.js.
+   */
+  async getAppLog({ homey }) {
+    return homey.app.getAppLog();
+  },
+
+  /**
+   * POST /log/clear
+   * Empties the log ring buffer.
+   */
+  async clearAppLog({ homey }) {
+    homey.app.clearAppLog();
+    return { ok: true };
   },
 
 };

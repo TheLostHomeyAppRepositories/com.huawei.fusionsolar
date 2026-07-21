@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.15",
+  "version": "1.2.16",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -174,6 +174,26 @@
     "postInverterSetupFlow": {
       "method": "POST",
       "path": "/inverter/setup-flow"
+    },
+    "getAppLog": {
+      "method": "GET",
+      "path": "/log"
+    },
+    "clearAppLog": {
+      "method": "POST",
+      "path": "/log/clear"
+    },
+    "getEmsCarActionCards": {
+      "method": "GET",
+      "path": "/ems/car/action-cards"
+    },
+    "getEmsCarFlows": {
+      "method": "GET",
+      "path": "/ems/car/flows"
+    },
+    "postEmsCarSetupFlows": {
+      "method": "POST",
+      "path": "/ems/car/setup-flows"
     }
   },
   "brandColor": "#CF0A2C",
@@ -1566,6 +1586,61 @@
       "uiComponent": "sensor",
       "insights": true,
       "icon": "/assets/capabilities/measure_solar_surplus.svg"
+    },
+    "measure_electricity_price": {
+      "type": "number",
+      "title": {
+        "en": "Electricity Price",
+        "de": "Strompreis",
+        "nl": "Stroomprijs"
+      },
+      "units": {
+        "en": "/kWh"
+      },
+      "decimals": 3,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_electricity_price.svg"
+    },
+    "measure_car_soc": {
+      "type": "number",
+      "title": {
+        "en": "Car Battery",
+        "de": "Auto-Ladestand",
+        "nl": "Auto-accu"
+      },
+      "units": {
+        "en": "%"
+      },
+      "decimals": 0,
+      "min": 0,
+      "max": 100,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_car_soc.svg"
+    },
+    "measure_car_target_soc": {
+      "type": "number",
+      "title": {
+        "en": "Car Target",
+        "de": "Auto-Ziel-Ladestand",
+        "nl": "Auto-doel"
+      },
+      "units": {
+        "en": "%"
+      },
+      "decimals": 0,
+      "min": 0,
+      "max": 100,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/measure_car_target_soc.svg"
     }
   },
   "drivers": [
@@ -5214,7 +5289,8 @@
         "measure_pv_power",
         "measure_house_power",
         "measure_grid_power",
-        "measure_battery_power"
+        "measure_battery_power",
+        "measure_electricity_price"
       ],
       "capabilitiesOptions": {
         "onoff": {
@@ -7455,6 +7531,68 @@
             }
           }
         ]
+      },
+      {
+        "id": "ems_set_car_target",
+        "title": {
+          "en": "EMS: set car target charge",
+          "de": "EMS: Auto-Ziel-Ladestand setzen",
+          "nl": "EMS: auto-doellading instellen"
+        },
+        "hint": {
+          "en": "Fires when the EMS target charge for a car changes. Use the Target SOC token to set the charge limit on your vehicle.",
+          "de": "Wird ausgelöst, wenn sich der EMS-Ziel-Ladestand eines Autos ändert. Nutze das Ziel-SOC-Token, um das Ladelimit am Fahrzeug zu setzen.",
+          "nl": "Wordt geactiveerd wanneer de EMS-doellading van een auto verandert. Gebruik het doel-SOC-token om de laadlimiet op je voertuig in te stellen."
+        },
+        "args": [
+          {
+            "type": "text",
+            "name": "car_device_id",
+            "title": {
+              "en": "Car ID (from EMS settings)",
+              "de": "Auto-ID (aus EMS-Einstellungen)",
+              "nl": "Auto-ID (uit EMS-instellingen)"
+            }
+          },
+          {
+            "type": "text",
+            "name": "target_pct",
+            "title": {
+              "en": "Target charge (%) filter — leave empty for any",
+              "de": "Ziel-Ladestand-Filter (%) — leer für alle",
+              "nl": "Doellading-filter (%) — leeg voor alle"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "target_soc",
+            "type": "number",
+            "title": {
+              "en": "Target charge (%)",
+              "de": "Ziel-Ladestand (%)",
+              "nl": "Doellading (%)"
+            }
+          },
+          {
+            "name": "car_name",
+            "type": "string",
+            "title": {
+              "en": "Car name",
+              "de": "Auto-Name",
+              "nl": "Autonaam"
+            }
+          },
+          {
+            "name": "message",
+            "type": "string",
+            "title": {
+              "en": "Message",
+              "de": "Meldung",
+              "nl": "Bericht"
+            }
+          }
+        ]
       }
     ],
     "actions": [
@@ -9613,6 +9751,104 @@
                 }
               }
             ]
+          }
+        ]
+      },
+      {
+        "id": "ems_set_electricity_price",
+        "title": {
+          "en": "Set electricity price (per kWh)",
+          "de": "Strompreis setzen (per kWh)",
+          "nl": "Stroomprijs instellen (per kWh)"
+        },
+        "titleFormatted": {
+          "en": "Set electricity price to [[price]] per kWh",
+          "de": "Strompreis auf [[price]] pro kWh setzen",
+          "nl": "Stroomprijs instellen op [[price]] per kWh"
+        },
+        "hint": {
+          "en": "Sets the current variable electricity price. Only used when the EMS price model is set to Variable. Call this from your dynamic-tariff app (e.g. Tibber, EPEX).",
+          "de": "Setzt den aktuellen variablen Strompreis. Wird nur verwendet, wenn das EMS-Tarifmodell auf Variabel steht. Aus deiner dynamischen Tarif-App aufrufen (z.B. Tibber, EPEX).",
+          "nl": "Stelt de huidige variabele stroomprijs in. Alleen gebruikt wanneer het EMS-tariefmodel op Variabel staat. Aanroepen vanuit je dynamische-tariefapp (bijv. Tibber, EPEX)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "number",
+            "name": "price",
+            "title": {
+              "en": "Price / kWh",
+              "de": "Preis / kWh",
+              "nl": "Prijs / kWh"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 0.001,
+            "placeholder": {
+              "en": "e.g. 0.28",
+              "de": "z.B. 0.28",
+              "nl": "bijv. 0.28"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ems_set_car_target_soc",
+        "title": {
+          "en": "Set car target charge (%)",
+          "de": "Ziel-Ladestand setzen (%)",
+          "nl": "Auto-doellading instellen (%)"
+        },
+        "titleFormatted": {
+          "en": "Set [[car]] target charge to [[soc]] %",
+          "de": "Ziel-Ladestand von [[car]] auf [[soc]] % setzen",
+          "nl": "Doellading van [[car]] instellen op [[soc]] %"
+        },
+        "hint": {
+          "en": "Sets the target state of charge for the car. Stored and shown as the \"Car Target\" value; usable in flows.",
+          "de": "Setzt den Ziel-Ladestand des Autos. Wird gespeichert und als Wert \"Auto-Ziel-Ladestand\" angezeigt; in Flows nutzbar.",
+          "nl": "Stelt de doellaadtoestand van de auto in. Opgeslagen en getoond als waarde \"Auto-doel\"; bruikbaar in flows."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "autocomplete",
+            "name": "car",
+            "title": {
+              "en": "Car",
+              "de": "Auto",
+              "nl": "Auto"
+            },
+            "placeholder": {
+              "en": "Select car",
+              "de": "Auto wählen",
+              "nl": "Auto kiezen"
+            }
+          },
+          {
+            "type": "number",
+            "name": "soc",
+            "title": {
+              "en": "Target charge (%)",
+              "de": "Ziel-Ladestand (%)",
+              "nl": "Doellading (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 80",
+              "de": "z.B. 80",
+              "nl": "bijv. 80"
+            }
           }
         ]
       }

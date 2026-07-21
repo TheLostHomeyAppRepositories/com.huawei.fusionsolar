@@ -6,17 +6,15 @@ const OpenAPICoordinator  = require('./lib/openapi-coordinator');
 class FusionSolarKioskApp extends App {
 
   async onInit() {
+    this._appLogBuffer = [];
+    this._wrapLogger(); // capture stdout/stderr into the ring buffer for the Settings → Logs tab
     this.log('FusionSolar app is running...');
 
     this._coordinator = new OpenAPICoordinator(this.homey);
 
-    this.homey.flow
-      .getActionCard('sun2000_set_export_limit_enabled')
-      .registerRunListener(async ({ device, onoff }) => {
-        // Triggers the existing registerCapabilityListener in sun2000_modbus/device.js
-        // which writes register 47415: 6 = Limited by Power, 0 = Unlimited
-        await device.setCapabilityValue('activepower_controlmode', onoff === 'enable' ? '6' : '0');
-      });
+    // sun2000_set_export_limit_enabled is registered in sun2000_modbus/device.js
+    // (writes register 47415 directly). A second registration here would override
+    // it with a broken variant: setCapabilityValue never fires capability listeners.
 
     this.homey.flow
       .getConditionCard('is_producing')
@@ -48,12 +46,38 @@ class FusionSolarKioskApp extends App {
     this.homey.flow
       .getTriggerCard('ems_start_charger')
       .registerRunListener((args, state) => args.charger_device_id === state.charger_device_id);
+    // Every EMS trigger card carries a device-id argument; a card with arguments
+    // NEEDS a run listener or flows built on it never fire (field-caught: the
+    // dehumidifier stop flow never ran — only heat pump/charger had listeners).
+    const emsDeviceTriggers = {
+      ems_start_heat_pump:           'heat_pump_device_id',
+      ems_stop_heat_pump:            'heat_pump_device_id',
+      ems_start_boiler:              'boiler_device_id',
+      ems_stop_boiler:               'boiler_device_id',
+      ems_start_pool:                'pool_device_id',
+      ems_stop_pool:                 'pool_device_id',
+      ems_start_dehumidifier:        'dehumidifier_device_id',
+      ems_stop_dehumidifier:         'dehumidifier_device_id',
+      ems_battery_full:              'battery_device_id',
+      ems_battery_low:               'battery_device_id',
+      ems_inverter_export_limit_on:  'inverter_device_id',
+      ems_inverter_export_limit_off: 'inverter_device_id',
+    };
+    for (const [cardId, argName] of Object.entries(emsDeviceTriggers)) {
+      this.homey.flow
+        .getTriggerCard(cardId)
+        .registerRunListener((args, state) => args[argName] === state[argName]);
+    }
+
+    // Car target-charge trigger — matched by car id + optional target-% filter
+    // (so per-value flows like "set 80%" / "set 100%" fire independently).
     this.homey.flow
-      .getTriggerCard('ems_start_heat_pump')
-      .registerRunListener((args, state) => args.heat_pump_device_id === state.heat_pump_device_id);
-    this.homey.flow
-      .getTriggerCard('ems_stop_heat_pump')
-      .registerRunListener((args, state) => args.heat_pump_device_id === state.heat_pump_device_id);
+      .getTriggerCard('ems_set_car_target')
+      .registerRunListener((args, state) => {
+        if (args.car_device_id !== state.car_device_id) return false;
+        if (args.target_pct == null || args.target_pct === '') return true;
+        return String(args.target_pct).trim() === String(state.target_pct);
+      });
   }
 
   async onUninit() {
@@ -129,11 +153,18 @@ class FusionSolarKioskApp extends App {
   _saveMidnightBaseline() {
     try {
       const today = this._todayStr();
-      const sun2000 = this._getDevice('sun2000_modbus');
-      const pmEmma  = this._getDevice('powermeter_emma_modbus');
+      const sun2000     = this._getDevice('sun2000_modbus');
+      const sun2000emma = this._getDevice('sun2000_emma_modbus');
 
-      const gridExport = this._cap(sun2000, 'meter_power.grid_export');
-      const gridImport = this._cap(sun2000, 'meter_power.grid_import');
+      // Cumulative grid counters — MUST use the same source priority as the
+      // energy-balance widget's rawExport/rawImport (sun2000 → sun2000emma),
+      // otherwise baseline and live value come from different meters and the
+      // daily delta is wrong. The EMMA power meter needs no baseline: it has
+      // native daily counters the widget falls back to directly.
+      const gridExport = this._cap(sun2000, 'meter_power.grid_export')
+                      ?? this._cap(sun2000emma, 'meter_power.grid_export');
+      const gridImport = this._cap(sun2000, 'meter_power.grid_import')
+                      ?? this._cap(sun2000emma, 'meter_power.grid_import');
 
       if (gridExport !== null) {
         this.homey.settings.set('eb_grid_export_baseline', { date: today, baseline: gridExport });
@@ -172,6 +203,42 @@ class FusionSolarKioskApp extends App {
 
   getCoordinator() {
     return this._coordinator;
+  }
+
+  // ─── App log ring buffer (Settings → Logs tab) ────────────────────────────
+  // Mirrors everything written to stdout/stderr (this.log/this.error of the app,
+  // every driver and every device) into an in-memory ring buffer, exposed via
+  // GET /log. The original streams are untouched — `homey app run` sees it all.
+
+  static get APP_LOG_MAX() { return 1500; }
+
+  _wrapLogger() {
+    const origStdout = process.stdout.write.bind(process.stdout);
+    const origStderr = process.stderr.write.bind(process.stderr);
+    const capture = (chunk, level) => {
+      try {
+        chunk.toString().split('\n').filter(Boolean).forEach((line) => this._pushAppLog(line, level));
+      } catch (e) { /* logging must never crash the app */ }
+    };
+    process.stdout.write = (chunk, ...args) => { capture(chunk, 'log'); return origStdout(chunk, ...args); };
+    process.stderr.write = (chunk, ...args) => { capture(chunk, 'err'); return origStderr(chunk, ...args); };
+  }
+
+  _pushAppLog(msg, level) {
+    // Homey's logger already stamps lines with an ISO date — only add our own
+    // timestamp when missing (avoids a doubled prefix).
+    const hasStamp = /^\d{4}-\d{2}-\d{2}T\d{2}:/.test(msg);
+    const line = hasStamp ? msg : `${new Date().toISOString()} ${msg}`;
+    this._appLogBuffer.push({ line, level });
+    if (this._appLogBuffer.length > FusionSolarKioskApp.APP_LOG_MAX) this._appLogBuffer.shift();
+  }
+
+  getAppLog() {
+    return this._appLogBuffer;
+  }
+
+  clearAppLog() {
+    this._appLogBuffer = [];
   }
 
   // ── Sensor-chart: capability history ──────────────────────────────────────
