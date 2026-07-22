@@ -131,6 +131,10 @@ async function _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startT
         matched.push({ id, name: f.name || id, type: 'flow',
           triggerType: (tid === startCardId || tid === `${APP}:${startCardId}`) ? 'start' : 'stop',
           triggerDeviceId: (f.trigger && f.trigger.args && f.trigger.args[startTokenName]) || '',
+          // Short card id + the flow's own filter args — lets the settings page
+          // fire this exact trigger as a test ("Run").
+          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerArgs: (f.trigger && f.trigger.args) || {},
           actionCardId: cardId, actionCardUri: cardUri });
       }
     }
@@ -1083,6 +1087,9 @@ module.exports = {
             actionCardUri: cardUri,
             startCardId:   startInfo.startCardId  || null,
             startCardUri:  startInfo.startCardUri || null,
+            // For the settings-page "Run" test button
+            triggerCardId: 'ems_set_charger_current',
+            triggerArgs:   (f.trigger && f.trigger.args) || {},
           });
         }
       }
@@ -1476,6 +1483,11 @@ module.exports = {
             triggerType:   (tid.endsWith(':ems_start_heat_pump') || tid === 'ems_start_heat_pump') ? 'start' : 'stop',
             actionCardId:  cardId,
             actionCardUri: cardUri,
+            // Short card id + the flow's own filter args — powers the "Run" test
+            // button and the "filter mismatch" warning.
+            triggerCardId:   tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+            triggerArgs:     (f.trigger && f.trigger.args) || {},
+            triggerDeviceId: (f.trigger && f.trigger.args && f.trigger.args.heat_pump_device_id) || '',
           });
         }
       }
@@ -1598,7 +1610,10 @@ module.exports = {
         const firstAction = (flow.actions || []).find((a) => { const { cardUri } = parseAction(a); return !cardUri || cardUri === APP_URI; });
         const { cardId, cardUri } = firstAction ? parseAction(firstAction) : { cardId: '', cardUri: '' };
         const { device: _d, ...restArgs } = firstAction?.args || {};
-        matched.push({ id: flow.id, name: flow.name, actionCardId: cardId || null, actionCardUri: cardUri || null, cardArgs: restArgs });
+        const tid = (flow.trigger && flow.trigger.id) || '';
+        matched.push({ id: flow.id, name: flow.name, actionCardId: cardId || null, actionCardUri: cardUri || null, cardArgs: restArgs,
+          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerArgs: (flow.trigger && flow.trigger.args) || {} });
       }
       return { matched };
     } catch (e) { return { matched: [], error: e.message }; }
@@ -1678,6 +1693,37 @@ module.exports = {
     return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_dehumidifier', stopCardId: 'ems_stop_dehumidifier', tokenName: 'dehumidifier_device_id', labelSuffix: 'Dehumidifier' });
   },
 
+  /**
+   * POST /ems/test-trigger
+   * Fires an EMS trigger card exactly the way the EMS itself would, so a
+   * configured flow can be verified end-to-end (trigger → filter → action).
+   * body: { cardId, tokens?, state? }
+   */
+  async postEmsTestTrigger({ homey, body }) {
+    const { cardId, tokens, state } = body || {};
+    if (!cardId) return { error: 'Missing cardId' };
+    // Only the card's DECLARED tokens may be passed — anything else (e.g. the
+    // flow's filter args) makes Homey reject the trigger. Missing ones get a
+    // type-correct empty default so the test never fails on token validation.
+    let safeTokens = {};
+    try {
+      const manifest = require('./app.json');
+      const card = (manifest.flow.triggers || []).find((t) => t.id === cardId);
+      for (const t of (card && card.tokens) || []) {
+        const given = tokens && tokens[t.name];
+        safeTokens[t.name] = given !== undefined && given !== null
+          ? given
+          : (t.type === 'number' ? 0 : t.type === 'boolean' ? false : '');
+      }
+    } catch (_) { safeTokens = {}; }
+    try {
+      await homey.flow.getTriggerCard(cardId).trigger(safeTokens, state || {});
+      return { ok: true, cardId, state: state || {}, tokens: safeTokens };
+    } catch (e) {
+      return { error: e.message || String(e) };
+    }
+  },
+
   /** GET /ems/car/action-cards?deviceId=xxx — flat list of the vehicle's action cards,
    *  each with the name of its first numeric argument (for the Target charge token). */
   async getEmsCarActionCards({ homey, query }) {
@@ -1716,7 +1762,14 @@ module.exports = {
           return deviceId ? argDev === deviceId : true;
         })
         .filter((f) => /Set charge/i.test(f.name))
-        .map((f) => ({ id: f.id, name: f.name, type: 'flow' }));
+        .map((f) => {
+          const tid = (f.trigger && f.trigger.id) || '';
+          return {
+            id: f.id, name: f.name, type: 'flow',
+            triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+            triggerArgs: (f.trigger && f.trigger.args) || {},
+          };
+        });
       return { matched };
     } catch (e) { return { matched: [], error: e.message }; }
   },
@@ -1774,8 +1827,8 @@ module.exports = {
       if (numberArg) args[numberArg] = val;
       const action  = { id: def.actionCard, uri: def.actionUri, group: 'then', delay: null, duration: null, args };
       // WHEN comes from the app: the EMS fires "set car target charge" filtered by
-      // this car id + this target %, so only the matching flow fires.
-      const trigger = { id: `${APP_URI}:ems_set_car_target`, args: { car_device_id: carId, target_pct: String(val) } };
+      // the vehicle's device id + this target %, so only the matching flow fires.
+      const trigger = { id: `${APP_URI}:ems_set_car_target`, args: { car_device_id: deviceId, target_pct: String(val) } };
       let created = null; let err = null;
       try { created = await api.createFlow({ name: flowName, folder: folderId, trigger, conditions: [], actions: [action] }); } catch (e) { err = e.message; }
       results.push({ name: flowName, flowId: created && created.id, ok: !!(created && created.id), error: err, argFilled: !!numberArg });
@@ -1880,11 +1933,14 @@ module.exports = {
         });
         const { cardId, cardUri } = firstAction ? parseAction(firstAction) : { cardId: '', cardUri: '' };
         const { device: _d, ...restArgs } = firstAction?.args || {};
+        const tid = (flow.trigger && flow.trigger.id) || '';
         matched.push({
           id: flow.id, name: flow.name,
           actionCardId:  cardId || null,
           actionCardUri: cardUri || null,
           cardArgs:      restArgs,
+          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerArgs:   (flow.trigger && flow.trigger.args) || {},
         });
       }
       return { matched };

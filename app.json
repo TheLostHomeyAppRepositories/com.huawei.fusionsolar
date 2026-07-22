@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.16",
+  "version": "1.2.17",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "platforms": [
@@ -194,6 +194,10 @@
     "postEmsCarSetupFlows": {
       "method": "POST",
       "path": "/ems/car/setup-flows"
+    },
+    "postEmsTestTrigger": {
+      "method": "POST",
+      "path": "/ems/test-trigger"
     }
   },
   "brandColor": "#CF0A2C",
@@ -7592,7 +7596,12 @@
               "nl": "Bericht"
             }
           }
-        ]
+        ],
+        "titleFormatted": {
+          "en": "EMS: set car [[car_device_id]] target charge to [[target_pct]] %",
+          "de": "EMS: Ziel-Ladestand von Auto [[car_device_id]] auf [[target_pct]] % setzen",
+          "nl": "EMS: doellading van auto [[car_device_id]] instellen op [[target_pct]] %"
+        }
       }
     ],
     "actions": [
@@ -9809,9 +9818,9 @@
           "nl": "Doellading van [[car]] instellen op [[soc]] %"
         },
         "hint": {
-          "en": "Sets the target state of charge for the car. Stored and shown as the \"Car Target\" value; usable in flows.",
-          "de": "Setzt den Ziel-Ladestand des Autos. Wird gespeichert und als Wert \"Auto-Ziel-Ladestand\" angezeigt; in Flows nutzbar.",
-          "nl": "Stelt de doellaadtoestand van de auto in. Opgeslagen en getoond als waarde \"Auto-doel\"; bruikbaar in flows."
+          "en": "Sets the car target charge. If the vehicle has no target-charge capability the value is kept virtually in the EMS. Also fires the matching \"Set charge X%\" flow so the vehicle is updated.",
+          "de": "Setzt den Ziel-Ladestand des Autos. Hat das Fahrzeug keine Ziel-Capability, wird der Wert virtuell im EMS gehalten. Löst zusätzlich den passenden \"Set charge X%\"-Flow aus, damit das Fahrzeug aktualisiert wird.",
+          "nl": "Stelt de doellading van de auto in. Heeft het voertuig geen doel-capability, dan wordt de waarde virtueel in de EMS bewaard. Activeert ook de bijbehorende \"Set charge X%\"-flow zodat het voertuig wordt bijgewerkt."
         },
         "args": [
           {
@@ -9834,21 +9843,39 @@
             }
           },
           {
-            "type": "number",
+            "type": "dropdown",
             "name": "soc",
             "title": {
-              "en": "Target charge (%)",
-              "de": "Ziel-Ladestand (%)",
-              "nl": "Doellading (%)"
+              "en": "Target charge",
+              "de": "Ziel-Ladestand",
+              "nl": "Doellading"
             },
-            "min": 0,
-            "max": 100,
-            "step": 1,
-            "placeholder": {
-              "en": "e.g. 80",
-              "de": "z.B. 80",
-              "nl": "bijv. 80"
-            }
+            "values": [
+              {
+                "id": "80",
+                "label": {
+                  "en": "80 %",
+                  "de": "80 %",
+                  "nl": "80 %"
+                }
+              },
+              {
+                "id": "90",
+                "label": {
+                  "en": "90 %",
+                  "de": "90 %",
+                  "nl": "90 %"
+                }
+              },
+              {
+                "id": "100",
+                "label": {
+                  "en": "100 %",
+                  "de": "100 %",
+                  "nl": "100 %"
+                }
+              }
+            ]
           }
         ]
       }

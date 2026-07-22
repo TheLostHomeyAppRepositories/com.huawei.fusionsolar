@@ -35,7 +35,8 @@ class EmsDevice extends Device {
     this._offpeakFmtTz    = null;
     this._emsHistory      = JSON.parse(JSON.stringify(this.homey.settings.get('ems_history') || []));
     this._tickCount       = 0;
-    this._lastLoggedMode  = null; // null forces first _setMode call to always log
+    this._lastLoggedMode  = null; // null forces the first flushed mode to log
+    this._tickMode        = null; // buffered mode decision for the current tick
 
     // ── App start / update event ──────────────────────────────────────────────
     const currentVersion = this.homey.app?.manifest?.version ?? '?';
@@ -70,6 +71,10 @@ class EmsDevice extends Device {
       if (typeof vp === 'number') this._variablePrice = vp;
     } catch (e) { /* ignore */ }
     this._lastPriceFired = null; // last price value pushed to the capability
+
+    // Per-car live state + SOC-rise tracking (which car is on the charger)
+    this._carStates   = [];
+    this._carSocTrack = {}; // carId → { soc, lastRiseAt }
 
     // Per-car target SOC { carId: percent }, set by the ems_set_car_target_soc
     // flow, persisted across restarts.
@@ -134,12 +139,12 @@ class EmsDevice extends Device {
       await this._setCapTitle(capId, `${carName} Target`);
       await this._set(capId, soc);
       // Relay to the vehicle: the created "Set charge <soc>%" flow filters on the
-      // car id + target_pct, so exactly the matching flow fires and applies the
-      // fixed charge target to the car.
+      // vehicle's device id + target_pct, so exactly the matching flow fires and
+      // applies the fixed charge target to the car.
       await this.homey.flow.getTriggerCard('ems_set_car_target')
         .trigger(
           { target_soc: soc, car_name: carName, message: `${carName}: target charge ${soc}%` },
-          { car_device_id: carId, target_pct: String(soc) },
+          { car_device_id: (car && car.device_id) || carId, target_pct: String(soc) },
         )
         .catch((e) => this.log(`[EMS] ems_set_car_target trigger failed: ${e.message}`));
     });
@@ -169,12 +174,10 @@ class EmsDevice extends Device {
     this._startTick();
   }
 
-  _onEnabledChanged(enabled) {
-    if (!enabled) {
-      this._setMode('disabled', '—').catch(() => {});
-    } else {
-      this._tick().catch(() => {});
-    }
+  _onEnabledChanged() {
+    // _tickBody handles both states (it sets 'disabled' when off); running a tick
+    // keeps the mode decision on the single buffered path in _flushMode.
+    this._tick().catch(() => {});
   }
 
   // ─── Config ───────────────────────────────────────────────────────────────
@@ -238,6 +241,7 @@ class EmsDevice extends Device {
         pendingStepSince:  null,
         lastDownStepAt:    null,
         lastPhaseSwitchAt: null,
+        targetReachedCar:  null, // carId whose charge target is reached (hold until unplug)
       });
     }
     return this._chargerStates.get(id);
@@ -265,8 +269,10 @@ class EmsDevice extends Device {
     this._tickInProgress = true;
     try {
       await this._tickBody();
+      await this._flushMode(); // apply exactly one mode decision per tick
     } catch (e) {
       this.log(`[EMS] tick error: ${e.message}`);
+      this._tickMode = null; // drop a half-formed decision
     } finally {
       this._tickInProgress = false;
       this._warmupDone = true;
@@ -620,6 +626,8 @@ class EmsDevice extends Device {
         rawPowerW,
         phases:      parseInt(c.ev_phases, 10) || 3,
         phaseSwitch: c.phase_switch === true,
+        // 'solar' (default) | 'solar_offpeak' | 'always'
+        chargeMode:  c.charge_mode || 'solar',
       };
     }));
   }
@@ -912,8 +920,8 @@ class EmsDevice extends Device {
     const { minSoc, minSocLow, hasLowZone, batLow, batReserve } = this._batteryZones(cfg, battery);
     const now = Date.now();
 
-    const anyConnected = chargers.some((c) => c.connected);
-    const totalW       = chargers.reduce((s, c) => s + c.powerW, 0);
+    let anyConnected = chargers.some((c) => c.connected);
+    let totalW       = chargers.reduce((s, c) => s + c.powerW, 0);
 
     // ── P0: Instant charging ─────────────────────────────────────────────────
     if (this.getCapabilityValue('charge_now') === true) {
@@ -933,6 +941,41 @@ class EmsDevice extends Device {
       const stTextInstant = parts;
       await this._setMode('instant_ev', stTextInstant);
       return chargers.filter((c) => c.connected).reduce((s, c) => s + c.maxAmps * c.phases * 230, 0);
+    }
+
+    // ── P0.5: "Always charge" mode ───────────────────────────────────────────
+    // Charges at max power as soon as the cable is in — independent of solar and
+    // battery state (same standing as instant charging). These chargers are then
+    // removed from the solar/off-peak logic below.
+    let alwaysW = 0;
+    const alwaysChargers = chargers.filter((c) => c.chargeMode === 'always');
+    if (alwaysChargers.length) {
+      for (const c of alwaysChargers) {
+        const st = this._getChargerState(c.id);
+        if (!c.connected) {
+          if (st.currentAmps !== null) await this._chargerStop(c.id);
+          continue;
+        }
+        if (this._warmupDone && (st.currentAmps !== c.maxAmps || st.currentPhases !== c.phases)) {
+          await this._chargerSetAmps(c.id, c.maxAmps, c.phases);
+        }
+        alwaysW += c.maxAmps * c.phases * 230;
+      }
+      chargers = chargers.filter((c) => c.chargeMode !== 'always');
+      if (!chargers.length) {
+        const connAlways = alwaysChargers.filter((c) => c.connected);
+        if (!connAlways.length) {
+          const aSocStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
+          await this._setMode('idle', `kein EV verbunden${aSocStr}`);
+          return 0;
+        }
+        const aParts = connAlways.map((c) => `${c.maxAmps}A/${c.phases}ph`).join(' + ');
+        await this._setMode('instant_ev', `Immer laden · ${aParts}`);
+        return alwaysW;
+      }
+      // Recompute for the remaining (solar-managed) chargers
+      anyConnected = chargers.some((c) => c.connected);
+      totalW       = chargers.reduce((s, c) => s + c.powerW, 0);
     }
 
     // ── P1: Battery priority ─────────────────────────────────────────────────
@@ -970,7 +1013,7 @@ class EmsDevice extends Device {
           const socLimit  = hasLowZone ? minSocLow : minSoc;
           const stTextBat = `${Math.round(battery.soc)}% < ${socLimit}%`;
           await this._setMode('battery_priority', stTextBat);
-          return 0;
+          return alwaysW;
         }
         batOverflowMode = true;
       }
@@ -980,7 +1023,9 @@ class EmsDevice extends Device {
     if (!anyConnected) {
       this._importSince = null;
       for (const c of chargers) {
-        if (this._getChargerState(c.id).currentAmps !== null) await this._chargerStop(c.id);
+        const st = this._getChargerState(c.id);
+        st.targetReachedCar = null; // cable out → clear the "target reached" hold
+        if (st.currentAmps !== null) await this._chargerStop(c.id);
       }
       const idleSocStr      = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
       const idleSurplusW    = gridW !== null ? Math.round(-gridW) : null;
@@ -988,12 +1033,50 @@ class EmsDevice extends Device {
         ? `${idleSurplusW} W Überschuss${idleSocStr}`
         : `kein Überschuss${idleSocStr}`;
       await this._setMode('idle', idleSurplusStr);
-      return 0;
+      return alwaysW;
+    }
+
+    // ── P2.5: Charge target reached ──────────────────────────────────────────
+    // The car is still plugged in but already at its configured target. Without
+    // this the EMS keeps re-tuning amps against a car that no longer draws —
+    // for the whole afternoon, as long as surplus exists. Hold until the cable
+    // is unplugged (cleared in P2 above) or the target is raised.
+    const chargingCar = this._pickChargingCar();
+    if (chargingCar && chargingCar.soc !== null && chargingCar.target !== null) {
+      for (const c of chargers) {
+        const st = this._getChargerState(c.id);
+        if (chargingCar.soc >= chargingCar.target) {
+          if (st.targetReachedCar !== chargingCar.id) {
+            this.log(`[EMS] charger ${c.id}: "${chargingCar.name}" reached target ${chargingCar.target}% (now ${chargingCar.soc}%) — holding until unplug`);
+            this._addHistoryEvent('charger', 'target_reached', `${chargingCar.name} ${chargingCar.soc}% ≥ ${chargingCar.target}%`, c.id);
+          }
+          st.targetReachedCar = chargingCar.id;
+        } else if (chargingCar.soc < chargingCar.target - 2) {
+          st.targetReachedCar = null; // target raised or battery drained → resume
+        }
+      }
+    }
+    const connectedForTarget = chargers.filter((c) => c.connected);
+    if (connectedForTarget.length
+      && connectedForTarget.every((c) => this._getChargerState(c.id).targetReachedCar)) {
+      for (const c of connectedForTarget) {
+        if (this._getChargerState(c.id).currentAmps !== null) await this._chargerStop(c.id);
+      }
+      const tSocStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
+      const stTextTarget = chargingCar
+        ? `${chargingCar.name}: Ladeziel erreicht (${Math.round(chargingCar.soc)}% ≥ ${Math.round(chargingCar.target)}%) — wartet auf Abstecken${tSocStr}`
+        : `Ladeziel erreicht — wartet auf Abstecken${tSocStr}`;
+      await this._setMode('holding', stTextTarget);
+      return alwaysW;
     }
 
     // ── P3: Off-peak ──────────────────────────────────────────────────────────
     const offpeakWin = this._offpeakWindow(cfg);
-    if (!batOverflowMode && !batReserveMode && this.getCapabilityValue('offpeak_enabled') === true && offpeakWin.active) {
+    // Off-peak applies to chargers in "Solar & tariff-optimised" mode. The global
+    // offpeak_enabled tile toggle still works as a legacy/global enable.
+    const offpeakChargers = chargers.filter((c) => c.connected
+      && (c.chargeMode === 'solar_offpeak' || this.getCapabilityValue('offpeak_enabled') === true));
+    if (!batOverflowMode && !batReserveMode && offpeakChargers.length && offpeakWin.active) {
       // Solar-first: if there's enough export surplus to cover the minimum step,
       // let the solar logic handle it — free energy outranks cheap grid energy.
       const solarFirst    = cfg.offpeak_solar_first !== false; // default true
@@ -1002,8 +1085,7 @@ class EmsDevice extends Device {
       if (!solarCanClaim) {
         this._importSince = null; // clear stale import timer so solar mode starts fresh after off-peak
         const opAmps = offpeakWin.amps;
-        for (const c of chargers) {
-          if (!c.connected) continue;
+        for (const c of offpeakChargers) {
           const opPhases = c.phaseSwitch ? 3 : c.phases;
           const st       = this._getChargerState(c.id);
           if (this._warmupDone && (st.currentAmps !== opAmps || st.currentPhases !== opPhases)) {
@@ -1011,11 +1093,10 @@ class EmsDevice extends Device {
             if (c.phaseSwitch) st.lastPhaseSwitchAt = now;
           }
         }
-        const connectedChargers = chargers.filter((c) => c.connected);
-        const n = connectedChargers.length;
+        const n = offpeakChargers.length;
         const stTextOffpeak = `${opAmps}A × ${n} Lader`;
         await this._setMode('offpeak_ev', stTextOffpeak);
-        return connectedChargers.reduce((s, c) => s + opAmps * (c.phaseSwitch ? 3 : c.phases) * 230, 0);
+        return alwaysW + offpeakChargers.reduce((s, c) => s + opAmps * (c.phaseSwitch ? 3 : c.phases) * 230, 0);
       }
       // else: solar has surplus — fall through to solar surplus logic below
     }
@@ -1088,13 +1169,13 @@ class EmsDevice extends Device {
           : `kein Überschuss${socStr}${batPwStr}`;
       const waitMode = (batOverflowMode || batReserveMode) ? 'battery_priority' : 'holding';
       await this._setMode(waitMode, stTextWait);
-      return 0;
+      return alwaysW;
     } else {
       const parts  = active.map((s) => `${s.amps}A/${s.phases}ph`).join(' + ');
       const prefix = batOverflowMode ? 'Überschuss · ' : batReserveMode ? 'Reserve · ' : '';
       const stTextSolar = `${prefix}${parts}${active.length > 1 ? ` (${active.length} Lader)` : ''}${socStr}${batPwStr}`;
       await this._setMode('solar_ev', stTextSolar);
-      return active.reduce((s, r) => s + r.allocatedW, 0);
+      return alwaysW + active.reduce((s, r) => s + r.allocatedW, 0);
     }
   }
 
@@ -1350,27 +1431,57 @@ class EmsDevice extends Device {
   //     vehicle exposes no target capability.
   async _updateCarCapabilities(cfg) {
     const cars = cfg.car_devices || [];
+    const now  = Date.now();
+    const states = [];
     for (const car of cars) {
       if (!car.id || !car.device_id) continue;
       const clamp = (v) => Math.round(Math.max(0, Math.min(100, Number(v))));
 
-      if (car.soc_capability && this.hasCapability(`measure_car_soc.${car.id}`)) {
-        const soc = await this._cap(car.device_id, car.soc_capability);
-        if (soc !== null && soc !== undefined && Number.isFinite(Number(soc))) {
-          await this._set(`measure_car_soc.${car.id}`, clamp(soc));
+      let soc = null;
+      if (car.soc_capability) {
+        const v = await this._cap(car.device_id, car.soc_capability);
+        if (v !== null && v !== undefined && Number.isFinite(Number(v))) soc = clamp(v);
+        if (soc !== null && this.hasCapability(`measure_car_soc.${car.id}`)) {
+          await this._set(`measure_car_soc.${car.id}`, soc);
         }
       }
 
-      if (this.hasCapability(`measure_car_target_soc.${car.id}`)) {
-        let tgt = null;
-        if (car.target_soc_capability) {
-          const v = await this._cap(car.device_id, car.target_soc_capability);
-          if (v !== null && v !== undefined && Number.isFinite(Number(v))) tgt = Number(v);
-        }
-        if (tgt === null && typeof this._carTargets[car.id] === 'number') tgt = this._carTargets[car.id];
-        if (tgt !== null) await this._set(`measure_car_target_soc.${car.id}`, clamp(tgt));
+      let tgt = null;
+      if (car.target_soc_capability) {
+        const v = await this._cap(car.device_id, car.target_soc_capability);
+        if (v !== null && v !== undefined && Number.isFinite(Number(v))) tgt = clamp(v);
       }
+      if (tgt === null && typeof this._carTargets[car.id] === 'number') tgt = clamp(this._carTargets[car.id]);
+      if (tgt !== null && this.hasCapability(`measure_car_target_soc.${car.id}`)) {
+        await this._set(`measure_car_target_soc.${car.id}`, tgt);
+      }
+
+      // Track SOC rises — used to tell WHICH car is currently being charged
+      const prev = this._carSocTrack[car.id];
+      if (soc !== null) {
+        if (!prev) this._carSocTrack[car.id] = { soc, lastRiseAt: 0 };
+        else {
+          if (soc > prev.soc) prev.lastRiseAt = now;
+          prev.soc = soc;
+        }
+      }
+      states.push({ id: car.id, name: car.name || 'Car', soc, target: tgt });
     }
+    this._carStates = states;
+  }
+
+  // The car most likely on the charger right now: the only configured one, or
+  // the one whose SOC rose most recently (within 30 min).
+  _pickChargingCar() {
+    const states = this._carStates || [];
+    if (!states.length) return null;
+    if (states.length === 1) return states[0];
+    let best = null; let bestAt = 0;
+    for (const s of states) {
+      const at = (this._carSocTrack[s.id] || {}).lastRiseAt || 0;
+      if (at > bestAt) { bestAt = at; best = s; }
+    }
+    return (best && (Date.now() - bestAt) < 30 * 60_000) ? best : null;
   }
 
   // Adds/removes a capability so it only appears when relevant.
@@ -1391,14 +1502,21 @@ class EmsDevice extends Device {
       const socId = `measure_car_soc.${car.id}`;
       const tgtId = `measure_car_target_soc.${car.id}`;
       const hasSoc = !!car.soc_capability;
-      // Target cap exists if the vehicle exposes a target capability OR a target
-      // was set via the flow action.
-      const hasTgt = !!car.target_soc_capability || this._carTargets[car.id] != null;
+      // The target capability ALWAYS exists for a configured car: either read from
+      // the vehicle (target_soc_capability) or held virtually in the EMS and set
+      // via the "set car target charge" flow action.
+      const virtualTarget = !car.target_soc_capability;
+      // Seed a virtual target once so the tile shows a value the user can change
+      if (virtualTarget && this._carTargets[car.id] == null) {
+        this._carTargets[car.id] = 80;
+        await this.setStoreValue('carTargets', this._carTargets).catch(() => {});
+      }
       if (hasSoc) wantSoc.add(socId);
-      if (hasTgt) wantTgt.add(tgtId);
+      wantTgt.add(tgtId);
       const label = car.name || 'Car';
       if (hasSoc) { await this._ensureCap(socId, true); await this._setCapTitle(socId, label); }
-      if (hasTgt) { await this._ensureCap(tgtId, true); await this._setCapTitle(tgtId, `${label} Target`); }
+      await this._ensureCap(tgtId, true);
+      await this._setCapTitle(tgtId, `${label} Target${virtualTarget ? ' (EMS)' : ''}`);
     }
     // Remove sub-capabilities of cars that no longer exist / lost their source
     for (const capId of this.getCapabilities()) {
@@ -1413,25 +1531,32 @@ class EmsDevice extends Device {
 
   // ─── State helpers ────────────────────────────────────────────────────────
 
+  // Buffered: one tick may evaluate several device types, each proposing a mode
+  // (e.g. the charger says "holding", the pool says "solar_pool"). Only the LAST
+  // proposal of the tick is applied in _flushMode — otherwise the mode flaps back
+  // and forth every tick, spamming history, the mode trigger and the mode flow.
   async _setMode(mode, newStatusText = null) {
-    // Status text is set here too — every _setMode call site used to duplicate
-    // the ems_status_text write; the text updates every tick even when the mode
-    // itself is unchanged (live numbers in the text).
-    if (newStatusText != null) await this._set('ems_status_text', newStatusText);
+    this._tickMode = { mode, text: newStatusText };
+  }
+
+  // Applies the tick's final mode: capability, trigger, mode flow and history.
+  async _flushMode() {
+    const m = this._tickMode;
+    this._tickMode = null;
+    if (!m) return;
+    if (m.text != null) await this._set('ems_status_text', m.text);
     const prev = this.getCapabilityValue('ems_mode');
-    if (prev !== mode) {
-      await this._set('ems_mode', mode);
-      if (this._warmupDone) {
-        this.log(`[EMS] mode: ${prev ?? '—'} → ${mode} → trigger ems_mode_changed`);
-        this.homey.flow.getDeviceTriggerCard('ems_mode_changed').trigger(this, { mode }).catch(() => {});
-        await this._triggerModeFlow(mode);
-      }
+    await this._set('ems_mode', m.mode);
+    if (!this._warmupDone) return; // first tick: observe only
+    if (prev !== m.mode) {
+      this.log(`[EMS] mode: ${prev ?? '—'} → ${m.mode} → trigger ems_mode_changed`);
+      this.homey.flow.getDeviceTriggerCard('ems_mode_changed').trigger(this, { mode: m.mode }).catch(() => {});
+      await this._triggerModeFlow(m.mode);
     }
-    if (!this._warmupDone) return; // first tick: observe only, no history
-    if (mode !== this._lastLoggedMode) {
-      const label = newStatusText != null ? newStatusText : (this.getCapabilityValue('ems_status_text') || '');
-      this._addHistoryEvent('mode', mode, label);
-      this._lastLoggedMode = mode;
+    if (m.mode !== this._lastLoggedMode) {
+      const label = m.text != null ? m.text : (this.getCapabilityValue('ems_status_text') || '');
+      this._addHistoryEvent('mode', m.mode, label);
+      this._lastLoggedMode = m.mode;
     }
   }
 

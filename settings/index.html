@@ -2763,7 +2763,10 @@
       var socSel = document.createElement('select');
       socSel.className = 'ems-car-soc-cap';
       socSel.style.cssText = 'flex:1;min-width:160px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
-      socRow.appendChild(socLbl); socRow.appendChild(socSel);
+      var socVal = document.createElement('span'); // live reading, like the heat pump
+      socVal.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap;flex-shrink:0;min-width:32px;text-align:right';
+      socVal.title = 'Current live reading from this capability';
+      socRow.appendChild(socLbl); socRow.appendChild(socSel); socRow.appendChild(socVal);
       var tgtRow = document.createElement('div');
       tgtRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
       var tgtLbl = document.createElement('span'); tgtLbl.textContent = 'Target SOC (%)';
@@ -2771,8 +2774,28 @@
       var tgtSel = document.createElement('select');
       tgtSel.className = 'ems-car-target-cap';
       tgtSel.style.cssText = 'flex:1;min-width:160px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
-      tgtRow.appendChild(tgtLbl); tgtRow.appendChild(tgtSel);
-      capsInfo.appendChild(socRow); capsInfo.appendChild(tgtRow);
+      var tgtVal = document.createElement('span');
+      tgtVal.style.cssText = 'font-size:11px;color:#6e6e73;white-space:nowrap;flex-shrink:0;min-width:32px;text-align:right';
+      tgtVal.title = 'Current live reading from this capability';
+      tgtRow.appendChild(tgtLbl); tgtRow.appendChild(tgtSel); tgtRow.appendChild(tgtVal);
+      var tgtHint = document.createElement('div');
+      tgtHint.style.cssText = 'font-size:11px;color:#6e6e73;line-height:1.4;padding-left:118px';
+      capsInfo.appendChild(socRow); capsInfo.appendChild(tgtRow); capsInfo.appendChild(tgtHint);
+
+      function _updateTgtHint() {
+        tgtHint.textContent = tgtSel.value
+          ? 'Read from the vehicle.'
+          : 'No capability selected — the EMS keeps the target charge virtually. Change it with the flow action "EMS: set car target charge" (80 / 90 / 100 %).';
+      }
+
+      // Live readings — _fetchCapValue resolves the device from row's .ems-row-device
+      function _refreshCarVals() {
+        if (socSel.value) _fetchCapValue(row, socSel.value, socVal); else socVal.textContent = '';
+        if (tgtSel.value) _fetchCapValue(row, tgtSel.value, tgtVal); else tgtVal.textContent = '';
+        _updateTgtHint();
+      }
+      socSel.addEventListener('change', function() { _fetchCapValue(row, socSel.value, socVal); });
+      tgtSel.addEventListener('change', function() { _fetchCapValue(row, tgtSel.value, tgtVal); _updateTgtHint(); });
 
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
@@ -2786,12 +2809,15 @@
       sel.addEventListener('change', function() {
         refreshCaps('', '');
         entry.dataset.carSetActions = '';
+        _refreshCarVals();
         emsRenderCarFlows(flowSection, entry.dataset.carId, sel.value, entry);
       });
 
       entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
+      // Read live values once the row is in the DOM (_fetchCapValue needs it)
+      setTimeout(_refreshCarVals, 0);
       if (sel.value) emsRenderCarFlows(flowSection, entry.dataset.carId, sel.value, entry);
     }
 
@@ -2850,14 +2876,14 @@
       idLabel.textContent = 'Device ID (for trigger filter):';
       idLabel.style.cssText = 'color:#6e6e73;white-space:nowrap';
       var idCode = document.createElement('code');
-      idCode.textContent = carId;
+      idCode.textContent = deviceId;
       idCode.style.cssText = 'background:#e5e5ea;padding:2px 6px;border-radius:4px;font-size:11px;word-break:break-all';
       var idCopy = document.createElement('button');
       idCopy.textContent = 'Copy'; idCopy.className = 'btn-secondary';
       idCopy.style.cssText = 'font-size:10px;padding:2px 8px';
       idCopy.onclick = function() {
         try {
-          var ta = document.createElement('textarea'); ta.value = carId;
+          var ta = document.createElement('textarea'); ta.value = deviceId;
           ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
           document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
           idCopy.textContent = '✓'; setTimeout(function() { idCopy.textContent = 'Copy'; }, 1500);
@@ -2896,9 +2922,7 @@
             dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
             var name = document.createElement('span');
             name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
-            var badge = document.createElement('span');
-            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            var badge = _emsFlowRunBtn(f);
             row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
             flowsContainer.appendChild(row);
           });
@@ -3630,13 +3654,44 @@
       configRow.appendChild(ampsGroup);
       configRow.appendChild(phasesGroup);
 
+      // Charging mode (per charger)
+      var modeRow = document.createElement('div');
+      modeRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px 2px';
+      var modeLbl = document.createElement('span');
+      modeLbl.textContent = 'Charging mode';
+      modeLbl.style.cssText = 'font-size:11px;color:#6e6e73;min-width:100px';
+      var modeSel = document.createElement('select');
+      modeSel.className = 'ems-charger-mode';
+      modeSel.style.cssText = 'flex:1;min-width:190px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      [
+        { id: 'solar',         label: 'Solar only' },
+        { id: 'solar_offpeak', label: 'Solar & tariff-optimised' },
+        { id: 'always',        label: 'Always charge' },
+      ].forEach(function(o) {
+        var opt = document.createElement('option');
+        opt.value = o.id; opt.textContent = o.label;
+        modeSel.appendChild(opt);
+      });
+      modeSel.value = (stored && stored.charge_mode) || 'solar';
+      var modeHint = document.createElement('div');
+      modeHint.style.cssText = 'font-size:11px;color:#6e6e73;line-height:1.4;flex-basis:100%;padding-left:108px';
+      var EMS_CHARGE_MODE_HINTS = {
+        solar:         'Only charges when enough solar surplus is available; the power follows the surplus.',
+        solar_offpeak: 'Charges on solar surplus during the day. If the car is not yet at its target when the off-peak window starts, it charges at full power during that window.',
+        always:        'Charges at the maximum possible power as soon as the cable is plugged in — regardless of solar or battery state.',
+      };
+      function _updateModeHint() { modeHint.textContent = EMS_CHARGE_MODE_HINTS[modeSel.value] || ''; }
+      modeSel.addEventListener('change', _updateModeHint);
+      _updateModeHint();
+      modeRow.appendChild(modeLbl); modeRow.appendChild(modeSel); modeRow.appendChild(modeHint);
+
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
 
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
@@ -4010,9 +4065,11 @@
             flowsContainer.textContent = '⚠ ' + result.error;
             flowsContainer.style.color = '#c0392b'; return;
           }
-          var matched = (result.matched || []).filter(function(f) {
-            return !f.triggerDeviceId || f.triggerDeviceId === deviceId;
-          });
+          var all     = result.matched || [];
+          var matched = all.filter(function(f) { return !f.triggerDeviceId || f.triggerDeviceId === deviceId; });
+          // Flows on the same trigger but filtered to another device — they exist
+          // yet never fire for this one. Surfacing them explains a "nothing happens".
+          var otherDev = all.filter(function(f) { return f.triggerDeviceId && f.triggerDeviceId !== deviceId; });
           if (!matched.length) {
             var none = document.createElement('span');
             none.style.cssText = 'color:#c0392b;font-size:11px';
@@ -4024,13 +4081,23 @@
               frow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
               var dot = document.createElement('span'); dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
               var name = document.createElement('span'); name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
-              var badge = document.createElement('span');
-              badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-              badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+              var badge = _emsFlowRunBtn(f);
               frow.appendChild(dot); frow.appendChild(name); frow.appendChild(badge);
               flowsContainer.appendChild(frow);
             });
           }
+          otherDev.forEach(function(f) {
+            var wrow = document.createElement('div');
+            wrow.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;flex-wrap:wrap';
+            var wdot = document.createElement('span'); wdot.textContent = '⚠'; wdot.style.cssText = 'color:#c0392b;font-weight:600';
+            var wname = document.createElement('span'); wname.textContent = f.name; wname.style.cssText = 'color:#1d1d1f';
+            wrow.appendChild(wdot); wrow.appendChild(wname); wrow.appendChild(_emsFlowRunBtn(f));
+            var warn = document.createElement('span');
+            warn.textContent = 'trigger filter is ' + String(f.triggerDeviceId).slice(0, 8) + '… — never fires for this device';
+            warn.style.cssText = 'font-size:10px;color:#c0392b;flex-basis:100%;padding-left:16px';
+            wrow.appendChild(warn);
+            flowsContainer.appendChild(wrow);
+          });
           var reloadBtn = document.createElement('button');
           reloadBtn.textContent = '↺ Reload flows'; reloadBtn.className = 'btn-secondary';
           reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
@@ -4762,8 +4829,7 @@
             row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
             var dot = document.createElement('span'); dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
             var name = document.createElement('span'); name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
-            var badge = document.createElement('span'); badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            var badge = _emsFlowRunBtn(f);
             row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
             flowsContainer.appendChild(row);
           });
@@ -5024,6 +5090,40 @@
       };
     }
 
+    // "Run" button for a listed flow — fires that flow's own trigger card with
+    // its own filter args, i.e. exactly what the EMS does. Verifies the whole
+    // chain: trigger → filter match → flow → action.
+    function _emsFlowRunBtn(f, extraTokens) {
+      var b = document.createElement('button');
+      b.className = 'btn-secondary';
+      b.style.cssText = 'font-size:10px;padding:2px 8px';
+      if (!f || !f.triggerCardId) {
+        b.textContent = 'Run'; b.disabled = true;
+        b.title = 'Trigger unknown for this flow — reload flows';
+        return b;
+      }
+      b.textContent = '▶ Run';
+      b.title = 'Fire "' + f.triggerCardId + '" exactly as the EMS would — this really runs the flow';
+      b.onclick = function(e) {
+        e.preventDefault(); e.stopPropagation();
+        var orig = b.textContent;
+        b.disabled = true; b.textContent = '…';
+        // Only real tokens here — the flow's filter args go into `state`, never
+        // into tokens (Homey rejects tokens the card doesn't declare).
+        _H.api('POST', '/ems/test-trigger',
+          { cardId: f.triggerCardId, tokens: extraTokens || {}, state: f.triggerArgs || {} },
+          function(err, res) {
+            b.disabled = false;
+            var ok = !err && res && res.ok;
+            b.textContent = ok ? '✓ fired' : '⚠ failed';
+            b.style.color = ok ? '#1a7a3a' : '#c0392b';
+            if (!ok) b.title = (res && res.error) || (err && err.message) || 'Error';
+            setTimeout(function() { b.textContent = orig; b.style.color = ''; }, 2500);
+          });
+      };
+      return b;
+    }
+
     function _emsMakeFlowSection(container, onLoad) {
       var header = document.createElement('div');
       header.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:6px 0 2px';
@@ -5126,15 +5226,23 @@
         } else {
           matched.forEach(function(f) {
             var row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;flex-wrap:wrap';
+            // The flow only fires when its trigger filter equals this device id —
+            // a stale filter (device re-paired / flow edited) silently never runs.
+            var mismatch = f.triggerDeviceId && f.triggerDeviceId !== deviceId;
             var dot = document.createElement('span');
-            dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+            dot.textContent = mismatch ? '⚠' : '✓';
+            dot.style.cssText = mismatch ? 'color:#c0392b;font-weight:600' : 'color:#34c759;font-weight:600';
             var name = document.createElement('span');
             name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
-            var badge = document.createElement('span');
-            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            var badge = _emsFlowRunBtn(f);
             row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+            if (mismatch) {
+              var warn = document.createElement('span');
+              warn.textContent = 'trigger filter is ' + f.triggerDeviceId.slice(0, 8) + '… — never fires for this device';
+              warn.style.cssText = 'font-size:10px;color:#c0392b;flex-basis:100%;padding-left:16px';
+              row.appendChild(warn);
+            }
             flowsContainer.appendChild(row);
           });
         }
@@ -5419,9 +5527,7 @@
             dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
             var name = document.createElement('span');
             name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
-            var badge = document.createElement('span');
-            badge.textContent = f.type === 'advanced' ? 'Advanced' : 'Flow';
-            badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
+            var badge = _emsFlowRunBtn(f);
             row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
             flowsContainer.appendChild(row);
           });
@@ -5834,7 +5940,7 @@
           flowsContainer.appendChild(hint);
         } else {
           matched.forEach(function(f) {
-            var makeRow = function(label, flowType) {
+            var makeRow = function(label, runInfo, extraTokens) {
               var row = document.createElement('div');
               row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
               var dot = document.createElement('span');
@@ -5843,14 +5949,16 @@
               var name = document.createElement('span');
               name.textContent = label;
               name.style.cssText = 'color:#1d1d1f';
-              var badge = document.createElement('span');
-              badge.textContent = flowType === 'advanced' ? 'Advanced' : 'Flow';
-              badge.style.cssText = 'font-size:10px;background:#e5e5ea;padding:1px 5px;border-radius:3px;color:#6e6e73';
-              row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
+              row.appendChild(dot); row.appendChild(name);
+              row.appendChild(_emsFlowRunBtn(runInfo, extraTokens));
               flowsContainer.appendChild(row);
             };
-            makeRow(f.name, f.type);
-            if (f.startCardId) makeRow(f.name + ' → Start', f.type);
+            // Test at the 6 A minimum so the run stays harmless
+            makeRow(f.name, f, { amps: 6, phase1: 6, phase2: 0, phase3: 0 });
+            if (f.startCardId) {
+              makeRow(f.name + ' → Start',
+                { triggerCardId: 'ems_start_charger', triggerArgs: f.triggerArgs || {} });
+            }
           });
         }
 
@@ -6276,7 +6384,9 @@
         var ma     = parseInt(maEl ? maEl.value : 16, 10) || 16;
         if (!id) return;
         var phSel  = entry.querySelector('.ems-row-phases');
-        var c = { id: id, max_amps: ma, ev_phases: phSel ? phSel.value : '3' };
+        var modeSel = entry.querySelector('.ems-charger-mode');
+        var c = { id: id, max_amps: ma, ev_phases: phSel ? phSel.value : '3',
+                  charge_mode: (modeSel && modeSel.value) || 'solar' };
         var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
