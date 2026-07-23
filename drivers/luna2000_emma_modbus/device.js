@@ -53,6 +53,11 @@ const CONTROL_WRITE_MAP = {
   storage_excess_pv_energy_use_in_tou: 40001,
 };
 
+// If the same control register gets written two *different* values within this
+// window, a second source (a Homey flow, a Huawei TOU schedule, or another app)
+// is fighting this app for control. We only log it — behaviour is unchanged.
+const WRITE_CONFLICT_WINDOW_MS = 45000;
+
 class LUNA2000EmmaModbusDevice extends Device {
 
   async onInit() {
@@ -125,6 +130,7 @@ class LUNA2000EmmaModbusDevice extends Device {
         if (this._updatingFromModbus) return;
 
         const previousValue = this.getCapabilityValue(cap);
+        this._noteWrite(cap, regAddress, value, 'capability');
         this.log(`Write start  [${cap} → reg ${regAddress}] value=${value}`);
         this._writeInProgress = true;
 
@@ -154,6 +160,7 @@ class LUNA2000EmmaModbusDevice extends Device {
 
     const writeEnum = async (cardId, regAddress, capabilityId, mode) => {
       const value = parseInt(mode, 10);
+      this._noteWrite(capabilityId, regAddress, value, `flow:${cardId}`);
       this.log(`Write start  [${cardId} → reg ${regAddress}] value=${value}`);
       this._writeInProgress = true;
       try {
@@ -455,6 +462,28 @@ class LUNA2000EmmaModbusDevice extends Device {
       this._updatingFromModbus         = false;
       this._updatingSettingFromModbus  = false;
     }
+  }
+
+  // Detects when a control register is being written two different values in
+  // quick succession — a sign that a second source (a Homey flow, a Huawei TOU
+  // schedule, or another app) is fighting this app for control. Purely diagnostic:
+  // it logs a warning and never changes what gets written.
+  _noteWrite(capability, regAddress, value, source) {
+    const now = Date.now();
+    if (!this._recentWrites) this._recentWrites = {};
+    const prev = this._recentWrites[capability];
+    if (prev && prev.value !== value && (now - prev.ts) <= WRITE_CONFLICT_WINDOW_MS) {
+      const secs = Math.round((now - prev.ts) / 1000);
+      const label = STORAGE_WORKING_MODE_LABELS[String(value)] || `value ${value}`;
+      const prevLabel = STORAGE_WORKING_MODE_LABELS[String(prev.value)] || `value ${prev.value}`;
+      this.log(
+        `[warn] Control conflict on reg ${regAddress} (${capability}): now set to ${value} (${label}) by ${source}, `
+        + `but was set to ${prev.value} (${prevLabel}) by ${prev.source} ${secs}s ago. `
+        + 'A second source (a Homey flow, a Huawei TOU/scheduling entry, or another app) is fighting for control — '
+        + 'the mode will keep flipping until that source is disabled.',
+      );
+    }
+    this._recentWrites[capability] = { value, ts: now, source };
   }
 
   async _set(capability, value) {

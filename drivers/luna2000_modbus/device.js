@@ -331,13 +331,23 @@ class LUNA2000ModbusDevice extends Device {
         // The mode write (47100) is always attempted last so new power/SoC values are
         // applied even when the battery is already in force-charge mode.
         (async () => {
+          // Write the target SoC FIRST and treat it as a hard precondition. Force-charge
+          // mode (47100=1) charges up to whatever 47101 currently holds, so if the new
+          // target cannot be written we must NOT enable the mode — otherwise the battery would
+          // charge to a STALE target left over from an earlier run.
+          try {
+            await writeModbusRegister(h, p, u, 47101, socRaw);
+          } catch (err) {
+            this.error('Force charge: SOC write failed — aborting, mode NOT enabled to avoid charging to a stale target:', err.message);
+            this._pendingForceMode = null;
+            this._writeInProgress = false;
+            this._notifyForceAbort('charge', target_soc, err);
+            return;
+          }
           let anyFail = false;
           try {
             await writeModbusU32(h, p, u, 47247, powerW);
           } catch (err) { this.error('Force charge: power write failed:', err.message); anyFail = true; }
-          try {
-            await writeModbusRegister(h, p, u, 47101, socRaw);
-          } catch (err) { this.error('Force charge: SOC write failed:', err.message); anyFail = true; }
           try {
             await writeModbusRegister(h, p, u, 47100, 1);
           } catch (err) { this.error('Force charge: mode write failed:', err.message); anyFail = true; }
@@ -361,13 +371,23 @@ class LUNA2000ModbusDevice extends Device {
         // The mode write (47100) is always attempted last so new power/SoC values are
         // applied even when the battery is already in force-discharge mode.
         (async () => {
+          // Write the target SoC FIRST and treat it as a hard precondition. Force-discharge
+          // mode (47100=2) discharges down to whatever 47101 currently holds, so if the new
+          // target cannot be written we must NOT enable the mode — otherwise the battery would
+          // discharge to a STALE target left over from an earlier run (e.g. a morning 2% run).
+          try {
+            await writeModbusRegister(h, p, u, 47101, socRaw);
+          } catch (err) {
+            this.error('Force discharge: SOC write failed — aborting, mode NOT enabled to avoid discharging to a stale target:', err.message);
+            this._pendingForceMode = null;
+            this._writeInProgress = false;
+            this._notifyForceAbort('discharge', target_soc, err);
+            return;
+          }
           let anyFail = false;
           try {
             await writeModbusU32(h, p, u, 47249, powerW);
           } catch (err) { this.error('Force discharge: power write failed:', err.message); anyFail = true; }
-          try {
-            await writeModbusRegister(h, p, u, 47101, socRaw);
-          } catch (err) { this.error('Force discharge: SOC write failed:', err.message); anyFail = true; }
           try {
             await writeModbusRegister(h, p, u, 47100, 2);
           } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
@@ -391,13 +411,23 @@ class LUNA2000ModbusDevice extends Device {
         // The mode write (47100) is always attempted last so new power/SoC values are
         // applied even when the battery is already in force-discharge mode.
         (async () => {
+          // Write the target SoC FIRST and treat it as a hard precondition. Force-discharge
+          // mode (47100=2) discharges down to whatever 47101 currently holds, so if the new
+          // target cannot be written we must NOT enable the mode — otherwise the battery would
+          // discharge to a STALE target left over from an earlier run (e.g. a morning 2% run).
+          try {
+            await writeModbusRegister(h, p, u, 47101, socRaw);
+          } catch (err) {
+            this.error('Force discharge: SOC write failed — aborting, mode NOT enabled to avoid discharging to a stale target:', err.message);
+            this._pendingForceMode = null;
+            this._writeInProgress = false;
+            this._notifyForceAbort('discharge', target_soc, err);
+            return;
+          }
           let anyFail = false;
           try {
             await writeModbusU32(h, p, u, 47249, powerW);
           } catch (err) { this.error('Force discharge: power write failed:', err.message); anyFail = true; }
-          try {
-            await writeModbusRegister(h, p, u, 47101, socRaw);
-          } catch (err) { this.error('Force discharge: SOC write failed:', err.message); anyFail = true; }
           try {
             await writeModbusRegister(h, p, u, 47100, 2);
           } catch (err) { this.error('Force discharge: mode write failed:', err.message); anyFail = true; }
@@ -1163,6 +1193,17 @@ class LUNA2000ModbusDevice extends Device {
       this._updatingFromModbus         = false;
       this._updatingSettingFromModbus  = false;
     }
+  }
+
+  // Surfaces an aborted force charge/discharge on the timeline. The flow action is
+  // fire-and-forget (it must return before the ~10 s Homey flow timeout while the
+  // modbus writes run with retries), so a failed target-SoC write can never fail the
+  // card itself — this notification is the only way the user learns the run was skipped.
+  _notifyForceAbort(kind, targetSocPct, err) {
+    if (this.getSetting('enable_timeline_notifications') === false) return;
+    this.homey.notifications.createNotification({
+      excerpt: `${this.getName()}: Force ${kind} NOT started — could not set target SoC (${targetSocPct}%): ${err.message}. Battery left unchanged to avoid running to an old target.`,
+    }).catch((e) => this.log('Timeline notification failed:', e.message));
   }
 
   async _set(capability, value) {

@@ -433,9 +433,12 @@ class EmsDevice extends Device {
         await this._setMode(holdMode, stTextHolding);
       }
     } else if (chargers.length && activeCount) {
-      // Chargers configured but passive while simple devices run — reflect them
-      const currentMode = this.getCapabilityValue('ems_mode');
-      if (currentMode === 'holding' || currentMode === 'idle') {
+      // Chargers configured but passive while simple devices run — reflect them.
+      // Check the mode proposed by THIS tick (the buffered one), not the capability:
+      // that still holds the previous tick's result, which made the mode alternate
+      // between "holding" and the simple-device mode on every tick.
+      const proposed = this._tickMode && this._tickMode.mode;
+      if (proposed === 'holding' || proposed === 'idle') {
         await this._setMode(simpleMode, stTextActive);
       }
     }
@@ -635,23 +638,28 @@ class EmsDevice extends Device {
   async _getSimpleDevices(devicesKey, cfg) {
     const cfgs = cfg[devicesKey] || [];
     return Promise.all(cfgs.map(async (c) => {
-      const stateFromPower = c.state_from_power === true;
+      // State source: 'onoff' (default) | 'power' | 'ems'.
+      // Back-compat: the old boolean state_from_power === true meant 'power'.
+      const stateSource = c.state_source || (c.state_from_power === true ? 'power' : 'onoff');
       const [powerW, onoff] = await Promise.all([
         c.cap_power ? this._cap(c.id, c.cap_power) : Promise.resolve(null),
-        // Skip the onoff read entirely when state is derived from power
-        stateFromPower ? Promise.resolve(null) : this._cap(c.id, 'onoff'),
+        // Only the onoff source needs the onoff read
+        stateSource === 'onoff' ? this._cap(c.id, 'onoff') : Promise.resolve(null),
       ]);
       const minPowerW = Number(c.min_power_w) || 0;
       // actualOn: the device's real on/off state as the EMS sees it.
-      //   - onoff mode: the device's onoff capability (null → unknown, drift skipped)
-      //   - power mode: power ≥ threshold. For devices whose plug is always on and
-      //     where start/stop toggle an internal load (pool heater+filter), onoff
-      //     never changes — power is the only real signal. Threshold = min_power_w
-      //     if set, else 50 W. null (no power reading) → unknown, drift skipped.
+      //   - onoff : the device's onoff capability (null → unknown, drift skipped)
+      //   - power : power ≥ threshold (for always-on plugs where start/stop toggle
+      //             an internal load). Threshold = min_power_w if set, else 50 W.
+      //   - ems   : null → the EMS trusts its own bookkeeping and never adopts an
+      //             external state (for devices nudged via setpoints/hysteresis,
+      //             where neither onoff nor power reflects the EMS command).
       let actualOn;
-      if (stateFromPower) {
+      if (stateSource === 'power') {
         const thr = minPowerW > 0 ? minPowerW : 50;
         actualOn  = powerW != null ? (powerW >= thr) : null;
+      } else if (stateSource === 'ems') {
+        actualOn  = null;
       } else {
         actualOn  = typeof onoff === 'boolean' ? onoff : null;
       }
@@ -661,7 +669,7 @@ class EmsDevice extends Device {
         powerW,
         onoff,
         actualOn,
-        stateFromPower,
+        stateSource,
         minSurplusW:         Number(c.min_surplus_w)         || 2000,
         minPowerW,
         startSustainMs:      Number(c.start_sustain_s        || 60) * 1000,

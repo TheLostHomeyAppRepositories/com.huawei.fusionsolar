@@ -3793,26 +3793,43 @@
       minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
-      // "State from power": for always-on plugs where start/stop toggle an internal
-      // load (pool heater/filter) — the EMS then reads on/off from measured power,
-      // not the onoff switch. Only meaningful with a Power (W) capability.
+      // State source: how the EMS reads whether the device is actually on.
+      //   onoff — the device's on/off switch (default)
+      //   power — measured power ≥ threshold (always-on plugs; pool heater/filter)
+      //   ems   — trust the EMS's own bookkeeping, ignore the device state
+      //           (devices nudged via setpoints/hysteresis, e.g. a heat pump)
       var stateFromPowerWrap = document.createElement('label');
-      stateFromPowerWrap.className = 'ems-min-power-field';
-      stateFromPowerWrap.dataset.showDisplay = 'flex';
-      // grid-column:1/-1 spans the full ems-config-row grid (it's a grid, not flex);
-      // text-transform/letter-spacing override Homey's injected uppercase label style.
-      stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:' + ((stored && stored.cap_power) ? 'flex' : 'none') + ';align-items:flex-start;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;cursor:pointer;margin-top:2px';
+            stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;margin-top:2px;flex-wrap:wrap';
       stateFromPowerWrap.style.setProperty('text-transform', 'none', 'important');
       stateFromPowerWrap.style.setProperty('letter-spacing', 'normal', 'important');
-      var stateFromPowerChk = document.createElement('input');
-      stateFromPowerChk.type = 'checkbox';
-      stateFromPowerChk.dataset.field = 'state_from_power';
-      stateFromPowerChk.checked = !!(stored && stored.state_from_power);
-      stateFromPowerChk.style.setProperty('width', '15px', 'important'); // beat .ems-config-row input{width:80px!important}
-      stateFromPowerChk.style.flex = '0 0 auto';
-      stateFromPowerChk.style.marginTop = '1px';
-      stateFromPowerWrap.appendChild(stateFromPowerChk);
-      stateFromPowerWrap.appendChild(document.createTextNode('Determine state from power (instead of the on/off switch) — for devices whose plug is always on and whose power draw indicates activity'));
+      var stateSrcLbl = document.createElement('span');
+      stateSrcLbl.textContent = 'State source:';
+      stateSrcLbl.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var stateSrcSel = document.createElement('select');
+      stateSrcSel.dataset.field = 'state_source';
+      stateSrcSel.style.cssText = 'padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      stateSrcSel.style.setProperty('width', 'auto', 'important');
+      [
+        { id: 'onoff', label: 'On/off switch' },
+        { id: 'power', label: 'Power draw' },
+        { id: 'ems',   label: 'EMS state only' },
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; stateSrcSel.appendChild(opt);
+      });
+      // Back-compat: old boolean state_from_power === true → 'power'
+      stateSrcSel.value = (stored && stored.state_source) || (stored && stored.state_from_power === true ? 'power' : 'onoff');
+      var stateSrcHint = document.createElement('span');
+      stateSrcHint.style.cssText = 'flex-basis:100%;font-size:11px;color:#6e6e73;line-height:1.4';
+      var EMS_STATE_SRC_HINTS = {
+        onoff: 'Reads the device on/off switch — the normal case.',
+        power: 'Reads on/off from measured power (needs a Power capability) — for always-on plugs where start/stop toggle an internal load (pool heater/filter).',
+        ems:   'The EMS trusts its own start/stop bookkeeping and never adopts the device state — for devices nudged via setpoints/hysteresis (e.g. a heat pump), where neither the switch nor the power reflects the EMS command.',
+      };
+      function _updStateHint() { stateSrcHint.textContent = EMS_STATE_SRC_HINTS[stateSrcSel.value] || ''; }
+      stateSrcSel.addEventListener('change', _updStateHint); _updStateHint();
+      stateFromPowerWrap.appendChild(stateSrcLbl);
+      stateFromPowerWrap.appendChild(stateSrcSel);
+      stateFromPowerWrap.appendChild(stateSrcHint);
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -3862,7 +3879,7 @@
         var sel      = entry.querySelector('.ems-row-device');
         var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
         var minPower = entry.querySelector('input[data-field=min_power_w]');
-        var stateFromPower = entry.querySelector('input[data-field=state_from_power]');
+        var stateSrc = entry.querySelector('select[data-field=state_source]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
@@ -3875,7 +3892,7 @@
             cap_power:             (row && row.dataset.capPower) || '',
             min_surplus_w:         parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
             min_power_w:           parseInt(minPower ? minPower.value : 0,    10) || 0,
-            state_from_power:      !!(stateFromPower && stateFromPower.checked),
+            state_source:          (stateSrc && stateSrc.value) || 'onoff',
             start_sustain_s:       parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:          parseInt(grace    ? grace.value    : 0,    10) || 0,
             max_run_min:           parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
@@ -3949,7 +3966,7 @@
         var sel     = entry.querySelector('.ems-row-device');
         var surplus  = entry.querySelector('input[data-field=min_surplus_w]');
         var minPower = entry.querySelector('input[data-field=min_power_w]');
-        var stateFromPower = entry.querySelector('input[data-field=state_from_power]');
+        var stateSrc = entry.querySelector('select[data-field=state_source]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
@@ -3962,7 +3979,7 @@
             cap_power:            (row && row.dataset.capPower) || '',
             min_surplus_w:        parseInt(surplus  ? surplus.value  : 2000, 10) || 2000,
             min_power_w:          parseInt(minPower ? minPower.value : 0,    10) || 0,
-            state_from_power:     !!(stateFromPower && stateFromPower.checked),
+            state_source:         (stateSrc && stateSrc.value) || 'onoff',
             start_sustain_s:      parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:         parseInt(grace    ? grace.value    : 0,    10) || 0,
             max_run_min:          parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
@@ -4370,26 +4387,43 @@
       minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
-      // "State from power": for always-on plugs where start/stop toggle an internal
-      // load (pool heater/filter) — the EMS then reads on/off from measured power,
-      // not the onoff switch. Only meaningful with a Power (W) capability.
+      // State source: how the EMS reads whether the device is actually on.
+      //   onoff — the device's on/off switch (default)
+      //   power — measured power ≥ threshold (always-on plugs; pool heater/filter)
+      //   ems   — trust the EMS's own bookkeeping, ignore the device state
+      //           (devices nudged via setpoints/hysteresis, e.g. a heat pump)
       var stateFromPowerWrap = document.createElement('label');
-      stateFromPowerWrap.className = 'ems-min-power-field';
-      stateFromPowerWrap.dataset.showDisplay = 'flex';
-      // grid-column:1/-1 spans the full ems-config-row grid (it's a grid, not flex);
-      // text-transform/letter-spacing override Homey's injected uppercase label style.
-      stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:' + ((stored && stored.cap_power) ? 'flex' : 'none') + ';align-items:flex-start;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;cursor:pointer;margin-top:2px';
+            stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;margin-top:2px;flex-wrap:wrap';
       stateFromPowerWrap.style.setProperty('text-transform', 'none', 'important');
       stateFromPowerWrap.style.setProperty('letter-spacing', 'normal', 'important');
-      var stateFromPowerChk = document.createElement('input');
-      stateFromPowerChk.type = 'checkbox';
-      stateFromPowerChk.dataset.field = 'state_from_power';
-      stateFromPowerChk.checked = !!(stored && stored.state_from_power);
-      stateFromPowerChk.style.setProperty('width', '15px', 'important'); // beat .ems-config-row input{width:80px!important}
-      stateFromPowerChk.style.flex = '0 0 auto';
-      stateFromPowerChk.style.marginTop = '1px';
-      stateFromPowerWrap.appendChild(stateFromPowerChk);
-      stateFromPowerWrap.appendChild(document.createTextNode('Determine state from power (instead of the on/off switch) — for devices whose plug is always on and whose power draw indicates activity'));
+      var stateSrcLbl = document.createElement('span');
+      stateSrcLbl.textContent = 'State source:';
+      stateSrcLbl.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var stateSrcSel = document.createElement('select');
+      stateSrcSel.dataset.field = 'state_source';
+      stateSrcSel.style.cssText = 'padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      stateSrcSel.style.setProperty('width', 'auto', 'important');
+      [
+        { id: 'onoff', label: 'On/off switch' },
+        { id: 'power', label: 'Power draw' },
+        { id: 'ems',   label: 'EMS state only' },
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; stateSrcSel.appendChild(opt);
+      });
+      // Back-compat: old boolean state_from_power === true → 'power'
+      stateSrcSel.value = (stored && stored.state_source) || (stored && stored.state_from_power === true ? 'power' : 'onoff');
+      var stateSrcHint = document.createElement('span');
+      stateSrcHint.style.cssText = 'flex-basis:100%;font-size:11px;color:#6e6e73;line-height:1.4';
+      var EMS_STATE_SRC_HINTS = {
+        onoff: 'Reads the device on/off switch — the normal case.',
+        power: 'Reads on/off from measured power (needs a Power capability) — for always-on plugs where start/stop toggle an internal load (pool heater/filter).',
+        ems:   'The EMS trusts its own start/stop bookkeeping and never adopts the device state — for devices nudged via setpoints/hysteresis (e.g. a heat pump), where neither the switch nor the power reflects the EMS command.',
+      };
+      function _updStateHint() { stateSrcHint.textContent = EMS_STATE_SRC_HINTS[stateSrcSel.value] || ''; }
+      stateSrcSel.addEventListener('change', _updStateHint); _updStateHint();
+      stateFromPowerWrap.appendChild(stateSrcLbl);
+      stateFromPowerWrap.appendChild(stateSrcSel);
+      stateFromPowerWrap.appendChild(stateSrcHint);
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -4531,26 +4565,43 @@
       minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
-      // "State from power": for always-on plugs where start/stop toggle an internal
-      // load (pool heater/filter) — the EMS then reads on/off from measured power,
-      // not the onoff switch. Only meaningful with a Power (W) capability.
+      // State source: how the EMS reads whether the device is actually on.
+      //   onoff — the device's on/off switch (default)
+      //   power — measured power ≥ threshold (always-on plugs; pool heater/filter)
+      //   ems   — trust the EMS's own bookkeeping, ignore the device state
+      //           (devices nudged via setpoints/hysteresis, e.g. a heat pump)
       var stateFromPowerWrap = document.createElement('label');
-      stateFromPowerWrap.className = 'ems-min-power-field';
-      stateFromPowerWrap.dataset.showDisplay = 'flex';
-      // grid-column:1/-1 spans the full ems-config-row grid (it's a grid, not flex);
-      // text-transform/letter-spacing override Homey's injected uppercase label style.
-      stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:' + ((stored && stored.cap_power) ? 'flex' : 'none') + ';align-items:flex-start;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;cursor:pointer;margin-top:2px';
+            stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;margin-top:2px;flex-wrap:wrap';
       stateFromPowerWrap.style.setProperty('text-transform', 'none', 'important');
       stateFromPowerWrap.style.setProperty('letter-spacing', 'normal', 'important');
-      var stateFromPowerChk = document.createElement('input');
-      stateFromPowerChk.type = 'checkbox';
-      stateFromPowerChk.dataset.field = 'state_from_power';
-      stateFromPowerChk.checked = !!(stored && stored.state_from_power);
-      stateFromPowerChk.style.setProperty('width', '15px', 'important'); // beat .ems-config-row input{width:80px!important}
-      stateFromPowerChk.style.flex = '0 0 auto';
-      stateFromPowerChk.style.marginTop = '1px';
-      stateFromPowerWrap.appendChild(stateFromPowerChk);
-      stateFromPowerWrap.appendChild(document.createTextNode('Determine state from power (instead of the on/off switch) — for devices whose plug is always on and whose power draw indicates activity'));
+      var stateSrcLbl = document.createElement('span');
+      stateSrcLbl.textContent = 'State source:';
+      stateSrcLbl.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var stateSrcSel = document.createElement('select');
+      stateSrcSel.dataset.field = 'state_source';
+      stateSrcSel.style.cssText = 'padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      stateSrcSel.style.setProperty('width', 'auto', 'important');
+      [
+        { id: 'onoff', label: 'On/off switch' },
+        { id: 'power', label: 'Power draw' },
+        { id: 'ems',   label: 'EMS state only' },
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; stateSrcSel.appendChild(opt);
+      });
+      // Back-compat: old boolean state_from_power === true → 'power'
+      stateSrcSel.value = (stored && stored.state_source) || (stored && stored.state_from_power === true ? 'power' : 'onoff');
+      var stateSrcHint = document.createElement('span');
+      stateSrcHint.style.cssText = 'flex-basis:100%;font-size:11px;color:#6e6e73;line-height:1.4';
+      var EMS_STATE_SRC_HINTS = {
+        onoff: 'Reads the device on/off switch — the normal case.',
+        power: 'Reads on/off from measured power (needs a Power capability) — for always-on plugs where start/stop toggle an internal load (pool heater/filter).',
+        ems:   'The EMS trusts its own start/stop bookkeeping and never adopts the device state — for devices nudged via setpoints/hysteresis (e.g. a heat pump), where neither the switch nor the power reflects the EMS command.',
+      };
+      function _updStateHint() { stateSrcHint.textContent = EMS_STATE_SRC_HINTS[stateSrcSel.value] || ''; }
+      stateSrcSel.addEventListener('change', _updStateHint); _updStateHint();
+      stateFromPowerWrap.appendChild(stateSrcLbl);
+      stateFromPowerWrap.appendChild(stateSrcSel);
+      stateFromPowerWrap.appendChild(stateSrcHint);
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -4692,26 +4743,43 @@
       minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
-      // "State from power": for always-on plugs where start/stop toggle an internal
-      // load (pool heater/filter) — the EMS then reads on/off from measured power,
-      // not the onoff switch. Only meaningful with a Power (W) capability.
+      // State source: how the EMS reads whether the device is actually on.
+      //   onoff — the device's on/off switch (default)
+      //   power — measured power ≥ threshold (always-on plugs; pool heater/filter)
+      //   ems   — trust the EMS's own bookkeeping, ignore the device state
+      //           (devices nudged via setpoints/hysteresis, e.g. a heat pump)
       var stateFromPowerWrap = document.createElement('label');
-      stateFromPowerWrap.className = 'ems-min-power-field';
-      stateFromPowerWrap.dataset.showDisplay = 'flex';
-      // grid-column:1/-1 spans the full ems-config-row grid (it's a grid, not flex);
-      // text-transform/letter-spacing override Homey's injected uppercase label style.
-      stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:' + ((stored && stored.cap_power) ? 'flex' : 'none') + ';align-items:flex-start;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;cursor:pointer;margin-top:2px';
+            stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;margin-top:2px;flex-wrap:wrap';
       stateFromPowerWrap.style.setProperty('text-transform', 'none', 'important');
       stateFromPowerWrap.style.setProperty('letter-spacing', 'normal', 'important');
-      var stateFromPowerChk = document.createElement('input');
-      stateFromPowerChk.type = 'checkbox';
-      stateFromPowerChk.dataset.field = 'state_from_power';
-      stateFromPowerChk.checked = !!(stored && stored.state_from_power);
-      stateFromPowerChk.style.setProperty('width', '15px', 'important'); // beat .ems-config-row input{width:80px!important}
-      stateFromPowerChk.style.flex = '0 0 auto';
-      stateFromPowerChk.style.marginTop = '1px';
-      stateFromPowerWrap.appendChild(stateFromPowerChk);
-      stateFromPowerWrap.appendChild(document.createTextNode('Determine state from power (instead of the on/off switch) — for devices whose plug is always on and whose power draw indicates activity'));
+      var stateSrcLbl = document.createElement('span');
+      stateSrcLbl.textContent = 'State source:';
+      stateSrcLbl.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var stateSrcSel = document.createElement('select');
+      stateSrcSel.dataset.field = 'state_source';
+      stateSrcSel.style.cssText = 'padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      stateSrcSel.style.setProperty('width', 'auto', 'important');
+      [
+        { id: 'onoff', label: 'On/off switch' },
+        { id: 'power', label: 'Power draw' },
+        { id: 'ems',   label: 'EMS state only' },
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; stateSrcSel.appendChild(opt);
+      });
+      // Back-compat: old boolean state_from_power === true → 'power'
+      stateSrcSel.value = (stored && stored.state_source) || (stored && stored.state_from_power === true ? 'power' : 'onoff');
+      var stateSrcHint = document.createElement('span');
+      stateSrcHint.style.cssText = 'flex-basis:100%;font-size:11px;color:#6e6e73;line-height:1.4';
+      var EMS_STATE_SRC_HINTS = {
+        onoff: 'Reads the device on/off switch — the normal case.',
+        power: 'Reads on/off from measured power (needs a Power capability) — for always-on plugs where start/stop toggle an internal load (pool heater/filter).',
+        ems:   'The EMS trusts its own start/stop bookkeeping and never adopts the device state — for devices nudged via setpoints/hysteresis (e.g. a heat pump), where neither the switch nor the power reflects the EMS command.',
+      };
+      function _updStateHint() { stateSrcHint.textContent = EMS_STATE_SRC_HINTS[stateSrcSel.value] || ''; }
+      stateSrcSel.addEventListener('change', _updStateHint); _updStateHint();
+      stateFromPowerWrap.appendChild(stateSrcLbl);
+      stateFromPowerWrap.appendChild(stateSrcSel);
+      stateFromPowerWrap.appendChild(stateSrcHint);
 
       var removeBtn = document.createElement('button');
       removeBtn.className = 'ems-row-remove';
@@ -6755,13 +6823,21 @@
           label = (ev.label && ev.label !== '—') ? ev.label : (meta ? meta.label : ev.event);
           detail = (meta && ev.label && ev.label !== '—') ? meta.label : '';
         } else if (ev.type === 'device') {
-          dot   = ev.event === 'start' ? '#34c759' : '#ff6b6b';
-          label = ev.label || (ev.deviceId ? ev.deviceId.slice(0,8) : '');
-          detail = ev.event === 'start' ? 'EMS started' : 'EMS stopped';
+          var _DEV_EV = {
+            start:      { dot: '#34c759', detail: 'EMS started' },
+            stop:       { dot: '#ff6b6b', detail: 'EMS stopped' },
+            manual_on:  { dot: '#ff9500', detail: 'switched on outside the EMS — left alone' },
+            manual_off: { dot: '#ff9500', detail: 'switched off outside the EMS — state adopted' },
+          };
+          var _dm = _DEV_EV[ev.event] || { dot: '#d1d1d6', detail: ev.event };
+          dot    = _dm.dot;
+          label  = ev.label || (ev.deviceId ? ev.deviceId.slice(0,8) : '');
+          detail = _dm.detail;
         } else if (ev.type === 'charger') {
-          if (ev.event === 'start')    { dot = '#007aff'; label = ev.label || 'started';      detail = 'Charger started';  }
-          if (ev.event === 'set_amps') { dot = '#5ac8fa'; label = '→ ' + (ev.label || '');   detail = 'Charger adjusted'; }
-          if (ev.event === 'stop')     { dot = '#c7c7cc'; label = 'Charger stopped';           detail = ''; }
+          if (ev.event === 'start')          { dot = '#007aff'; label = ev.label || 'started';    detail = 'Charger started';  }
+          if (ev.event === 'set_amps')       { dot = '#5ac8fa'; label = '→ ' + (ev.label || '');  detail = 'Charger adjusted'; }
+          if (ev.event === 'stop')           { dot = '#c7c7cc'; label = 'Charger stopped';        detail = ''; }
+          if (ev.event === 'target_reached') { dot = '#34c759'; label = ev.label || '';           detail = 'Charge target reached'; }
         }
 
         var dotStyle = 'width:10px;height:10px;border-radius:' + (isSystem ? '2px' : '50%') +
