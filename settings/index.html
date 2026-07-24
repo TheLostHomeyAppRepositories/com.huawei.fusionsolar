@@ -1233,7 +1233,10 @@
               <span id="ems-hist-day-label" style="font-size:12px;font-weight:600;color:#3a3a3c;min-width:80px;text-align:center">Today</span>
               <button class="btn-secondary" id="ems-hist-next" style="padding:3px 10px;font-size:12px" onclick="emsHistoryNav(-1)" disabled>▶</button>
             </div>
-            <button class="btn-secondary" onclick="emsHistoryLoad()" style="padding:3px 10px;font-size:12px">↻ Refresh</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-secondary" id="ems-hist-copy" onclick="emsHistoryCopy()" style="padding:3px 10px;font-size:12px">⧉ Copy</button>
+              <button class="btn-secondary" onclick="emsHistoryLoad()" style="padding:3px 10px;font-size:12px">↻ Refresh</button>
+            </div>
           </div>
           <div id="ems-hist-timeline" style="display:flex;flex-direction:column;gap:0;max-height:400px;overflow-y:auto;border:1px solid #e5e5ea;border-radius:8px;padding:8px 10px;background:#fff">
             <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0">Open to load…</div>
@@ -3685,13 +3688,32 @@
       _updateModeHint();
       modeRow.appendChild(modeLbl); modeRow.appendChild(modeSel); modeRow.appendChild(modeHint);
 
+      // Adjustment confirmation time (per charger): how long a higher surplus must
+      // hold before the EMS steps the charge current up. Higher = fewer adjustments.
+      var stepRow = document.createElement('div');
+      stepRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 2px 2px';
+      var stepLbl = document.createElement('span');
+      stepLbl.textContent = 'Adjustment interval';
+      stepLbl.style.cssText = 'font-size:11px;color:#6e6e73;min-width:100px';
+      var stepInput = document.createElement('input');
+      stepInput.type = 'number';
+      stepInput.className = 'ems-charger-stephold';
+      stepInput.dataset.field = 'step_hold_s';
+      stepInput.value = (stored && stored.step_hold_s) || 30;
+      stepInput.min = 15; stepInput.max = 600; stepInput.step = 5;
+      stepInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+      var stepHint = document.createElement('span');
+      stepHint.textContent = 'sec — surplus must hold this long before the charge current is stepped up (higher = fewer adjustments)';
+      stepHint.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;flex:1;min-width:190px';
+      stepRow.appendChild(stepLbl); stepRow.appendChild(stepInput); stepRow.appendChild(stepHint);
+
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
 
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(stepRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
@@ -6455,6 +6477,9 @@
         var modeSel = entry.querySelector('.ems-charger-mode');
         var c = { id: id, max_amps: ma, ev_phases: phSel ? phSel.value : '3',
                   charge_mode: (modeSel && modeSel.value) || 'solar' };
+        var stepEl = entry.querySelector('.ems-charger-stephold');
+        var stepS  = stepEl ? parseInt(stepEl.value, 10) : 30;
+        c.step_hold_s = (isFinite(stepS) && stepS > 0) ? stepS : 30;
         var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
@@ -6757,6 +6782,8 @@
       solar_hp:         { label: 'Solar heat pump',          dot: '#30d158' },
       solar_boiler:     { label: 'Solar boiler',             dot: '#32ade6' },
       solar_pool:       { label: 'Solar pool pump',          dot: '#00c7be' },
+      solar_dehumidifier: { label: 'Solar dehumidifier',     dot: '#30d158' },
+      solar_multi:      { label: 'Solar (multiple devices)', dot: '#30d158' },
       offpeak_ev:       { label: 'Off-peak EV charging',     dot: '#007aff' },
       instant_ev:       { label: 'Instant charge (max)',      dot: '#af52de' },
       battery_priority: { label: 'Battery priority',         dot: '#ff9500' },
@@ -6876,6 +6903,80 @@
         _emsHistOffset  = 0;
         emsHistoryRender();
       });
+    }
+
+    // Plain-text form of one event — mirrors the label/detail rules in emsHistoryRender().
+    function _emsHistLineText(ev) {
+      var label = ev.event || '?';
+      var detail = '';
+      if (ev.type === 'system') {
+        label = ev.event === 'app_update' ? 'App updated' : 'App started';
+        detail = ev.label || '';
+      } else if (ev.type === 'mode') {
+        var meta = _HIST_MODE_META[ev.event];
+        label  = (ev.label && ev.label !== '—') ? ev.label : (meta ? meta.label : ev.event);
+        detail = (meta && ev.label && ev.label !== '—') ? meta.label : '';
+      } else if (ev.type === 'device') {
+        var _DEV_EV = {
+          start:      'EMS started',
+          stop:       'EMS stopped',
+          manual_on:  'switched on outside the EMS — left alone',
+          manual_off: 'switched off outside the EMS — state adopted',
+        };
+        label  = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
+        detail = _DEV_EV[ev.event] || ev.event;
+      } else if (ev.type === 'charger') {
+        if (ev.event === 'start')               { label = ev.label || 'started';    detail = 'Charger started'; }
+        else if (ev.event === 'set_amps')       { label = '→ ' + (ev.label || '');  detail = 'Charger adjusted'; }
+        else if (ev.event === 'stop')           { label = 'Charger stopped';        detail = ''; }
+        else if (ev.event === 'target_reached') { label = ev.label || '';           detail = 'Charge target reached'; }
+      }
+      var line = _emsHistFmt(ev.ts) + '  ' + label;
+      if (detail) line += ' — ' + detail;
+      return line;
+    }
+
+    function _emsHistFallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    function _emsHistCopyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).then(function() { return true; },
+                                                         function() { return _emsHistFallbackCopy(text); });
+      }
+      return Promise.resolve(_emsHistFallbackCopy(text));
+    }
+
+    function _emsHistFlashCopy(btn, ok) {
+      if (!btn) return;
+      var orig = btn.textContent;
+      btn.textContent = ok ? '✓ Copied' : '✕ Failed';
+      setTimeout(function() { btn.textContent = orig; }, 1200);
+    }
+
+    // Copies the events currently shown for the selected day as plain text.
+    function emsHistoryCopy() {
+      var btn   = document.getElementById('ems-hist-copy');
+      var start = _emsHistDayStart(_emsHistOffset);
+      var end   = _emsHistDayEnd(_emsHistOffset);
+      var evs   = _emsHistEvents.filter(function(e) { return e.ts >= start && e.ts <= end; })
+                    .slice().reverse();
+      if (!evs.length) { _emsHistFlashCopy(btn, false); return; }
+      var lines = ['EMS History — ' + _emsHistNavLabel(_emsHistOffset), ''];
+      for (var i = 0; i < evs.length; i++) lines.push(_emsHistLineText(evs[i]));
+      _emsHistCopyText(lines.join('\n')).then(function(ok) { _emsHistFlashCopy(btn, ok); });
     }
 
     function onHomeyReady(H) {

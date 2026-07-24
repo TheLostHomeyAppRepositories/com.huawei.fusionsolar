@@ -1445,6 +1445,14 @@
           }
         },
         {
+          "id": "solar_multi",
+          "title": {
+            "en": "Solar (multiple devices)",
+            "de": "Solar (mehrere Geräte)",
+            "nl": "Zon (meerdere apparaten)"
+          }
+        },
+        {
           "id": "offpeak_ev",
           "title": {
             "en": "Off-Peak EV Charging",
@@ -10877,6 +10885,14 @@
                   "en": "Solar Dehumidifier",
                   "de": "Solar-Entfeuchter",
                   "nl": "Zonne-ontvochtiger"
+                }
+              },
+              {
+                "id": "solar_multi",
+                "label": {
+                  "en": "Solar (multiple devices)",
+                  "de": "Solar (mehrere Geräte)",
+                  "nl": "Zon (meerdere apparaten)"
                 }
               },
               {

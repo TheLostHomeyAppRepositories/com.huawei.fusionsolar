@@ -402,12 +402,27 @@ class EmsDevice extends Device {
     const activePoolCount         = pools.filter((d)         => this._poolStates.get(d.id)?.isOn).length;
     const activeDehumidifierCount = dehumidifiers.filter((d) => this._dehumidifierStates.get(d.id)?.isOn).length;
     const activeCount             = activeHpCount + activeBoilerCount + activePoolCount + activeDehumidifierCount;
-    // Pick mode matching the single active device type; fall back to solar_hp for mixed
-    let simpleMode = 'solar_hp';
-    if (!activeHpCount && activeBoilerCount && !activePoolCount && !activeDehumidifierCount) simpleMode = 'solar_boiler';
-    else if (!activeHpCount && !activeBoilerCount && activePoolCount && !activeDehumidifierCount) simpleMode = 'solar_pool';
-    else if (!activeHpCount && !activeBoilerCount && !activePoolCount && activeDehumidifierCount) simpleMode = 'solar_dehumidifier';
-    const stTextActive = `${activeCount} Gerät${activeCount > 1 ? 'e' : ''} aktiv${socStr}`;
+    // Name the mode after the single active device type. When several different
+    // types run at once, use the generic 'solar_multi' label — previously this
+    // fell through to 'solar_hp', which read as "Solar heat pump" even when no
+    // heat pump was running (e.g. pool + dehumidifier active together).
+    const activeTypes = [
+      activeHpCount           ? 'solar_hp'           : null,
+      activeBoilerCount       ? 'solar_boiler'       : null,
+      activePoolCount         ? 'solar_pool'         : null,
+      activeDehumidifierCount ? 'solar_dehumidifier' : null,
+    ].filter(Boolean);
+    const simpleMode = activeTypes.length === 1 ? activeTypes[0] : 'solar_multi';
+    // List the names of the devices that are actually running, so the history
+    // shows "Pool, Entfeuchter · Bat 100%" instead of a bare "2 Geräte aktiv".
+    const activeNames = [];
+    for (const d of heatPumps)     if (this._heatPumpStates.get(d.id)?.isOn)      activeNames.push(d.name);
+    for (const d of boilers)       if (this._boilerStates.get(d.id)?.isOn)        activeNames.push(d.name);
+    for (const d of pools)         if (this._poolStates.get(d.id)?.isOn)          activeNames.push(d.name);
+    for (const d of dehumidifiers) if (this._dehumidifierStates.get(d.id)?.isOn) activeNames.push(d.name);
+    const stTextActive = activeNames.length
+      ? `${activeNames.join(', ')}${socStr}`
+      : `${activeCount} Gerät${activeCount > 1 ? 'e' : ''} aktiv${socStr}`;
 
     if (!chargers.length && !simpleDevicesAll.length) {
       await this._setMode('not_configured', 'Konfiguriere EMS in App Settings');
@@ -631,6 +646,9 @@ class EmsDevice extends Device {
         phaseSwitch: c.phase_switch === true,
         // 'solar' (default) | 'solar_offpeak' | 'always'
         chargeMode:  c.charge_mode || 'solar',
+        // How long a higher amp target must hold before the EMS steps up (anti-thrash).
+        // Per-charger; falls back to the global STEP_HOLD_MS default (30 s).
+        stepHoldMs:  Math.max(0, Number(c.step_hold_s) || 30) * 1000,
       };
     }));
   }
@@ -1308,7 +1326,8 @@ class EmsDevice extends Device {
         return { amps: cur, phases, allocatedW: cur * phases * 230 };
       }
 
-      if ((now - st.pendingStepSince) < STEP_HOLD_MS) {
+      const stepHoldMs = charger.stepHoldMs || STEP_HOLD_MS;
+      if ((now - st.pendingStepSince) < stepHoldMs) {
         return { amps: cur, phases, allocatedW: cur * phases * 230 };
       }
 
@@ -1602,6 +1621,11 @@ class EmsDevice extends Device {
     if (this.hasCapability('measure_power.pv'))      await this.removeCapability('measure_power.pv').catch(() => {});
     if (this.hasCapability('measure_power.house'))   await this.removeCapability('measure_power.house').catch(() => {});
     if (this.hasCapability('measure_ev_budget'))     await this.removeCapability('measure_ev_budget').catch(() => {});
+    // Legacy base car caps (no per-car suffix) — superseded by measure_car_soc.<id>
+    // / measure_car_target_soc.<id>. Leftover instances show as empty "Auto-Ladestand"
+    // / "Auto-Ziel-Ladestand" tiles; the suffix-less ids are never used directly.
+    if (this.hasCapability('measure_car_soc'))         await this.removeCapability('measure_car_soc').catch(() => {});
+    if (this.hasCapability('measure_car_target_soc'))  await this.removeCapability('measure_car_target_soc').catch(() => {});
     for (const cap of ['ems_mode', 'ems_status_text', 'measure_solar_surplus', 'measure_pv_power', 'measure_house_power', 'measure_grid_power', 'measure_battery_power', 'measure_electricity_price', 'offpeak_enabled', 'charge_now']) {
       if (!this.hasCapability(cap)) {
         this.log(`[EMS] addCapability: ${cap}`);
