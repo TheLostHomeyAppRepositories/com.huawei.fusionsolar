@@ -27,7 +27,9 @@ const OCPP_STATUS_MAP = {
 };
 
 const REQUIRED_CAPABILITIES = [
-  'onoff',
+  'evcharger_charging',
+  'target_power',
+  'target_power_mode',
   'target_current',
   'measure_power',
   'meter_power',
@@ -63,6 +65,9 @@ const REMOVE_CAPABILITIES = [
   'button.resume_charging',
   'button.release_charger',
   'resume_automation',
+  // Migrated to the standard EV capability `evcharger_charging` (Homey v12.4.5+),
+  // which auto-generates the native "Start charging" / "Is charging" flow cards.
+  'onoff',
 ];
 
 class SmartChargerOcppDevice extends Device {
@@ -80,6 +85,12 @@ class SmartChargerOcppDevice extends Device {
       }
     }
     await this._ensureCapabilities();
+
+    // Effective controller is always Homey (the charger has no self-scheduling of
+    // its own — automation lives in the EMS device), so seed the mode once.
+    if (this.hasCapability('target_power_mode') && this.getCapabilityValue('target_power_mode') == null) {
+      await this._set('target_power_mode', 'homey');
+    }
 
     // ── One-time setting migrations ─────────────────────────────────────────
     try {
@@ -243,7 +254,7 @@ class SmartChargerOcppDevice extends Device {
 
     // ── Register with OcppServer ────────────────────────────────────────────
     const stationId = this.getSetting('station_id');
-    const ocppPort  = parseInt(this.getSetting('ocpp_port')) || 8887;
+    const ocppPort  = parseInt(this.getSetting('ocpp_port'), 10) || 8887;
     const server    = OcppServer.getInstance(this.homey, ocppPort);
     server.registerDevice(stationId, this);
     server.setCredentials(stationId, this.getSetting('ocpp_username'), this.getSetting('ocpp_password'));
@@ -261,7 +272,7 @@ class SmartChargerOcppDevice extends Device {
     // Send initial profile 3 s after init (BootNotification only fires on charger
     // reboot, not on Homey app restart — this catches the restart case).
     const autoStart   = this.getSetting('auto_start_charging') !== false;
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
+    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     setTimeout(() => {
       if (this._txnId && !this._autoStartBlocked) return; // live session — leave alone
       const initAmps = autoStart ? defaultAmps : BLOCK_AMPS;
@@ -277,11 +288,11 @@ class SmartChargerOcppDevice extends Device {
 
   async onSettings({ newSettings, changedKeys }) {
     const stationId = this.getSetting('station_id');
-    const ocppPort  = parseInt(newSettings.ocpp_port) || 8887;
+    const ocppPort  = parseInt(newSettings.ocpp_port, 10) || 8887;
     const server    = OcppServer.getInstance(this.homey, ocppPort);
     server.setCredentials(stationId, newSettings.ocpp_username, newSettings.ocpp_password);
 
-    const amps      = parseInt(newSettings.default_charging_amps) || 16;
+    const amps      = parseInt(newSettings.default_charging_amps, 10) || 16;
     const autoStart = newSettings.auto_start_charging !== false;
 
     if (newSettings.charger_model === '7ks' && String(newSettings.number_of_phases) === '3') {
@@ -396,7 +407,7 @@ class SmartChargerOcppDevice extends Device {
     this._set('ocpp_last_message', 'Boot: ' + (payload.chargePointModel || '?')).catch(() => {});
     if (!this.getAvailable()) this.setAvailable().catch(() => {});
     const autoStart   = this.getSetting('auto_start_charging') !== false;
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
+    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const bootAmps    = autoStart ? defaultAmps : BLOCK_AMPS;
     setTimeout(() => {
       try {
@@ -420,9 +431,9 @@ class SmartChargerOcppDevice extends Device {
     this._set('ocpp_last_message', 'Status: ' + rawStatus).catch(() => {});
 
     if (rawStatus === 'Charging' && !this._autoStartBlocked) {
-      this._set('onoff', true).catch(() => {});
+      this._set('evcharger_charging', true).catch(() => {});
     } else if (rawStatus === 'Available' || rawStatus === 'Finishing') {
-      this._set('onoff', false).catch(() => {});
+      this._set('evcharger_charging', false).catch(() => {});
     }
 
     this._updateSessionStatus(homeyState).catch(() => {});
@@ -662,7 +673,7 @@ class SmartChargerOcppDevice extends Device {
     }
 
     const autoStart   = this.getSetting('auto_start_charging') !== false;
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
+    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
 
     this._txnId         = txnId;
     this._txnStartTime  = Date.now();
@@ -683,7 +694,7 @@ class SmartChargerOcppDevice extends Device {
         OcppServer.getInstance(this.homey).setTxProfile(this.getSetting('station_id'), txnId, BLOCK_AMPS, this._getPhases());
       } catch (e) { this.log('[OCPP] Block TxProfile failed:', e.message); }
 
-      await this._set('onoff', false);
+      await this._set('evcharger_charging', false);
       await this._set('evcharger_charging_state', 'connected');
       await this._set('ocpp_last_message', 'Car connected — waiting for start');
       await this._saveSession();
@@ -696,7 +707,7 @@ class SmartChargerOcppDevice extends Device {
       this.pendingStartAmps = null;
       this._autoStartBlocked = false;
       await this._saveSession();
-      await this._set('onoff', true);
+      await this._set('evcharger_charging', true);
       await this._set('evcharger_charging_state', 'charging');
       await this._set('ocpp_last_message', isMaskedResume ? 'Charging resumed' : 'Charging started');
       await this._updateSessionStatus('charging');
@@ -749,7 +760,7 @@ class SmartChargerOcppDevice extends Device {
         this._pendingTxProfileTimer = null;
       }
       await this.setStoreValue('activeSession', null).catch(() => {});
-      await this._set('onoff', false);
+      await this._set('evcharger_charging', false);
       await this._updateSessionStatus('connected');
 
       setTimeout(() => {
@@ -782,7 +793,7 @@ class SmartChargerOcppDevice extends Device {
       this._autoStartBlocked = false;
       this.sessionPhaseOverride = null;
       await this.setStoreValue('activeSession', null).catch(() => {});
-      await this._set('onoff', false);
+      await this._set('evcharger_charging', false);
       await this._set('evcharger_charging_state', 'connected');
 
       const stationId = this.getSetting('station_id');
@@ -838,7 +849,7 @@ class SmartChargerOcppDevice extends Device {
     }
     await this.setStoreValue('activeSession', null).catch(() => {});
 
-    await this._set('onoff', false);
+    await this._set('evcharger_charging', false);
     const settledState = (() => {
       const cur = this.getCapabilityValue('evcharger_charging_state');
       if (cur && cur !== 'charging') return cur;
@@ -852,7 +863,7 @@ class SmartChargerOcppDevice extends Device {
     this._updateChargingProfile().catch(() => {});
 
     const autoStart   = this.getSetting('auto_start_charging') !== false;
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
+    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const restoreAmps = autoStart ? defaultAmps : BLOCK_AMPS;
     setTimeout(() => {
       try { OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), restoreAmps, this._getPhases()); } catch (e) { /* ignore */ }
@@ -913,7 +924,7 @@ class SmartChargerOcppDevice extends Device {
   async _startChargingInner(amps, overridePhases, owner) {
     const stationId   = this.getSetting('station_id');
     const server      = OcppServer.getInstance(this.homey);
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps')) || 16;
+    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
 
     // Set (or clear) session phase override before any _getPhases() call
     this.sessionPhaseOverride = (overridePhases === 1 || overridePhases === 3) ? overridePhases : null;
@@ -932,7 +943,7 @@ class SmartChargerOcppDevice extends Device {
       await this._saveSession();
       const unblockResp = await server.setTxProfileAsync(stationId, this._txnId, targetAmps, this._getPhases());
       this.log(`[OCPP] Unblock TxProfile response: ${JSON.stringify(unblockResp)}`);
-      await this._set('onoff', true);
+      await this._set('evcharger_charging', true);
       await this._set('evcharger_charging_state', 'charging');
       await this._set('ocpp_last_message', 'Charging started');
       await this._updateSessionStatus('charging');
@@ -1011,7 +1022,7 @@ class SmartChargerOcppDevice extends Device {
       this.sessionOwner = 'user';
     }
 
-    const resumeAmps   = this._txnAmps || parseInt(this.getSetting('default_charging_amps')) || 16;
+    const resumeAmps   = this._txnAmps || parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const resumePhases = this.sessionPhaseOverride;
     const prior        = this.stitchedSession;
     const pauseOwner   = this.sessionOwner;
@@ -1367,10 +1378,44 @@ class SmartChargerOcppDevice extends Device {
   // ─── Capability listeners ────────────────────────────────────────────────
 
   _registerCapabilityListeners() {
-    this.registerCapabilityListener('onoff', async (value) => {
-      if (value) await this.startCharging();
-      else await this.stopCharging();
-    });
+    // Standard EV control capabilities. Homey's "Set target power" flow sets
+    // target_power_mode, evcharger_charging and target_power in quick succession —
+    // registerMultipleCapabilityListener debounces them into one call so we send
+    // a single command to the charger. (Homey EV charger spec, v12.4.5+.)
+    this.registerMultipleCapabilityListener(
+      ['evcharger_charging', 'target_power', 'target_power_mode'],
+      async ({ evcharger_charging, target_power, target_power_mode }) => {
+        if (target_power_mode !== undefined) {
+          // This charger's automation lives in the EMS device, so Homey is always
+          // the effective controller — the mode is accepted but informational.
+          this.log(`[OCPP] target_power_mode → ${target_power_mode}`);
+        }
+
+        // Explicit stop wins over everything else.
+        if (evcharger_charging === false) {
+          await this.stopCharging();
+          return;
+        }
+
+        // A watt target translates to an amp limit (0 / dead-zone → stop).
+        if (target_power !== undefined && target_power !== null) {
+          const amps = this._wattsToAmps(target_power);
+          if (amps <= 0) {
+            await this.stopCharging();
+            return;
+          }
+          if (this._txnId && !this._autoStartBlocked) await this.setChargingLimit(amps);
+          else await this.startCharging(amps);
+          return;
+        }
+
+        // Plain start at the current/default limit.
+        if (evcharger_charging === true) {
+          await this.startCharging();
+        }
+      },
+      500,
+    );
 
     this.registerCapabilityListener('target_current', async (value) => {
       await this.setChargingLimit(value);
@@ -1426,13 +1471,13 @@ class SmartChargerOcppDevice extends Device {
     this.homey.flow.getActionCard('ocpp_start_charging_at_phase')
       .registerRunListener(async (args) => {
         if (args.device.id !== this.id) return;
-        await this.startCharging(args.amperes, parseInt(args.phases));
+        await this.startCharging(args.amperes, parseInt(args.phases, 10));
       });
 
     this.homey.flow.getActionCard('ocpp_set_charging_limit_at_phase')
       .registerRunListener(async (args) => {
         if (args.device.id !== this.id) return;
-        await this.setChargingLimit(args.amperes, parseInt(args.phases));
+        await this.setChargingLimit(args.amperes, parseInt(args.phases, 10));
       });
 
     this.homey.flow.getActionCard('ocpp_remote_stop')
@@ -1491,6 +1536,15 @@ class SmartChargerOcppDevice extends Device {
   async _set(capability, value) {
     if (value === null || value === undefined) return;
     if (!this.hasCapability(capability)) return;
+    // Mirror the amp limit onto the standard `target_power` (W) capability so the
+    // native EV tile/energy view reflects the setpoint. setCapabilityValue does not
+    // re-trigger the capability listener, so this can't loop.
+    if (capability === 'target_current' && this.hasCapability('target_power')) {
+      const w = AMPS_TO_WATTS(value, this._getPhases());
+      if (this.getCapabilityValue('target_power') !== w) {
+        this.setCapabilityValue('target_power', w).catch(() => {});
+      }
+    }
     if (this.getCapabilityValue(capability) === value) return;
     try { await this.setCapabilityValue(capability, value); }
     catch (err) { this.log(`_set(${capability}, ${value}) failed:`, err.message); }
@@ -1547,7 +1601,7 @@ class SmartChargerOcppDevice extends Device {
   // ─── Charging profile capability ─────────────────────────────────────────
 
   async _updateChargingProfile() {
-    const amps   = this._txnAmps || this.pendingStartAmps || parseInt(this.getSetting('default_charging_amps')) || 16;
+    const amps   = this._txnAmps || this.pendingStartAmps || parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const phases = this._getPhases();
     const kw     = (Math.floor(amps * phases * 230 / 100) / 10).toFixed(1);
     await this._set('charging_profile', `${kw} kW / ${amps}A / ${phases}P`);
@@ -1565,6 +1619,18 @@ class SmartChargerOcppDevice extends Device {
   _devicePhases() {
     const phases = parseInt(this.getSetting('number_of_phases'), 10);
     return (phases === 1 || phases === 3) ? phases : 3;
+  }
+
+  // Convert a standard `target_power` (W) request into an amp limit for the
+  // configured phase count. Anything inside the single-phase 6A dead-zone
+  // (<1380 W) is treated as idle; otherwise clamp to the 6–32 A hardware range.
+  _wattsToAmps(watts) {
+    if (!Number.isFinite(watts) || Math.abs(watts) < 1380) return 0;
+    const phases = this._getPhases();
+    let amps = Math.round(Math.abs(watts) / (phases * 230));
+    if (amps < MIN_AMPS) amps = MIN_AMPS;
+    if (amps > MAX_AMPS) amps = MAX_AMPS;
+    return amps;
   }
 
   // ─── Hardware floor validation ────────────────────────────────────────────
@@ -1665,7 +1731,7 @@ class SmartChargerOcppDevice extends Device {
       name:                this.getName(),
       chargingState:       cap('evcharger_charging_state'),
       sessionStatus:       cap('session_status'),
-      onoff:               cap('onoff'),
+      charging:            cap('evcharger_charging'),
       txnId:               this._txnId,
       autoStartEnabled:    this.getSetting('auto_start_charging') !== false,
       isPaused:            this.isPaused,

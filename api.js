@@ -1154,6 +1154,18 @@ module.exports = {
     }
   },
 
+  /** GET /ems/diag — tick-health + last decision snapshot (B7/E3) */
+  async getEmsDiag({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { error: 'No EMS device found' };
+      return devices[0].getEmsDiag();
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
   /** GET /ems/charger/action-cards?deviceId=xxx — lists action cards available for a device */
   async getEmsChargerActionCards({ homey, query }) {
     const { deviceId } = query || {};

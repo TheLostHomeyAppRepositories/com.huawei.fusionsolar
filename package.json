@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "homey app validate"
+    "test": "homey app validate",
+    "test:unit": "node --test",
+    "validate": "homey app validate"
   },
   "engines": {
     "node": ">=16"

@@ -1,7 +1,7 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.19",
-  "compatibility": ">=12.4.5",
+  "version": "1.2.20",
+  "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
     "local"
@@ -66,6 +66,10 @@
     "getEmsHistory": {
       "method": "GET",
       "path": "/ems/history"
+    },
+    "getEmsDiag": {
+      "method": "GET",
+      "path": "/ems/diag"
     },
     "putEmsConfig": {
       "method": "PUT",
@@ -1913,10 +1917,12 @@
         "meterPowerImportedCapability": "meter_power"
       },
       "capabilities": [
-        "onoff",
+        "evcharger_charging",
         "session_status",
         "charging_profile",
         "status_summary",
+        "target_power",
+        "target_power_mode",
         "target_current",
         "measure_power",
         "evcharger_charging_state",
@@ -1941,12 +1947,17 @@
         "session_duration"
       ],
       "capabilitiesOptions": {
-        "onoff": {
+        "target_power": {
           "title": {
-            "en": "Start / Stop Charging",
-            "de": "Laden starten / stoppen",
-            "nl": "Laden starten / stoppen"
-          }
+            "en": "Target Charging Power",
+            "de": "Ziel-Ladeleistung",
+            "nl": "Beoogd laadvermogen"
+          },
+          "min": 0,
+          "max": 22000,
+          "step": 230,
+          "excludeMin": 0,
+          "excludeMax": 1380
         },
         "target_current": {
           "title": {

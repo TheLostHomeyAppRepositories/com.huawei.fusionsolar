@@ -418,6 +418,25 @@
       letter-spacing: 0;
       color: #bbb;
     }
+    /* Group heading between the stacked EMS sections */
+    .ems-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 22px 2px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #8a8a8e;
+    }
+    .ems-group:first-of-type { margin-top: 6px; }
+    .ems-group::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e5e5ea;
+    }
     .ems-hint {
       font-size: 11px;
       color: #6e6e73;
@@ -777,6 +796,7 @@
       </details>
 
       <!-- Inverter -->
+      <div class="ems-group">Data sources</div>
       <details class="ems-section">
         <summary><span class="ems-section-label">☀️ Solar Inverter</span><span class="ems-section-subtitle"> · solar production source</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
@@ -893,6 +913,7 @@
       </details>
 
       <!-- EV Chargers -->
+      <div class="ems-group">Controlled devices</div>
       <details class="ems-section">
         <summary><span class="ems-section-label">🚗 EV Chargers</span><span class="ems-section-subtitle"> · priority order</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
@@ -1113,6 +1134,7 @@
       </details>
 
       <!-- Scheduler -->
+      <div class="ems-group">Tariff &amp; automation</div>
       <details class="ems-section">
         <summary><span class="ems-section-label">⏱ Scheduler</span><span class="ems-section-subtitle"> · <span id="ems-scheduler-count">no tasks</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
@@ -1223,6 +1245,7 @@
         </div>
       </details>
 
+      <div class="ems-group">Diagnostics</div>
       <!-- EMS History -->
       <details class="ems-section" id="ems-history-section" onToggle="if(this.open) emsHistoryLoad()">
         <summary><span class="ems-section-label">📋 EMS History</span><span class="ems-section-subtitle"> · recent events</span><span class="ems-section-chevron">▼</span></summary>
@@ -2450,6 +2473,22 @@
     // ── EMS tab ────────────────────────────────────────────────────────────────
 
     var _emsDevices = [];
+    var _emsCarList = []; // [{id,name}] of configured cars — set on config load (chargers render before cars)
+
+    // Car options for the per-charger "Charging car" dropdown. Prefers the live car
+    // rows (reflects unsaved edits); falls back to the loaded config when the car
+    // section has not rendered yet (chargers render first).
+    function _emsGetCarOptions() {
+      var rows = document.querySelectorAll('#ems-car-list .ems-entry');
+      if (rows.length) {
+        return Array.prototype.map.call(rows, function(entry) {
+          var sel = entry.querySelector('.ems-row-device');
+          var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === (sel && sel.value); }) : null;
+          return { id: entry.dataset.carId, name: (dev && dev.name) || 'Car' };
+        }).filter(function(o) { return o.id; });
+      }
+      return _emsCarList || [];
+    }
 
     // ── Device priority move buttons ──────────────────────────────────────────
     function emsPriorityUpdateButtons() {
@@ -3688,6 +3727,32 @@
       _updateModeHint();
       modeRow.appendChild(modeLbl); modeRow.appendChild(modeSel); modeRow.appendChild(modeHint);
 
+      // Charging car (per charger): which configured car charges here — used for the
+      // "charge target reached" hold. Optional; blank = auto-detect by SOC rise.
+      var carRow = document.createElement('div');
+      carRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 2px 2px';
+      var carLbl = document.createElement('span');
+      carLbl.textContent = 'Charging car';
+      carLbl.style.cssText = 'font-size:11px;color:#6e6e73;min-width:100px';
+      var carSel = document.createElement('select');
+      carSel.className = 'ems-charger-car';
+      carSel.style.cssText = 'flex:1;min-width:190px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      function _fillChargerCarSel() {
+        var cur = carSel.value || (stored && stored.car_id) || '';
+        carSel.innerHTML = '';
+        var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— auto-detect —'; carSel.appendChild(o0);
+        _emsGetCarOptions().forEach(function(o) {
+          var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.name; carSel.appendChild(opt);
+        });
+        carSel.value = cur;
+      }
+      _fillChargerCarSel();
+      carSel.addEventListener('mousedown', _fillChargerCarSel); // refresh when opened (cars may load after chargers)
+      var carHint = document.createElement('span');
+      carHint.textContent = 'optional · used to stop this charger when its car reaches the target SOC';
+      carHint.style.cssText = 'font-size:11px;color:#6e6e73;line-height:1.4;flex:1;min-width:190px';
+      carRow.appendChild(carLbl); carRow.appendChild(carSel); carRow.appendChild(carHint);
+
       // Adjustment confirmation time (per charger): how long a higher surplus must
       // hold before the EMS steps the charge current up. Higher = fewer adjustments.
       var stepRow = document.createElement('div');
@@ -3713,7 +3778,7 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(stepRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(carRow); entry.appendChild(stepRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
@@ -3776,6 +3841,18 @@
       var graceLabel = document.createElement('span');
       graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
       graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var startupGraceInput = document.createElement('input');
+      startupGraceInput.type = 'number';
+      startupGraceInput.dataset.field = 'startup_grace_s';
+      startupGraceInput.value = (stored && stored.startup_grace_s != null) ? stored.startup_grace_s : 120;
+      startupGraceInput.min = 0; startupGraceInput.max = 900; startupGraceInput.step = 30;
+      startupGraceInput.title = 'Only for State source = Power draw: after an EMS start, wait this long for the device to draw power before a below-threshold reading counts as an external OFF. Slow ramp-up devices (heat pumps) need more time.';
+      startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var startupGraceLabel = document.createElement('span');
+      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var maxRunInput = document.createElement('input');
       maxRunInput.type = 'number';
@@ -3867,6 +3944,7 @@
       configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
       configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
       configRow.appendChild(stateFromPowerWrap);
@@ -3904,10 +3982,12 @@
         var stateSrc = entry.querySelector('select[data-field=state_source]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
+        var startupGrace = entry.querySelector('input[data-field=startup_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
         var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
+          var _sg = startupGrace ? parseInt(startupGrace.value, 10) : NaN;
           result.push({
             id:                    sel.value,
             name:                  (dev && dev.name) || sel.value.slice(0, 8),
@@ -3917,6 +3997,7 @@
             state_source:          (stateSrc && stateSrc.value) || 'onoff',
             start_sustain_s:       parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:          parseInt(grace    ? grace.value    : 0,    10) || 0,
+            startup_grace_s:       isFinite(_sg) ? _sg : 120,
             max_run_min:           parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
             restart_cooldown_min:  parseInt(cooldown ? cooldown.value : 0,    10) || 0,
             start_card:            entry.dataset.hpStartCard || '',
@@ -3991,10 +4072,12 @@
         var stateSrc = entry.querySelector('select[data-field=state_source]');
         var sustain  = entry.querySelector('input[data-field=start_sustain_s]');
         var grace    = entry.querySelector('input[data-field=stop_grace_s]');
+        var startupGrace = entry.querySelector('input[data-field=startup_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
         var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
+          var _sg = startupGrace ? parseInt(startupGrace.value, 10) : NaN;
           result.push({
             id:                   sel.value,
             name:                 (dev && dev.name) || sel.value.slice(0, 8),
@@ -4004,6 +4087,7 @@
             state_source:         (stateSrc && stateSrc.value) || 'onoff',
             start_sustain_s:      parseInt(sustain  ? sustain.value  : 0,    10) || 0,
             stop_grace_s:         parseInt(grace    ? grace.value    : 0,    10) || 0,
+            startup_grace_s:      isFinite(_sg) ? _sg : 120,
             max_run_min:          parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
             restart_cooldown_min: parseInt(cooldown ? cooldown.value : 0,    10) || 0,
             start_card:           entry.dataset[startDataKey] || '',
@@ -4371,6 +4455,18 @@
       graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
       graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var startupGraceInput = document.createElement('input');
+      startupGraceInput.type = 'number';
+      startupGraceInput.dataset.field = 'startup_grace_s';
+      startupGraceInput.value = (stored && stored.startup_grace_s != null) ? stored.startup_grace_s : 120;
+      startupGraceInput.min = 0; startupGraceInput.max = 900; startupGraceInput.step = 30;
+      startupGraceInput.title = 'Only for State source = Power draw: after an EMS start, wait this long for the device to draw power before a below-threshold reading counts as an external OFF. Slow ramp-up devices (heat pumps) need more time.';
+      startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var startupGraceLabel = document.createElement('span');
+      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
       var maxRunInput = document.createElement('input');
       maxRunInput.type = 'number';
       maxRunInput.dataset.field = 'max_run_min';
@@ -4461,6 +4557,7 @@
       configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
       configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
       configRow.appendChild(stateFromPowerWrap);
@@ -4549,6 +4646,18 @@
       graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
       graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var startupGraceInput = document.createElement('input');
+      startupGraceInput.type = 'number';
+      startupGraceInput.dataset.field = 'startup_grace_s';
+      startupGraceInput.value = (stored && stored.startup_grace_s != null) ? stored.startup_grace_s : 120;
+      startupGraceInput.min = 0; startupGraceInput.max = 900; startupGraceInput.step = 30;
+      startupGraceInput.title = 'Only for State source = Power draw: after an EMS start, wait this long for the device to draw power before a below-threshold reading counts as an external OFF. Slow ramp-up devices (heat pumps) need more time.';
+      startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var startupGraceLabel = document.createElement('span');
+      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
       var maxRunInput = document.createElement('input');
       maxRunInput.type = 'number';
       maxRunInput.dataset.field = 'max_run_min';
@@ -4639,6 +4748,7 @@
       configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
       configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
       configRow.appendChild(stateFromPowerWrap);
@@ -4727,6 +4837,18 @@
       graceLabel.textContent = 'sec — stop delay (device keeps running this long after surplus drops)';
       graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
+      var startupGraceInput = document.createElement('input');
+      startupGraceInput.type = 'number';
+      startupGraceInput.dataset.field = 'startup_grace_s';
+      startupGraceInput.value = (stored && stored.startup_grace_s != null) ? stored.startup_grace_s : 120;
+      startupGraceInput.min = 0; startupGraceInput.max = 900; startupGraceInput.step = 30;
+      startupGraceInput.title = 'Only for State source = Power draw: after an EMS start, wait this long for the device to draw power before a below-threshold reading counts as an external OFF. Slow ramp-up devices (heat pumps) need more time.';
+      startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var startupGraceLabel = document.createElement('span');
+      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
       var maxRunInput = document.createElement('input');
       maxRunInput.type = 'number';
       maxRunInput.dataset.field = 'max_run_min';
@@ -4817,6 +4939,7 @@
       configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
       configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
       configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
       configRow.appendChild(stateFromPowerWrap);
@@ -6484,6 +6607,8 @@
         if (phkChk && phkChk.checked) c.phase_switch = true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
         if (row.dataset.capPower) c.cap_power = row.dataset.capPower;
+        var carSel = entry.querySelector('.ems-charger-car');
+        if (carSel && carSel.value) c.car_id = carSel.value;
         if (entry.dataset.chargerStartCard) c.start_card = entry.dataset.chargerStartCard;
         result.push(c);
       });
@@ -6571,6 +6696,10 @@
     function emsApplyConfig(cfg) {
       // ── Chargers ─────────────────────────────────────────────────────────────
       document.getElementById('ems-charger-list').innerHTML = '';
+      // Populate the car list before chargers render (their "Charging car" dropdown reads it).
+      _emsCarList = (cfg.car_devices || [])
+        .filter(function(c) { return c && c.id; })
+        .map(function(c) { return { id: c.id, name: c.name || 'Car' }; });
       var chargers = cfg.chargers ||
         (cfg.charger_device_id ? [{ id: cfg.charger_device_id, max_amps: cfg.ev_max_amps || 16 }] : []);
       chargers.forEach(function(c) { emsAddChargerRow(c.id, c.max_amps, c); });
