@@ -2,8 +2,10 @@
 
 **App ID:** `com.huawei.fusionsolar`
 **SDK:** Homey SDK 3
-**Minimum firmware:** Homey >= 12.4.5
-**Compatible with:** Homey Pro (Early 2019) and all newer Homey devices running firmware >= 12.4.5
+**Minimum firmware:** Homey >= 12.13.0
+**Compatible with:** Homey Pro (Early 2019) and all newer Homey devices running firmware >= 12.13.0
+
+> Firmware >= 12.13.0 is required by the OCPP Smart Charger's standard `target_power` capability. Earlier releases of this app targeted 12.4.5.
 
 ---
 
@@ -18,6 +20,8 @@ This app supports five independent connection methods to a Huawei FusionSolar in
 | **Modbus TCP**  | Direct communication with SUN2000, LUNA2000 and DTSU666 over the local network   |
 | **EMMA Modbus** | Direct communication via the EMMA Energy Management Module (SUN2000MA)            |
 | **OCPP 1.6**    | Runs an OCPP 1.6 WebSocket server on Homey so EV chargers can connect directly    |
+
+On top of these, the app includes an **Energy Management System (EMS)** device — a local orchestration layer that steers EV charging, heat pumps and other loads from live solar surplus. See [Energy Management System](#energy-management-system-ems).
 
 ---
 
@@ -326,9 +330,10 @@ Runs an OCPP 1.6 JSON WebSocket server on port 8887 so compatible EV chargers (H
 
 | Capability              | Description                                                                      |
 |-------------------------|----------------------------------------------------------------------------------|
-| On / Off                | Current charging state (on = actively charging)                                  |
+| Charging (on/off)       | Native EV `evcharger_charging` control — on = actively charging (generates the standard "Start charging" / "Is charging" flow cards) |
+| Target Charging Power   | Native EV `target_power` (W) — Homey/Energy dashboard set-point, mapped automatically to current and phase count (6 A minimum dead-zone) |
 | Charging power          | Live AC charging power (W)                                                       |
-| Target current (A)      | Active charging current limit                                                    |
+| Target current (A)      | Active charging current limit (fine-grained amp control, kept in sync with Target Charging Power) |
 | Charging energy         | Cumulative total energy (kWh)                                                    |
 | Charging state          | `idle` / `connected` / `charging` / `finishing` / `fully_charged` / `error`     |
 | Session status          | Human-readable session summary (e.g. "Charging · 3.2 kWh · 1h 12min")          |
@@ -375,6 +380,52 @@ Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Sett
 | Number of phases             | 3       | Phase count used for SetChargingProfile (1 or 3)                         |
 | Charger model                | –       | Hardware variant (affects minimum current floor validation)              |
 | Timeline notifications       | off     | Posts session start/stop events to the Homey timeline                    |
+
+---
+
+### Energy Management System (EMS)
+
+A local orchestration device (Homey class `other`) that decides, every 15 seconds, how to use solar surplus. It reads your PV, house, grid and battery figures from the paired FusionSolar devices and drives loads — EV chargers, heat pump, boiler, pool pump, dehumidifier — plus battery and inverter export limits, prioritising free solar energy. No cloud, no external service; all logic runs on Homey.
+
+**Control model:** the EMS does not write to other devices directly. Instead it **fires flow trigger cards** (e.g. *Set charger current*, *Start heat pump*) that you link to the corresponding device action cards in your own flows. This keeps it compatible with any charger/heat-pump brand, not just Huawei.
+
+#### Capabilities
+
+| Capability            | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| Enabled (on/off)      | Master switch for the whole EMS                                              |
+| Off-peak charging     | Enables cheap-tariff EV charging when solar is insufficient                  |
+| Charge now            | One-tap override to charge the EV immediately                               |
+| EMS mode              | Current decision (see modes below)                                          |
+| Status text           | Human-readable summary of the active decision (e.g. `16A × 1 Lader · Bat 82%`) |
+| Solar surplus (W)     | Live exportable surplus the EMS is allocating                               |
+| PV / House / Grid / Battery power (W) | Live snapshot of the inputs driving the decision            |
+| Electricity price     | Current tariff (fixed or from a variable-price flow)                        |
+
+#### EMS Modes
+
+`idle` · `disabled` · `not_configured` · `error` · `holding` · `battery_priority` · `solar_ev` · `offpeak_ev` · `instant_ev` · `solar_hp` (heat pump) · `solar_boiler` · `solar_pool` · `solar_dehumidifier` · `solar_multi` (several device types at once)
+
+#### Controlled loads
+
+| Load               | Behaviour                                                                                     |
+|--------------------|-----------------------------------------------------------------------------------------------|
+| EV chargers        | Solar-first current stepping (1/3-phase, per-charger min/max), off-peak fallback, per-car target SoC + car↔charger assignment |
+| Heat pump / boiler / pool / dehumidifier | On/off from surplus with per-device start-up grace, min-run, stop-grace and max-run guards |
+| Battery            | Reserve/hard-stop SoC zones; surplus is shared with loads before charging the battery         |
+| Inverter export    | Optional export-limit coordinator (fires on/off triggers at a configurable SoC + export hold) |
+
+#### Flow triggers (device: Energy Management System)
+
+`ems_mode_changed`, `ems_set_charger_current`, `ems_start_charger`, `ems_start_heat_pump` / `ems_stop_heat_pump`, `ems_start_boiler` / `ems_stop_boiler`, `ems_start_pool` / `ems_stop_pool`, `ems_start_dehumidifier` / `ems_stop_dehumidifier`, `ems_battery_full`, `ems_battery_low`, `ems_battery_force_charge` / `ems_battery_force_discharge` / `ems_battery_normal_mode`, `ems_battery_max_charge_power` / `ems_battery_max_discharge_power`, `ems_inverter_export_limit_on` / `ems_inverter_export_limit_off`, `ems_inverter_set_power_w` / `ems_inverter_set_power_pct` / `ems_inverter_remove_limit`, `ems_set_car_target`
+
+#### Flow actions
+
+`ems_set_enabled`, `ems_set_electricity_price` (feed a variable tariff), `ems_set_car_target_soc`
+
+#### Configuration & diagnostics
+
+Data sources, controlled devices, tariff/automation and diagnostics are configured in **App Settings → Energy Management** (grouped by section). The settings page also shows an **EMS History** (recent mode/device/charger events, with a Copy button) and a live diagnostics view (`getEmsDiag`: tick health, last decision snapshot).
 
 ---
 
@@ -634,7 +685,7 @@ All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": [
 
 ## Dashboard Widgets
 
-The app includes 5 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
+The app includes 9 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
 
 All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
 
@@ -737,12 +788,37 @@ At-a-glance summary of today's solar production.
 
 ---
 
+### Charger Status (Ladestatus)
+
+Live state of an EV charger (OCPP or EMMA): charging power, session energy, active current/phase limit and connection state at a glance.
+
+---
+
+### Charging Sessions (Ladesitzungen)
+
+A scrollable history of completed charging sessions — energy delivered, duration and end reason per session (OCPP charger).
+
+---
+
+### EMS History (EMS Verlauf)
+
+Recent Energy Management System events — mode changes, device start/stop and charger current steps — the same feed shown in App Settings, on your dashboard.
+
+---
+
+### Sensor Chart (Sensor-Verlauf)
+
+A configurable time-series chart of a chosen capability (e.g. solar power, grid power, SoC), for a quick trend view directly on the dashboard.
+
+---
+
 ## Technical Background
 
 - **Kiosk:** HTTP polling of the public FusionSolar Kiosk API
 - **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session and coordinator — one API call per interval for all devices of the same plant
 - **Modbus (SUN2000/SDongle):** TCP connection via [`jsmodbus`](https://www.npmjs.com/package/jsmodbus) following the Huawei SUN2000 Modbus Interface Definition A. All Modbus devices on the same host share a serialised queue (`withHostLock`) — no concurrent connections
 - **EMMA Modbus:** TCP connection to the SUN2000MA Energy Management Module (unit ID 0). All three EMMA device types (inverter, battery, meter) read from the same EMMA register range — no SDongle or DTSU666 required. R/W access to ESS control registers (40000–40002) via FC06/FC16
+- **Energy Management System:** A 15-second decision loop running on Homey. Reads PV/house/grid/battery from the paired devices, allocates solar surplus across a fixed load priority (instant → battery-protect → EV solar/off-peak → simple loads), and acts by firing flow trigger cards rather than writing to devices directly (brand-agnostic). Internally modular (`lib/ems/*` mixins: charger control, simple devices, battery zones, price, export limit, history) with debounced history persistence, config validation and a diagnostics snapshot (`getEmsDiag`). Core decision logic is covered by unit tests (`node --test`).
 - **OCPP 1.6:** Singleton WebSocket server (port 8887) running inside Homey. Implements BootNotification, Heartbeat, StatusNotification, MeterValues, StartTransaction, StopTransaction, Authorize, DataTransfer. Outgoing calls are fully async with response tracking (`_pendingCalls` map, 10 s timeout): RemoteStartTransaction, RemoteStopTransaction, SetChargingProfile (TxDefaultProfile stackLevel 0 / TxProfile stackLevel 1, `chargingRateUnit: 'W'`, Absolute kind), ChangeAvailability, Reset. SetChargingProfile uses Watts (0 A → 1 W to work around a Huawei firmware bug where a 0 W TxDefaultProfile is unreliable). Supports optional HTTP Basic Authentication per station. Station ID is extracted from the WebSocket URL path (`ws://homey-ip:8887/[station-id]`). Masked Pause/Resume stitches two physical transactions into a single logical session preserving cumulative energy and start time. Power-verified start: the `charging_started` trigger fires only after > 100 W is confirmed (90 s watchdog). Offline watchdog triggers a flow card after 3 minutes of silence and suppresses alerts for 5 minutes after a reboot command.
 
 ---
