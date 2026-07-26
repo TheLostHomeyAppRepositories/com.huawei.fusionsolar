@@ -337,9 +337,28 @@ class EmsDevice extends Device {
     }
   }
 
-  // Diagnostics snapshot (B7 tick-health + E3 last decision + PV forecast). Read by the settings/API.
+  // Diagnostics snapshot (B7 tick-health + E3 last decision + PV forecast + process memory).
+  // Read by the settings/API. Memory is process-wide (the whole app), not just this device.
   getEmsDiag() {
-    return { ...this._diag, pv: this._pvForecastSummary() };
+    return { ...this._diag, pv: this._pvForecastSummary(), mem: this._memUsage() };
+  }
+
+  // process.memoryUsage() in MB. rss = total resident; heapUsed/heapTotal = V8 JS heap;
+  // external/arrayBuffers = C++-bound buffers (Modbus/OCPP network I/O).
+  _memUsage() {
+    try {
+      const m  = process.memoryUsage();
+      const mb = (b) => Math.round((b / 1048576) * 10) / 10;
+      return {
+        rss:          mb(m.rss),
+        heapUsed:     mb(m.heapUsed),
+        heapTotal:    mb(m.heapTotal),
+        external:     mb(m.external),
+        arrayBuffers: mb(m.arrayBuffers),
+      };
+    } catch (e) {
+      return null;
+    }
   }
 
   async _tickBody() {

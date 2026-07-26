@@ -7156,6 +7156,17 @@
         html += card('PV forecast (Solcast)', pvRows);
       }
 
+      // Process memory (whole app). Watch RSS over time: stable = baseline, rising = leak.
+      var mem = d.mem;
+      if (mem) {
+        var memRows = row('Resident (RSS)', mem.rss + ' MB') +
+          row('JS heap used', mem.heapUsed + ' MB') +
+          row('JS heap total', mem.heapTotal + ' MB') +
+          row('Native buffers', mem.external + ' MB') +
+          row('ArrayBuffers', mem.arrayBuffers + ' MB');
+        html += card('Memory (whole app)', memRows);
+      }
+
       return html;
     }
 
