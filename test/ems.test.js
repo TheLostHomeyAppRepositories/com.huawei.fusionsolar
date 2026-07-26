@@ -11,6 +11,7 @@ const priceMixin   = require('../lib/ems/price');
 const carsMixin    = require('../lib/ems/cars');
 const chargerMixin = require('../lib/ems/chargerControl');
 const batteryMixin = require('../lib/ems/battery');
+const pvForecastMixin = require('../lib/ems/pvForecast');
 const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
@@ -21,7 +22,7 @@ function makeDevice(extra = {}) {
     _carStates: [],
     _carSocTrack: {},
   };
-  Object.assign(dev, priceMixin, carsMixin, chargerMixin, batteryMixin, extra);
+  Object.assign(dev, priceMixin, carsMixin, chargerMixin, batteryMixin, pvForecastMixin, extra);
   return dev;
 }
 
@@ -286,4 +287,89 @@ test('_stepCharger — 1-phase step-up still honours the import margin', async (
   await d._stepCharger(CHARGER_1PH, 1860, 1, T + 1, -1860, false); // arm
   const up = await d._stepCharger(CHARGER_1PH, 1860, 1, T + 1 + STEP_HOLD_MS + 1, -1860, false);
   assert.strictEqual(up.amps, 7);
+});
+
+// ── pvForecast: Solcast parsing + aggregation ────────────────────────────────
+test('_pvPeriodHours parses ISO-8601 durations', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._pvPeriodHours('PT30M'), 0.5);
+  assert.strictEqual(d._pvPeriodHours('PT1H'), 1);
+  assert.strictEqual(d._pvPeriodHours('PT15M'), 0.25);
+  assert.strictEqual(d._pvPeriodHours('PT1H30M'), 1.5);
+  assert.strictEqual(d._pvPeriodHours('garbage'), 0.5); // default
+  assert.strictEqual(d._pvPeriodHours(undefined), 0.5);
+});
+
+test('_parseSolcastForecasts — maps, sorts, drops invalid rows', () => {
+  const d = makeDevice();
+  const slots = d._parseSolcastForecasts({ forecasts: [
+    { period_end: '2026-07-27T10:30:00.0000000Z', pv_estimate: 3.5, pv_estimate10: 2.0, pv_estimate90: 4.5, period: 'PT30M' },
+    { period_end: '2026-07-27T10:00:00.0000000Z', pv_estimate: 3.0, period: 'PT30M' }, // earlier → sorts first
+    { period_end: 'not-a-date',                   pv_estimate: 9,   period: 'PT30M' }, // bad timestamp → dropped
+    { period_end: '2026-07-27T11:00:00.0000000Z', pv_estimate: 'x', period: 'PT30M' }, // bad power → dropped
+  ] });
+  assert.strictEqual(slots.length, 2);
+  assert.ok(slots[0].end < slots[1].end);          // ascending
+  assert.strictEqual(slots[0].kw, 3.0);
+  assert.strictEqual(slots[1].kw, 3.5);
+  assert.strictEqual(slots[1].kw10, 2.0);
+  assert.strictEqual(slots[0].kw10, null);          // missing percentile → null
+  assert.strictEqual(slots[0].h, 0.5);
+});
+test('_parseSolcastForecasts — empty / missing forecasts → []', () => {
+  const d = makeDevice();
+  assert.deepStrictEqual(d._parseSolcastForecasts({}), []);
+  assert.deepStrictEqual(d._parseSolcastForecasts(null), []);
+});
+
+test('_pvSumKwh sums kW×h for slots whose end is in (from, to]', () => {
+  const d = makeDevice();
+  const slots = [
+    { end: 1000, kw: 4, h: 0.5 },
+    { end: 2000, kw: 2, h: 0.5 },
+    { end: 3000, kw: 6, h: 0.5 },
+  ];
+  assert.strictEqual(d._pvSumKwh(slots, 1000, 3000), 4); // 2·0.5 + 6·0.5 (end 1000 excluded, 3000 included)
+  assert.strictEqual(d._pvSumKwh(slots, 0, 1000), 2);    // only end 1000
+  assert.strictEqual(d._pvSumKwh(slots, 3000, 9000), 0); // nothing after
+  assert.strictEqual(d._pvSumKwh(null, 0, 9000), 0);
+});
+
+test('_pvMsUntilLocalMidnight — deterministic in UTC', () => {
+  const d = makeDevice();
+  const now = Date.UTC(2026, 0, 1, 22, 0, 0); // 22:00 UTC → 2 h to midnight
+  assert.strictEqual(d._pvMsUntilLocalMidnight(now, 'UTC'), 2 * 3600 * 1000);
+});
+
+test('_pvForecastNextKwh — energy over the next N hours', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = makeDevice({ _pvForecast: [
+    { end: now + 30 * 60000, kw: 4, h: 0.5 },
+    { end: now + 60 * 60000, kw: 2, h: 0.5 },
+    { end: now + 180 * 60000, kw: 8, h: 0.5 }, // +3 h → outside a 2 h window
+  ] });
+  assert.strictEqual(d._pvForecastNextKwh(2, now), 3); // 4·0.5 + 2·0.5
+  assert.strictEqual(d._pvForecastNextKwh(0, now), 0);
+});
+
+test('_pvMsUntilLocalTime — future / past / invalid', () => {
+  const d = makeDevice();
+  const now = Date.UTC(2026, 0, 1, 14, 0, 0); // 14:00 UTC
+  assert.strictEqual(d._pvMsUntilLocalTime(now, 'UTC', '16:00'), 2 * 3600 * 1000); // 2 h ahead
+  assert.strictEqual(d._pvMsUntilLocalTime(now, 'UTC', '13:00'), 0);               // already passed → 0
+  assert.strictEqual(d._pvMsUntilLocalTime(now, 'UTC', 'nope'), 0);                // invalid → 0
+});
+
+test('_pvForecastUntilKwh — sums up to a wall-clock cutoff today', () => {
+  const now = Date.UTC(2026, 0, 1, 14, 0, 0); // 14:00 UTC
+  const d = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: [
+      { end: now + 30 * 60000,  kw: 4, h: 0.5 }, // 14:30 → before 16:00
+      { end: now + 90 * 60000,  kw: 2, h: 0.5 }, // 15:30 → before 16:00
+      { end: now + 150 * 60000, kw: 8, h: 0.5 }, // 16:30 → after 16:00 (excluded)
+    ],
+  });
+  assert.strictEqual(d._pvForecastUntilKwh('16:00', now), 3); // 4·0.5 + 2·0.5
+  assert.strictEqual(d._pvForecastUntilKwh('13:00', now), 0); // cutoff already passed
 });

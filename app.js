@@ -30,6 +30,20 @@ class FusionSolarKioskApp extends App {
         return typeof power === 'number' && power > 0;
       });
 
+    // EMS Solcast forecast conditions — read the forecast helpers on the EMS device.
+    this.homey.flow
+      .getConditionCard('ems_pv_forecast_today')
+      .registerRunListener(async ({ device, kwh }) => device._pvForecastRemainingTodayKwh() > kwh);
+
+    this.homey.flow
+      .getConditionCard('ems_pv_forecast_next_hours')
+      .registerRunListener(async ({ device, hours, kwh }) => device._pvForecastNextKwh(hours) > kwh);
+
+    // "below" phrasing: true when the remaining forecast until the cutoff is below kwh.
+    this.homey.flow
+      .getConditionCard('ems_pv_forecast_until')
+      .registerRunListener(async ({ device, cutoff, kwh }) => device._pvForecastUntilKwh(cutoff) < kwh);
+
     this._scheduleMidnightBaseline();
     this._ensureTodayBaseline();
 

@@ -423,9 +423,13 @@ A local orchestration device (Homey class `other`) that decides, every 15 second
 
 `ems_set_enabled`, `ems_set_electricity_price` (feed a variable tariff), `ems_set_car_target_soc`
 
+#### Solar forecast (Solcast, optional)
+
+An optional **Solcast** PV forecast feed. Enter a free [Solcast Hobbyist](https://toolkit.solcast.com.au) rooftop **Resource ID** and **API key** under *App Settings → Energy Management → Data sources → Solar Forecast*. The EMS fetches the rooftop-site forecast (30-minute slots, up to 7 days) and caches it. To respect the free tier's ~10 calls/day limit, it refreshes **at most every 3 hours** and persists the last fetch across restarts so app reloads never exhaust the daily quota. Expected PV (remaining today / next 6 h / forecast peak) is shown in the EMS Diagnostics panel and available in flows: a **Solar forecast updated** trigger (tokens: remaining today / next 6 h / peak) and **Expected solar today / in the next N hours / until a cutoff time is more/less than X kWh** conditions (the cutoff-time variant is anchored to a wall-clock deadline). This is currently a **data feed only** — it does not yet drive charging decisions automatically (foundation for future price/deadline and solar-aware planning).
+
 #### Configuration & diagnostics
 
-Data sources, controlled devices, tariff/automation and diagnostics are configured in **App Settings → Energy Management** (grouped by section). The settings page also shows an **EMS History** (recent mode/device/charger events, with a Copy button) and a live diagnostics view (`getEmsDiag`: tick health, last decision snapshot).
+Data sources, controlled devices, tariff/automation and diagnostics are configured in **App Settings → Energy Management** (grouped by section). The settings page also shows an **EMS History** (recent mode/device/charger events, with a Copy button) and a live **EMS Diagnostics** view (`getEmsDiag`: tick health, last decision snapshot, and the Solcast PV forecast when enabled).
 
 ---
 

@@ -18,6 +18,7 @@ const carsMixin           = require('../../lib/ems/cars');
 const simpleDevicesMixin  = require('../../lib/ems/simpleDevices');
 const chargerControlMixin = require('../../lib/ems/chargerControl');
 const batteryMixin        = require('../../lib/ems/battery');
+const pvForecastMixin     = require('../../lib/ems/pvForecast');
 
 // Price + car SOC change slowly — refresh every Nth tick (~60 s) rather than every
 // 15 s tick, to cut settings reads and per-car HTTP calls (see _tickBody).
@@ -96,6 +97,9 @@ class EmsDevice extends Device {
       const ts = this.getStoreValue('carTargets');
       if (ts && typeof ts === 'object') this._carTargets = ts;
     } catch (e) { /* ignore */ }
+
+    // Solcast PV forecast — restore cached forecast + last-fetch time (rate-limit safe).
+    await this._restorePvForecast();
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -333,9 +337,9 @@ class EmsDevice extends Device {
     }
   }
 
-  // Diagnostics snapshot (B7 tick-health + E3 last decision). Read by the settings/API.
+  // Diagnostics snapshot (B7 tick-health + E3 last decision + PV forecast). Read by the settings/API.
   getEmsDiag() {
-    return { ...this._diag };
+    return { ...this._diag, pv: this._pvForecastSummary() };
   }
 
   async _tickBody() {
@@ -353,6 +357,7 @@ class EmsDevice extends Device {
       await this._applyPriceCurrencyUnit(cfg);
       await this._updatePriceCapability(cfg);
       await this._updateCarCapabilities(cfg);
+      await this._maybeFetchPvForecast(cfg); // rate-limited internally (≥3 h between fetches)
     }
 
     if (!enabled || !hasKey) {
@@ -832,6 +837,7 @@ Object.assign(
   simpleDevicesMixin,
   chargerControlMixin,
   batteryMixin,
+  pvForecastMixin,
 );
 
 module.exports = EmsDevice;

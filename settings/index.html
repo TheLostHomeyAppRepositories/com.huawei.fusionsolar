@@ -912,6 +912,30 @@
         </div>
       </details>
 
+      <!-- Solar forecast (Solcast) -->
+      <details class="ems-section" id="ems-pvforecast-section">
+        <summary><span class="ems-section-label">🌤 Solar Forecast (Solcast)</span><span class="ems-section-subtitle"> · <span id="ems-pvforecast-subtitle">off</span></span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px">
+            <input type="checkbox" id="ems-pvforecast-enabled" onchange="emsPvForecastToggle()">
+            <span>Enable Solcast PV forecast</span>
+          </label>
+          <div id="ems-pvforecast-rows" style="display:none">
+            <div style="margin-bottom:8px">
+              <label style="font-size:12px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:3px">API key</label>
+              <input id="ems-solcast-api-key" type="password" placeholder="Solcast API key"
+                     style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+            </div>
+            <div style="margin-bottom:8px">
+              <label style="font-size:12px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:3px">Resource / Site ID</label>
+              <input id="ems-solcast-resource-id" type="text" placeholder="e.g. abcd-1234-ef56-7890"
+                     style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+            </div>
+            <span class="ems-toggle-desc">Free <strong>Hobbyist</strong> account at <a href="https://toolkit.solcast.com.au/live-forecast" target="_blank" rel="noopener">Solcast Toolkit</a> — register your PV system with its exact details, then copy your <strong>API key</strong> (under <em>Your name → Your API key</em>) and <strong>Resource ID</strong> (click your site on the map). New accounts get <strong>10 API calls/day</strong> (older accounts 50); each site counts separately. To stay within that limit the app fetches <strong>automatically every ~3 h</strong> (≈ 8/day) and caches across restarts — <em>no flows needed</em>. Result appears under <em>Diagnostics → EMS Diagnostics</em>.</span>
+          </div>
+        </div>
+      </details>
+
       <!-- EV Chargers -->
       <div class="ems-group">Controlled devices</div>
       <details class="ems-section">
@@ -1246,6 +1270,19 @@
       </details>
 
       <div class="ems-group">Diagnostics</div>
+      <!-- EMS Diagnostics (live tick health + last decision) -->
+      <details class="ems-section" id="ems-diag-section" onToggle="emsDiagToggle(this)">
+        <summary><span class="ems-section-label">🩺 EMS Diagnostics</span><span class="ems-section-subtitle"> · live tick health</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body" style="padding-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:11px;color:#6e6e73">Auto-refreshes every 3 s while open</span>
+            <button class="btn-secondary" onclick="emsDiagLoad()" style="padding:3px 10px;font-size:12px">↻ Refresh</button>
+          </div>
+          <div id="ems-diag-body">
+            <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0">Open to load…</div>
+          </div>
+        </div>
+      </details>
       <!-- EMS History -->
       <details class="ems-section" id="ems-history-section" onToggle="if(this.open) emsHistoryLoad()">
         <summary><span class="ems-section-label">📋 EMS History</span><span class="ems-section-subtitle"> · recent events</span><span class="ems-section-chevron">▼</span></summary>
@@ -6792,6 +6829,10 @@
       }
       if (cfg.export_limit_trigger_soc    !== undefined) document.getElementById('ems-export-limit-trigger-soc').value    = cfg.export_limit_trigger_soc;
       if (cfg.export_limit_deactivate_soc !== undefined) document.getElementById('ems-export-limit-deactivate-soc').value = cfg.export_limit_deactivate_soc;
+      document.getElementById('ems-pvforecast-enabled').checked = !!cfg.pv_forecast_enabled;
+      if (cfg.solcast_api_key     !== undefined) document.getElementById('ems-solcast-api-key').value     = cfg.solcast_api_key;
+      if (cfg.solcast_resource_id !== undefined) document.getElementById('ems-solcast-resource-id').value = cfg.solcast_resource_id;
+      emsPvForecastToggle();
       if (Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length) {
         var pList = document.getElementById('ems-device-priority-list');
         cfg.device_priority_order.forEach(function(type) {
@@ -6800,6 +6841,12 @@
         });
         emsPriorityUpdateButtons();
       }
+    }
+
+    function emsPvForecastToggle() {
+      var on = document.getElementById('ems-pvforecast-enabled').checked;
+      document.getElementById('ems-pvforecast-rows').style.display = on ? 'block' : 'none';
+      document.getElementById('ems-pvforecast-subtitle').textContent = on ? 'Solcast' : 'off';
     }
 
     function emsSave() {
@@ -6885,6 +6932,9 @@
         export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,
         export_limit_trigger_soc:     parseInt(document.getElementById('ems-export-limit-trigger-soc').value, 10) || 95,
         export_limit_deactivate_soc:  parseInt(document.getElementById('ems-export-limit-deactivate-soc').value, 10) || 90,
+        pv_forecast_enabled:          document.getElementById('ems-pvforecast-enabled').checked,
+        solcast_api_key:              document.getElementById('ems-solcast-api-key').value.trim(),
+        solcast_resource_id:          document.getElementById('ems-solcast-resource-id').value.trim(),
       };
 
       var btn = document.getElementById('ems-save-btn');
@@ -7032,6 +7082,81 @@
         _emsHistOffset  = 0;
         emsHistoryRender();
       });
+    }
+
+    // ── EMS Diagnostics (GET /ems/diag) ──────────────────────────────────────
+    var _emsDiagTimer = null;
+    function emsDiagToggle(el) {
+      if (el.open) {
+        emsDiagLoad();
+        if (!_emsDiagTimer) _emsDiagTimer = setInterval(emsDiagLoad, 3000);
+      } else if (_emsDiagTimer) {
+        clearInterval(_emsDiagTimer); _emsDiagTimer = null;
+      }
+    }
+
+    function emsDiagLoad() {
+      var body = document.getElementById('ems-diag-body');
+      if (!body) return;
+      _H.api('GET', '/ems/diag', null, function(err, d) {
+        if (err || !d || d.error) {
+          body.innerHTML = '<div style="color:#ff3b30;font-size:12px;text-align:center;padding:16px 0">' +
+            _emsHistEsc((d && d.error) || (err && err.message) || 'Failed to load') + '</div>';
+          return;
+        }
+        body.innerHTML = _emsDiagRender(d);
+      });
+    }
+
+    function _emsDiagRender(d) {
+      function card(title, rows) {
+        return '<div style="border:1px solid #e5e5ea;border-radius:8px;background:#fff;padding:10px 12px;margin-bottom:10px">' +
+          '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#8e8e93;margin-bottom:6px">' + title + '</div>' +
+          rows + '</div>';
+      }
+      function row(label, val, danger) {
+        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:12px">' +
+          '<span style="color:#6e6e73">' + label + '</span>' +
+          '<span style="font-weight:600;text-align:right;color:' + (danger ? '#ff3b30' : '#1a1a1a') + '">' + val + '</span></div>';
+      }
+      var num = function(v, u) { return (v === null || v === undefined) ? '—' : (Math.round(v) + (u || '')); };
+      var t   = function(ts) { return ts ? _emsHistFmt(ts) : '—'; };
+
+      var health = row('Ticks', d.tickCount == null ? '—' : d.tickCount) +
+        row('Errors', d.tickErrors || 0, (d.tickErrors || 0) > 0) +
+        row('Last tick', num(d.lastTickMs, ' ms')) +
+        row('Avg tick', num(d.avgTickMs, ' ms')) +
+        row('Last error', d.lastError ? (_emsHistEsc(d.lastError) + ' @ ' + t(d.lastErrorAt)) : 'none', !!d.lastError);
+
+      var decision = row('Mode', _emsHistEsc(d.mode || '—')) +
+        (d.modeText ? row('Status', _emsHistEsc(d.modeText)) : '') +
+        row('Grid', num(d.gridW, ' W')) +
+        row('PV', num(d.pvW, ' W')) +
+        row('Battery SoC', d.soc == null ? '—' : (Math.round(d.soc) + ' %')) +
+        row('Decided at', t(d.decidedAt));
+
+      var html = card('Tick health', health) + card('Last decision', decision);
+
+      // Solcast PV forecast (only when enabled).
+      var pv = d.pv;
+      if (pv && pv.enabled) {
+        var pvRows;
+        if (!pv.configured) {
+          pvRows = row('Status', 'API key / Resource ID missing', true);
+        } else if (!pv.fetchedAt) {
+          pvRows = row('Status', pv.error ? _emsHistEsc(pv.error) : 'awaiting first fetch…', !!pv.error);
+        } else {
+          pvRows = row('Remaining today', pv.remainingTodayKwh + ' kWh') +
+            row('Next 6 h', pv.next6hKwh + ' kWh') +
+            row('Peak (forecast)', pv.peakKw == null ? '—' : (pv.peakKw + ' kW')) +
+            row('Slots ahead', pv.slotCount) +
+            row('Updated', pv.ageMin == null ? '—' : (pv.ageMin + ' min ago')) +
+            (pv.error ? row('Last error', _emsHistEsc(pv.error), true) : '');
+        }
+        html += card('PV forecast (Solcast)', pvRows);
+      }
+
+      return html;
     }
 
     // Plain-text form of one event — mirrors the label/detail rules in emsHistoryRender().

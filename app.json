@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -70,6 +70,10 @@
     "getEmsDiag": {
       "method": "GET",
       "path": "/ems/diag"
+    },
+    "getEmsPvForecast": {
+      "method": "GET",
+      "path": "/ems/pv-forecast"
     },
     "putEmsConfig": {
       "method": "PUT",
@@ -6722,6 +6726,51 @@
         ]
       },
       {
+        "id": "ems_pv_forecast_updated",
+        "title": {
+          "en": "Solar forecast updated",
+          "de": "Solarprognose aktualisiert",
+          "nl": "Zonneverwachting bijgewerkt"
+        },
+        "hint": {
+          "en": "Fires when a fresh Solcast PV forecast has been fetched.",
+          "de": "Wird ausgelöst, wenn eine neue Solcast-PV-Prognose abgerufen wurde."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=energy_management"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "remaining_today_kwh",
+            "type": "number",
+            "title": {
+              "en": "Remaining today (kWh)",
+              "de": "Rest heute (kWh)"
+            }
+          },
+          {
+            "name": "next_6h_kwh",
+            "type": "number",
+            "title": {
+              "en": "Next 6 h (kWh)",
+              "de": "Nächste 6 h (kWh)"
+            }
+          },
+          {
+            "name": "peak_kw",
+            "type": "number",
+            "title": {
+              "en": "Forecast peak (kW)",
+              "de": "Prognose-Peak (kW)"
+            }
+          }
+        ]
+      },
+      {
         "id": "ems_mode_changed",
         "title": {
           "en": "EMS mode changed",
@@ -9900,6 +9949,131 @@
       }
     ],
     "conditions": [
+      {
+        "id": "ems_pv_forecast_today",
+        "title": {
+          "en": "Expected solar today is !{{more|less}} than",
+          "de": "Erwartete Solarenergie heute ist !{{mehr|weniger}} als",
+          "nl": "Verwachte zon vandaag is !{{meer|minder}} dan"
+        },
+        "titleFormatted": {
+          "en": "Expected solar today is !{{more|less}} than [[kwh]] kWh",
+          "de": "Erwartete Solarenergie heute ist !{{mehr|weniger}} als [[kwh]] kWh"
+        },
+        "hint": {
+          "en": "True when the Solcast forecast for the rest of today (until midnight) is above the given number of kWh.",
+          "de": "Wahr, wenn die Solcast-Prognose für den Rest des Tages (bis Mitternacht) über der angegebenen kWh-Zahl liegt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "number",
+            "name": "kwh",
+            "title": {
+              "en": "Energy (kWh)",
+              "de": "Energie (kWh)"
+            },
+            "placeholder": {
+              "en": "e.g. 10",
+              "de": "z.B. 10"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ems_pv_forecast_until",
+        "title": {
+          "en": "Expected solar until a time is !{{below|not below}}",
+          "de": "Erwartete Solarenergie bis Uhrzeit ist !{{unter|nicht unter}}",
+          "nl": "Verwachte zon tot een tijd is !{{onder|niet onder}}"
+        },
+        "titleFormatted": {
+          "en": "Expected solar until [[cutoff]] is !{{below|not below}} [[kwh]] kWh",
+          "de": "Erwartete Solarenergie bis [[cutoff]] ist !{{unter|nicht unter}} [[kwh]] kWh"
+        },
+        "hint": {
+          "en": "True when the Solcast forecast for the PV production remaining from now until the given time today is below the threshold (kWh). Returns 0 once that time has passed. Useful for deadline planning, e.g. \"the sun won't cover the car by 18:00, start grid charging\".",
+          "de": "Wahr, wenn die Solcast-Prognose für die verbleibende PV-Produktion von jetzt bis zur angegebenen Uhrzeit heute unter dem Schwellwert (kWh) liegt. Nach Ablauf der Uhrzeit 0. Nützlich für Deadline-Planung, z.B. \"die Sonne deckt das Auto bis 18:00 nicht, jetzt aus dem Netz laden\"."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "time",
+            "name": "cutoff",
+            "title": {
+              "en": "Cutoff time",
+              "de": "Uhrzeit"
+            }
+          },
+          {
+            "type": "number",
+            "name": "kwh",
+            "title": {
+              "en": "Energy (kWh)",
+              "de": "Energie (kWh)"
+            },
+            "placeholder": {
+              "en": "e.g. 5",
+              "de": "z.B. 5"
+            }
+          }
+        ]
+      },
+      {
+        "id": "ems_pv_forecast_next_hours",
+        "title": {
+          "en": "Expected solar in the next hours is !{{more|less}} than",
+          "de": "Erwartete Solarenergie in den nächsten Stunden ist !{{mehr|weniger}} als",
+          "nl": "Verwachte zon in de komende uren is !{{meer|minder}} dan"
+        },
+        "titleFormatted": {
+          "en": "Expected solar in the next [[hours]] h is !{{more|less}} than [[kwh]] kWh",
+          "de": "Erwartete Solarenergie in den nächsten [[hours]] h ist !{{mehr|weniger}} als [[kwh]] kWh"
+        },
+        "hint": {
+          "en": "True when the Solcast forecast for the next N hours is above the given number of kWh.",
+          "de": "Wahr, wenn die Solcast-Prognose für die nächsten N Stunden über der angegebenen kWh-Zahl liegt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "number",
+            "name": "hours",
+            "title": {
+              "en": "Hours",
+              "de": "Stunden"
+            },
+            "placeholder": {
+              "en": "e.g. 6",
+              "de": "z.B. 6"
+            }
+          },
+          {
+            "type": "number",
+            "name": "kwh",
+            "title": {
+              "en": "Energy (kWh)",
+              "de": "Energie (kWh)"
+            },
+            "placeholder": {
+              "en": "e.g. 5",
+              "de": "z.B. 5"
+            }
+          }
+        ]
+      },
       {
         "id": "sun2000_power_above_for",
         "title": {
