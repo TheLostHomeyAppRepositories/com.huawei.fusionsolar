@@ -927,11 +927,11 @@
                      style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
             </div>
             <div style="margin-bottom:8px">
-              <label style="font-size:12px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:3px">Resource / Site ID</label>
-              <input id="ems-solcast-resource-id" type="text" placeholder="e.g. abcd-1234-ef56-7890"
-                     style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none">
+              <label style="font-size:12px;font-weight:600;color:#3a3a3c;display:block;margin-bottom:3px">Resource / Site ID(s)</label>
+              <textarea id="ems-solcast-resource-id" rows="2" placeholder="One per line (or comma-separated) — e.g.&#10;abcd-1234-ef56-7890&#10;9876-5432-dcba-0fed"
+                     style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea>
             </div>
-            <span class="ems-toggle-desc">Free <strong>Hobbyist</strong> account at <a href="https://toolkit.solcast.com.au/live-forecast" target="_blank" rel="noopener">Solcast Toolkit</a> — register your PV system with its exact details, then copy your <strong>API key</strong> (under <em>Your name → Your API key</em>) and <strong>Resource ID</strong> (click your site on the map). New accounts get <strong>10 API calls/day</strong> (older accounts 50); each site counts separately. To stay within that limit the app fetches <strong>automatically every ~3 h</strong> (≈ 8/day) and caches across restarts — <em>no flows needed</em>. Result appears under <em>Diagnostics → EMS Diagnostics</em>.</span>
+            <span class="ems-toggle-desc">Free <strong>Hobbyist</strong> account at <a href="https://toolkit.solcast.com.au/live-forecast" target="_blank" rel="noopener">Solcast Toolkit</a> — register your PV system with its exact details, then copy your <strong>API key</strong> (under <em>Your name → Your API key</em>) and <strong>Resource ID</strong> (click your site on the map). <strong>Multiple sites</strong> (e.g. north + south roof) — enter one per line; their forecasts are <strong>summed</strong>. New accounts get <strong>10 API calls/day</strong> (older accounts 50) and <em>each site is one call</em>, so the app spaces fetches out automatically to stay within budget (≈ 8 calls/day total whether 1 or several sites) and caches across restarts — <em>no flows needed</em>. Result appears under <em>Diagnostics → EMS Diagnostics</em>.</span>
           </div>
         </div>
       </details>
@@ -7149,9 +7149,10 @@
           pvRows = row('Remaining today', pv.remainingTodayKwh + ' kWh') +
             row('Next 6 h', pv.next6hKwh + ' kWh') +
             row('Peak (forecast)', pv.peakKw == null ? '—' : (pv.peakKw + ' kW')) +
+            (pv.sites > 1 ? row('Sites (summed)', pv.sites) : '') +
             row('Slots ahead', pv.slotCount) +
             row('Updated', pv.ageMin == null ? '—' : (pv.ageMin + ' min ago')) +
-            (pv.error ? row('Last error', _emsHistEsc(pv.error), true) : '');
+            (pv.error ? row('Note', _emsHistEsc(pv.error), true) : '');
         }
         html += card('PV forecast (Solcast)', pvRows);
       }

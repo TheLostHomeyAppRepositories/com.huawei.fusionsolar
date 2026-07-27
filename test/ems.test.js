@@ -352,6 +352,33 @@ test('_pvForecastNextKwh — energy over the next N hours', () => {
   assert.strictEqual(d._pvForecastNextKwh(0, now), 0);
 });
 
+test('_solcastResourceIds — single / multi / separators', () => {
+  const d = makeDevice();
+  assert.deepStrictEqual(d._solcastResourceIds({ solcast_resource_id: 'abcd-1234' }), ['abcd-1234']);
+  assert.deepStrictEqual(d._solcastResourceIds({ solcast_resource_id: 'a-1\nb-2' }), ['a-1', 'b-2']);
+  assert.deepStrictEqual(d._solcastResourceIds({ solcast_resource_id: 'a-1, b-2 ; c-3' }), ['a-1', 'b-2', 'c-3']);
+  assert.deepStrictEqual(d._solcastResourceIds({ solcast_resource_id: '   ' }), []);
+  assert.deepStrictEqual(d._solcastResourceIds({}), []);
+});
+
+test('_mergeForecastSlots — sums two sites per slot end-time', () => {
+  const d = makeDevice();
+  const north = [{ end: 1000, kw: 3, kw10: 2, kw90: 4, h: 0.5 }, { end: 2000, kw: 1, kw10: null, kw90: 2, h: 0.5 }];
+  const south = [{ end: 1000, kw: 5, kw10: 3, kw90: 6, h: 0.5 }, { end: 2000, kw: 2, kw10: 1, kw90: 3, h: 0.5 }];
+  const merged = d._mergeForecastSlots([north, south]);
+  assert.strictEqual(merged.length, 2);
+  assert.strictEqual(merged[0].kw, 8);        // 3 + 5
+  assert.strictEqual(merged[0].kw10, 5);       // 2 + 3
+  assert.strictEqual(merged[1].kw, 3);        // 1 + 2
+  assert.strictEqual(merged[1].kw10, null);    // one site missing P10 → null
+  assert.strictEqual(merged[0].h, 0.5);
+});
+test('_mergeForecastSlots — single array passes through', () => {
+  const d = makeDevice();
+  const one = [{ end: 1000, kw: 3, kw10: null, kw90: null, h: 0.5 }];
+  assert.strictEqual(d._mergeForecastSlots([one]), one);
+});
+
 test('_pvMsUntilLocalTime — future / past / invalid', () => {
   const d = makeDevice();
   const now = Date.UTC(2026, 0, 1, 14, 0, 0); // 14:00 UTC
