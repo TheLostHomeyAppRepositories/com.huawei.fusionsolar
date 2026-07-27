@@ -7146,7 +7146,9 @@
         } else if (!pv.fetchedAt) {
           pvRows = row('Status', pv.error ? _emsHistEsc(pv.error) : 'awaiting first fetch…', !!pv.error);
         } else {
-          pvRows = row('Remaining today', pv.remainingTodayKwh + ' kWh') +
+          pvRows = row('Now (forecast)', (pv.nowKw == null ? '—' : (pv.nowKw + ' kW'))) +
+            row('Remaining today', pv.remainingTodayKwh + ' kWh') +
+            row('Tomorrow', (pv.tomorrowKwh == null ? '—' : (pv.tomorrowKwh + ' kWh'))) +
             row('Next 6 h', pv.next6hKwh + ' kWh') +
             row('Peak (forecast)', pv.peakKw == null ? '—' : (pv.peakKw + ' kW')) +
             (pv.sites > 1 ? row('Sites (summed)', pv.sites) : '') +

@@ -379,6 +379,40 @@ test('_mergeForecastSlots — single array passes through', () => {
   assert.strictEqual(d._mergeForecastSlots([one]), one);
 });
 
+test('_pvForecastNowKw — current in-progress slot', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = makeDevice({ _pvForecast: [
+    { end: now - 10 * 60000, kw: 9, h: 0.5 }, // already ended → not "now"
+    { end: now + 20 * 60000, kw: 4, h: 0.5 }, // in progress → this one
+    { end: now + 50 * 60000, kw: 6, h: 0.5 },
+  ] });
+  assert.strictEqual(d._pvForecastNowKw(now), 4);
+  assert.strictEqual(makeDevice({ _pvForecast: [] })._pvForecastNowKw(now), 0);
+});
+
+test('_pvForecastTomorrowKwh — sums the next local calendar day', () => {
+  const now = Date.UTC(2026, 0, 1, 22, 0, 0); // 22:00 UTC → midnight in 2 h
+  const mid = now + 2 * 3600 * 1000;           // next local midnight (UTC)
+  const d = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: [
+      { end: now + 60 * 60000,        kw: 5, h: 0.5 }, // still today → excluded
+      { end: mid + 6 * 3600 * 1000,   kw: 4, h: 0.5 }, // tomorrow 06:00
+      { end: mid + 12 * 3600 * 1000,  kw: 8, h: 0.5 }, // tomorrow 12:00
+      { end: mid + 30 * 3600 * 1000,  kw: 9, h: 0.5 }, // day after → excluded
+    ],
+  });
+  assert.strictEqual(d._pvForecastTomorrowKwh(now), 6); // 4·0.5 + 8·0.5
+});
+
+test('_pvForecastConfigured — needs enabled + key + at least one site', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._pvForecastConfigured({ pv_forecast_enabled: true, solcast_api_key: 'k', solcast_resource_id: 'a-1' }), true);
+  assert.strictEqual(d._pvForecastConfigured({ pv_forecast_enabled: false, solcast_api_key: 'k', solcast_resource_id: 'a-1' }), false);
+  assert.strictEqual(d._pvForecastConfigured({ pv_forecast_enabled: true, solcast_api_key: '', solcast_resource_id: 'a-1' }), false);
+  assert.strictEqual(d._pvForecastConfigured({ pv_forecast_enabled: true, solcast_api_key: 'k', solcast_resource_id: '' }), false);
+});
+
 test('_pvMsUntilLocalTime — future / past / invalid', () => {
   const d = makeDevice();
   const now = Date.UTC(2026, 0, 1, 14, 0, 0); // 14:00 UTC

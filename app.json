@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.22",
+  "version": "1.2.23",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1661,6 +1661,57 @@
       "uiComponent": "sensor",
       "insights": false,
       "icon": "/assets/capabilities/measure_car_target_soc.svg"
+    },
+    "pv_forecast_today": {
+      "type": "number",
+      "title": {
+        "en": "Solar forecast today",
+        "de": "Solarprognose heute",
+        "nl": "Zonverwachting vandaag"
+      },
+      "units": {
+        "en": "kWh"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_pv_power.svg"
+    },
+    "pv_forecast_tomorrow": {
+      "type": "number",
+      "title": {
+        "en": "Solar forecast tomorrow",
+        "de": "Solarprognose morgen",
+        "nl": "Zonverwachting morgen"
+      },
+      "units": {
+        "en": "kWh"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_pv_power.svg"
+    },
+    "pv_forecast_now": {
+      "type": "number",
+      "title": {
+        "en": "Solar forecast (now)",
+        "de": "Solarprognose (jetzt)",
+        "nl": "Zonverwachting (nu)"
+      },
+      "units": {
+        "en": "kW"
+      },
+      "decimals": 2,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_pv_power.svg"
     }
   },
   "drivers": [

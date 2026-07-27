@@ -108,6 +108,7 @@ class EmsDevice extends Device {
 
     await this._ensureCapabilities();
     await this._syncCarCapabilities(this._getConfig()); // add car caps only when a car is configured
+    await this._syncPvForecastCapabilities(this._getConfig()); // pv forecast caps only when Solcast is configured
     await this._migrateConfig(); // run once on startup, writes back if format changed
     const _startupCfg = this._getConfig(); // clamp any out-of-range values on startup too
     if (this._validateConfig(_startupCfg)) this.homey.settings.set('ems_config', _startupCfg);
@@ -190,6 +191,7 @@ class EmsDevice extends Device {
     const cfg = this._getConfig();
     if (this._validateConfig(cfg)) this.homey.settings.set('ems_config', cfg);
     this._syncCarCapabilities(cfg).catch((e) => this.error('[EMS] car cap sync:', e.message));
+    this._syncPvForecastCapabilities(cfg).catch((e) => this.error('[EMS] pv cap sync:', e.message));
     this._priceUnitApplied = null; // currency may have changed → re-apply unit next tick
     this._stopTick();
     this._startTick();
@@ -377,6 +379,7 @@ class EmsDevice extends Device {
       await this._updatePriceCapability(cfg);
       await this._updateCarCapabilities(cfg);
       await this._maybeFetchPvForecast(cfg); // rate-limited internally (≥3 h between fetches)
+      await this._updatePvForecastCapabilities(); // recompute today/tomorrow/now from cache (no API call)
     }
 
     if (!enabled || !hasKey) {
