@@ -7154,6 +7154,7 @@
             (pv.sites > 1 ? row('Sites (summed)', pv.sites) : '') +
             row('Slots ahead', pv.slotCount) +
             row('Updated', pv.ageMin == null ? '—' : (pv.ageMin + ' min ago')) +
+            (pv.stale ? row('⚠ Stale', 'forecast > 24 h old — values treated as 0', true) : '') +
             (pv.error ? row('Note', _emsHistEsc(pv.error), true) : '');
         }
         html += card('PV forecast (Solcast)', pvRows);

@@ -12,7 +12,9 @@ const carsMixin    = require('../lib/ems/cars');
 const chargerMixin = require('../lib/ems/chargerControl');
 const batteryMixin = require('../lib/ems/battery');
 const pvForecastMixin = require('../lib/ems/pvForecast');
-const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W } = require('../lib/ems/constants');
+const simpleDevicesMixin = require('../lib/ems/simpleDevices');
+const exportLimitMixin = require('../lib/ems/exportLimit');
+const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
   const dev = {
@@ -48,6 +50,46 @@ function seedState(dev, id, patch) {
   Object.assign(st, patch);
   return st;
 }
+
+// Fake device for _evaluateSimpleDevices. `_simpleDeviceSetOn` is stubbed to record the
+// on/off DECISION (not fire flows), so tests assert what the state machine decided.
+function makeSimpleDevice(extra = {}) {
+  const dev = {
+    log() {}, _warmupDone: true, _addHistoryEvent() {},
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) } },
+  };
+  Object.assign(dev, simpleDevicesMixin, batteryMixin, extra);
+  dev._setOnCalls = [];
+  dev._simpleDeviceSetOn = async function (id, name, on) { this._setOnCalls.push({ id, on }); };
+  return dev;
+}
+// A simple device with `actualOn: null` (EMS-state mode) so drift-sync is skipped and the
+// decision is purely surplus/battery/timer driven.
+function simpleDev(over = {}) {
+  return Object.assign({
+    id: 'd1', name: 'HP', actualOn: null, powerW: null,
+    minSurplusW: 1000, minPowerW: 0,
+    startSustainMs: 60_000, stopGraceMs: 120_000, maxRunMs: 0,
+    restartCooldownMs: 0, startupGraceMs: 120_000, stateSource: 'ems',
+  }, over);
+}
+
+// Fake device for _evaluateExportLimit. Trigger firing + persistence are stubbed; `_fired`
+// records which on/off card was fired.
+function makeExportDevice(extra = {}) {
+  const dev = {
+    log() {}, _exportLimitActive: false, _exportLimitActivatedAt: null,
+    _loggedExportSocMisconfig: false, _addHistoryEvent() {},
+  };
+  Object.assign(dev, exportLimitMixin, extra);
+  // Override AFTER assign — these names also exist on the mixin (would otherwise call the
+  // real store/flow methods that the fake device doesn't have).
+  dev._fired = [];
+  dev._persistExportLimit = async function () {};
+  dev._fireExportLimitTrigger = async function (cfg, cardId) { this._fired.push(cardId); };
+  return dev;
+}
+const EXPORT_CFG = { export_limit_enabled: true, export_limit_trigger_soc: 95, export_limit_deactivate_soc: 90, inverter_devices: [{ id: 'inv1' }] };
 
 // ── price: _parseTime ────────────────────────────────────────────────────────
 test('_parseTime parses HH:MM to minutes', () => {
@@ -343,13 +385,36 @@ test('_pvMsUntilLocalMidnight — deterministic in UTC', () => {
 
 test('_pvForecastNextKwh — energy over the next N hours', () => {
   const now = Date.UTC(2026, 0, 1, 10, 0, 0);
-  const d = makeDevice({ _pvForecast: [
+  const d = makeDevice({ _pvForecastFetchedAt: now, _pvForecast: [
     { end: now + 30 * 60000, kw: 4, h: 0.5 },
     { end: now + 60 * 60000, kw: 2, h: 0.5 },
     { end: now + 180 * 60000, kw: 8, h: 0.5 }, // +3 h → outside a 2 h window
   ] });
   assert.strictEqual(d._pvForecastNextKwh(2, now), 3); // 4·0.5 + 2·0.5
   assert.strictEqual(d._pvForecastNextKwh(0, now), 0);
+});
+
+test('_pvForecastStale — fresh / old / never-fetched / no-data', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [{ end: now + 30 * 60000, kw: 4, h: 0.5 }];
+  assert.strictEqual(makeDevice({ _pvForecast: slots, _pvForecastFetchedAt: now })._pvForecastStale(now), false);
+  assert.strictEqual(makeDevice({ _pvForecast: slots, _pvForecastFetchedAt: now - 25 * 3600 * 1000 })._pvForecastStale(now), true);
+  assert.strictEqual(makeDevice({ _pvForecast: slots, _pvForecastFetchedAt: null })._pvForecastStale(now), true);
+  assert.strictEqual(makeDevice({ _pvForecast: null, _pvForecastFetchedAt: now })._pvForecastStale(now), true);
+});
+
+test('_pvForecast aggregation helpers return 0 when stale', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecastFetchedAt: now - 25 * 3600 * 1000, // > 24 h → stale
+    _pvForecast: [{ end: now + 30 * 60000, kw: 4, h: 0.5 }, { end: now + 60 * 60000, kw: 2, h: 0.5 }],
+  });
+  assert.strictEqual(d._pvForecastNextKwh(6, now), 0);
+  assert.strictEqual(d._pvForecastNowKw(now), 0);
+  assert.strictEqual(d._pvForecastRemainingTodayKwh(now), 0);
+  assert.strictEqual(d._pvForecastTomorrowKwh(now), 0);
+  assert.strictEqual(d._pvForecastUntilKwh('16:00', now), 0);
 });
 
 test('_solcastResourceIds — single / multi / separators', () => {
@@ -381,13 +446,13 @@ test('_mergeForecastSlots — single array passes through', () => {
 
 test('_pvForecastNowKw — current in-progress slot', () => {
   const now = Date.UTC(2026, 0, 1, 10, 0, 0);
-  const d = makeDevice({ _pvForecast: [
+  const d = makeDevice({ _pvForecastFetchedAt: now, _pvForecast: [
     { end: now - 10 * 60000, kw: 9, h: 0.5 }, // already ended → not "now"
     { end: now + 20 * 60000, kw: 4, h: 0.5 }, // in progress → this one
     { end: now + 50 * 60000, kw: 6, h: 0.5 },
   ] });
   assert.strictEqual(d._pvForecastNowKw(now), 4);
-  assert.strictEqual(makeDevice({ _pvForecast: [] })._pvForecastNowKw(now), 0);
+  assert.strictEqual(makeDevice({ _pvForecastFetchedAt: now, _pvForecast: [] })._pvForecastNowKw(now), 0);
 });
 
 test('_pvForecastTomorrowKwh — sums the next local calendar day', () => {
@@ -395,6 +460,7 @@ test('_pvForecastTomorrowKwh — sums the next local calendar day', () => {
   const mid = now + 2 * 3600 * 1000;           // next local midnight (UTC)
   const d = makeDevice({
     homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecastFetchedAt: now,
     _pvForecast: [
       { end: now + 60 * 60000,        kw: 5, h: 0.5 }, // still today → excluded
       { end: mid + 6 * 3600 * 1000,   kw: 4, h: 0.5 }, // tomorrow 06:00
@@ -425,6 +491,7 @@ test('_pvForecastUntilKwh — sums up to a wall-clock cutoff today', () => {
   const now = Date.UTC(2026, 0, 1, 14, 0, 0); // 14:00 UTC
   const d = makeDevice({
     homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecastFetchedAt: now,
     _pvForecast: [
       { end: now + 30 * 60000,  kw: 4, h: 0.5 }, // 14:30 → before 16:00
       { end: now + 90 * 60000,  kw: 2, h: 0.5 }, // 15:30 → before 16:00
@@ -433,4 +500,113 @@ test('_pvForecastUntilKwh — sums up to a wall-clock cutoff today', () => {
   });
   assert.strictEqual(d._pvForecastUntilKwh('16:00', now), 3); // 4·0.5 + 2·0.5
   assert.strictEqual(d._pvForecastUntilKwh('13:00', now), 0); // cutoff already passed
+});
+
+// ── simpleDevices: _evaluateSimpleDevices state machine ──────────────────────
+test('_evaluateSimpleDevices — control disabled → no action', async () => {
+  const d = makeSimpleDevice();
+  const r = await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()], new Map(), 'start', 'stop', 'tok', 'ctrl', { ctrl: false });
+  assert.strictEqual(r, 0);
+  assert.strictEqual(d._setOnCalls.length, 0);
+});
+
+test('_evaluateSimpleDevices — battery hard-stop forces a running device off', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  // SoC 10 < min 80 → hard stop; battery idle (no overflow) → off despite ample surplus
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
+});
+
+test('_evaluateSimpleDevices — battery-overflow exception keeps it on (guards MIN_CHARGE_W path)', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  // Hard-stop SoC, but battery charging AND exporting ≥ MIN_CHARGE_W → overflow exception → stays on
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
+test('_evaluateSimpleDevices — start needs sustained surplus', async () => {
+  const now = Date.now();
+  const cfg = { min_battery_soc: 80 };
+  const bat = { soc: 90, powerW: 0 }; // not hard-stop
+  // surplus present but only just now → no start yet
+  const d1 = makeSimpleDevice();
+  await d1._evaluateSimpleDevices(bat, -2000, [simpleDev()],
+    new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d1._setOnCalls, [{ id: 'd1', on: false }]);
+  // surplus held past startSustainMs → start
+  const d2 = makeSimpleDevice();
+  await d2._evaluateSimpleDevices(bat, -2000, [simpleDev()],
+    new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d2._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
+test('_evaluateSimpleDevices — min-run holds a fresh device on through a dip', async () => {
+  const now = Date.now();
+  const d = makeSimpleDevice();
+  // started 1 min ago (< min-run 5 min), surplus now gone → hold-time keeps it on
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [simpleDev()],
+    new Map([['d1', { isOn: true, startedAt: now - 60_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
+test('_evaluateSimpleDevices — stop-grace holds, then releases when expired', async () => {
+  const now = Date.now();
+  const cfg = { min_battery_soc: 80 };
+  const bat = { soc: 90, powerW: 0 };
+  // past min-run, surplus gone 30 s ago → within 120 s grace → stays on
+  const d1 = makeSimpleDevice();
+  await d1._evaluateSimpleDevices(bat, 0, [simpleDev({ stopGraceMs: 120_000 })],
+    new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: now - 30_000, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d1._setOnCalls, [{ id: 'd1', on: true }]);
+  // grace expired (130 s > 120 s) → off
+  const d2 = makeSimpleDevice();
+  await d2._evaluateSimpleDevices(bat, 0, [simpleDev({ stopGraceMs: 120_000 })],
+    new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: now - 130_000, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d2._setOnCalls, [{ id: 'd1', on: false }]);
+});
+
+// ── exportLimit: _evaluateExportLimit hysteresis + hold timer ─────────────────
+test('_evaluateExportLimit — activates when battery full and exporting', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 96 }, -500);
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_on']);
+});
+test('_evaluateExportLimit — no activation when not exporting', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 96 }, -50); // above the -100 W export floor
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — no activation when battery not full', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 90 }, -500); // below trigger SoC 95
+  assert.strictEqual(d._exportLimitActive, false);
+});
+test('_evaluateExportLimit — hold timer blocks immediate deactivate', async () => {
+  const d = makeExportDevice({ _exportLimitActive: true, _exportLimitActivatedAt: Date.now() });
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 80 }, -500); // SoC below deactivate, but just activated
+  assert.strictEqual(d._exportLimitActive, true); // held
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — deactivates after hold when SoC drops', async () => {
+  const d = makeExportDevice({ _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1 });
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 80 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+test('_evaluateExportLimit — disabling while active fires OFF', async () => {
+  const d = makeExportDevice({ _exportLimitActive: true, _exportLimitActivatedAt: Date.now() });
+  await d._evaluateExportLimit({ ...EXPORT_CFG, export_limit_enabled: false }, { soc: 96 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
 });
