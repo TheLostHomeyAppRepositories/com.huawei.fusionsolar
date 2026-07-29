@@ -58,7 +58,7 @@ function makeSimpleDevice(extra = {}) {
     log() {}, _warmupDone: true, _addHistoryEvent() {},
     homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) } },
   };
-  Object.assign(dev, simpleDevicesMixin, batteryMixin, extra);
+  Object.assign(dev, simpleDevicesMixin, batteryMixin, pvForecastMixin, extra);
   dev._setOnCalls = [];
   dev._simpleDeviceSetOn = async function (id, name, on) { this._setOnCalls.push({ id, on }); };
   return dev;
@@ -609,4 +609,56 @@ test('_evaluateExportLimit — disabling while active fires OFF', async () => {
   await d._evaluateExportLimit({ ...EXPORT_CFG, export_limit_enabled: false }, { soc: 96 }, -500);
   assert.strictEqual(d._exportLimitActive, false);
   assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+
+// ── pvForecast: _forecastGateBlocksStarts (solar-forecast start gate) ─────────
+test('_forecastGateBlocksStarts — off / manual / adaptive / guards', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  function dev() {
+    return makeDevice({
+      homey: { clock: { getTimezone: () => 'UTC' } },
+      _pvForecastFetchedAt: now,
+      _pvForecast: [
+        { end: now + 30 * 60000, kw: 4, h: 0.5 },
+        { end: now + 60 * 60000, kw: 4, h: 0.5 },
+      ], // remaining today = 4 kWh
+    });
+  }
+  const withBat = { battery_devices: [{ id: 'b1' }] };
+  // off → never
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'off' }, { soc: 60 }, now), false);
+  // no battery configured → never
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ forecast_gate_mode: 'manual', forecast_gate_kwh: 5 }, { soc: 60 }, now), false);
+  // manual: 4 < 5 → block; 4 < 3 → no
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'manual', forecast_gate_kwh: 5 }, { soc: 60 }, now), true);
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'manual', forecast_gate_kwh: 3 }, { soc: 60 }, now), false);
+  // adaptive: cap 10, soc 50 → deficit 5, 4 < 5 → block; soc 70 → deficit 3, 4 < 3 → no
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'adaptive', battery_capacity_kwh: 10 }, { soc: 50 }, now), true);
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'adaptive', battery_capacity_kwh: 10 }, { soc: 70 }, now), false);
+  // adaptive without capacity → never
+  assert.strictEqual(dev()._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'adaptive', battery_capacity_kwh: 0 }, { soc: 50 }, now), false);
+  // stale forecast → never (falls back to normal)
+  const stale = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _pvForecastFetchedAt: now - 25 * 3600 * 1000, _pvForecast: [{ end: now + 30 * 60000, kw: 4, h: 0.5 }] });
+  assert.strictEqual(stale._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'manual', forecast_gate_kwh: 5 }, { soc: 60 }, now), false);
+});
+
+test('_evaluateSimpleDevices — forecast gate blocks a start, running device continues', async () => {
+  const now = Date.now();
+  const cfg = { min_battery_soc: 80, battery_devices: [{ id: 'b1' }], forecast_gate_mode: 'manual', forecast_gate_kwh: 100 };
+  const bat = { soc: 90, powerW: 0 };
+  const fc  = { _pvForecastFetchedAt: now, _pvForecast: [{ end: now + 30 * 60000, kw: 0, h: 0.5 }] }; // remaining ~0 < 100 → gate active
+
+  // OFF + sustained surplus → would start, but gated → stays off
+  const dStart = makeSimpleDevice(fc);
+  await dStart._evaluateSimpleDevices(bat, -2000, [simpleDev()],
+    new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61000, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(dStart._setOnCalls, [{ id: 'd1', on: false }]);
+
+  // Already running → gate does NOT stop it
+  const dRun = makeSimpleDevice(fc);
+  await dRun._evaluateSimpleDevices(bat, -2000, [simpleDev()],
+    new Map([['d1', { isOn: true, startedAt: now - 600000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(dRun._setOnCalls, [{ id: 'd1', on: true }]);
 });

@@ -833,6 +833,13 @@
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
           <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:600;color:#6e6e73">Usable capacity</span>
+            <input id="ems-battery-capacity" type="number" value="0" min="0" max="200" step="0.5"
+              style="width:82px;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff">
+            <span style="font-size:12px;color:#6e6e73">kWh</span>
+            <span style="font-size:10px;color:#bbb">used by the adaptive solar-forecast gate (0 = unknown)</span>
+          </div>
 
           <!-- Battery SOC zones — combined visual -->
           <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
@@ -908,6 +915,27 @@
               </div>
             </div>
             <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Min SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
+          </div>
+
+          <!-- Solar-forecast start gate -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
+            <div style="font-size:12px;font-weight:600;color:#3a3a3c;margin-bottom:4px">🌤 Solar-forecast start gate</div>
+            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">On a poor-forecast day, hold off <em>starting</em> devices (heat pump / boiler / pool / dehumidifier) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.</p>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select id="ems-forecast-gate-mode" onchange="emsForecastGateChange()"
+                style="padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff">
+                <option value="off">Off</option>
+                <option value="manual">Manual threshold (kWh)</option>
+                <option value="adaptive">Adaptive (battery deficit)</option>
+              </select>
+              <div id="ems-forecast-gate-manual-row" style="display:none;align-items:center;gap:6px">
+                <span style="font-size:12px;color:#6e6e73">below</span>
+                <input id="ems-forecast-gate-kwh" type="number" value="5" min="0" max="200" step="0.5"
+                  style="width:72px;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff">
+                <span style="font-size:12px;color:#6e6e73">kWh remaining today</span>
+              </div>
+              <span id="ems-forecast-gate-adaptive-hint" style="display:none;font-size:11px;color:#6e6e73;max-width:320px">Blocks starts when today's remaining forecast can't refill the battery to 100 % (uses capacity + current SOC).</span>
+            </div>
           </div>
         </div>
       </details>
@@ -6802,6 +6830,10 @@
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
       if (cfg.orange_budget_w       !== undefined) document.getElementById('ems-orange-budget-w').value = cfg.orange_budget_w;
+      if (cfg.battery_capacity_kwh  !== undefined) document.getElementById('ems-battery-capacity').value  = cfg.battery_capacity_kwh;
+      document.getElementById('ems-forecast-gate-mode').value = cfg.forecast_gate_mode || 'off';
+      if (cfg.forecast_gate_kwh     !== undefined) document.getElementById('ems-forecast-gate-kwh').value  = cfg.forecast_gate_kwh;
+      emsForecastGateChange();
       emsRenderSchedulerTasks(cfg.scheduled_tasks || []);
       emsUpdateSocZones();
       var _offpeakEl = document.getElementById('ems-offpeak-enabled');
@@ -6847,6 +6879,12 @@
       var on = document.getElementById('ems-pvforecast-enabled').checked;
       document.getElementById('ems-pvforecast-rows').style.display = on ? 'block' : 'none';
       document.getElementById('ems-pvforecast-subtitle').textContent = on ? 'Solcast' : 'off';
+    }
+
+    function emsForecastGateChange() {
+      var mode = document.getElementById('ems-forecast-gate-mode').value;
+      document.getElementById('ems-forecast-gate-manual-row').style.display = mode === 'manual' ? 'flex' : 'none';
+      document.getElementById('ems-forecast-gate-adaptive-hint').style.display = mode === 'adaptive' ? 'inline' : 'none';
     }
 
     function emsSave() {
@@ -6910,6 +6948,9 @@
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
         orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
+        battery_capacity_kwh: Math.max(0, parseFloat(document.getElementById('ems-battery-capacity').value) || 0),
+        forecast_gate_mode:   document.getElementById('ems-forecast-gate-mode').value,
+        forecast_gate_kwh:    Math.max(0, parseFloat(document.getElementById('ems-forecast-gate-kwh').value) || 0),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings
         offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
         offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',
