@@ -760,9 +760,9 @@
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Inverter</span> — Measures PV production (W). Multiple devices are summed.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Power Meter (P1)</span> — Grid connection meter: positive = import, negative = export. Used as the basis for all control decisions.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">House Consumption</span> — Optional: direct house load meter. If omitted, the EMS calculates consumption from the energy balance (PV − Grid − Battery).</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Home Batteries</span> — Assign the SOC capability. Set a <b>Min SOC</b> — consumers are paused when the battery drops below this level. Use <b>Flow Actions</b> to create flows that force-charge, force-discharge, or limit the battery's charge/discharge power via Homey Flows.</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV Chargers</span> — Continuous current control 6–16 A (1- or 3-phase). An anti-oscillation filter prevents rapid ramping. Flows must be linked in Homey to set the charge current.</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat Pumps</span> — On/off control via Flow. Configurable minimum surplus threshold. Measured power (W) is used for anti-oscillation.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Home Batteries</span> — Assign the SOC capability. Set a <b>Normal SOC</b> — consumers are paused when the battery drops below this level. Use <b>Flow Actions</b> to create flows that force-charge, force-discharge, or limit the battery's charge/discharge power via Homey Flows.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV Chargers</span> — Continuous current control 6–16 A (1- or 3-phase). A built-in filter prevents rapid current ramping. Flows must be linked in Homey to set the charge current.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat Pumps</span> — On/off control via Flow. Configurable minimum surplus threshold. Measured power (W) is used to avoid rapid on/off switching.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boilers / Pools</span> — Same logic as heat pumps, with separate Start/Stop flow cards.</div>
               <div><span style="font-weight:600">Priority order</span> — Configure which device type gets surplus first: e.g. EV charger → heat pump → boiler. Lower-priority devices only receive what remains.</div>
             </div>
@@ -895,7 +895,7 @@
                 </div>
               </div>
               <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Min Battery SOC</div>
+                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px">Normal SOC <span style="font-weight:400;color:#bbb">(full budget above)</span></div>
                 <div style="display:flex;align-items:center;gap:6px">
                   <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
                     style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
@@ -911,10 +911,10 @@
                     oninput="emsUpdateSocZones()">
                   <span style="font-size:12px;color:#6e6e73">W</span>
                 </div>
-                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">Extra W devices may use<br>beyond current export</div>
+                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic">Extra power devices may draw from<br>the battery while in the reserve zone</div>
               </div>
             </div>
-            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Min SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Min SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
+            <span class="ems-toggle-desc" style="margin-top:8px"><span style="color:#34c759;font-weight:600">Green</span> (above Normal SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Normal SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
           </div>
 
           <!-- Solar-forecast start gate -->
@@ -3510,13 +3510,13 @@
         infoEl.appendChild(r);
         var hint = document.createElement('div');
         hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
-        hint.textContent = 'Used for anti-oscillation: EMS adds measured HP load back to available surplus when deciding to keep the heat pump running.';
+        hint.textContent = 'While running, the EMS counts the measured heat-pump load as available surplus, so it is not switched off again immediately.';
         infoEl.appendChild(hint);
         setTimeout(function() { _updateMinPowerHP(!!row.dataset.capPower); }, 0);
       } else {
         var note = document.createElement('div');
         note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
-        note.textContent = 'No power capability — anti-oscillation disabled. Heat pump switches on/off based on raw solar surplus only.';
+        note.textContent = 'No power capability — the heat pump switches on/off from raw solar surplus only (it cannot count its own draw as surplus).';
         infoEl.appendChild(note);
         _updateMinPowerHP(false);
       }
@@ -3916,7 +3916,7 @@
       startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var startupGraceLabel = document.createElement('span');
-      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.textContent = 'sec — startup grace — after a start, wait this long for power before assuming it is off';
       startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var maxRunInput = document.createElement('input');
@@ -3954,7 +3954,7 @@
 
       var minPowerLabel = document.createElement('span');
       minPowerLabel.className = 'ems-min-power-field';
-      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.textContent = 'W — "still running" threshold: below this the cycle counts as finished (0 = off)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
       // State source: how the EMS reads whether the device is actually on.
@@ -4005,14 +4005,27 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
+      // Basic fields — the three most users need.
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
-      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
-      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
-      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
-      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
-      configRow.appendChild(stateFromPowerWrap);
+      // Advanced fields — collapsed by default (full-width details inside the grid).
+      var advDetails = document.createElement('details');
+      advDetails.style.cssText = 'grid-column:1/-1;margin-top:4px';
+      var advSum = document.createElement('summary');
+      advSum.textContent = 'Advanced settings';
+      advSum.style.cssText = 'font-size:11px;color:#6e6e73;cursor:pointer;user-select:none;text-transform:none;letter-spacing:normal';
+      advDetails.appendChild(advSum);
+      var advGrid = document.createElement('div');
+      advGrid.className = 'ems-config-row';
+      advGrid.style.marginTop = '6px';
+      advGrid.appendChild(minPowerInput);     advGrid.appendChild(minPowerLabel);
+      advGrid.appendChild(startupGraceInput); advGrid.appendChild(startupGraceLabel);
+      advGrid.appendChild(maxRunInput);       advGrid.appendChild(maxRunLabel);
+      advGrid.appendChild(cooldownInput);     advGrid.appendChild(cooldownLabel);
+      advGrid.appendChild(stateFromPowerWrap);
+      advDetails.appendChild(advGrid);
+      configRow.appendChild(advDetails);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -4188,13 +4201,13 @@
         infoEl.appendChild(r);
         var hint = document.createElement('div');
         hint.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.4;padding-left:2px';
-        hint.textContent = 'Used for anti-oscillation: EMS adds measured ' + label + ' load back to available surplus when deciding to keep it running.';
+        hint.textContent = 'While running, the EMS counts the measured ' + label + ' load as available surplus, so it is not switched off again immediately.';
         infoEl.appendChild(hint);
         setTimeout(function() { _updateMinPower(!!row.dataset.capPower); }, 0);
       } else {
         var note = document.createElement('div');
         note.style.cssText = 'font-size:10px;color:#aaa;line-height:1.4;padding-top:2px';
-        note.textContent = 'No power capability — anti-oscillation disabled. Device switches on/off based on raw solar surplus only.';
+        note.textContent = 'No power capability — the device switches on/off from raw solar surplus only (it cannot count its own draw as surplus).';
         infoEl.appendChild(note);
         _updateMinPower(false);
       }
@@ -4529,7 +4542,7 @@
       startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var startupGraceLabel = document.createElement('span');
-      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.textContent = 'sec — startup grace — after a start, wait this long for power before assuming it is off';
       startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var maxRunInput = document.createElement('input');
@@ -4567,7 +4580,7 @@
 
       var minPowerLabel = document.createElement('span');
       minPowerLabel.className = 'ems-min-power-field';
-      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.textContent = 'W — "still running" threshold: below this the cycle counts as finished (0 = off)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
       // State source: how the EMS reads whether the device is actually on.
@@ -4618,14 +4631,27 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
+      // Basic fields — the three most users need.
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
-      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
-      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
-      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
-      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
-      configRow.appendChild(stateFromPowerWrap);
+      // Advanced fields — collapsed by default (full-width details inside the grid).
+      var advDetails = document.createElement('details');
+      advDetails.style.cssText = 'grid-column:1/-1;margin-top:4px';
+      var advSum = document.createElement('summary');
+      advSum.textContent = 'Advanced settings';
+      advSum.style.cssText = 'font-size:11px;color:#6e6e73;cursor:pointer;user-select:none;text-transform:none;letter-spacing:normal';
+      advDetails.appendChild(advSum);
+      var advGrid = document.createElement('div');
+      advGrid.className = 'ems-config-row';
+      advGrid.style.marginTop = '6px';
+      advGrid.appendChild(minPowerInput);     advGrid.appendChild(minPowerLabel);
+      advGrid.appendChild(startupGraceInput); advGrid.appendChild(startupGraceLabel);
+      advGrid.appendChild(maxRunInput);       advGrid.appendChild(maxRunLabel);
+      advGrid.appendChild(cooldownInput);     advGrid.appendChild(cooldownLabel);
+      advGrid.appendChild(stateFromPowerWrap);
+      advDetails.appendChild(advGrid);
+      configRow.appendChild(advDetails);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -4720,7 +4746,7 @@
       startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var startupGraceLabel = document.createElement('span');
-      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.textContent = 'sec — startup grace — after a start, wait this long for power before assuming it is off';
       startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var maxRunInput = document.createElement('input');
@@ -4758,7 +4784,7 @@
 
       var minPowerLabel = document.createElement('span');
       minPowerLabel.className = 'ems-min-power-field';
-      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.textContent = 'W — "still running" threshold: below this the cycle counts as finished (0 = off)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
       // State source: how the EMS reads whether the device is actually on.
@@ -4809,14 +4835,27 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
+      // Basic fields — the three most users need.
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
-      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
-      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
-      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
-      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
-      configRow.appendChild(stateFromPowerWrap);
+      // Advanced fields — collapsed by default (full-width details inside the grid).
+      var advDetails = document.createElement('details');
+      advDetails.style.cssText = 'grid-column:1/-1;margin-top:4px';
+      var advSum = document.createElement('summary');
+      advSum.textContent = 'Advanced settings';
+      advSum.style.cssText = 'font-size:11px;color:#6e6e73;cursor:pointer;user-select:none;text-transform:none;letter-spacing:normal';
+      advDetails.appendChild(advSum);
+      var advGrid = document.createElement('div');
+      advGrid.className = 'ems-config-row';
+      advGrid.style.marginTop = '6px';
+      advGrid.appendChild(minPowerInput);     advGrid.appendChild(minPowerLabel);
+      advGrid.appendChild(startupGraceInput); advGrid.appendChild(startupGraceLabel);
+      advGrid.appendChild(maxRunInput);       advGrid.appendChild(maxRunLabel);
+      advGrid.appendChild(cooldownInput);     advGrid.appendChild(cooldownLabel);
+      advGrid.appendChild(stateFromPowerWrap);
+      advDetails.appendChild(advGrid);
+      configRow.appendChild(advDetails);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -4911,7 +4950,7 @@
       startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
 
       var startupGraceLabel = document.createElement('span');
-      startupGraceLabel.textContent = 'sec — startup grace (Power-draw only: wait this long for power after an EMS start before assuming it was switched off externally)';
+      startupGraceLabel.textContent = 'sec — startup grace — after a start, wait this long for power before assuming it is off';
       startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
 
       var maxRunInput = document.createElement('input');
@@ -4949,7 +4988,7 @@
 
       var minPowerLabel = document.createElement('span');
       minPowerLabel.className = 'ems-min-power-field';
-      minPowerLabel.textContent = 'W — min. power while running (0 = disabled)';
+      minPowerLabel.textContent = 'W — "still running" threshold: below this the cycle counts as finished (0 = off)';
       minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
 
       // State source: how the EMS reads whether the device is actually on.
@@ -5000,14 +5039,27 @@
 
       var configRow = document.createElement('div');
       configRow.className = 'ems-config-row';
+      // Basic fields — the three most users need.
       configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
-      configRow.appendChild(minPowerInput); configRow.appendChild(minPowerLabel);
       configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
       configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
-      configRow.appendChild(startupGraceInput); configRow.appendChild(startupGraceLabel);
-      configRow.appendChild(maxRunInput);   configRow.appendChild(maxRunLabel);
-      configRow.appendChild(cooldownInput); configRow.appendChild(cooldownLabel);
-      configRow.appendChild(stateFromPowerWrap);
+      // Advanced fields — collapsed by default (full-width details inside the grid).
+      var advDetails = document.createElement('details');
+      advDetails.style.cssText = 'grid-column:1/-1;margin-top:4px';
+      var advSum = document.createElement('summary');
+      advSum.textContent = 'Advanced settings';
+      advSum.style.cssText = 'font-size:11px;color:#6e6e73;cursor:pointer;user-select:none;text-transform:none;letter-spacing:normal';
+      advDetails.appendChild(advSum);
+      var advGrid = document.createElement('div');
+      advGrid.className = 'ems-config-row';
+      advGrid.style.marginTop = '6px';
+      advGrid.appendChild(minPowerInput);     advGrid.appendChild(minPowerLabel);
+      advGrid.appendChild(startupGraceInput); advGrid.appendChild(startupGraceLabel);
+      advGrid.appendChild(maxRunInput);       advGrid.appendChild(maxRunLabel);
+      advGrid.appendChild(cooldownInput);     advGrid.appendChild(cooldownLabel);
+      advGrid.appendChild(stateFromPowerWrap);
+      advDetails.appendChild(advGrid);
+      configRow.appendChild(advDetails);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -6902,7 +6954,7 @@
 
       var _minSoc = parseInt(document.getElementById('ems-min-soc').value, 10);
       if (isNaN(_minSoc) || _minSoc < 0 || _minSoc > 100) {
-        emsShowSaveStatus('✗ Min battery SoC must be 0–100', '#c0392b');
+        emsShowSaveStatus('✗ Normal SOC must be 0–100', '#c0392b');
         document.getElementById('ems-min-soc').focus();
         return;
       }
@@ -6913,7 +6965,7 @@
         return;
       }
       if (_minSocLow > 0 && _minSocLow >= _minSoc) {
-        emsShowSaveStatus('✗ Reserve SOC must be lower than Min SOC', '#c0392b');
+        emsShowSaveStatus('✗ Reserve SOC must be lower than Normal SOC', '#c0392b');
         document.getElementById('ems-min-soc-low').focus();
         return;
       }
