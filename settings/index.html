@@ -744,7 +744,7 @@
           <!-- What does the EMS do? -->
           <div>
             <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">🔋 What does the EMS do?</div>
-            <div>The EMS monitors solar surplus, battery SOC, and grid power every 15 seconds and automatically controls EV chargers, heat pumps, boilers, and pool pumps — maximising self-consumption without draining the battery below the configured minimum or pulling power from the grid.</div>
+            <div>The EMS monitors solar surplus, battery SOC, and grid power every 15 seconds and automatically controls EV chargers, heat pumps, boilers, pool pumps, and dehumidifiers — maximising self-consumption without draining the battery below the configured minimum or pulling power from the grid. An optional Solcast solar forecast lets it hold off starting devices on a poor-forecast day to protect the battery for the evening.</div>
           </div>
 
           <!-- Step 1: Load devices -->
@@ -760,11 +760,12 @@
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Inverter</span> — Measures PV production (W). Multiple devices are summed.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Power Meter (P1)</span> — Grid connection meter: positive = import, negative = export. Used as the basis for all control decisions.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">House Consumption</span> — Optional: direct house load meter. If omitted, the EMS calculates consumption from the energy balance (PV − Grid − Battery).</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Home Batteries</span> — Assign the SOC capability. Set a <b>Normal SOC</b> — consumers are paused when the battery drops below this level. Use <b>Flow Actions</b> to create flows that force-charge, force-discharge, or limit the battery's charge/discharge power via Homey Flows.</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV Chargers</span> — Continuous current control 6–16 A (1- or 3-phase). A built-in filter prevents rapid current ramping. Flows must be linked in Homey to set the charge current.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Home Batteries</span> — Assign the SOC capability and the usable capacity (kWh). Set a <b>Normal SOC</b> (full budget above it) and optionally a lower <b>Reserve SOC</b> — consumers are paused below the reserve, throttled between the two. Use <b>Flow Actions</b> to create flows that force-charge, force-discharge, or limit the battery's charge/discharge power via Homey Flows. An <b>Export Limit</b> option can fire flows on your inverter when the battery is full and still exporting.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Solar Forecast (Solcast)</span> — Optional. Enter a free Solcast Hobbyist Resource ID + API key to get a PV forecast (today/tomorrow, up to 7 days ahead; multiple sites, e.g. east + west roof, are summed). Shown in <em>Diagnostics → EMS Diagnostics</em> and available as flow triggers/conditions. The <b>Solar-forecast start gate</b> (under Home Batteries) can hold off starting devices on a poor-forecast day, manually (kWh threshold) or adaptively (based on battery capacity + SOC).</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV Chargers</span> — Continuous current control 6–32 A (1- or 3-phase, with automatic phase switching if supported). A built-in filter prevents rapid current ramping. Flows must be linked in Homey to set the charge current. Optionally assign a car per charger to track its SOC and set a target charge level.</div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat Pumps</span> — On/off control via Flow. Configurable minimum surplus threshold. Measured power (W) is used to avoid rapid on/off switching.</div>
-              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boilers / Pools</span> — Same logic as heat pumps, with separate Start/Stop flow cards.</div>
-              <div><span style="font-weight:600">Priority order</span> — Configure which device type gets surplus first: e.g. EV charger → heat pump → boiler. Lower-priority devices only receive what remains.</div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boilers / Pools / Dehumidifiers</span> — Same logic as heat pumps, each with its own Start/Stop flow cards.</div>
+              <div><span style="font-weight:600">Priority order</span> — Configure which device type gets surplus first: e.g. EV charger → heat pump → boiler → pool → dehumidifier. Lower-priority devices only receive what remains.</div>
             </div>
           </div>
 
@@ -777,8 +778,10 @@
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">EV — Start charging</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Trigger <em>"EMS wants to start charging"</em> — fired once when charging activates (for charger apps that require an explicit Start command).</span></div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Heat pump — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start heat pump"</em> / <em>"EMS wants to stop heat pump"</em>. Only fired when surplus ≥ minimum threshold.</span></div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Boiler — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start boiler/heater"</em> / <em>"EMS wants to stop boiler/heater"</em>.</span></div>
-              <div><span style="font-weight:600">Pool — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start pool pump"</em> / <em>"EMS wants to stop pool pump"</em>. On the first tick after app start no flows are fired (observation mode).</span></div>
+              <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px"><span style="font-weight:600">Pool — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start pool pump"</em> / <em>"EMS wants to stop pool pump"</em>. On the first tick after app start no flows are fired (observation mode).</span></div>
+              <div><span style="font-weight:600">Dehumidifier — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start dehumidifier"</em> / <em>"EMS wants to stop dehumidifier"</em> — same solar-surplus logic as heat pumps/boilers/pool.</span></div>
             </div>
+            <div style="margin:8px 0 4px;font-size:11px">Battery and inverter also have flow triggers (force charge/discharge, max power, export limit) — set them up from the <b>Home Batteries</b> section's Flow Actions.</div>
           </div>
 
           <!-- Step 4: Set up flows -->
@@ -787,9 +790,15 @@
             <div>Use the <b>✓ Create / Update Flows</b> button in each device section — it automatically creates the required flows in the Homey folder <em>"_Huawei EMS"</em>. You can then open the Homey app, edit those flows, and link them to your devices.</div>
           </div>
 
+          <!-- Step 5: Diagnostics & History -->
+          <div>
+            <div style="font-weight:700;font-size:12px;margin-bottom:4px;color:var(--color-text,#1d1d1f)">5 · Diagnostics &amp; history</div>
+            <div>The <em>Diagnostics</em> section below has an <b>EMS Diagnostics</b> panel (live tick health, the last decision, PV forecast, and app memory usage) and an <b>EMS History</b> log of recent mode/device/charger events, with a Copy button for sharing.</div>
+          </div>
+
           <!-- Off-peak tip -->
           <div style="background:var(--color-bg-secondary,#f5f5f7);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--color-text-secondary,#6e6e73)">
-            <b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs, independent of solar surplus.
+            <b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ.
           </div>
 
         </div>
@@ -833,13 +842,6 @@
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
           <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('battery')" style="margin-bottom:10px;font-size:11px;padding:4px 10px">+ Add battery</button>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:600;color:#6e6e73">Usable capacity</span>
-            <input id="ems-battery-capacity" type="number" value="0" min="0" max="200" step="0.5"
-              style="width:82px;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff">
-            <span style="font-size:12px;color:#6e6e73">kWh</span>
-            <span style="font-size:10px;color:#bbb">used by the adaptive solar-forecast gate (0 = unknown)</span>
-          </div>
 
           <!-- Battery SOC zones — combined visual -->
           <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
@@ -1197,7 +1199,7 @@
       </details>
 
       <!-- Electricity Price -->
-      <details class="ems-section">
+      <details class="ems-section" onToggle="if(this.open) emsPriceForecastLoad()">
         <summary><span class="ems-section-label">💶 Electricity Price</span><span class="ems-section-subtitle"> · <span id="ems-price-subtitle">fixed</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
           <div class="tab-intro" style="margin-top:0">
@@ -1211,6 +1213,7 @@
                 <option value="fixed">Fixed</option>
                 <option value="dual">Low / high tariff</option>
                 <option value="variable">Variable (via flow)</option>
+                <option value="forecast">Price forecast (day-ahead)</option>
               </select>
             </div>
             <div style="flex:1;min-width:120px">
@@ -1253,8 +1256,32 @@
           <!-- Variable -->
           <div id="ems-price-variable-info" style="display:none">
             <div class="ems-callout">
-              <span><strong>Setup:</strong> An external app (e.g. Tibber, EPEX spot, dynamic tariff) sets the current price via the flow action <em>"EMS: set electricity price (per kWh)"</em>. The last value set is used as the current price.</span>
+              <span><strong>Setup:</strong> An external app (e.g. Tibber, EPEX spot, dynamic tariff) sets the current price via the flow action <em>"EMS: set electricity price (per kWh)"</em>. The last value set is used as the current price. <strong>Can your price source instead provide a full day-ahead hourly forecast</strong> (e.g. "Power by the Hour")? Then use <em>"Price forecast (day-ahead)"</em> below instead — no separate flow needed for the current price.</span>
             </div>
+            <div style="margin-top:8px;font-size:12px;color:#3a3a3c;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span>Current value:</span>
+              <strong id="ems-price-current-value">—</strong>
+            </div>
+          </div>
+
+          <!-- Forecast (day-ahead) -->
+          <div id="ems-price-forecast-info" style="display:none">
+            <div class="ems-callout">
+              <span>The current price is read directly from the hourly forecast below — no separate "current price" flow needed. This also powers EV charging for chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em>.</span>
+            </div>
+          </div>
+
+          <!-- Price forecast preview (D10 — price-optimised EV charging). Only shown for
+               "Price forecast (day-ahead)". -->
+          <div id="ems-price-forecast-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #eee;display:none">
+            <div style="font-size:12px;font-weight:600;color:#3a3a3c;margin-bottom:4px">📈 Price forecast</div>
+            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5">This hourly forecast is fed via the <em>"Set price forecast"</em> flow action. Works directly with <strong>Power by the Hour</strong>'s "New prices received" trigger (its <code>Prices</code> token), Tibber, or any similar day-ahead price app. Used by EV chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em> to charge during the cheapest hours before a car's deadline.</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+              <span id="ems-price-forecast-status" style="font-size:11px;color:#6e6e73">Not yet loaded</span>
+              <button class="btn-secondary" onclick="emsPriceForecastLoad()" style="padding:3px 10px;font-size:12px">↻ Refresh</button>
+            </div>
+            <div id="ems-price-forecast-chart" style="min-height:70px;background:#fafafa;border:1px solid #e5e5ea;border-radius:8px;padding:8px 6px 4px"></div>
+            <div id="ems-price-forecast-flowsetup"></div>
           </div>
         </div>
       </details>
@@ -2744,11 +2771,78 @@
 
     function emsPriceModeChange() {
       var mode = document.getElementById('ems-price-mode').value;
-      document.getElementById('ems-price-fixed-row').style.display    = mode === 'fixed'    ? '' : 'none';
+      document.getElementById('ems-price-fixed-row').style.display     = mode === 'fixed'    ? '' : 'none';
       document.getElementById('ems-price-dual-rows').style.display     = mode === 'dual'     ? '' : 'none';
       document.getElementById('ems-price-variable-info').style.display = mode === 'variable' ? '' : 'none';
-      var sub = mode === 'fixed' ? 'fixed' : mode === 'dual' ? 'low/high tariff' : 'variable';
+      document.getElementById('ems-price-forecast-info').style.display = mode === 'forecast' ? '' : 'none';
+      document.getElementById('ems-price-forecast-section').style.display = mode === 'forecast' ? '' : 'none';
+      var sub = { fixed: 'fixed', dual: 'low/high tariff', variable: 'variable', forecast: 'price forecast' }[mode] || mode;
       document.getElementById('ems-price-subtitle').textContent = sub;
+      if (mode === 'variable') emsPriceCurrentValueLoad();
+      if (mode === 'forecast') emsPriceForecastLoad();
+    }
+
+    function emsPriceCurrentValueLoad() {
+      var el = document.getElementById('ems-price-current-value');
+      if (!el) return;
+      el.textContent = 'Loading…';
+      _H.api('GET', '/ems/diag', null, function(err, d) {
+        if (err || !d || d.error || typeof d.electricityPrice !== 'number') {
+          el.textContent = 'not yet available';
+          return;
+        }
+        var currency = d.electricityPriceCurrency || 'CHF';
+        el.textContent = d.electricityPrice.toFixed(3) + ' ' + currency + '/kWh';
+      });
+    }
+
+    // ── Charger mode readiness — flags "Solar & off-peak window" / "Solar & cheapest
+    // hours (forecast)" in the charging-mode dropdown when their prerequisite (the
+    // Off-Peak toggle, or a configured/fresh price forecast) isn't actually met, so
+    // picking that mode silently doing nothing is obvious before it happens. ────────
+    var _emsPriceReadiness = null; // { offpeakReady, lowTariffReady, forecastReady } once loaded
+    var _emsPriceReadinessPending = false;
+    var _emsPriceReadinessSelects = []; // all .ems-charger-mode <select> elements seen so far
+
+    function _emsApplyPriceReadiness(sel) {
+      _emsPriceReadinessSelects.push(sel);
+      if (_emsPriceReadiness) _emsRenderPriceReadinessOn(sel);
+      else _emsRefreshPriceReadiness();
+    }
+
+    function _emsRenderPriceReadinessOn(sel) {
+      Array.prototype.forEach.call(sel.options, function(opt) {
+        var base = opt.dataset.baseLabel || opt.textContent;
+        if (opt.value === 'solar_offpeak') {
+          opt.textContent = _emsPriceReadiness.offpeakReady ? base : ('⚠ ' + base + ' — Off-Peak toggle is off');
+        } else if (opt.value === 'solar_lowtariff') {
+          opt.textContent = _emsPriceReadiness.lowTariffReady ? base : ('⚠ ' + base + ' — Low/high tariff not configured');
+        } else if (opt.value === 'solar_price') {
+          opt.textContent = _emsPriceReadiness.forecastReady ? base : ('⚠ ' + base + ' — no price forecast data yet');
+        }
+      });
+    }
+
+    function _emsRefreshPriceReadiness() {
+      if (_emsPriceReadinessPending) return;
+      _emsPriceReadinessPending = true;
+      var diagDone = false, fcDone = false;
+      var offpeakReady = false, lowTariffReady = false, forecastReady = false;
+      function finish() {
+        if (!diagDone || !fcDone) return;
+        _emsPriceReadiness = { offpeakReady: offpeakReady, lowTariffReady: lowTariffReady, forecastReady: forecastReady };
+        _emsPriceReadinessPending = false;
+        _emsPriceReadinessSelects.forEach(_emsRenderPriceReadinessOn);
+      }
+      _H.api('GET', '/ems/diag', null, function(err, d) {
+        offpeakReady   = !!(d && d.offpeakEnabled);
+        lowTariffReady = !!(d && d.dualTariffConfigured);
+        diagDone = true; finish();
+      });
+      _H.api('GET', '/ems/price-forecast', null, function(err, result) {
+        forecastReady = !!(result && result.configured && !result.stale);
+        fcDone = true; finish();
+      });
     }
 
     function emsPriceRenderDayWindows(windows) {
@@ -2803,6 +2897,354 @@
       emsPriceRenderDayWindows(pc.high_windows);
       emsPriceModeChange();
     }
+
+    // ── Price forecast preview (D10) ─────────────────────────────────────────────
+    // Independent of the tariff model above — GET /ems/price-forecast returns the
+    // summary + raw slots from lib/ems/priceForecast.js (fed via ems_set_price_forecast).
+    function emsPriceForecastLoad() {
+      var modeSel = document.getElementById('ems-price-mode');
+      if (!modeSel || modeSel.value !== 'forecast') return; // section is hidden outside "Price forecast" mode
+      var statusEl = document.getElementById('ems-price-forecast-status');
+      var chartEl  = document.getElementById('ems-price-forecast-chart');
+      if (!statusEl || !chartEl) return;
+      statusEl.textContent = 'Loading…';
+      _H.api('GET', '/ems/price-forecast', null, function(err, result) {
+        if (err || !result || result.error) {
+          statusEl.textContent = '✗ ' + ((result && result.error) || (err && err.message) || 'Failed to load');
+          return;
+        }
+        if (!result.configured) {
+          statusEl.textContent = 'Not yet configured — link the "Set price forecast" flow action to start seeing a forecast here.';
+          chartEl.innerHTML = '<div style="color:#bbb;font-size:11px;text-align:center;line-height:58px">No forecast data yet</div>';
+          return;
+        }
+        var parts = [];
+        if (result.nowPrice != null) parts.push('now ' + Number(result.nowPrice).toFixed(3));
+        parts.push(result.slotCount + ' slot(s) ahead');
+        parts.push(result.ageMin == null ? 'never updated' : ('updated ' + result.ageMin + ' min ago'));
+        if (result.stale) parts.push('⚠ stale — price-optimised charging falls back to continuous');
+        statusEl.textContent = parts.join(' · ');
+        _emsPriceChartRender(chartEl, result.slots || []);
+      });
+      // Flow-setup UI is independent of the forecast data — build it once.
+      var setupEl = document.getElementById('ems-price-forecast-flowsetup');
+      if (setupEl && !setupEl.dataset.built) {
+        setupEl.dataset.built = '1';
+        _emsMakeFlowSection(setupEl, _emsLoadPriceForecastFlowSetupInto);
+      }
+    }
+
+    // ── Price forecast: Flow setup (creates the two "New prices received" → "Set
+    // price forecast" flows) ─────────────────────────────────────────────────────
+    function _emsLoadPriceForecastFlowSetupInto(body) {
+      var how = document.createElement('div');
+      how.style.cssText = 'color:#3a3a3c;line-height:1.5';
+      how.innerHTML = [
+        '<b>How it works:</b> pick the device that publishes hourly prices (e.g. your',
+        '<b>Power by the Hour</b> station) and its trigger card below.',
+        'The EMS creates one flow for <code>this_day</code>, pre-wired to the',
+        '"Set price forecast" action.',
+        '<b>One manual step remains:</b> open the created flow and drag the',
+        '<b>Prices</b> token from the trigger into the action\'s "Prices" field',
+        '— Homey doesn\'t let apps do this token wiring automatically.',
+      ].join(' ');
+      body.appendChild(how);
+
+      var nextHoursWarn = document.createElement('div');
+      nextHoursWarn.style.cssText = 'color:#c0392b;font-size:11px;background:#fdecea;border:1px solid #f5c6c0;border-radius:6px;padding:6px 8px;line-height:1.5';
+      nextHoursWarn.innerHTML = [
+        '<b>⚠ Don\'t also create a <code>next_hours</code> flow with the same Prices token.</b>',
+        '<code>this_day</code> anchors the array to <b>midnight</b>; <code>next_hours</code> anchors it to the',
+        '<b>current hour</b> instead. Power by the Hour\'s token is always the full day\'s prices from',
+        'midnight — feeding it into a <code>next_hours</code> flow too shifts every price by however many',
+        'hours have passed since midnight, silently corrupting the correct <code>this_day</code> data for',
+        'the overlapping hours. If you already created a <code>next_hours</code> flow like this, delete it',
+        'in Homey (or empty its action) — <code>this_day</code> alone is enough for a source that always',
+        'sends the full day.',
+      ].join(' ');
+      body.appendChild(nextHoursWarn);
+
+      var cardTip = document.createElement('div');
+      cardTip.style.cssText = 'color:#6e6e73;font-size:11px;background:#fff;border:1px solid #e5e5ea;border-radius:6px;padding:6px 8px;line-height:1.5';
+      cardTip.innerHTML = [
+        '<b>Which trigger card?</b> Pick the one that fires <u>once</u> with the whole batch of',
+        'upcoming hourly prices — its token list (shown below the dropdown) should contain',
+        'something like <code>Prices</code> holding a full list, not a single number.',
+        'Do <u>not</u> pick a card that fires every hour with just the current price',
+        '(e.g. "Price changed" / "Prijs update") — that only gives one value, not a forecast.',
+        'For <b>Power by the Hour</b> this is usually called',
+        '<i>"New prices received" / "Nieuwe prijzen ontvangen" / "Neue Preise erhalten"</i>',
+        '— marked ★ below when found on the selected device.',
+      ].join(' ');
+      body.appendChild(cardTip);
+
+      // ── Device picker ────────────────────────────────────────────────────
+      var devRow = document.createElement('div');
+      devRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      var devLbl = document.createElement('span');
+      devLbl.textContent = 'Price device:';
+      devLbl.style.cssText = 'color:#6e6e73;white-space:nowrap;min-width:90px';
+      var devSel = document.createElement('select');
+      devSel.style.cssText = 'flex:1;min-width:200px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      emsFillSelect(devSel, '', function(d) { return /powerhour|:dap($|15$|g$)/i.test(d.driverId || ''); });
+      devRow.appendChild(devLbl); devRow.appendChild(devSel);
+      body.appendChild(devRow);
+
+      // ── Trigger-card picker ──────────────────────────────────────────────
+      var cardRow = document.createElement('div');
+      cardRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      var cardLbl = document.createElement('span');
+      cardLbl.textContent = 'Trigger card:';
+      cardLbl.style.cssText = 'color:#6e6e73;white-space:nowrap;min-width:90px';
+      var cardSel = document.createElement('select');
+      cardSel.style.cssText = 'flex:1;min-width:200px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      cardSel.innerHTML = '<option value="">— select a device first —</option>';
+      cardRow.appendChild(cardLbl); cardRow.appendChild(cardSel);
+      body.appendChild(cardRow);
+
+      var tokenHint = document.createElement('div');
+      tokenHint.style.cssText = 'font-size:11px;color:#6e6e73;display:none';
+      body.appendChild(tokenHint);
+
+      var _cardsByValue = {};
+      var _priceEmsDeviceId = '';
+      var _pendingCardSelect = null; // { id, uri } — restored from an existing flow, applied once its device's cards load
+      var _didRestoreSelection = false; // only auto-restore once, so it doesn't fight the user's own edits
+      function _cardValue(c) { return c.id + '|' + c.uri; }
+
+      devSel.addEventListener('change', function() {
+        cardSel.innerHTML = '<option value="">Loading…</option>';
+        tokenHint.style.display = 'none';
+        if (!devSel.value) { cardSel.innerHTML = '<option value="">— select a device first —</option>'; return; }
+        _H.api('GET', '/ems/price-forecast/trigger-cards?deviceId=' + encodeURIComponent(devSel.value), null, function(err, res) {
+          if (err || !res || res.error) {
+            cardSel.innerHTML = '<option value="">⚠ ' + _emsHistEsc((res && res.error) || 'Could not load trigger cards') + '</option>';
+            return;
+          }
+          _cardsByValue = {};
+          cardSel.innerHTML = '';
+          (res.groups || []).forEach(function(g) {
+            var grp = document.createElement('optgroup');
+            grp.label = g.label + ' (' + g.cards.length + ')';
+            g.cards.forEach(function(c) {
+              var opt = document.createElement('option');
+              opt.value = _cardValue(c);
+              var tokenList = (c.tokens || []).map(function(t) { return t.title; }).join(', ');
+              opt.textContent = (c.suggested ? '★ ' : '') + (c.title || c.id) + (tokenList ? ' — tokens: ' + tokenList : ' — no tokens (not a forecast trigger)');
+              _cardsByValue[opt.value] = c;
+              grp.appendChild(opt);
+            });
+            cardSel.appendChild(grp);
+          });
+          // Restore the card from an already-existing flow if we have one pending
+          // (reopening the panel after a reload) — otherwise fall back to guessing.
+          var restoreKey = _pendingCardSelect
+            ? Object.keys(_cardsByValue).find(function(v) {
+                return _cardsByValue[v].id === _pendingCardSelect.id && _cardsByValue[v].uri === _pendingCardSelect.uri;
+              })
+            : null;
+          _pendingCardSelect = null;
+          var best = restoreKey;
+          if (!best) {
+            // Auto-select among the ★ suggested cards the one that looks like a batch
+            // forecast (title mentions "new"/"prices received", not a single-value
+            // "price changed" card) — picking blindly grabbed the wrong card before.
+            var suggestedKeys = Object.keys(_cardsByValue).filter(function(v) { return _cardsByValue[v].suggested; });
+            best = suggestedKeys.find(function(v) { return /new.*price|prices?.*received|erhalten|ontvangen/i.test(_cardsByValue[v].title || ''); })
+              || suggestedKeys.find(function(v) { return (_cardsByValue[v].tokens || []).length > 0 && !/changed|ge.?ndert|update/i.test(_cardsByValue[v].title || ''); })
+              || suggestedKeys[0];
+          }
+          if (best) cardSel.value = best;
+          cardSel.dispatchEvent(new Event('change'));
+        });
+      });
+
+      cardSel.addEventListener('change', function() {
+        var card = _cardsByValue[cardSel.value];
+        if (card && card.tokens && card.tokens.length) {
+          tokenHint.style.display = 'block';
+          tokenHint.innerHTML = 'Tokens on this card: ' + card.tokens.map(function(t) {
+            return '<code style="background:#e5e5ea;padding:1px 4px;border-radius:3px">' + _emsHistEsc(t.title) + '</code>';
+          }).join(' ') + ' — drag the price-array token into the action\'s matching field after creating the flows.';
+        } else {
+          tokenHint.style.display = 'none';
+        }
+      });
+
+      // ── Create flows ──────────────────────────────────────────────────────
+      var createBtn = document.createElement('button');
+      createBtn.className = 'btn-primary';
+      createBtn.textContent = '✓ Create / Update Flows';
+      createBtn.style.cssText = 'align-self:flex-start;font-size:12px;padding:6px 14px';
+      var createStatus = document.createElement('div');
+      createStatus.style.cssText = 'font-size:11px';
+      createBtn.onclick = function() {
+        var card = _cardsByValue[cardSel.value];
+        if (!devSel.value || !card) {
+          createStatus.textContent = '⚠ Select a device and trigger card first';
+          createStatus.style.color = '#c0392b';
+          return;
+        }
+        if (!_priceEmsDeviceId) {
+          createStatus.textContent = '⚠ EMS device not resolved yet — try again in a moment';
+          createStatus.style.color = '#c0392b';
+          return;
+        }
+        var dev = _emsDevices.find(function(d) { return d.id === devSel.value; });
+        createBtn.disabled = true;
+        createStatus.textContent = 'Creating…';
+        createStatus.style.color = '#6e6e73';
+        _H.api('POST', '/ems/price-forecast/setup-flows', {
+          emsDeviceId:     _priceEmsDeviceId,
+          deviceId:        devSel.value,
+          deviceName:      dev ? dev.name : devSel.value,
+          triggerCardId:   card.id,
+          triggerCardUri:  card.uri,
+          // Only "this_day" by default — see the warning box above "Create / Update
+          // Flows": dragging the SAME full-day "Prices" token into a second "next_hours"
+          // flow corrupts the data, since next_hours anchors index 0 to the current
+          // hour instead of midnight, shifting every price by the hours elapsed so far.
+          periods:         ['this_day'],
+        }, function(err, res) {
+          createBtn.disabled = false;
+          if (err || !res || res.error) {
+            createStatus.textContent = '⚠ ' + ((res && res.error) || (err && err.message) || 'Error');
+            createStatus.style.color = '#c0392b';
+            return;
+          }
+          if (res.actionMissing) {
+            createStatus.textContent = '⚠ ' + res.created + ' flow(s) created with the trigger only — Homey blocked pre-wiring our own action. Open each flow, add "Set price forecast" as the action, then drag the price token in.';
+            createStatus.style.color = '#ff9f0a';
+          } else {
+            createStatus.textContent = '✓ ' + res.created + ' flow(s) created in "_Huawei EMS" — open each and drag the price token in.';
+            createStatus.style.color = '#1a7a3a';
+          }
+          _fetchPriceForecastFlows();
+        });
+      };
+      body.appendChild(createBtn);
+      body.appendChild(createStatus);
+
+      // ── Existing flows (read-back) ───────────────────────────────────────
+      var sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid #d1d1d6;margin:4px 0';
+      body.appendChild(sep);
+      var flowsTitle = document.createElement('div');
+      flowsTitle.style.cssText = 'font-weight:600;color:#3a3a3c';
+      flowsTitle.textContent = 'Existing price-forecast flows:';
+      body.appendChild(flowsTitle);
+      var flowsContainer = document.createElement('div');
+      flowsContainer.style.cssText = 'color:#6e6e73;font-size:11px';
+      flowsContainer.textContent = 'Loading flows…';
+      body.appendChild(flowsContainer);
+
+      function _fetchPriceForecastFlows() {
+        flowsContainer.textContent = 'Loading flows…';
+        flowsContainer.style.color = '#6e6e73';
+        _H.api('GET', '/ems/price-forecast/flows', null, function(err, result) {
+          flowsContainer.innerHTML = '';
+          if (result && result.emsDeviceId) _priceEmsDeviceId = result.emsDeviceId;
+          if (err || !result || (result.error && !(result.matched && result.matched.length))) {
+            flowsContainer.textContent = '⚠ ' + ((result && result.error) || (err && err.message) || 'Failed to load');
+            flowsContainer.style.color = '#c0392b';
+          } else {
+            var matched = result.matched || [];
+            // Restore the device/trigger-card selection from an existing flow, once —
+            // otherwise the dropdowns reset to blank on every page reload even though
+            // the flows (and their wiring) are still there.
+            if (!_didRestoreSelection && matched.length && matched[0].triggerDeviceId) {
+              _didRestoreSelection = true;
+              _pendingCardSelect = { id: matched[0].triggerCardId, uri: matched[0].triggerCardUri };
+              devSel.value = matched[0].triggerDeviceId;
+              if (devSel.value === matched[0].triggerDeviceId) devSel.dispatchEvent(new Event('change'));
+            }
+            if (!matched.length) {
+              var none = document.createElement('span');
+              none.style.cssText = 'color:#c0392b';
+              none.textContent = 'No price-forecast flows found yet — use "Create / Update Flows" above.';
+              flowsContainer.appendChild(none);
+            } else {
+              matched.forEach(function(f) {
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;flex-wrap:wrap';
+                var dot = document.createElement('span');
+                dot.textContent = f.hasPricesArg ? '✓' : '⚠';
+                dot.style.cssText = f.hasPricesArg ? 'color:#34c759;font-weight:600' : 'color:#ff9f0a;font-weight:600';
+                var name = document.createElement('span');
+                name.textContent = f.name;
+                name.style.cssText = 'color:#1d1d1f';
+                row.appendChild(dot); row.appendChild(name);
+                if (f.actionMissing) {
+                  var warn2 = document.createElement('span');
+                  warn2.textContent = '— trigger only: open this flow in Homey, add "Set price forecast" as the action, then drag the price token in';
+                  warn2.style.cssText = 'font-size:10px;color:#ff9f0a;flex-basis:100%;padding-left:16px';
+                  row.appendChild(warn2);
+                } else if (!f.hasPricesArg) {
+                  var warn = document.createElement('span');
+                  warn.textContent = '— price token not set yet, open this flow in Homey to finish it';
+                  warn.style.cssText = 'font-size:10px;color:#ff9f0a;flex-basis:100%;padding-left:16px';
+                  row.appendChild(warn);
+                }
+                flowsContainer.appendChild(row);
+              });
+            }
+          }
+          var reloadBtn = document.createElement('button');
+          reloadBtn.textContent = '↺ Reload flows'; reloadBtn.className = 'btn-secondary';
+          reloadBtn.style.cssText = 'font-size:10px;padding:3px 8px;margin-top:6px;align-self:flex-start';
+          reloadBtn.onclick = _fetchPriceForecastFlows;
+          flowsContainer.appendChild(reloadBtn);
+        });
+      }
+      _fetchPriceForecastFlows();
+    }
+
+    // Lightweight bar-chart preview (no chart library) — one bar per upcoming hourly
+    // slot, height scaled between the min/max of the visible window, colour graded
+    // green (cheap) → red (expensive), current slot highlighted in blue.
+    function _emsPriceChartRender(chartEl, slots) {
+      var now = Date.now();
+      var future = (slots || []).filter(function(s) { return s.end > now; }).slice(0, 48);
+      if (!future.length) {
+        chartEl.innerHTML = '<div style="color:#bbb;font-size:11px;text-align:center;line-height:58px">No forecast data yet</div>';
+        return;
+      }
+      var prices = future.map(function(s) { return s.price; });
+      var min = Math.min.apply(null, prices);
+      var max = Math.max.apply(null, prices);
+      var range = (max - min) || 1;
+      var currencyEl = document.getElementById('ems-price-currency');
+      var currency = (currencyEl && currencyEl.value) || 'CHF';
+      var html = '<div style="display:flex;justify-content:space-between;font-size:9px;color:#8e8e93;margin-bottom:2px">' +
+        '<span>▲ ' + max.toFixed(3) + ' ' + _emsHistEsc(currency) + '/kWh</span>' +
+        '<span>▼ ' + min.toFixed(3) + ' ' + _emsHistEsc(currency) + '/kWh</span>' +
+        '</div>';
+      html += '<div style="display:flex;align-items:flex-end;height:58px;gap:1px;position:relative">';
+      future.forEach(function(s) {
+        var pct    = Math.round(((s.price - min) / range) * 100);
+        var height = Math.max(6, pct);
+        var isNow  = s.start <= now && now < s.end;
+        var hue    = Math.round(120 - (pct / 100) * 120); // 120=green (cheap) → 0=red (expensive)
+        var bg     = isNow ? '#007aff' : ('hsl(' + hue + ',65%,50%)');
+        var label  = new Date(s.start).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) +
+          ': ' + s.price.toFixed(3) + ' ' + currency + '/kWh' + (isNow ? ' (now)' : '');
+        html += '<div title="' + _emsHistEsc(label) + '" style="flex:1;min-width:2px;height:' + height + '%;background:' + bg + ';border-radius:1px 1px 0 0;position:relative">' +
+          (isNow ? '<span style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#007aff;white-space:nowrap">' + s.price.toFixed(3) + '</span>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+      // Time-axis labels — one slot per bar-width above so they line up, but only
+      // every Nth slot gets text (plus always the last one), so labels don't collide.
+      var labelInterval = future.length <= 12 ? 2 : future.length <= 24 ? 3 : 4;
+      html += '<div style="display:flex;gap:1px;margin-top:2px">';
+      future.forEach(function(s, i) {
+        var showLabel = i % labelInterval === 0 || i === future.length - 1;
+        var txt = showLabel ? _emsHistEsc(new Date(s.start).toLocaleTimeString(undefined, { hour: '2-digit' })) : '';
+        html += '<div style="flex:1;min-width:2px;font-size:8px;color:#bbb;text-align:center;white-space:nowrap">' + txt + '</div>';
+      });
+      html += '</div>';
+      chartEl.innerHTML = html;
+    }
     // ── End Electricity Price ────────────────────────────────────────────────────
 
     // ── Cars (multiple) ──────────────────────────────────────────────────────────
@@ -2852,13 +3294,33 @@
       configRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px 2px';
       var capLabel = document.createElement('span');
       capLabel.textContent = 'Battery (kWh)';
-      capLabel.style.cssText = 'font-size:11px;color:#6e6e73';
+      capLabel.style.cssText = 'font-size:11px;color:#6e6e73;min-width:100px';
       var capInput = document.createElement('input');
       capInput.type = 'number'; capInput.step = '0.1'; capInput.min = '0';
       capInput.className = 'ems-car-capacity';
       capInput.value = (stored.battery_capacity_kwh != null ? stored.battery_capacity_kwh : 60);
       capInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
       configRow.appendChild(capLabel); configRow.appendChild(capInput);
+
+      // Ready-by deadline — used by "Solar & price-optimised" chargers (D10) to plan
+      // grid charging against the cheapest price slots before this time. Optional;
+      // blank = no deadline planning for this car (price mode has nothing to target).
+      // Own row (not crammed next to Battery) so the hint underneath reads clearly.
+      var readyByRow = document.createElement('div');
+      readyByRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px 2px';
+      var readyByLbl = document.createElement('span');
+      readyByLbl.textContent = 'Ready by';
+      readyByLbl.style.cssText = 'font-size:11px;color:#6e6e73;min-width:100px';
+      var readyByInput = document.createElement('input');
+      readyByInput.type = 'time';
+      readyByInput.className = 'ems-car-ready-by';
+      readyByInput.value = stored.ready_by || '';
+      readyByInput.style.cssText = 'padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+      readyByRow.appendChild(readyByLbl); readyByRow.appendChild(readyByInput);
+
+      var readyByHint = document.createElement('div');
+      readyByHint.textContent = 'Battery capacity and "Ready by" are used by chargers in "Solar & cheapest hours (forecast)" mode to plan cheap-price charging before this time. Leave "Ready by" blank to disable deadline planning for this car.';
+      readyByHint.style.cssText = 'font-size:11px;color:#6e6e73;line-height:1.4;padding:2px 0 4px 108px';
 
       // Capability pickers: current SOC + target SOC (read from the vehicle)
       var capsInfo = document.createElement('div');
@@ -2920,7 +3382,7 @@
         emsRenderCarFlows(flowSection, entry.dataset.carId, sel.value, entry);
       });
 
-      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(readyByRow); entry.appendChild(readyByHint); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       // Read live values once the row is in the DOM (_fetchCapValue needs it)
@@ -2935,6 +3397,7 @@
         if (!sel || !sel.value) return;
         var dev  = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
         var cap  = (entry.querySelector('.ems-car-capacity')   || {}).value;
+        var readyBy = (entry.querySelector('.ems-car-ready-by') || {}).value || '';
         var socC = (entry.querySelector('.ems-car-soc-cap')    || {}).value || '';
         var tgtC = (entry.querySelector('.ems-car-target-cap') || {}).value || '';
         var setActions = {};
@@ -2944,6 +3407,7 @@
           device_id:            sel.value,
           name:                 (dev && dev.name) || 'Car',
           battery_capacity_kwh: parseFloat(cap) || 0,
+          ready_by:             readyBy,
           soc_capability:       socC,
           target_soc_capability: tgtC,
           set_actions:          setActions,
@@ -3771,26 +4235,32 @@
       modeSel.className = 'ems-charger-mode';
       modeSel.style.cssText = 'flex:1;min-width:190px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
       [
-        { id: 'solar',         label: 'Solar only' },
-        { id: 'solar_offpeak', label: 'Solar & tariff-optimised' },
-        { id: 'always',        label: 'Always charge' },
+        { id: 'solar',           label: 'Solar only' },
+        { id: 'solar_offpeak',   label: 'Solar & off-peak window' },
+        { id: 'solar_lowtariff', label: 'Solar & low tariff' },
+        { id: 'solar_price',     label: 'Solar & cheapest hours (forecast)' },
+        { id: 'always',          label: 'Always charge' },
       ].forEach(function(o) {
         var opt = document.createElement('option');
         opt.value = o.id; opt.textContent = o.label;
+        opt.dataset.baseLabel = o.label;
         modeSel.appendChild(opt);
       });
       modeSel.value = (stored && stored.charge_mode) || 'solar';
       var modeHint = document.createElement('div');
       modeHint.style.cssText = 'font-size:11px;color:#6e6e73;line-height:1.4;flex-basis:100%;padding-left:108px';
       var EMS_CHARGE_MODE_HINTS = {
-        solar:         'Only charges when enough solar surplus is available; the power follows the surplus.',
-        solar_offpeak: 'Charges on solar surplus during the day. If the car is not yet at its target when the off-peak window starts, it charges at full power during that window.',
-        always:        'Charges at the maximum possible power as soon as the cable is plugged in — regardless of solar or battery state.',
+        solar:           'Only charges when enough solar surplus is available; the power follows the surplus.',
+        solar_offpeak:   'Charges on solar surplus during the day. If the car is not yet at its target when the fixed off-peak time window (set under EV Chargers → Off-Peak Charging, enabled via the Off-Peak toggle on the EMS device tile) starts, it charges at full power during that window — the window is always the same time, not price-aware.',
+        solar_lowtariff: 'Charges on solar surplus during the day. Charges at full power whenever the "Low / high tariff" schedule (Electricity Price → Low / high tariff) currently says LOW tariff — reuses that same weekday window instead of a separate Off-Peak schedule.',
+        solar_price:     'Charges on solar surplus first. What solar won\'t cover by the car\'s "Ready by" deadline (set under Cars) is charged during whichever hours are actually cheapest, based on the live price forecast (Electricity Price → Set price forecast flow) — not a fixed window.',
+        always:          'Charges at the maximum possible power as soon as the cable is plugged in — regardless of solar or battery state.',
       };
       function _updateModeHint() { modeHint.textContent = EMS_CHARGE_MODE_HINTS[modeSel.value] || ''; }
       modeSel.addEventListener('change', _updateModeHint);
       _updateModeHint();
       modeRow.appendChild(modeLbl); modeRow.appendChild(modeSel); modeRow.appendChild(modeHint);
+      _emsApplyPriceReadiness(modeSel);
 
       // Charging car (per charger): which configured car charges here — used for the
       // "charge target reached" hold. Optional; blank = auto-detect by SOC rise.
@@ -6683,6 +7153,27 @@
         if (deviceId) emsRenderInverterFlows(flowSection, deviceId, entry, stored);
       }
       if (type === 'battery') {
+        // Usable capacity — per battery, so multiple batteries sum correctly for the
+        // adaptive solar-forecast gate (see pvForecast.js _forecastGateBlocksStarts).
+        var capRow = document.createElement('div');
+        capRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px 2px';
+        var capLbl = document.createElement('span');
+        capLbl.textContent = 'Usable capacity';
+        capLbl.style.cssText = 'font-size:11px;color:#6e6e73';
+        var capInput = document.createElement('input');
+        capInput.type = 'number'; capInput.min = '0'; capInput.max = '200'; capInput.step = '0.5';
+        capInput.className = 'ems-battery-capacity';
+        capInput.value = (stored && stored.capacity_kwh != null) ? stored.capacity_kwh : 0;
+        capInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+        var capUnit = document.createElement('span');
+        capUnit.textContent = 'kWh';
+        capUnit.style.cssText = 'font-size:12px;color:#6e6e73';
+        var capHint = document.createElement('span');
+        capHint.textContent = 'used by the adaptive solar-forecast gate (0 = unknown)';
+        capHint.style.cssText = 'font-size:10px;color:#bbb';
+        capRow.appendChild(capLbl); capRow.appendChild(capInput); capRow.appendChild(capUnit); capRow.appendChild(capHint);
+        entry.appendChild(capRow);
+
         var batFlowSection = document.createElement('div');
         batFlowSection.className = 'ems-flow-section';
         entry.appendChild(batFlowSection);
@@ -6770,6 +7261,8 @@
         var d = { id: id };
         if (row.dataset.capSoc)   d.cap_soc   = row.dataset.capSoc;
         if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
+        var capInput = entry.querySelector('.ems-battery-capacity');
+        d.capacity_kwh = capInput ? (Math.max(0, parseFloat(capInput.value) || 0)) : 0;
         if (entry.dataset.batCards) { try { d.bat_cards = JSON.parse(entry.dataset.batCards); } catch(_) {} }
         result.push(d);
       });
@@ -6882,7 +7375,6 @@
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
       if (cfg.orange_budget_w       !== undefined) document.getElementById('ems-orange-budget-w').value = cfg.orange_budget_w;
-      if (cfg.battery_capacity_kwh  !== undefined) document.getElementById('ems-battery-capacity').value  = cfg.battery_capacity_kwh;
       document.getElementById('ems-forecast-gate-mode').value = cfg.forecast_gate_mode || 'off';
       if (cfg.forecast_gate_kwh     !== undefined) document.getElementById('ems-forecast-gate-kwh').value  = cfg.forecast_gate_kwh;
       emsForecastGateChange();
@@ -7000,7 +7492,6 @@
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
         orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
-        battery_capacity_kwh: Math.max(0, parseFloat(document.getElementById('ems-battery-capacity').value) || 0),
         forecast_gate_mode:   document.getElementById('ems-forecast-gate-mode').value,
         forecast_gate_kwh:    Math.max(0, parseFloat(document.getElementById('ems-forecast-gate-kwh').value) || 0),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings
@@ -7057,6 +7548,8 @@
       solar_dehumidifier: { label: 'Solar dehumidifier',     dot: '#30d158' },
       solar_multi:      { label: 'Solar (multiple devices)', dot: '#30d158' },
       offpeak_ev:       { label: 'Off-peak EV charging',     dot: '#007aff' },
+      lowtariff_ev:     { label: 'Low-tariff EV charging',   dot: '#5ac8fa' },
+      price_ev:         { label: 'Price-optimised EV charging', dot: '#5856d6' },
       instant_ev:       { label: 'Instant charge (max)',      dot: '#af52de' },
       battery_priority: { label: 'Battery priority',         dot: '#ff9500' },
       holding:          { label: 'Waiting — no surplus',     dot: '#c7c7cc' },
@@ -7251,6 +7744,17 @@
             (pv.error ? row('Note', _emsHistEsc(pv.error), true) : '');
         }
         html += card('PV forecast (Solcast)', pvRows);
+      }
+
+      // Price forecast (D10) — only shown once something has been pushed via the
+      // "Set price forecast" flow action (e.g. from "Power by the Hour").
+      var price = d.price;
+      if (price && price.configured) {
+        var priceRows = row('Now', price.nowPrice == null ? '—' : price.nowPrice) +
+          row('Slots ahead', price.slotCount) +
+          row('Updated', price.ageMin == null ? '—' : (price.ageMin + ' min ago')) +
+          (price.stale ? row('⚠ Stale', 'no update in > 6 h — price-optimised charging falls back to continuous', true) : '');
+        html += card('Price forecast', priceRows);
       }
 
       // Process memory (whole app). Watch RSS over time: stable = baseline, rising = leak.

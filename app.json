@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.24",
+  "version": "1.2.25",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -74,6 +74,22 @@
     "getEmsPvForecast": {
       "method": "GET",
       "path": "/ems/pv-forecast"
+    },
+    "getEmsPriceForecast": {
+      "method": "GET",
+      "path": "/ems/price-forecast"
+    },
+    "getEmsPriceForecastTriggerCards": {
+      "method": "GET",
+      "path": "/ems/price-forecast/trigger-cards"
+    },
+    "postEmsPriceForecastSetupFlows": {
+      "method": "POST",
+      "path": "/ems/price-forecast/setup-flows"
+    },
+    "getEmsPriceForecastFlows": {
+      "method": "GET",
+      "path": "/ems/price-forecast/flows"
     },
     "putEmsConfig": {
       "method": "PUT",
@@ -1466,6 +1482,22 @@
             "en": "Off-Peak EV Charging",
             "de": "Nebenzeit-EV-Laden",
             "nl": "Daltarief laden"
+          }
+        },
+        {
+          "id": "price_ev",
+          "title": {
+            "en": "Price-Optimised EV Charging",
+            "de": "Preisoptimiertes EV-Laden",
+            "nl": "Prijsgeoptimaliseerd laden"
+          }
+        },
+        {
+          "id": "lowtariff_ev",
+          "title": {
+            "en": "Low-Tariff EV Charging",
+            "de": "Niedertarif-EV-Laden",
+            "nl": "Laagtarief laden"
           }
         },
         {
@@ -9925,6 +9957,59 @@
         ]
       },
       {
+        "id": "ems_set_price_forecast",
+        "title": {
+          "en": "Set price forecast",
+          "de": "Preisprognose setzen",
+          "nl": "Prijsvoorspelling instellen"
+        },
+        "titleFormatted": {
+          "en": "Set price forecast to [[prices]] for [[period]]",
+          "de": "Preisprognose auf [[prices]] für [[period]] setzen",
+          "nl": "Prijsvoorspelling instellen op [[prices]] voor [[period]]"
+        },
+        "hint": {
+          "en": "Feeds an hourly price array (e.g. the \"Prices\" token from \"Power by the Hour\"'s New prices received trigger, or any similar day-ahead price app) into the EMS for price-optimised EV charging (chargers set to \"Solar & price-optimised\"). Link this once from your price app's forecast trigger — no separate schedule needed.",
+          "de": "Speist ein stündliches Preis-Array (z.B. den \"Prices\"-Token vom \"New prices received\"-Trigger von \"Power by the Hour\", oder einer ähnlichen Day-Ahead-Preis-App) ins EMS für preisoptimiertes EV-Laden (Lader im Modus \"Solar & preisoptimiert\"). Einmalig mit dem Prognose-Trigger deiner Preis-App verknüpfen — kein separater Zeitplan nötig.",
+          "nl": "Voedt een uur-array met prijzen (bijv. de \"Prices\"-token van de New prices received-trigger van \"Power by the Hour\", of een vergelijkbare day-ahead-prijsapp) naar het EMS voor prijsgeoptimaliseerd laden (laders ingesteld op \"Zon & prijsgeoptimaliseerd\"). Eenmalig koppelen aan de voorspellingstrigger van je prijsapp."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=energy_management"
+          },
+          {
+            "type": "text",
+            "name": "prices",
+            "title": {
+              "en": "Prices (JSON array)",
+              "de": "Preise (JSON-Array)",
+              "nl": "Prijzen (JSON-array)"
+            },
+            "placeholder": {
+              "en": "[0.27,0.27,0.26,...]",
+              "de": "[0.27,0.27,0.26,...]",
+              "nl": "[0.27,0.27,0.26,...]"
+            }
+          },
+          {
+            "type": "dropdown",
+            "name": "period",
+            "title": {
+              "en": "Period",
+              "de": "Zeitraum",
+              "nl": "Periode"
+            },
+            "values": [
+              { "id": "this_day",   "title": { "en": "This day (starts at local midnight today)", "de": "Heute (beginnt Mitternacht heute)", "nl": "Vandaag (start om middernacht)" } },
+              { "id": "tomorrow",   "title": { "en": "Tomorrow (starts at local midnight tomorrow)", "de": "Morgen (beginnt Mitternacht morgen)", "nl": "Morgen (start om middernacht morgen)" } },
+              { "id": "next_hours", "title": { "en": "Next hours (starts at the current hour)", "de": "Kommende Stunden (beginnt jetzige Stunde)", "nl": "Komende uren (start dit uur)" } }
+            ]
+          }
+        ]
+      },
+      {
         "id": "ems_set_car_target_soc",
         "title": {
           "en": "Set car target charge (%)",
@@ -11137,6 +11222,22 @@
                   "en": "Off-Peak EV Charging",
                   "de": "Nebenzeit-EV-Laden",
                   "nl": "Daltarief laden"
+                }
+              },
+              {
+                "id": "price_ev",
+                "label": {
+                  "en": "Price-Optimised EV Charging",
+                  "de": "Preisoptimiertes EV-Laden",
+                  "nl": "Prijsgeoptimaliseerd laden"
+                }
+              },
+              {
+                "id": "lowtariff_ev",
+                "label": {
+                  "en": "Low-Tariff EV Charging",
+                  "de": "Niedertarif-EV-Laden",
+                  "nl": "Laagtarief laden"
                 }
               },
               {

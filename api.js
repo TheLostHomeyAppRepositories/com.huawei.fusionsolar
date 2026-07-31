@@ -1177,6 +1177,254 @@ module.exports = {
     }
   },
 
+  async getEmsPriceForecast({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { error: 'No EMS device found' };
+      return devices[0].getPriceForecast();
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
+  /**
+   * GET /ems/price-forecast/trigger-cards?deviceId=xxx — lists trigger cards available for
+   * a device (e.g. "Power by the Hour"'s "New prices received"), for the D10 price-forecast
+   * flow setup. Mirrors getEmsChargerActionCards but for TRIGGER cards — the direction is
+   * reversed for this feature: an external app's trigger feeds our ems_set_price_forecast
+   * action, instead of our trigger feeding an external action.
+   */
+  async getEmsPriceForecastTriggerCards({ homey, query }) {
+    const { deviceId } = query || {};
+    if (!deviceId) return { error: 'Missing deviceId' };
+
+    let apiKey = '';
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
+    } catch { /* driver not yet paired */ }
+    if (!apiKey) return { error: 'No API key' };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    const allDevices = await api.getDevices();
+    const device      = allDevices[deviceId];
+    if (!device) return { error: 'Device not found' };
+
+    let allCardList = [];
+    try { allCardList = Object.values(await api.getFlowTriggerCards() || {}); } catch { /* ignore */ }
+
+    const resolveTitle = (t) => {
+      if (!t) return '';
+      if (typeof t === 'string') return t;
+      return t.en || t.de || Object.values(t)[0] || '';
+    };
+
+    const deviceUri = `homey:device:${deviceId}`;
+    const allCards = allCardList.map((c) => {
+      const cUri = c.ownerUri || c.uri || '';
+      return {
+        id:        c.id,
+        uri:       cUri,
+        title:     resolveTitle(c.title) || c.id,
+        suggested: cUri === deviceUri,
+        args:      (c.args || []).map((a) => ({
+          name:   a.name,
+          type:   a.type,
+          title:  resolveTitle(a.title) || a.name,
+          values: Array.isArray(a.values) ? a.values.map((v) => ({ id: v.id, title: resolveTitle(v.title) || v.id })) : undefined,
+        })),
+        // Tokens tell the settings UI which token to tell the user to drag into our
+        // action's "prices" field (e.g. "Prices" from Power by the Hour's new_prices card).
+        tokens: (c.tokens || []).map((t) => ({ name: t.name, type: t.type, title: resolveTitle(t.title) || t.name })),
+      };
+    });
+
+    const grouped = new Map();
+    for (const c of allCards) {
+      const group = grouped.get(c.uri) || [];
+      group.push(c);
+      grouped.set(c.uri, group);
+    }
+    const groups = [...grouped.entries()]
+      .sort(([a], [b]) => {
+        const aS = a === deviceUri ? 0 : 1;
+        const bS = b === deviceUri ? 0 : 1;
+        if (aS !== bS) return aS - bS;
+        return a.localeCompare(b);
+      })
+      .map(([uri, cards]) => ({
+        uri,
+        label:     uri === deviceUri ? `★ ${device.name || deviceId}` : uri.replace('homey:app:', '').replace('homey:manager:', '').replace('homey:zone:', 'Zone '),
+        suggested: uri === deviceUri,
+        cards,
+      }));
+
+    return { deviceName: device.name, driverId: device.driverId, deviceUri, totalCards: allCardList.length, groups };
+  },
+
+  /**
+   * POST /ems/price-forecast/setup-flows — creates one flow per requested period
+   * (e.g. "this_day" + "next_hours"), each linking the chosen external trigger card to
+   * our own ems_set_price_forecast action. The action's `prices` argument is deliberately
+   * left EMPTY: Homey's token-drop encoding for a foreign trigger's token isn't something
+   * this app can safely reconstruct, so dragging the price token into the action is the
+   * one manual step left for the user — everything else (folder, trigger device/period
+   * args, our own device/period args) is pre-filled.
+   */
+  async postEmsPriceForecastSetupFlows({ homey, body }) {
+    const { emsDeviceId, deviceId, deviceName, triggerCardId, triggerCardUri, periods } = body || {};
+    const periodList = Array.isArray(periods) && periods.length ? periods : [null];
+    if (!emsDeviceId || !deviceId || !triggerCardId || !triggerCardUri) {
+      return { error: 'Missing required fields (emsDeviceId, deviceId, triggerCardId, triggerCardUri)' };
+    }
+
+    let apiKey = '';
+    try {
+      const devs = homey.drivers.getDriver('energy_management').getDevices();
+      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
+    } catch { /* ignore */ }
+    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const APP_URI = 'homey:app:com.huawei.fusionsolar';
+    const api = new HomeyLocalApi({ homey, apiKey });
+
+    // Look up the trigger card's own arg definitions once, so we know which of its
+    // args are the device picker vs. a period-style dropdown we can pre-fill.
+    let triggerArgDefs = [];
+    try {
+      const raw = await api.getFlowTriggerCards();
+      const card = Object.values(raw || {}).find((c) => c.id === triggerCardId && (c.ownerUri || c.uri) === triggerCardUri);
+      triggerArgDefs = (card && card.args) || [];
+    } catch { /* ignore */ }
+
+    // Our own cards (both trigger and action) are referenced as a single compound
+    // "appUri:cardId" string, exactly like every other own-trigger flow built in this
+    // app (e.g. ems_start_charger / ems_start_heat_pump) — never looked up via the
+    // flow-card database, which doesn't list the calling app's own cards back to it.
+
+    let folderId = null;
+    try {
+      const folders  = await api.getFlowFolders();
+      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
+    } catch { /* ignore */ }
+
+    const baseName = `EMS: ${deviceName || deviceId} → Price forecast`;
+    const allFlows = await api.getFlows().catch(() => ({}));
+    const results  = [];
+
+    for (const period of periodList) {
+      const flowName = period ? `${baseName} (${period})` : baseName;
+      await Promise.all(Object.values(allFlows || {}).filter((f) => f.name === flowName).map((f) => api.deleteFlow(f.id).catch(() => {})));
+
+      const triggerArgs = {};
+      for (const a of triggerArgDefs) {
+        if (a.type === 'device') triggerArgs[a.name] = { id: deviceId };
+        else if (period && a.name === 'period') triggerArgs[a.name] = period;
+      }
+      const trigger = { id: triggerCardId, uri: triggerCardUri, args: triggerArgs };
+      const actionArgs = { device: { id: emsDeviceId }, period: period || 'next_hours' }; // 'prices' intentionally left unset
+
+      // Try a few id/uri shapes for referencing our OWN action card — the flow-card
+      // database doesn't list an app's own cards back to it, so we can't look the
+      // right shape up; probe short-id-only, then id+uri, then compound id.
+      const actionVariants = [
+        { id: 'ems_set_price_forecast', group: 'then', delay: null, duration: null, args: actionArgs },
+        { id: 'ems_set_price_forecast', uri: APP_URI, group: 'then', delay: null, duration: null, args: actionArgs },
+        { id: `${APP_URI}:ems_set_price_forecast`, group: 'then', delay: null, duration: null, args: actionArgs },
+      ];
+
+      let created = null; let err = null; let variantUsed = null;
+      for (let i = 0; i < actionVariants.length; i++) {
+        try {
+          created = await api.createFlow({ name: flowName, folder: folderId, trigger, conditions: [], actions: [actionVariants[i]] });
+          if (created && created.id) { variantUsed = i; break; }
+        } catch (e) { err = e.message; }
+      }
+      // If referencing our own action card is blocked in every shape, fall back to a
+      // trigger-only skeleton — still saves the user from building the trigger by hand.
+      let actionMissing = false;
+      if (!created) {
+        try {
+          created = await api.createFlow({ name: flowName, folder: folderId, trigger, conditions: [], actions: [] });
+          if (created && created.id) actionMissing = true;
+        } catch (e) { err = e.message; }
+      }
+      results.push({ name: flowName, flowId: created && created.id, ok: !!(created && created.id), error: err, variantUsed, actionMissing });
+    }
+
+    const ok = results.filter((r) => r.ok).length;
+    if (ok === 0) return { error: `Flow creation failed: ${results[0] && results[0].error || 'rejected by Homey'}`, results };
+    const anyActionMissing = results.some((r) => r.actionMissing);
+    return { created: ok, results, needsToken: true, actionMissing: anyActionMissing };
+  },
+
+  /** GET /ems/price-forecast/flows — flows whose action targets ems_set_price_forecast (read-back) */
+  async getEmsPriceForecastFlows({ homey }) {
+    let apiKey = '', emsDeviceId = '';
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (devices.length > 0) {
+        apiKey      = devices[0].getSetting('homey_api_key') || '';
+        emsDeviceId = devices[0].getData().id || '';
+      }
+    } catch { /* ignore */ }
+    if (!apiKey) return { matched: [], error: 'No API key' };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    try {
+      const flows = await api.getFlows().catch(() => ({}));
+      const matched = [];
+      for (const [id, f] of Object.entries(flows || {})) {
+        const action = (f.actions || [])[0];
+        const aid = action && action.id || '';
+        // Substring match, not exact — Homey stores the id differently depending on
+        // whether WE created the flow (short id) or the user built it by hand in the
+        // Flow editor (observed to differ; exact format isn't documented).
+        const isOwnAction = aid.indexOf('ems_set_price_forecast') !== -1;
+        // Trigger-only skeletons (created when Homey blocked pre-wiring our own action)
+        // have no action at all — recognise them by the flow name we generate.
+        const isSkeleton = !action && /→ Price forecast/.test(f.name || '');
+        if (!isOwnAction && !isSkeleton) continue;
+        const tid = (f.trigger && f.trigger.id) || '';
+        const tUri = (f.trigger && f.trigger.uri) || '';
+        // Recover which source device the trigger was wired to, so the settings page
+        // can re-select it in the Flow-setup dropdowns after a page reload. For a
+        // device-owned trigger card (the normal case here — e.g. "Power by the Hour"),
+        // the device is encoded in the trigger's own `uri` ("homey:device:<id>"), not
+        // as one of its `args` — there usually isn't a separate "device" arg at all.
+        // Fall back to scanning args only for app/manager-owned cards that do pass the
+        // device explicitly as an arg.
+        let triggerDeviceId = null;
+        if (tUri.startsWith('homey:device:')) {
+          triggerDeviceId = tUri.slice('homey:device:'.length);
+        } else {
+          const triggerArgs = (f.trigger && f.trigger.args) || {};
+          const deviceArg = Object.values(triggerArgs).find((v) => v && typeof v === 'object' && v.id);
+          triggerDeviceId = deviceArg ? deviceArg.id : null;
+        }
+        matched.push({
+          id, name: f.name || id,
+          period:        (action && action.args && action.args.period) || null,
+          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerCardUri: tUri,
+          triggerDeviceId,
+          hasPricesArg:  !!(action && action.args && action.args.prices),
+          actionMissing: isSkeleton,
+        });
+      }
+      return { emsDeviceId, matched: matched.sort((a, b) => a.name.localeCompare(b.name)) };
+    } catch (e) {
+      return { matched: [], error: e.message };
+    }
+  },
+
   /** GET /ems/charger/action-cards?deviceId=xxx — lists action cards available for a device */
   async getEmsChargerActionCards({ homey, query }) {
     const { deviceId } = query || {};

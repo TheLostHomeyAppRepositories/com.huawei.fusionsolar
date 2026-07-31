@@ -19,6 +19,7 @@ const simpleDevicesMixin  = require('../../lib/ems/simpleDevices');
 const chargerControlMixin = require('../../lib/ems/chargerControl');
 const batteryMixin        = require('../../lib/ems/battery');
 const pvForecastMixin     = require('../../lib/ems/pvForecast');
+const priceForecastMixin  = require('../../lib/ems/priceForecast');
 
 // Price + car SOC change slowly — refresh every Nth tick (~60 s) rather than every
 // 15 s tick, to cut settings reads and per-car HTTP calls (see _tickBody).
@@ -100,6 +101,8 @@ class EmsDevice extends Device {
 
     // Solcast PV forecast — restore cached forecast + last-fetch time (rate-limit safe).
     await this._restorePvForecast();
+    // Price forecast (D10) — restore cached slots pushed via ems_set_price_forecast.
+    await this._restorePriceForecast();
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -132,6 +135,14 @@ class EmsDevice extends Device {
         await this.setStoreValue('variablePrice', price).catch(() => {});
         this.log(`[EMS] variable price set to ${price} via flow`);
         await this._updatePriceCapability(this._getConfig());
+      });
+
+    // Flow action: external price app (e.g. "Power by the Hour", Tibber) pushes an
+    // hourly price forecast array (D10 — see lib/ems/priceForecast.js).
+    this.homey.flow.getActionCard('ems_set_price_forecast')
+      .registerRunListener(async (args) => {
+        if (args.device.id !== this.id) return;
+        await this._ingestPriceForecast(args.prices, args.period || 'next_hours');
       });
 
     // Flow action: external app / schedule sets a car's target SOC.
@@ -342,7 +353,16 @@ class EmsDevice extends Device {
   // Diagnostics snapshot (B7 tick-health + E3 last decision + PV forecast + process memory).
   // Read by the settings/API. Memory is process-wide (the whole app), not just this device.
   getEmsDiag() {
-    return { ...this._diag, pv: this._pvForecastSummary(), mem: this._memUsage() };
+    const cfg  = this._getConfig();
+    const mode = (cfg.price_config && cfg.price_config.mode) || 'fixed';
+    return {
+      ...this._diag,
+      pv: this._pvForecastSummary(), price: this._priceForecastSummary(), mem: this._memUsage(),
+      electricityPrice: this._getCurrentPrice(cfg), electricityPriceSource: mode,
+      electricityPriceCurrency: (cfg.price_config && cfg.price_config.currency) || 'CHF',
+      offpeakEnabled: this.getCapabilityValue('offpeak_enabled') === true,
+      dualTariffConfigured: this._dualTariffWindow(cfg).configured,
+    };
   }
 
   // process.memoryUsage() in MB. rss = total resident; heapUsed/heapTotal = V8 JS heap;
@@ -428,6 +448,7 @@ class EmsDevice extends Device {
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
+    if (this._warmupDone) await this._checkBatteryPriceControl(cfg, battery);
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 
     // ── Sensor failure guard ──────────────────────────────────────────────────
@@ -860,6 +881,7 @@ Object.assign(
   chargerControlMixin,
   batteryMixin,
   pvForecastMixin,
+  priceForecastMixin,
 );
 
 module.exports = EmsDevice;
