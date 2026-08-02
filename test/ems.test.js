@@ -15,12 +15,15 @@ const pvForecastMixin = require('../lib/ems/pvForecast');
 const priceForecastMixin = require('../lib/ems/priceForecast');
 const simpleDevicesMixin = require('../lib/ems/simpleDevices');
 const exportLimitMixin = require('../lib/ems/exportLimit');
+const chargeSessionsMixin = require('../lib/ems/chargeSessions');
 const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
   const dev = {
     homey: { clock: { getTimezone: () => 'Europe/Zurich' } },
     log() {}, error() {},
+    _postNotification() {},
+    _debugLog() {},
     _variablePrice: null,
     _carStates: [],
     _carSocTrack: {},
@@ -46,11 +49,14 @@ function makeChargerDevice(extra = {}) {
     // _setMode lives directly on the device class (buffered mode setter), not a mixin —
     // record the last call so tests can assert on it.
     _setMode(mode, text) { this._lastMode = { mode, text }; },
+    _debugLog() {},
+    setStoreValue() { return Promise.resolve(); },
+    _chargeSessions: [],
   };
   // batteryMixin (_batteryZones), carsMixin (_carForCharger), priceMixin (_offpeakWindow),
   // pvForecastMixin + priceForecastMixin (_priceShouldChargeNow) — all things _evaluateEvChargers
   // calls via `this` for the P1/P3/P3b tiers.
-  Object.assign(dev, batteryMixin, carsMixin, priceMixin, pvForecastMixin, priceForecastMixin, chargerMixin, extra);
+  Object.assign(dev, batteryMixin, carsMixin, priceMixin, pvForecastMixin, priceForecastMixin, chargerMixin, chargeSessionsMixin, extra);
   return dev;
 }
 
@@ -69,7 +75,7 @@ function makeSimpleDevice(extra = {}) {
     log() {}, _warmupDone: true, _addHistoryEvent() {},
     homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) } },
   };
-  Object.assign(dev, simpleDevicesMixin, batteryMixin, pvForecastMixin, extra);
+  Object.assign(dev, simpleDevicesMixin, batteryMixin, pvForecastMixin, chargerMixin, extra);
   dev._setOnCalls = [];
   dev._simpleDeviceSetOn = async function (id, name, on) { this._setOnCalls.push({ id, on }); };
   return dev;
@@ -142,7 +148,7 @@ test('_getCurrentPrice — forecast ignores a stale forecast', () => {
   const now = Date.now();
   const d = makeDevice({ _variablePrice: null });
   d._priceForecast = [{ start: now - 1000, end: now + 3600_000, price: 0.199 }];
-  d._priceForecastUpdatedAt = now - 7 * 3600_000; // older than PRICE_FORECAST_STALE_MS (6h)
+  d._priceForecastUpdatedAt = now - 31 * 3600_000; // older than PRICE_FORECAST_STALE_MS (30h)
   assert.strictEqual(d._getCurrentPrice({ price_config: { mode: 'forecast' } }), null);
 });
 test('_getCurrentPrice — variable does not fall back to the forecast (separate modes now)', () => {
@@ -583,6 +589,27 @@ test('_evaluateSimpleDevices — battery-overflow exception keeps it on (guards 
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
+test('_evaluateSimpleDevices — overflow hysteresis: a running device stays on below the START threshold but above the CONTINUE one', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  // Export is below MIN_CHARGE_W (the old fixed threshold — would have wrongly hard-stopped
+  // a device that only just started, since its own draw reduces the apparent export on the
+  // very next tick) but above MIN_CHARGE_W/2 (the CONTINUE threshold) — regression for the
+  // reported "Pool/Entfeuchter stop within a minute of starting" bug.
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W / 2 + 50), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+test('_evaluateSimpleDevices — overflow hysteresis: a device NOT yet running needs the higher START threshold', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  // Export clears the old flat MIN_CHARGE_W threshold and the CONTINUE threshold, but not
+  // the higher 2×MIN_CHARGE_W START threshold — must not start via the overflow exception yet.
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
+});
+
 test('_evaluateSimpleDevices — start needs sustained surplus', async () => {
   const now = Date.now();
   const cfg = { min_battery_soc: 80 };
@@ -809,8 +836,44 @@ test('_ingestPriceForecast — self-heals a pre-existing near-duplicate slot (le
 test('_priceForecastStale — fresh / old / never-ingested', () => {
   const now = Date.now();
   assert.strictEqual(makeDevice({ _priceForecast: [{}], _priceForecastUpdatedAt: now })._priceForecastStale(now), false);
-  assert.strictEqual(makeDevice({ _priceForecast: [{}], _priceForecastUpdatedAt: now - 7 * 3600_000 })._priceForecastStale(now), true);
+  assert.strictEqual(makeDevice({ _priceForecast: [{}], _priceForecastUpdatedAt: now - 31 * 3600_000 })._priceForecastStale(now), true);
   assert.strictEqual(makeDevice({ _priceForecast: null, _priceForecastUpdatedAt: now })._priceForecastStale(now), true);
+});
+
+// ── priceForecast: _checkPriceForecastStaleness (proactive notification) ─────
+test('_checkPriceForecastStaleness — never configured → no notification', () => {
+  let calls = 0;
+  const d = makeDevice({ _priceForecastUpdatedAt: null, _postNotification: () => { calls++; } });
+  d._checkPriceForecastStaleness(Date.now());
+  assert.strictEqual(calls, 0);
+});
+test('_checkPriceForecastStaleness — fresh (under the notify threshold) → no notification', () => {
+  const now = Date.now();
+  let calls = 0;
+  const d = makeDevice({ _priceForecastUpdatedAt: now - 3600_000, _postNotification: () => { calls++; } });
+  d._checkPriceForecastStaleness(now);
+  assert.strictEqual(calls, 0);
+});
+test('_checkPriceForecastStaleness — stale past the notify threshold → notifies exactly once', () => {
+  const now = Date.now();
+  let calls = 0;
+  const d = makeDevice({ _priceForecastUpdatedAt: now - 49 * 3600_000, _postNotification: () => { calls++; } });
+  d._checkPriceForecastStaleness(now);
+  d._checkPriceForecastStaleness(now + 60_000); // still stale, called again — must not re-notify
+  assert.strictEqual(calls, 1);
+  assert.strictEqual(d._priceForecastStaleNotified, true);
+});
+test('_checkPriceForecastStaleness — re-arms once fresh again', () => {
+  const now = Date.now();
+  let calls = 0;
+  const d = makeDevice({ _priceForecastUpdatedAt: now - 49 * 3600_000, _postNotification: () => { calls++; } });
+  d._checkPriceForecastStaleness(now); // notifies once
+  d._priceForecastUpdatedAt = now; // fresh data arrives
+  d._checkPriceForecastStaleness(now);
+  assert.strictEqual(d._priceForecastStaleNotified, false);
+  d._priceForecastUpdatedAt = now - 49 * 3600_000; // goes stale again later
+  d._checkPriceForecastStaleness(now);
+  assert.strictEqual(calls, 2); // notified again on the second episode
 });
 
 test('_priceSlotsBetween — overlap filter, ascending', () => {
@@ -922,6 +985,327 @@ test('_priceShouldChargeNow — charges only in the selected cheap slot', () => 
   const d2 = makeDevice({ ...base });
   const dec2 = d2._priceShouldChargeNow(car, 4000, {}, now + 3600_000);
   assert.strictEqual(dec2.shouldCharge, true);
+  // chargeSlots exposes the full plan (for the settings-page "next charge window"
+  // preview) regardless of which tick asked — both decisions should report the same
+  // single selected slot (21-22h, the cheap one).
+  assert.strictEqual(dec1.chargeSlots.length, 1);
+  assert.strictEqual(dec1.chargeSlots[0].start, now + 3600_000);
+  assert.strictEqual(dec2.chargeSlots.length, 1);
+  assert.strictEqual(dec2.chargeSlots[0].start, now + 3600_000);
+});
+test('_priceShouldChargeNow — chargeSlots is always an array, even on early-exit paths', () => {
+  const d = makeDevice();
+  assert.deepStrictEqual(d._priceShouldChargeNow(null, 4000, {}).chargeSlots, []);
+  assert.deepStrictEqual(d._priceShouldChargeNow({ soc: 80, target: 80, capacityKwh: 20, readyBy: '22:00' }, 4000, {}).chargeSlots, []);
+});
+
+// ── priceForecast: _priceSelectExpensiveSlots (home-battery discharge reserve) ─
+test('_priceSelectExpensiveSlots — picks the most expensive slots first', () => {
+  const d = makeDevice();
+  const slots = [
+    { start: 0,       end: 3600_000,   price: 0.10 },
+    { start: 3600_000, end: 7200_000,  price: 0.30 },
+    { start: 7200_000, end: 10800_000, price: 0.20 },
+  ];
+  const selected = d._priceSelectExpensiveSlots(slots, 1);
+  assert.deepStrictEqual([...selected], [3600_000]);
+});
+test('_priceSelectExpensiveSlots — tie-break prefers the EARLIER slot', () => {
+  const d = makeDevice();
+  const slots = [
+    { start: 0,       end: 3600_000,  price: 0.20 },
+    { start: 3600_000, end: 7200_000, price: 0.20 },
+  ];
+  const selected = d._priceSelectExpensiveSlots(slots, 1);
+  assert.deepStrictEqual([...selected], [0]);
+});
+
+// ── priceForecast: _batteryPriceMode (home-battery price control) ────────────
+test('_batteryPriceMode — disabled battery → normal', () => {
+  const d = makeDevice();
+  const r = d._batteryPriceMode({ price_charge_enabled: false }, 50, {});
+  assert.strictEqual(r.mode, 'normal');
+});
+test('_batteryPriceMode — unknown SoC → normal', () => {
+  const d = makeDevice({ _priceForecast: [{}], _priceForecastUpdatedAt: Date.now() });
+  const r = d._batteryPriceMode({ price_charge_enabled: true }, null, {});
+  assert.strictEqual(r.mode, 'normal');
+});
+test('_batteryPriceMode — stale forecast → normal', () => {
+  const d = makeDevice({ _priceForecast: null, _priceForecastUpdatedAt: null });
+  const r = d._batteryPriceMode({ price_charge_enabled: true }, 50, {});
+  assert.strictEqual(r.mode, 'normal');
+});
+test('_batteryPriceMode — charges in the cheapest slot within the 24h rolling lookahead (no deadline)', () => {
+  const now = Date.UTC(2026, 0, 1, 4, 0, 0); // 04:00 UTC
+  const slots = [
+    { start: now, end: now + 3600_000, price: 0.30 },              // 04-05h: expensive
+    { start: now + 3600_000, end: now + 7200_000, price: 0.05 },   // 05-06h: cheap
+  ];
+  const base = { homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now };
+  const bd = { price_charge_enabled: true, price_target_soc: 90, price_charge_power_kw: 5, capacity_kwh: 10 }; // needs 1h at 5kW for 50%
+  const d1 = makeDevice({ ...base });
+  assert.strictEqual(d1._batteryPriceMode(bd, 40, {}, now).mode !== 'charge', true); // expensive slot, not yet
+  const d2 = makeDevice({ ...base });
+  assert.strictEqual(d2._batteryPriceMode(bd, 40, {}, now + 3600_000).mode, 'charge'); // cheap slot
+});
+test('_batteryPriceMode — waits for a genuinely cheaper hour later within the lookahead instead of committing early', () => {
+  const now = Date.UTC(2026, 0, 1, 4, 0, 0);
+  const slots = [
+    { start: now,                end: now + 3600_000,  price: 0.20 }, // 04-05h: moderate
+    { start: now + 20 * 3600_000, end: now + 21 * 3600_000, price: 0.02 }, // 00:00 next day: much cheaper, still within 24h
+  ];
+  const base = { homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now };
+  const bd = { price_charge_enabled: true, price_target_soc: 90, price_charge_power_kw: 5, capacity_kwh: 10, price_discharge_reserve_hours: 0 }; // needs 1h; reserve isolated off
+  const d = makeDevice({ ...base });
+  const r = d._batteryPriceMode(bd, 40, {}, now);
+  assert.notStrictEqual(r.mode, 'charge'); // not the cheapest — waits
+  assert.strictEqual(r.chargeSlots.length, 1);
+  assert.strictEqual(r.chargeSlots[0].start, now + 20 * 3600_000); // planned for the later, cheaper slot
+});
+test('_batteryPriceMode — returns the full reserveSlots list even when currently in a non-reserved hour', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [
+    { start: now,               end: now + 3600_000,  price: 0.10 },
+    { start: now + 3600_000,    end: now + 7200_000,  price: 0.30 }, // the peak, reserved
+  ];
+  const bd = { price_charge_enabled: true, price_target_soc: 0, price_discharge_reserve_hours: 1 };
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 50, {}, now);
+  assert.strictEqual(r.mode, 'hold');
+  assert.strictEqual(r.reserveSlots.length, 1);
+  assert.strictEqual(r.reserveSlots[0].start, now + 3600_000);
+});
+test('_batteryPriceMode — already at/above target → no charge', () => {
+  const now = Date.now();
+  const bd = { price_charge_enabled: true, price_target_soc: 90, price_charge_by: '06:00', price_charge_power_kw: 5, capacity_kwh: 10 };
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: [{ start: now, end: now + 3600_000, price: 0.01 }], _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 95, {}, now);
+  assert.notStrictEqual(r.mode, 'charge');
+});
+test('_batteryPriceMode — holds discharge outside the reserved top-expensive hours', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [
+    { start: now,               end: now + 3600_000,  price: 0.10 }, // now: mid price
+    { start: now + 3600_000,    end: now + 7200_000,  price: 0.30 }, // later: the peak
+  ];
+  const bd = { price_charge_enabled: true, price_target_soc: 0, price_discharge_reserve_hours: 1 }; // target 0 → never charges, isolates the reserve check
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 50, {}, now);
+  assert.strictEqual(r.mode, 'hold');
+});
+test('_batteryPriceMode — allows discharge during the reserved top-expensive hour', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [
+    { start: now,               end: now + 3600_000,  price: 0.10 },
+    { start: now + 3600_000,    end: now + 7200_000,  price: 0.30 }, // the peak
+  ];
+  const bd = { price_charge_enabled: true, price_target_soc: 0, price_discharge_reserve_hours: 1 };
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 50, {}, now + 3600_000); // now = the peak slot
+  assert.strictEqual(r.mode, 'normal');
+});
+test('_batteryPriceMode — reserve disabled (0 hours) and target met → normal (nothing to do)', () => {
+  const now = Date.now();
+  const bd = { price_charge_enabled: true, price_target_soc: 0, price_discharge_reserve_hours: 0 };
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: [{ start: now, end: now + 3600_000, price: 0.10 }], _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 50, {}, now);
+  assert.strictEqual(r.mode, 'normal');
+});
+
+// ── chargerControl: global offpeak_enabled toggle must not hijack explicit price modes ──
+test('_evaluateEvChargers — global offpeak_enabled toggle does not override solar_price chargeMode', async () => {
+  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
+  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const d = makeChargerDevice({
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: null,
+    _priceForecast: slots,
+    _priceForecastUpdatedAt: now,
+    _carStates: [car],
+    getCapabilityValue: (cap) => (cap === 'offpeak_enabled' ? true : undefined), // global toggle ON
+    _offpeakWindow: () => ({ active: true, amps: 10 }), // off-peak window also active
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true };
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  // Must follow the price-mode decision (16A, price_ev), NOT the fixed off-peak amps (10A).
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 16);
+  assert.strictEqual(d._lastMode.mode, 'price_ev');
+});
+
+// ── chargerControl: shared grid-import budget (price_charge_max_grid_kw) ─────
+test('_evaluateEvChargers — solar_price charger skips grid-charging when the shared budget is already spent', async () => {
+  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
+  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const d = makeChargerDevice({
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: null,
+    _priceForecast: slots,
+    _priceForecastUpdatedAt: now,
+    _carStates: [car],
+    _priceChargeCommittedW: 5000, // battery already claimed the entire 5 kW budget
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true, price_charge_max_grid_kw: 5 };
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null); // no budget left — did not grid-charge
+  assert.notStrictEqual(d._lastMode.mode, 'price_ev');
+});
+test('_evaluateEvChargers — with two solar_price chargers, only as many as fit the shared budget grid-charge', async () => {
+  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
+  // Each wants 16A × 1ph × 230V = 3680 W; a 5 kW budget fits one but not both.
+  const c1 = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
+  const c2 = { id: 'c2', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car2', powerW: 0 };
+  const car1 = { id: 'car1', name: 'EV1', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const car2 = { id: 'car2', name: 'EV2', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const d = makeChargerDevice({
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: null,
+    _priceForecast: slots,
+    _priceForecastUpdatedAt: now,
+    _carStates: [car1, car2],
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true, price_charge_max_grid_kw: 5 };
+  await d._evaluateEvChargers(battery, 0, [c1, c2], cfg, null, null);
+  const chargedCount = [d._getChargerState('c1').currentAmps, d._getChargerState('c2').currentAmps].filter((a) => a === 16).length;
+  assert.strictEqual(chargedCount, 1); // exactly one fit the shared budget
+});
+test('_evaluateEvChargers — price_charge_max_grid_kw unset (0) → unlimited, no budget tracking needed', async () => {
+  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
+  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const d = makeChargerDevice({
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: null,
+    _priceForecast: slots,
+    _priceForecastUpdatedAt: now,
+    _carStates: [car],
+    _priceChargeCommittedW: 999999, // would exceed any real cap, but the feature is off
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true }; // price_charge_max_grid_kw unset
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 16); // unaffected — no cap configured
+});
+
+// ── chargerControl: whole-house grid-import ceiling (grid_import_limit_kw) ───
+// Distinct from price_charge_max_grid_kw: this is a hard main-fuse safety limit that
+// applies to EVERY unconditional-draw tier (Instant/Always/Off-peak here; Price/Low-
+// tariff too), gracefully reducing to the highest amp-ladder rung that fits rather than
+// rejecting outright. this._gridImportCommittedW is normally seeded per-tick in
+// device.js from measured gridW — tests set it directly to simulate that.
+test('_evaluateEvChargers — Instant charging (P0) gracefully reduces amps to fit the grid-import ceiling', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false };
+  const d = makeChargerDevice({
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+    _gridImportCommittedW: 0,
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { grid_import_limit_kw: 2 }; // 2000 W headroom → 8 A @ 1ph/230V (8×230=1840 ≤ 2000, 9×230=2070 > 2000)
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 8);
+  assert.strictEqual(d._lastMode.mode, 'instant_ev');
+});
+test('_evaluateEvChargers — Instant charging (P0) stops the charger entirely when even the minimum amp does not fit', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false };
+  const d = makeChargerDevice({
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+    _gridImportCommittedW: 900, // only 100 W headroom left of a 1 kW ceiling — below 6A's 1380 W minimum
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { grid_import_limit_kw: 1 };
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 }); // pretend it was already running
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null); // stopped — no headroom at all
+});
+test('_evaluateEvChargers — "Always charge" (P0.5) gracefully reduces amps to fit the grid-import ceiling', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false, chargeMode: 'always' };
+  const d = makeChargerDevice({ _gridImportCommittedW: 0 });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { grid_import_limit_kw: 2 };
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 8);
+});
+test('_evaluateEvChargers — Off-peak (P3) gracefully reduces amps to fit the grid-import ceiling', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false, chargeMode: 'solar_offpeak' };
+  const d = makeChargerDevice({
+    _offpeakWindow: () => ({ active: true, amps: 16 }),
+    _gridImportCommittedW: 0,
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true, grid_import_limit_kw: 2 };
+  await d._evaluateEvChargers(battery, 500, [charger], cfg, null, null); // importing → solar can't claim
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 8); // reduced from the 16A off-peak amps
+  assert.strictEqual(d._lastMode.mode, 'offpeak_ev');
+});
+test('_evaluateEvChargers — Price-optimised charging (P3b) skips grid-charging when the import ceiling has no headroom, even though the price budget fits', async () => {
+  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
+  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
+  const d = makeChargerDevice({
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    _pvForecast: null,
+    _priceForecast: slots,
+    _priceForecastUpdatedAt: now,
+    _carStates: [car],
+    _gridImportCommittedW: 2000, // already at the ceiling — no headroom for the price budget's charger
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = { offpeak_solar_first: true, grid_import_limit_kw: 2 }; // price_charge_max_grid_kw unset — price budget alone would allow this
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null); // denied by the import ceiling, not the price budget
+  assert.notStrictEqual(d._lastMode.mode, 'price_ev');
+});
+test('_evaluateEvChargers — grid_import_limit_kw unset (0) → unlimited, ceiling has no effect', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false };
+  const d = makeChargerDevice({
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+    _gridImportCommittedW: 999999, // would exceed any real cap, but the feature is off
+  });
+  const battery = { soc: 90, powerW: 0 };
+  const cfg = {}; // grid_import_limit_kw unset
+  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 32); // unaffected — no ceiling configured
+});
+
+// ── simpleDevices: whole-house grid-import ceiling (grid_import_limit_kw) ────
+test('_evaluateSimpleDevices — a new start is denied when the grid-import ceiling has no headroom', async () => {
+  const now = Date.now();
+  const d = makeSimpleDevice({ _gridImportCommittedW: 1900 }); // already close to the 2 kW ceiling
+  const cfg = { min_battery_soc: 80, grid_import_limit_kw: 2 }; // 100 W headroom left, device wants 1000 W
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()],
+    new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  // Surplus/timer logic alone would start it (same fixture as "start needs sustained surplus")
+  // — the ceiling denies it anyway.
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
+});
+test('_evaluateSimpleDevices — an already-running device is left alone even with zero headroom (no short-cycling)', async () => {
+  const now = Date.now();
+  const d = makeSimpleDevice({ _gridImportCommittedW: 999999 }); // way past any ceiling
+  const cfg = { min_battery_soc: 80, grid_import_limit_kw: 2 };
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [simpleDev()],
+    new Map([['d1', { isOn: true, startedAt: now - 60_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]); // held on by min-run — ceiling only gates NEW starts
+});
+test('_evaluateSimpleDevices — grid_import_limit_kw unset (0) → unlimited, ceiling has no effect', async () => {
+  const now = Date.now();
+  const d = makeSimpleDevice({ _gridImportCommittedW: 999999 }); // would exceed any real cap, but the feature is off
+  const cfg = { min_battery_soc: 80 }; // grid_import_limit_kw unset
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()],
+    new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
+    'start', 'stop', 'tok', 'ctrl', cfg);
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]); // unaffected — no ceiling configured
 });
 
 // ── chargerControl integration: 'solar_price' charge mode (D10) ──────────────
@@ -963,4 +1347,81 @@ test('_evaluateEvChargers — solar_price charger waits when solar is claiming t
   // Strong export (-5000 W) ≥ minClaimW → solar claims it, P3b does not force-charge.
   await d._evaluateEvChargers(battery, -5000, [charger], cfg, null, null);
   assert.strictEqual(d._getChargerState('c1').currentAmps, null); // not forced on by price logic
+});
+
+// ── chargeSessions: _trackChargeSession / _finalizeChargeSession ─────────────
+test('_trackChargeSession — accumulates energy over ticks and finalizes on disconnect', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, powerW: 7360 }; // 7.36 kW (32A x 1ph x 230V)
+  const dtMs = 15_000; // one 15 s tick
+
+  // 4 ticks at 7.36 kW for 15 s each → 4 * 7.36 * (15/3600) kWh
+  for (let i = 0; i < 4; i++) d._trackChargeSession(charger, cfg, dtMs);
+  assert.strictEqual(d._chargeSessions.length, 0); // still connected — no session finalized yet
+
+  const disconnected = { id: 'c1', connected: false, powerW: 0 };
+  d._trackChargeSession(disconnected, cfg, dtMs);
+
+  assert.strictEqual(d._chargeSessions.length, 1);
+  const s = d._chargeSessions[0];
+  const expectedKwh = Math.round(4 * 7.36 * (15 / 3600) * 100) / 100;
+  assert.strictEqual(s.energyKwh, expectedKwh);
+  assert.strictEqual(s.currency, 'CHF');
+  assert.strictEqual(s.avgPrice, 0.30); // fixed price the whole session
+  assert.strictEqual(Math.round(s.cost * 100) / 100, Math.round(expectedKwh * 0.30 * 100) / 100);
+});
+test('_trackChargeSession — negligible-energy sessions are not logged', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
+  // One tick at low power — well under the 0.05 kWh logging floor.
+  d._trackChargeSession({ id: 'c1', connected: true, powerW: 100 }, cfg, 15_000);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000);
+  assert.strictEqual(d._chargeSessions.length, 0);
+});
+test('_trackChargeSession — pauses within one plug-in period stay a single session', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
+  const on  = { id: 'c1', connected: true, powerW: 7360 };
+  const off = { id: 'c1', connected: true, powerW: 0 }; // still plugged in, just not drawing (e.g. no surplus)
+  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000);
+  for (let i = 0; i < 10; i++) d._trackChargeSession(off, cfg, 15_000); // paused — still connected
+  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000); // resumes
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000); // unplugged
+  assert.strictEqual(d._chargeSessions.length, 1); // one session, not three
+  assert.ok(d._chargeSessions[0].energyKwh > 0);
+});
+test('_trackChargeSession — carName resolved via _carForCharger when known', () => {
+  const car = { id: 'car1', name: 'Tesla', soc: 40, target: 80 };
+  const d = makeChargerDevice({ _chargeSessions: [], _carStates: [car] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
+  const charger = { id: 'c1', connected: true, powerW: 7360, carId: 'car1' };
+  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0, carId: 'car1' }, cfg, 15_000);
+  assert.strictEqual(d._chargeSessions[0].carName, 'Tesla');
+});
+test('_trackChargeSession — no price configured (mode variable, unset) → energy logged, cost null', () => {
+  const d = makeChargerDevice({ _chargeSessions: [], _variablePrice: null });
+  const cfg = { price_config: { mode: 'variable' } }; // no value ever pushed → _getCurrentPrice returns null
+  const charger = { id: 'c1', connected: true, powerW: 7360 };
+  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000);
+  assert.strictEqual(d._chargeSessions.length, 1);
+  assert.ok(d._chargeSessions[0].energyKwh > 0);
+  assert.strictEqual(d._chargeSessions[0].cost, null);
+  assert.strictEqual(d._chargeSessions[0].avgPrice, null);
+});
+
+test('getEmsChargeSessions — returns newest first, capped, as shallow clones', () => {
+  const d = makeChargerDevice({
+    _chargeSessions: [
+      { chargerId: 'c1', startedAt: 1, endedAt: 2, energyKwh: 1 },
+      { chargerId: 'c1', startedAt: 3, endedAt: 4, energyKwh: 2 },
+    ],
+  });
+  const out = d.getEmsChargeSessions();
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out[0].energyKwh, 2); // newest first
+  out[0].energyKwh = 999;
+  assert.strictEqual(d._chargeSessions[1].energyKwh, 2); // clone, not a live reference
 });

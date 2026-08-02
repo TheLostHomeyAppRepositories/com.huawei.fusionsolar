@@ -1188,6 +1188,42 @@ module.exports = {
     }
   },
 
+  /** GET /ems/battery-price-plans — live "what would each price-enabled battery do now" preview */
+  async getEmsBatteryPricePlans({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { error: 'No EMS device found' };
+      return { plans: await devices[0].getEmsBatteryPricePlans() };
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
+  /** GET /ems/charge-sessions — completed charging sessions (energy + cost), newest first */
+  async getEmsChargeSessions({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { error: 'No EMS device found' };
+      return { sessions: devices[0].getEmsChargeSessions() };
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
+  /** GET /ems/charger-price-plans — live "what would each price-aware charger do now" preview */
+  async getEmsChargerPricePlans({ homey }) {
+    try {
+      const driver  = homey.drivers.getDriver('energy_management');
+      const devices = driver.getDevices();
+      if (!devices.length) return { error: 'No EMS device found' };
+      return { plans: await devices[0].getEmsChargerPricePlans() };
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
   /**
    * GET /ems/price-forecast/trigger-cards?deviceId=xxx — lists trigger cards available for
    * a device (e.g. "Power by the Hour"'s "New prices received"), for the D10 price-forecast
@@ -1229,6 +1265,7 @@ module.exports = {
         id:        c.id,
         uri:       cUri,
         title:     resolveTitle(c.title) || c.id,
+        hint:      resolveTitle(c.hint) || '',
         suggested: cUri === deviceUri,
         args:      (c.args || []).map((a) => ({
           name:   a.name,
@@ -1238,7 +1275,10 @@ module.exports = {
         })),
         // Tokens tell the settings UI which token to tell the user to drag into our
         // action's "prices" field (e.g. "Prices" from Power by the Hour's new_prices card).
-        tokens: (c.tokens || []).map((t) => ({ name: t.name, type: t.type, title: resolveTitle(t.title) || t.name })),
+        // hint (when the source app provides one) is the most reliable way to know what
+        // the token's array actually represents (today from midnight vs. a rolling
+        // window) — straight from the source app's own card definition.
+        tokens: (c.tokens || []).map((t) => ({ name: t.name, type: t.type, title: resolveTitle(t.title) || t.name, hint: resolveTitle(t.hint) || '' })),
       };
     });
 

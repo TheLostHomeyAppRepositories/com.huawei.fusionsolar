@@ -20,6 +20,7 @@ const chargerControlMixin = require('../../lib/ems/chargerControl');
 const batteryMixin        = require('../../lib/ems/battery');
 const pvForecastMixin     = require('../../lib/ems/pvForecast');
 const priceForecastMixin  = require('../../lib/ems/priceForecast');
+const chargeSessionsMixin = require('../../lib/ems/chargeSessions');
 
 // Price + car SOC change slowly — refresh every Nth tick (~60 s) rather than every
 // 15 s tick, to cut settings reads and per-car HTTP calls (see _tickBody).
@@ -103,6 +104,8 @@ class EmsDevice extends Device {
     await this._restorePvForecast();
     // Price forecast (D10) — restore cached slots pushed via ems_set_price_forecast.
     await this._restorePriceForecast();
+    // Charge session log (energy + cost per charging session, any charge mode).
+    await this._restoreChargeSessions();
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -362,6 +365,21 @@ class EmsDevice extends Device {
       electricityPriceCurrency: (cfg.price_config && cfg.price_config.currency) || 'CHF',
       offpeakEnabled: this.getCapabilityValue('offpeak_enabled') === true,
       dualTariffConfigured: this._dualTariffWindow(cfg).configured,
+      // Shared grid-import budget for price-driven charging (battery + EV chargers) —
+      // committedW reflects the last completed tick (reset/accumulated in _tickBody /
+      // chargerControl.js), so it's fresh within one TICK_MS. maxKw 0 = no limit set.
+      priceChargeBudget: {
+        committedW: this._priceChargeCommittedW || 0,
+        maxKw: Number(cfg.price_charge_max_grid_kw) || 0,
+      },
+      // Whole-house grid-import ceiling (load-shedding coordinator) — committedW reflects
+      // the last completed tick's actual claims (seeded from measured gridW, then added to
+      // by battery force-charge, every unconditional EV-charging tier, and any heat pump /
+      // boiler / pool / dehumidifier start). maxKw 0 = no limit set.
+      gridImportCeiling: {
+        committedW: this._gridImportCommittedW || 0,
+        maxKw: Number(cfg.grid_import_limit_kw) || 0,
+      },
     };
   }
 
@@ -400,6 +418,7 @@ class EmsDevice extends Device {
       await this._updateCarCapabilities(cfg);
       await this._maybeFetchPvForecast(cfg); // rate-limited internally (≥3 h between fetches)
       await this._updatePvForecastCapabilities(); // recompute today/tomorrow/now from cache (no API call)
+      this._checkPriceForecastStaleness(); // one-shot notification if a fed forecast goes stale
     }
 
     if (!enabled || !hasKey) {
@@ -436,6 +455,20 @@ class EmsDevice extends Device {
       this._getSimpleDevices('dehumidifier_devices', cfg),
     ]);
     this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc;
+    // Shared grid-import budget for all price-driven grid-charging this tick (Home
+    // Battery price control below, then EV chargers' P3b/P3c in chargerControl.js) —
+    // see cfg.price_charge_max_grid_kw. Reset once per tick before either runs.
+    this._priceChargeCommittedW = 0;
+    // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — seeded to the ALREADY
+    // measured grid import so ordinary house baseline load (fridge, lights, whatever's
+    // not EMS-controlled) is accounted for before any EMS-controlled load claims more.
+    // Claimed by the battery price-charge check above and every EV-charger tier that
+    // draws unconditionally (Instant/Always/Off-peak/Price/Low-tariff) in chargerControl.js.
+    this._gridImportCommittedW = Math.max(0, gridW || 0);
+    // Charge-session energy/cost tracking — every configured charger, every tick,
+    // independent of charge mode (see lib/ems/chargeSessions.js). TICK_MS as dt is an
+    // approximation (ticks aren't perfectly regular), close enough for energy totals.
+    for (const c of chargers) this._trackChargeSession(c, cfg, TICK_MS);
     if (gridW !== null) {
       await this._set('measure_solar_surplus', Math.max(0, Math.round(-gridW)));
       await this._set('measure_grid_power', Math.round(gridW));
@@ -663,6 +696,107 @@ class EmsDevice extends Device {
     }
   }
 
+  // Home-battery price control (evcc-style "battery grid charge" + peak-hour reserve).
+  // Opt-in per battery via price_charge_enabled. The decision (lib/ems/priceForecast.js
+  // _batteryPriceMode) is fired only on CHANGE, mirroring the existing full/low battery
+  // triggers below — each mode maps to one of the battery's own existing EMS trigger
+  // cards (Flow setup already lets the user wire these to a Luna2000 action with a
+  // fixed power/target value, e.g. "Force Charge 3000W until 90%").
+  async _checkBatteryPriceControl(cfg, battery) {
+    const devices = cfg.battery_devices || [];
+    const TRIGGER_BY_MODE = {
+      charge: 'ems_battery_force_charge',
+      hold:   'ems_battery_max_discharge_power', // user's wired flow sets this to ~0
+      normal: 'ems_battery_normal_mode',
+    };
+
+    for (const device of devices) {
+      if (!device.price_charge_enabled) continue;
+      const soc = battery.socPerDevice?.[device.id] ?? null;
+
+      if (!this._batteryStates.has(device.id)) this._batteryStates.set(device.id, { fullFired: false, lowFired: false });
+      const st = this._batteryStates.get(device.id);
+      if (st.priceMode === undefined) st.priceMode = null;
+
+      const decision = this._batteryPriceMode(device, soc, cfg);
+      this._debugLog(`battery ${device.id}: soc=${soc ?? '—'} → ${decision.mode} (${decision.reason})`);
+      // Track committed grid-charge power every tick regardless of whether the mode
+      // just changed — chargerControl.js's P3b/P3c read this to know how much of the
+      // shared price_charge_max_grid_kw budget the battery is already using.
+      if (decision.mode === 'charge') {
+        const chargeW = Math.max(0, Number(device.price_charge_power_kw) || 0) * 1000;
+        // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — a battery force-
+        // charge trigger sets a FIXED power via the user's own flow, so unlike EV
+        // chargers there's no amp ladder to gracefully reduce; if it wouldn't fit under
+        // the main-fuse safety limit, skip grid-charging this tick (falls back to
+        // whatever mode applies instead — see below).
+        const limitKw = Number(cfg.grid_import_limit_kw) || 0;
+        const fitsCeiling = limitKw <= 0 || (this._gridImportCommittedW || 0) + chargeW <= limitKw * 1000;
+        if (!fitsCeiling) {
+          this._debugLog(`battery ${device.id}: force-charge DENIED — grid import ceiling (${limitKw}kW) has no headroom`);
+          decision.mode = decision.reserveSlots?.length ? 'hold' : 'normal';
+        } else {
+          this._priceChargeCommittedW += chargeW;
+          this._gridImportCommittedW = (this._gridImportCommittedW || 0) + chargeW;
+        }
+      }
+      if (decision.mode === st.priceMode) continue; // unchanged — don't re-fire every tick
+
+      const cardId = TRIGGER_BY_MODE[decision.mode];
+      st.priceMode = decision.mode;
+      this.log(`[EMS] battery ${device.id}: price mode → ${decision.mode} (${decision.reason})`);
+      await this.homey.flow
+        .getTriggerCard(cardId)
+        .trigger({ battery_device_id: device.id }, { battery_device_id: device.id })
+        .catch((e) => this.log(`[EMS] trigger ${cardId} failed: ${e.message}`));
+    }
+  }
+
+  // Read-back for the settings page: what would each price-enabled battery do right
+  // now, and which upcoming slots did the planner pick — lets the UI show "next
+  // charge window" / "reserved peak hours" without duplicating the decision logic.
+  async getEmsBatteryPricePlans() {
+    const cfg     = this._getConfig();
+    const devices = (cfg.battery_devices || []).filter((d) => d.price_charge_enabled);
+    if (!devices.length) return [];
+    const battery = await this._getBattery(cfg);
+    return devices.map((d) => {
+      const soc      = battery.socPerDevice?.[d.id] ?? null;
+      const decision = this._batteryPriceMode(d, soc, cfg);
+      return {
+        id: d.id, soc, mode: decision.mode, reason: decision.reason,
+        chargeSlots: decision.chargeSlots || [], reserveSlots: decision.reserveSlots || [],
+      };
+    });
+  }
+
+  // Read-back for the settings page: what would each price-aware charger do right
+  // now, and (for D10 'solar_price' chargers) which upcoming slots did the planner
+  // pick — mirrors getEmsBatteryPricePlans for the same "next charge window" preview.
+  async getEmsChargerPricePlans() {
+    const cfg      = this._getConfig();
+    const chargers = await this._getChargers(cfg);
+    const relevant = chargers.filter((c) => c.chargeMode === 'solar_price' || c.chargeMode === 'solar_lowtariff');
+    if (!relevant.length) return [];
+    const now = Date.now();
+    return relevant.map((c) => {
+      const phases        = c.phaseSwitch ? 3 : c.phases;
+      const chargerPowerW = c.maxAmps * phases * 230;
+      if (c.chargeMode === 'solar_price') {
+        const car      = this._carForCharger(c);
+        const decision = this._priceShouldChargeNow(car, chargerPowerW, cfg, now);
+        return {
+          id: c.id, chargeMode: 'solar_price', carName: (car && car.name) || null,
+          shouldChargeNow: decision.shouldCharge, reason: decision.reason, chargeSlots: decision.chargeSlots || [],
+        };
+      }
+      // solar_lowtariff — a fixed weekday window, not a forecast-driven slot selection,
+      // so there's no "chargeSlots" list to plan — just today's configured window state.
+      const dual = this._dualTariffWindow(cfg);
+      return { id: c.id, chargeMode: 'solar_lowtariff', configured: dual.configured, isLowNow: dual.configured && !dual.isHigh };
+    });
+  }
+
   async _getHouseW(cfg, gridW, pvW, battery, chargers = null) {
     const devices = cfg.house_devices || [];
     if (devices.length) {
@@ -776,6 +910,14 @@ class EmsDevice extends Device {
 
   // _batteryZones → lib/ems/battery.js
 
+  // Verbose per-tick logging, gated by the "Debug logging" device setting — off by
+  // default (every-tick price/battery decisions would otherwise flood the log).
+  // Reads the setting on every call rather than caching it, so toggling it in Homey
+  // takes effect immediately without needing a tick-loop restart.
+  _debugLog(msg) {
+    if (this.getSetting('debug_logging')) this.log(`[EMS:DEBUG] ${msg}`);
+  }
+
   // ─── Charger control ──────────────────────────────────────────────────────
 
   // ─── Evaluation ───────────────────────────────────────────────────────────
@@ -882,6 +1024,7 @@ Object.assign(
   batteryMixin,
   pvForecastMixin,
   priceForecastMixin,
+  chargeSessionsMixin,
 );
 
 module.exports = EmsDevice;

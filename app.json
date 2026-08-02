@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.25",
+  "version": "1.2.38",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -78,6 +78,18 @@
     "getEmsPriceForecast": {
       "method": "GET",
       "path": "/ems/price-forecast"
+    },
+    "getEmsBatteryPricePlans": {
+      "method": "GET",
+      "path": "/ems/battery-price-plans"
+    },
+    "getEmsChargerPricePlans": {
+      "method": "GET",
+      "path": "/ems/charger-price-plans"
+    },
+    "getEmsChargeSessions": {
+      "method": "GET",
+      "path": "/ems/charge-sessions"
     },
     "getEmsPriceForecastTriggerCards": {
       "method": "GET",
@@ -5477,6 +5489,20 @@
             "de": "Im Homey-Timeline posten wenn EMS ein Gerät ein- oder ausschaltet oder der Batterie-SOC einen Schwellenwert erreicht."
           },
           "value": true
+        },
+        {
+          "id": "debug_logging",
+          "type": "checkbox",
+          "label": {
+            "en": "Debug logging",
+            "de": "Debug-Protokollierung",
+            "nl": "Debug-logging"
+          },
+          "hint": {
+            "en": "Log every tick's price/battery decision (and why), not just when it changes. Adds a lot of log volume — only enable while troubleshooting, e.g. via Homey → your Homey → Apps → this app → View logs.",
+            "de": "Protokolliert bei jedem Tick die Preis-/Batterie-Entscheidung (und den Grund), nicht nur bei Änderung. Erzeugt deutlich mehr Log-Volumen — nur zur Fehlersuche aktivieren, z.B. über Homey → dein Homey → Apps → diese App → Logs anzeigen."
+          },
+          "value": false
         }
       ]
     }
