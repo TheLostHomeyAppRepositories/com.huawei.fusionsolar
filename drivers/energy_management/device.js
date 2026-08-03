@@ -95,6 +95,11 @@ class EmsDevice extends Device {
     // Per-car target SOC { carId: percent }, set by the ems_set_car_target_soc
     // flow, persisted across restarts.
     this._carTargets = {};
+
+    // capabilityId → last title string applied via setCapabilityOptions — guards
+    // _setCapTitle so a settings save doesn't re-fire it for every car when the
+    // title text hasn't actually changed (Homey warns against calling it repeatedly).
+    this._capTitlesApplied = {};
     try {
       const ts = this.getStoreValue('carTargets');
       if (ts && typeof ts === 'object') this._carTargets = ts;

@@ -257,6 +257,22 @@ test('_carForCharger — multi car without mapping falls back to heuristic', () 
   assert.strictEqual(d._carForCharger({ carId: null }), b);
 });
 
+// ── cars: _setCapTitle guards setCapabilityOptions against redundant calls ───
+test('_setCapTitle — skips setCapabilityOptions when the title is unchanged', async () => {
+  let calls = 0;
+  const d = makeDevice({ setCapabilityOptions: async () => { calls++; } });
+  await d._setCapTitle('measure_car_soc.a', 'My Car');
+  await d._setCapTitle('measure_car_soc.a', 'My Car'); // same title again — e.g. a second settings save
+  assert.strictEqual(calls, 1);
+});
+test('_setCapTitle — calls setCapabilityOptions again when the title actually changes', async () => {
+  let calls = 0;
+  const d = makeDevice({ setCapabilityOptions: async () => { calls++; } });
+  await d._setCapTitle('measure_car_soc.a', 'My Car');
+  await d._setCapTitle('measure_car_soc.a', 'Renamed Car');
+  assert.strictEqual(calls, 2);
+});
+
 // ── battery: _batteryZones ───────────────────────────────────────────────────
 test('_batteryZones — no low zone: below min is a hard stop', () => {
   const d = makeDevice();
