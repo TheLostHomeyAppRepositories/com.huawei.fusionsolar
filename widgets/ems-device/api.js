@@ -56,4 +56,15 @@ module.exports = {
     }
   },
 
+  async setChargeNow({ homey, body }) {
+    const device = getEmsDevice(homey);
+    if (!device) return { error: 'no_ems_device' };
+    const { chargeNow } = body || {};
+    try {
+      return await device.setEmsChargeNow(chargeNow);
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
 };

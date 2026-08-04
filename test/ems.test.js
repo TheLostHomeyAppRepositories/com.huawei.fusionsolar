@@ -1489,6 +1489,11 @@ function makeWidgetDevice(extra = {}) {
     _stopTick() {}, _startTick() {},
     _validateConfig() { return false; },
     _getConfig() { return {}; },
+    getCapabilityValue() { return undefined; },
+    setCapabilityValue: async () => {},
+    _tick: async () => {},
+    getStoreValue: async () => null,
+    setStoreValue: async () => {},
   };
   Object.assign(dev, widgetMixin, chargerMixin, simpleDevicesMixin, batteryMixin, carsMixin, extra);
   return dev;
@@ -1508,6 +1513,31 @@ test('_simpleDeviceDaily — resets once the stored date no longer matches today
   const d = makeWidgetDevice();
   d._simpleDailyStats = { d1: { date: '2000-01-01', kwh: 5, runtimeMs: 999 } };
   assert.deepStrictEqual(d._simpleDeviceDaily('d1'), { kwh: 0, runtimeMs: 0 });
+});
+
+test('_restoreSimpleDailyStats — loads today\'s stats back from the store', async () => {
+  const stored = { d1: { date: '2099-01-01', kwh: 3.4, runtimeMs: 7200 } };
+  const d = makeWidgetDevice({ getStoreValue: async () => stored });
+  await d._restoreSimpleDailyStats();
+  assert.deepStrictEqual(d._simpleDailyStats, stored);
+});
+test('_restoreSimpleDailyStats — starts empty when the store has nothing yet', async () => {
+  const d = makeWidgetDevice({ getStoreValue: async () => null });
+  await d._restoreSimpleDailyStats();
+  assert.deepStrictEqual(d._simpleDailyStats, {});
+});
+test('_restoreSimpleDailyStats — a store read failure still leaves a usable empty object, no crash', async () => {
+  const d = makeWidgetDevice({ getStoreValue: async () => { throw new Error('no store yet'); } });
+  await d._restoreSimpleDailyStats();
+  assert.deepStrictEqual(d._simpleDailyStats, {});
+});
+test('_saveSimpleDailyStats — persists the current in-memory stats to the store', () => {
+  let saved = null;
+  const d = makeWidgetDevice({ setStoreValue: async (key, val) => { saved = { key, val }; } });
+  d._simpleDailyStats = { d1: { date: '2099-01-01', kwh: 1.2, runtimeMs: 60_000 } };
+  d._saveSimpleDailyStats();
+  assert.strictEqual(saved.key, 'simpleDailyStats');
+  assert.deepStrictEqual(saved.val, d._simpleDailyStats);
 });
 
 test('getEmsControllableDevices — lists chargers and simple devices, resolving names via the API', async () => {
@@ -1548,6 +1578,7 @@ test('getEmsControllableStatus — charger kind reports live power, mode and an 
       id: c.id, connected: true, powerW: 3000, chargeMode: c.charge_mode,
     })),
     _api: { getDevice: async () => ({ name: 'Carport' }) },
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
   });
   const st = d._getChargerState('c1');
   st.sessionActive = true; st.sessionStartedAt = Date.now() - 60_000; st.sessionEnergyKwh = 1.234;
@@ -1556,9 +1587,24 @@ test('getEmsControllableStatus — charger kind reports live power, mode and an 
   assert.strictEqual(status.name, 'Carport');
   assert.strictEqual(status.connected, true);
   assert.strictEqual(status.chargeMode, 'solar_price');
+  assert.strictEqual(status.chargeNow, true);
   assert.strictEqual(status.sessionEnergyKwh, 1.23);
   assert.strictEqual(status.carName, null);
   assert.strictEqual(status.enabled, true); // no enabled field in cfg → defaults to true
+});
+test('getEmsControllableStatus — charger kind passes through the assigned car\'s capacity and ready-by deadline', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar_price' }] };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    _getChargers: async ({ chargers }) => chargers.map((c) => ({ id: c.id, connected: true, powerW: 7000, chargeMode: c.charge_mode })),
+    _carStates: [{ id: 'car1', name: 'white Model 3', soc: 36, target: 100, capacityKwh: 75, readyBy: '07:00' }],
+  });
+  const status = await d.getEmsControllableStatus('c1');
+  assert.strictEqual(status.carName, 'white Model 3');
+  assert.strictEqual(status.carSoc, 36);
+  assert.strictEqual(status.carTarget, 100);
+  assert.strictEqual(status.carCapacityKwh, 75);
+  assert.strictEqual(status.carReadyBy, '07:00');
 });
 test('getEmsControllableStatus — unknown id → not_found', async () => {
   const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
@@ -1625,6 +1671,57 @@ test('setEmsDeviceEnabled — re-enables a simple device', async () => {
 test('setEmsDeviceEnabled — unknown device id → not_found', async () => {
   const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
   assert.strictEqual((await d.setEmsDeviceEnabled('nope', false)).error, 'not_found');
+});
+
+test('setEmsChargerMode — rejects an invalid mode without touching config', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
+  let saved = null;
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
+  const res = await d.setEmsChargerMode('c1', 'bogus');
+  assert.strictEqual(res.error, 'invalid_mode');
+  assert.strictEqual(saved, null);
+  assert.strictEqual(cfg.chargers[0].charge_mode, 'solar');
+});
+test('setEmsChargerMode — patches the mode, persists, and restarts the tick', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
+  let saved = null, restarted = false;
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    homey: { settings: { set: (k, v) => { saved = v; } } },
+    _startTick() { restarted = true; },
+  });
+  const res = await d.setEmsChargerMode('c1', 'always');
+  assert.deepStrictEqual(res, { ok: true });
+  assert.strictEqual(cfg.chargers[0].charge_mode, 'always');
+  assert.strictEqual(saved, cfg);
+  assert.strictEqual(restarted, true);
+});
+test('setEmsChargerMode — unknown charger id → not_found', async () => {
+  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
+  assert.strictEqual((await d.setEmsChargerMode('nope', 'solar')).error, 'not_found');
+});
+
+test('setEmsChargeNow — sets the device-wide charge_now capability and re-ticks', async () => {
+  let capSet = null, ticked = false;
+  const d = makeWidgetDevice({
+    setCapabilityValue: async (cap, val) => { capSet = { cap, val }; },
+    _tick: async () => { ticked = true; },
+  });
+  const res = await d.setEmsChargeNow(true);
+  assert.deepStrictEqual(res, { ok: true });
+  assert.deepStrictEqual(capSet, { cap: 'charge_now', val: true });
+  assert.strictEqual(ticked, true);
+});
+test('setEmsChargeNow — coerces a truthy/falsy value to a real boolean', async () => {
+  let capSet = null;
+  const d = makeWidgetDevice({ setCapabilityValue: async (cap, val) => { capSet = val; } });
+  await d.setEmsChargeNow(0);
+  assert.strictEqual(capSet, false);
+});
+test('setEmsChargeNow — a capability write failure surfaces as an error, no crash', async () => {
+  const d = makeWidgetDevice({ setCapabilityValue: async () => { throw new Error('not ready'); } });
+  const res = await d.setEmsChargeNow(true);
+  assert.strictEqual(res.error, 'not ready');
 });
 
 test('getEmsBatteryStatus — classifies the orange zone and surfaces the active price mode', async () => {

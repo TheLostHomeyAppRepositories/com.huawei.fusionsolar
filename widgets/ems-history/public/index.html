@@ -248,16 +248,16 @@ html, body {
 <body>
 <div class="card">
   <div class="header">
-    <div class="title">⚡ EMS History</div>
-    <button class="refresh-btn" id="refresh-btn" title="Refresh">↻</button>
+    <div class="title" id="title">⚡ EMS History</div>
+    <button class="refresh-btn" id="refresh-btn">↻</button>
   </div>
   <div class="day-nav">
-    <button class="nav-btn" id="nav-prev" title="Previous day">◀</button>
-    <div class="day-label-nav" id="nav-day-label">Heute</div>
-    <button class="nav-btn" id="nav-next" title="Next day" disabled>▶</button>
+    <button class="nav-btn" id="nav-prev">◀</button>
+    <div class="day-label-nav" id="nav-day-label">—</div>
+    <button class="nav-btn" id="nav-next" disabled>▶</button>
   </div>
   <div class="timeline" id="timeline">
-    <div class="empty">Loading…</div>
+    <div class="empty" id="initialLoading">…</div>
   </div>
 </div>
 
@@ -267,26 +267,75 @@ function onHomeyReady(Homey) {
 var dayOffset = 0;   // 0 = today, 1 = yesterday, 2 = two days ago, …
 var allEvents = [];
 
+// ── Translations — mode labels reuse the exact same strings as App Settings
+// → EMS History (locales/*.json settings.histMode / settings.history), so
+// the wording matches between the settings page and this widget. ──────────
+var T = (function () {
+  var de = {
+    title: '⚡ EMS Verlauf', refresh: 'Aktualisieren', prevDay: 'Vorheriger Tag', nextDay: 'Nächster Tag',
+    loading: 'Lädt…', failedToLoad: 'Laden fehlgeschlagen', errorPrefix: 'Fehler: ',
+    today: 'Heute', yesterday: 'Gestern', noEventsFor: 'Keine Ereignisse für',
+    appUpdated: 'App aktualisiert', appStarted: 'App gestartet',
+    emsStarted: 'EMS gestartet', emsStopped: 'EMS gestoppt',
+    started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt',
+    modes: {
+      solar_ev: 'Solar-EV-Laden', solar_hp: 'Solar-Wärmepumpe', solar_boiler: 'Solar-Boiler', solar_pool: 'Solar-Poolpumpe',
+      solar_dehumidifier: 'Solar-Entfeuchter', solar_multi: 'Solar (mehrere Geräte)',
+      offpeak_ev: 'Off-Peak-EV-Laden', lowtariff_ev: 'Niedertarif-EV-Laden', price_ev: 'Preisoptimiertes EV-Laden',
+      instant_ev: 'Sofortladen (max.)', battery_priority: 'Batterie-Priorität', holding: 'Wartet — kein Überschuss',
+      idle: 'Kein EV verbunden', disabled: 'EMS deaktiviert', not_configured: 'Nicht konfiguriert', error: 'Fehler',
+      export_limit_on: 'Einspeiselimit aktiviert', export_limit_off: 'Einspeiselimit deaktiviert',
+    },
+  };
+  var nl = {
+    title: '⚡ EMS Geschiedenis', refresh: 'Vernieuwen', prevDay: 'Vorige dag', nextDay: 'Volgende dag',
+    loading: 'Laden…', failedToLoad: 'Laden mislukt', errorPrefix: 'Fout: ',
+    today: 'Vandaag', yesterday: 'Gisteren', noEventsFor: 'Geen gebeurtenissen voor',
+    appUpdated: 'App bijgewerkt', appStarted: 'App gestart',
+    emsStarted: 'EMS gestart', emsStopped: 'EMS gestopt',
+    started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt',
+    modes: {
+      solar_ev: 'Zon EV-laden', solar_hp: 'Zon warmtepomp', solar_boiler: 'Zon boiler', solar_pool: 'Zon zwembadpomp',
+      solar_dehumidifier: 'Zon ontvochtiger', solar_multi: 'Zon (meerdere apparaten)',
+      offpeak_ev: 'Daltarief EV-laden', lowtariff_ev: 'Laag-tarief EV-laden', price_ev: 'Prijsgeoptimaliseerd EV-laden',
+      instant_ev: 'Direct laden (max)', battery_priority: 'Batterijprioriteit', holding: 'Wachten — geen overschot',
+      idle: 'Geen EV aangesloten', disabled: 'EMS uitgeschakeld', not_configured: 'Niet geconfigureerd', error: 'Fout',
+      export_limit_on: 'Exportlimiet geactiveerd', export_limit_off: 'Exportlimiet gedeactiveerd',
+    },
+  };
+  var en = {
+    title: '⚡ EMS History', refresh: 'Refresh', prevDay: 'Previous day', nextDay: 'Next day',
+    loading: 'Loading…', failedToLoad: 'Failed to load', errorPrefix: 'Error: ',
+    today: 'Today', yesterday: 'Yesterday', noEventsFor: 'No events for',
+    appUpdated: 'App updated', appStarted: 'App started',
+    emsStarted: 'EMS started', emsStopped: 'EMS stopped',
+    started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped',
+    modes: {
+      solar_ev: 'Solar EV charging', solar_hp: 'Solar heat pump', solar_boiler: 'Solar boiler', solar_pool: 'Solar pool pump',
+      solar_dehumidifier: 'Solar dehumidifier', solar_multi: 'Solar (multiple devices)',
+      offpeak_ev: 'Off-peak EV charging', lowtariff_ev: 'Low-tariff EV charging', price_ev: 'Price-optimised EV charging',
+      instant_ev: 'Instant charge (max)', battery_priority: 'Battery priority', holding: 'Waiting — no surplus',
+      idle: 'No EV connected', disabled: 'EMS disabled', not_configured: 'Not configured', error: 'Error',
+      export_limit_on: 'Export limit activated', export_limit_off: 'Export limit deactivated',
+    },
+  };
+  var l = navigator.language || '';
+  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+})();
+
+document.getElementById('title').textContent           = T.title;
+document.getElementById('refresh-btn').title            = T.refresh;
+document.getElementById('nav-prev').title                = T.prevDay;
+document.getElementById('nav-next').title                = T.nextDay;
+document.getElementById('initialLoading').textContent    = T.loading;
+
 // ── Mode metadata ──────────────────────────────────────────────────────────
-var MODE_META = {
-  solar_ev:         { label: 'Solar EV charging',          dot: 'dot-solar-ev'         },
-  solar_hp:         { label: 'Solar heat pump',            dot: 'dot-solar-hp'         },
-  solar_boiler:     { label: 'Solar boiler',               dot: 'dot-solar-boiler'     },
-  solar_pool:       { label: 'Solar pool pump',            dot: 'dot-solar-pool'       },
-  solar_dehumidifier: { label: 'Solar dehumidifier',       dot: 'dot-solar-hp'         },
-  solar_multi:      { label: 'Solar (multiple devices)',   dot: 'dot-solar-hp'         },
-  offpeak_ev:       { label: 'Off-peak EV charging',       dot: 'dot-offpeak-ev'       },
-  lowtariff_ev:     { label: 'Low-tariff EV charging',     dot: 'dot-lowtariff-ev'     },
-  price_ev:         { label: 'Price-optimised EV charging', dot: 'dot-price-ev'        },
-  instant_ev:       { label: 'Instant charge (max)',        dot: 'dot-instant-ev'       },
-  battery_priority: { label: 'Battery priority',           dot: 'dot-battery'          },
-  holding:          { label: 'Waiting — no surplus',       dot: 'dot-holding'          },
-  idle:             { label: 'No EV connected',            dot: 'dot-idle'             },
-  disabled:         { label: 'EMS disabled',               dot: 'dot-disabled'         },
-  not_configured:   { label: 'Not configured',             dot: 'dot-disabled'         },
-  error:            { label: 'Error',                      dot: 'dot-error'            },
-  export_limit_on:  { label: 'Export limit activated',     dot: 'dot-export-limit-on'  },
-  export_limit_off: { label: 'Export limit deactivated',   dot: 'dot-export-limit-off' },
+var MODE_DOTS = {
+  solar_ev: 'dot-solar-ev', solar_hp: 'dot-solar-hp', solar_boiler: 'dot-solar-boiler', solar_pool: 'dot-solar-pool',
+  solar_dehumidifier: 'dot-solar-hp', solar_multi: 'dot-solar-hp',
+  offpeak_ev: 'dot-offpeak-ev', lowtariff_ev: 'dot-lowtariff-ev', price_ev: 'dot-price-ev', instant_ev: 'dot-instant-ev',
+  battery_priority: 'dot-battery', holding: 'dot-holding', idle: 'dot-idle', disabled: 'dot-disabled',
+  not_configured: 'dot-disabled', error: 'dot-error', export_limit_on: 'dot-export-limit-on', export_limit_off: 'dot-export-limit-off',
 };
 
 var EXTRACT_MODES = { solar_ev:1, offpeak_ev:1, instant_ev:1 };
@@ -311,8 +360,8 @@ function dayEnd(offset) {
 }
 
 function navLabel(offset) {
-  if (offset === 0) return 'Heute';
-  if (offset === 1) return 'Gestern';
+  if (offset === 0) return T.today;
+  if (offset === 1) return T.yesterday;
   var d = new Date(dayStart(offset));
   return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 }
@@ -323,8 +372,8 @@ function fmtDayLabel(ts) {
   var today     = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   var yesterday = today - 86400000;
   var ds        = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  if (ds === today)     return 'Today';
-  if (ds === yesterday) return 'Yesterday';
+  if (ds === today)     return T.today;
+  if (ds === yesterday) return T.yesterday;
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
@@ -345,21 +394,22 @@ function eventInfo(ev) {
     return {
       cls:    'ev-system',
       dot:    isUpdate ? 'dot-app-update' : 'dot-app-start',
-      label:  isUpdate ? 'App updated'    : 'App started',
+      label:  isUpdate ? T.appUpdated     : T.appStarted,
       detail: ev.label || '',
     };
   }
   if (ev.type === 'mode') {
-    var meta   = MODE_META[ev.event] || { label: ev.event, dot: 'dot-idle' };
+    var modeLabel = T.modes[ev.event] || ev.event;
+    var modeDot   = MODE_DOTS[ev.event] || 'dot-idle';
     var statusText = EXTRACT_MODES[ev.event]
       ? (fmtStatusDetail(ev.label) || ev.label || '')
       : (ev.label || '');
     var hasStatus = statusText && statusText !== '—';
     return {
       cls:    '',
-      dot:    meta.dot,
-      label:  hasStatus ? statusText : meta.label,
-      detail: hasStatus ? meta.label : '',
+      dot:    modeDot,
+      label:  hasStatus ? statusText : modeLabel,
+      detail: hasStatus ? modeLabel : '',
     };
   }
   if (ev.type === 'device') {
@@ -369,13 +419,13 @@ function eventInfo(ev) {
       cls:    '',
       dot:    isStart ? 'dot-dev-start' : 'dot-dev-stop',
       label:  devName,
-      detail: isStart ? 'EMS started' : 'EMS stopped',
+      detail: isStart ? T.emsStarted : T.emsStopped,
     };
   }
   if (ev.type === 'charger') {
-    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || 'started', detail: 'Charger started'  };
-    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,      detail: 'Charger adjusted' };
-    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: 'Charger stopped',     detail: ''                 };
+    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || T.started, detail: T.chargerStarted  };
+    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,       detail: T.chargerAdjusted };
+    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: T.chargerStopped,      detail: ''                };
   }
   return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
 }
@@ -392,7 +442,7 @@ function render() {
     .reverse(); // newest first
 
   if (!filtered.length) {
-    tl.innerHTML = '<div class="empty">No events for ' + esc(navLabel(dayOffset)) + '</div>';
+    tl.innerHTML = '<div class="empty">' + esc(T.noEventsFor) + ' ' + esc(navLabel(dayOffset)) + '</div>';
     return;
   }
 
@@ -451,14 +501,14 @@ async function load() {
     var result = await Homey.api('GET', '/history');
     if (!result || result.error) {
       document.getElementById('timeline').innerHTML =
-        '<div class="empty">' + esc((result && result.error) || 'Failed to load') + '</div>';
+        '<div class="empty">' + esc((result && result.error) || T.failedToLoad) + '</div>';
       return;
     }
     allEvents = result.events || [];
     render();
   } catch (err) {
     document.getElementById('timeline').innerHTML =
-      '<div class="empty">Error: ' + esc(err.message || String(err)) + '</div>';
+      '<div class="empty">' + esc(T.errorPrefix + (err.message || String(err))) + '</div>';
   }
 }
 

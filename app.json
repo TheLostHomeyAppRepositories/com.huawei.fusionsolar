@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.4.1",
+  "version": "1.2.40",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -11774,6 +11774,10 @@
         "setMode": {
           "method": "POST",
           "path": "/mode"
+        },
+        "setChargeNow": {
+          "method": "POST",
+          "path": "/charge-now"
         }
       }
     },

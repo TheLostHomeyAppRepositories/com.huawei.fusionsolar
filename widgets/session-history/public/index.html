@@ -60,7 +60,7 @@
 </head>
 <body>
   <div class="card" id="card">
-    <div class="empty" id="empty">Loading…</div>
+    <div class="empty" id="empty"></div>
     <div id="list"></div>
   </div>
 
@@ -72,11 +72,30 @@ function onHomeyReady(Homey) {
   const settings = Homey.getSettings();
   const maxRows = parseInt(settings.rows || '5', 10);
 
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const T = (function () {
+    const de = {
+      loading: 'Lädt…', notAvailable: 'Nicht verfügbar', unreachable: 'Lader nicht erreichbar',
+      paused: 'Pausiert', inProgress: 'Läuft', startedAt: 'gestartet ', soFar: 'bisher', noSessions: 'Noch keine Sitzungen',
+      months: ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+    };
+    const nl = {
+      loading: 'Laden…', notAvailable: 'Niet beschikbaar', unreachable: 'Lader niet bereikbaar',
+      paused: 'Gepauzeerd', inProgress: 'Bezig', startedAt: 'gestart ', soFar: 'tot nu toe', noSessions: 'Nog geen sessies',
+      months: ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'],
+    };
+    const en = {
+      loading: 'Loading…', notAvailable: 'Not available', unreachable: 'Charger unreachable',
+      paused: 'Paused', inProgress: 'In progress', startedAt: 'started ', soFar: 'so far', noSessions: 'No sessions yet',
+      months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    };
+    const l = navigator.language || '';
+    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  })();
+  emptyEl.textContent = T.loading;
 
   function fmtDate(ts) {
     const d = new Date(ts);
-    return MONTHS[d.getMonth()] + ' ' + d.getDate();
+    return T.months[d.getMonth()] + ' ' + d.getDate();
   }
   function fmtTime(ts) {
     const d = new Date(ts);
@@ -117,7 +136,7 @@ function onHomeyReady(Homey) {
   function render(data) {
     if (!data || data.error) {
       emptyEl.style.display = 'block';
-      emptyEl.textContent = data && data.error ? data.error : 'Not available';
+      emptyEl.textContent = data && data.error ? data.error : T.notAvailable;
       listEl.innerHTML = '';
       return;
     }
@@ -130,11 +149,11 @@ function onHomeyReady(Homey) {
       rows.push(
         '<div class="session-row active' + (isPaused ? ' paused' : '') + '">' +
           '<div class="top-line">' +
-            '<div class="date-range"><span class="live-dot"></span>' + (isPaused ? 'Paused' : 'In progress') + ' \u00b7 started ' +
+            '<div class="date-range"><span class="live-dot"></span>' + (isPaused ? T.paused : T.inProgress) + ' \u00b7 ' + T.startedAt +
               esc(fmtDate(data.current.startTime)) + ', ' + esc(fmtTime(data.current.startTime)) + '</div>' +
           '</div>' +
           '<div class="bottom-line">' +
-            '<div class="duration-energy"><b id="liveDuration">' + esc(fmtDuration(data.current.durationMs)) + '</b> so far \u00b7 <b>' +
+            '<div class="duration-energy"><b id="liveDuration">' + esc(fmtDuration(data.current.durationMs)) + '</b> ' + T.soFar + ' \u00b7 <b>' +
               esc(fmtEnergy(data.current.energyWh)) + '</b></div>' +
             phaseTag(data.current.amps, data.current.phases) +
           '</div>' +
@@ -168,7 +187,7 @@ function onHomeyReady(Homey) {
 
     if (rows.length === 0) {
       emptyEl.style.display = 'block';
-      emptyEl.textContent = 'No sessions yet';
+      emptyEl.textContent = T.noSessions;
       listEl.innerHTML = '';
     } else {
       emptyEl.style.display = 'none';
@@ -188,7 +207,7 @@ function onHomeyReady(Homey) {
       const data = await Homey.api('GET', '/sessions');
       render(data);
     } catch (err) {
-      render({ error: 'Charger unreachable' });
+      render({ error: T.unreachable });
     }
   }
 
@@ -213,7 +232,7 @@ function onHomeyReady(Homey) {
       render(data);
       callReadyMeasured(!!(data && data.current && data.current.startTime));
     } catch (err) {
-      render({ error: 'Charger unreachable' });
+      render({ error: T.unreachable });
       callReadyMeasured(false);
     }
   }

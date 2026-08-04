@@ -855,10 +855,11 @@ A configurable time-series chart of a chosen capability (e.g. solar power, grid 
 
 Live status card for a single EMS-controlled device — pick any configured **EV charger**, **heat pump**, **boiler**, **pool pump** or **dehumidifier** via a search field in the widget settings (add the same widget multiple times for several devices).
 
-- **EV charger:** connection state, current power, assigned car (+ SoC), current session's energy and duration
-- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight), and the configured **minimum surplus (W)** threshold
-- **All devices:** an **"EMS control" switch** — turns EMS's control of *this specific device* on or off, independent of any other device or the app-wide settings. Off means EMS leaves it alone entirely (no start/stop/current commands). Everything else on the card (charging mode, minimum surplus, amp limits, …) is read-only — change those in App Settings.
-- Updates every **5 seconds**; the control switch takes effect immediately (restarts the EMS tick loop, same as saving App Settings)
+- **EV charger:** connection state, current power (green dashed underline + bolt icon while actively charging), current session's energy and an estimated remaining-time-to-target, a **charging-mode selector** (Solar / Solar + Off-peak / Solar + Low tariff / Solar + Price / Always charge), and an **"Instant charge" switch** — the same `charge_now` capability as the device tile's own button, for a one-off full-power charge without switching the mode to "Always charge" (device-wide: applies to every charger on this EMS device, not just the one shown on the card). If a car is assigned to the charger, a sub-card shows its name, a charge-level progress bar (with a marker at the charge limit), and charge level / plan (the car's configured "ready by" deadline, shown only in "Solar + Price" mode) / charge limit as three labelled stats. The remaining-time estimate needs the car's battery capacity (set under Cars in App Settings), current power, current SoC and target SoC — it's a simple estimate (constant-power assumption), not a real navigation-grade prediction.
+
+- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight, saved to the device store roughly every 60s so it survives an app restart), and the configured **minimum surplus (W)** threshold (read-only — change it in App Settings)
+- **All devices:** an **"EMS control" switch** — turns EMS's control of *this specific device* on or off, independent of any other device or the app-wide settings. Off means EMS leaves it alone entirely (no start/stop/current commands).
+- Updates every **5 seconds**; changes take effect immediately (restarts the EMS tick loop, same as saving App Settings)
 
 ---
 

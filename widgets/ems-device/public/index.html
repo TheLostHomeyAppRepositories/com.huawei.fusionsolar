@@ -53,13 +53,35 @@
 
   .divider { height: 1px; background: var(--homey-line-color-light, rgba(128,128,128,0.2)); margin-top: 12px; }
   .stats { display: flex; justify-content: space-between; margin-top: 10px; }
-  .stat-value { font-size: 16px; font-weight: 700; color: var(--homey-text-color-blue); }
+  .stat-value { font-size: 16px; font-weight: 700; color: var(--homey-text-color-blue); display: flex; align-items: center; gap: 3px; }
+  .stat-value.charging { border-bottom: 2px dashed var(--homey-color-green, #34c759); padding-bottom: 2px; width: fit-content; }
+  .bolt { width: 13px; height: 13px; color: var(--homey-color-green, #34c759); display: none; flex-shrink: 0; }
+  .stat-value.charging .bolt { display: block; }
   .stat-label { font-size: 9px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
   .sub-line { font-size: 11px; color: var(--homey-text-color-light); margin-top: 6px; min-height: 14px; }
 
   .surplus-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 8px; }
   .surplus-row label { font-size: 11px; color: var(--homey-text-color-light); }
   .surplus-row .value { font-size: 13px; font-weight: 600; color: var(--homey-text-color); }
+
+  /* ── Car sub-card (only for charger kind, when a car is assigned) ── */
+  .car-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--homey-line-color-light, rgba(128,128,128,0.2)); }
+  .car-head { display: flex; align-items: center; gap: 6px; }
+  .car-icon { width: 16px; height: 16px; flex-shrink: 0; color: var(--homey-text-color-light); }
+  .car-name {
+    font-size: 13px; font-weight: 600; text-decoration: underline;
+    text-decoration-color: rgba(128,128,128,0.4); text-underline-offset: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .car-status { font-size: 11px; color: var(--homey-text-color-light); margin-top: 4px; min-height: 14px; }
+  .car-bar-wrap { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .car-battery-icon { width: 14px; height: 14px; flex-shrink: 0; color: var(--homey-text-color-light); }
+  .car-bar-track { flex: 1; position: relative; height: 10px; border-radius: 6px; background: rgba(128,128,128,0.14); overflow: hidden; }
+  .car-bar-fill { height: 100%; background: var(--homey-color-green, #22c55e); border-radius: 6px; transition: width 0.3s ease; }
+  .car-bar-marker { position: absolute; top: -2px; width: 2px; height: 14px; background: var(--homey-line-color, rgba(128,128,128,0.6)); }
+  .car-stats { display: flex; justify-content: space-between; margin-top: 8px; }
+  .car-stat-value { font-size: 13px; font-weight: 700; color: var(--homey-text-color); }
+  .car-stat-label { font-size: 9px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
 
   .no-data { font-size: 12px; color: var(--homey-text-color-light); text-align: center; padding: 20px 4px; }
   .saved-flash { color: var(--homey-text-color-green) !important; }
@@ -84,10 +106,20 @@
 
       <select class="mode-select" id="modeSelect" style="display:none"></select>
 
+      <div class="control-row" id="chargeNowRow" style="display:none">
+        <label id="chargeNowLabel">—</label>
+        <button type="button" class="switch" id="chargeNowSwitch" role="switch" aria-checked="false">
+          <span class="knob"></span>
+        </button>
+      </div>
+
       <div class="divider"></div>
       <div class="stats">
         <div>
-          <div class="stat-value" id="stat1v">—</div>
+          <div class="stat-value" id="stat1group">
+            <span id="stat1v">—</span>
+            <svg class="bolt" id="stat1bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+          </div>
           <div class="stat-label" id="stat1l">—</div>
         </div>
         <div>
@@ -104,6 +136,42 @@
         <label id="surplusLabel">—</label>
         <span class="value" id="surplusValue">—</span>
       </div>
+
+      <div class="car-section" id="carSection" style="display:none">
+        <div class="car-head">
+          <svg class="car-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 17h-2v-6l2-5h10l4 5h1a1 1 0 0 1 1 1v5h-2"/>
+            <circle cx="7.5" cy="17.5" r="2.5"/>
+            <circle cx="17.5" cy="17.5" r="2.5"/>
+          </svg>
+          <span class="car-name" id="carName">—</span>
+        </div>
+        <div class="car-status" id="carStatus"></div>
+        <div class="car-bar-wrap">
+          <svg class="car-battery-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="16" height="10" rx="2"/>
+            <line x1="22" y1="10" x2="22" y2="14"/>
+          </svg>
+          <div class="car-bar-track">
+            <div class="car-bar-fill" id="carBarFill" style="width:0%"></div>
+            <div class="car-bar-marker" id="carBarMarker" style="display:none"></div>
+          </div>
+        </div>
+        <div class="car-stats">
+          <div>
+            <div class="car-stat-value" id="carSocVal">—</div>
+            <div class="car-stat-label" id="carSocLabel">—</div>
+          </div>
+          <div>
+            <div class="car-stat-value" id="carPlanVal">—</div>
+            <div class="car-stat-label" id="carPlanLabel">—</div>
+          </div>
+          <div>
+            <div class="car-stat-value" id="carLimitVal">—</div>
+            <div class="car-stat-label" id="carLimitLabel">—</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -116,9 +184,12 @@ function onHomeyReady(Homey) {
       notFound: 'Gerät nicht mehr konfiguriert',
       connected: 'Verbunden', notConnected: 'Nicht verbunden',
       on: 'An', off: 'Aus',
-      power: 'Leistung', today: 'Heute', session: 'Sitzung', car: 'Fahrzeug', runtime: 'Laufzeit',
+      power: 'Leistung', today: 'Heute', charged: 'Geladen', runtime: 'Laufzeit', remaining: 'Restzeit',
       minSurplus: 'Min. Überschuss', emsControl: 'EMS-Steuerung',
+      instantCharge: 'Sofortladen', instantChargeHint: 'Lädt sofort mit voller Leistung — gilt für alle Lader an diesem EMS-Gerät, bis wieder ausgeschaltet',
       modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-Peak', solar_lowtariff: 'Solar + Niedertarif', solar_price: 'Solar + Preis', always: 'Immer laden' },
+      chargingActive: 'Ladevorgang aktiv …', waitingSurplus: 'Wartet auf Überschuss …',
+      socLabel: 'Ladestand', planLabel: 'Plan', limitLabel: 'Ladelimit',
     };
     var nl = {
       noSetting: 'Selecteer een apparaat in de widget-instellingen',
@@ -126,9 +197,12 @@ function onHomeyReady(Homey) {
       notFound: 'Apparaat niet meer geconfigureerd',
       connected: 'Verbonden', notConnected: 'Niet verbonden',
       on: 'Aan', off: 'Uit',
-      power: 'Vermogen', today: 'Vandaag', session: 'Sessie', car: 'Auto', runtime: 'Looptijd',
+      power: 'Vermogen', today: 'Vandaag', charged: 'Geladen', runtime: 'Looptijd', remaining: 'Resterende tijd',
       minSurplus: 'Min. overschot', emsControl: 'EMS-besturing',
+      instantCharge: 'Direct laden', instantChargeHint: 'Laadt direct met vol vermogen — geldt voor alle laders op dit EMS-apparaat, tot weer uitgeschakeld',
       modes: { solar: 'Zon', solar_offpeak: 'Zon + daltarief', solar_lowtariff: 'Zon + laag tarief', solar_price: 'Zon + prijs', always: 'Altijd laden' },
+      chargingActive: 'Bezig met laden …', waitingSurplus: 'Wacht op overschot …',
+      socLabel: 'Laadstand', planLabel: 'Plan', limitLabel: 'Laadlimiet',
     };
     var en = {
       noSetting: 'Select a device in widget settings',
@@ -136,9 +210,12 @@ function onHomeyReady(Homey) {
       notFound: 'Device no longer configured',
       connected: 'Connected', notConnected: 'Not connected',
       on: 'On', off: 'Off',
-      power: 'Power', today: 'Today', session: 'Session', car: 'Car', runtime: 'Runtime',
+      power: 'Power', today: 'Today', charged: 'Charged', runtime: 'Runtime', remaining: 'Remaining time',
       minSurplus: 'Min. surplus', emsControl: 'EMS control',
+      instantCharge: 'Instant charge', instantChargeHint: 'Charges immediately at full power — applies to every charger on this EMS device until switched off again',
       modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-peak', solar_lowtariff: 'Solar + Low tariff', solar_price: 'Solar + Price', always: 'Always charge' },
+      chargingActive: 'Charging in progress …', waitingSurplus: 'Waiting for surplus …',
+      socLabel: 'Charge level', planLabel: 'Plan', limitLabel: 'Charge limit',
     };
     var l = navigator.language || '';
     return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
@@ -153,12 +230,23 @@ function onHomeyReady(Homey) {
   var controlLabel  = document.getElementById('controlLabel');
   var controlSwitch = document.getElementById('controlSwitch');
   var modeSelect = document.getElementById('modeSelect');
-  var stat1v = document.getElementById('stat1v'), stat1l = document.getElementById('stat1l');
+  var chargeNowRow    = document.getElementById('chargeNowRow');
+  var chargeNowLabel  = document.getElementById('chargeNowLabel');
+  var chargeNowSwitch = document.getElementById('chargeNowSwitch');
+  var stat1group = document.getElementById('stat1group'), stat1v = document.getElementById('stat1v'), stat1l = document.getElementById('stat1l');
   var stat2v = document.getElementById('stat2v'), stat2l = document.getElementById('stat2l');
   var stat3v = document.getElementById('stat3v'), stat3l = document.getElementById('stat3l');
   var surplusRow   = document.getElementById('surplusRow');
   var surplusLabel = document.getElementById('surplusLabel');
   var surplusValue = document.getElementById('surplusValue');
+  var carSection  = document.getElementById('carSection');
+  var carNameEl   = document.getElementById('carName');
+  var carStatusEl = document.getElementById('carStatus');
+  var carBarFill   = document.getElementById('carBarFill');
+  var carBarMarker = document.getElementById('carBarMarker');
+  var carSocVal = document.getElementById('carSocVal'), carSocLabel = document.getElementById('carSocLabel');
+  var carPlanVal = document.getElementById('carPlanVal'), carPlanLabel = document.getElementById('carPlanLabel');
+  var carLimitVal = document.getElementById('carLimitVal'), carLimitLabel = document.getElementById('carLimitLabel');
 
   function fmtPower(w) {
     if (w === null || w === undefined) return '—';
@@ -175,6 +263,21 @@ function onHomeyReady(Homey) {
     if (mins < 60) return mins + 'm';
     var h = Math.floor(mins / 60);
     return h + 'h ' + (mins % 60) + 'm';
+  }
+  // Estimated time left to reach the car's target SOC at the current charging
+  // power — capacityKwh * (target - soc) / 100, divided by the current kW.
+  // Just an estimate (assumes constant power); '—' whenever any input is
+  // missing, already at/above target, or not actually drawing power.
+  function fmtRemaining(s) {
+    if (!s.carCapacityKwh || s.carSoc == null || s.carTarget == null || !(s.powerW > 0)) return '—';
+    var pct = s.carTarget - s.carSoc;
+    if (pct <= 0) return '—';
+    var hours = (s.carCapacityKwh * pct / 100) / (s.powerW / 1000);
+    if (!isFinite(hours) || hours <= 0) return '—';
+    var h = Math.floor(hours);
+    var m = Math.round((hours - h) * 60);
+    if (m === 60) { h++; m = 0; }
+    return h + ':' + (m < 10 ? '0' : '') + m + ' h';
   }
 
   function showNoData(msg) {
@@ -197,13 +300,16 @@ function onHomeyReady(Homey) {
   }
 
   var controlBound = false;
+  var chargeNowBound = false;
   var lastKind = null;
   var currentEnabled = null;
+  var currentChargeNow = null;
 
-  function setSwitchVisual(on) {
-    controlSwitch.className = 'switch' + (on ? ' on' : '');
-    controlSwitch.setAttribute('aria-checked', on ? 'true' : 'false');
+  function setSwitchVisualEl(el, on) {
+    el.className = 'switch' + (on ? ' on' : '');
+    el.setAttribute('aria-checked', on ? 'true' : 'false');
   }
+  function setSwitchVisual(on) { setSwitchVisualEl(controlSwitch, on); }
   function bindControlSwitch() {
     controlLabel.textContent = T.emsControl;
     if (controlBound) return;
@@ -213,6 +319,18 @@ function onHomeyReady(Homey) {
       currentEnabled = next;
       setSwitchVisual(next); // optimistic — next poll confirms
       Homey.api('POST', '/enabled', { device: deviceId, enabled: next }).catch(function () {});
+    });
+  }
+  function bindChargeNowSwitch() {
+    chargeNowLabel.textContent = T.instantCharge;
+    chargeNowRow.title = T.instantChargeHint;
+    if (chargeNowBound) return;
+    chargeNowBound = true;
+    chargeNowSwitch.addEventListener('click', function () {
+      var next = !currentChargeNow;
+      currentChargeNow = next;
+      setSwitchVisualEl(chargeNowSwitch, next); // optimistic — next poll confirms
+      Homey.api('POST', '/charge-now', { chargeNow: next }).catch(function () {});
     });
   }
   var modeSelectBound = false;
@@ -227,7 +345,7 @@ function onHomeyReady(Homey) {
     nameEl.textContent = s.name || '—';
     badgeEl.className   = 'badge' + (s.connected ? ' on' : '');
     badgeEl.textContent  = s.connected ? T.connected : T.notConnected;
-    subLineEl.textContent = s.carName ? (T.car + ': ' + s.carName + (s.carSoc != null ? ' · ' + Math.round(s.carSoc) + '%' : '')) : '';
+    subLineEl.textContent = '';
 
     currentEnabled = s.enabled !== false;
     setSwitchVisual(currentEnabled);
@@ -244,12 +362,44 @@ function onHomeyReady(Homey) {
     modeSelect.style.display = '';
     bindModeSelect();
 
+    currentChargeNow = s.chargeNow === true;
+    setSwitchVisualEl(chargeNowSwitch, currentChargeNow);
+    chargeNowRow.style.display = 'flex';
+    bindChargeNowSwitch();
+
+    var isCharging = s.connected && s.powerW > 0;
+    stat1group.className = 'stat-value' + (isCharging ? ' charging' : '');
     stat1v.textContent = fmtPower(s.powerW); stat1l.textContent = T.power;
-    stat2v.textContent = fmtEnergy(s.sessionEnergyKwh); stat2l.textContent = T.session;
-    stat3v.textContent = fmtDuration(s.sessionStartedAt ? (Date.now() - s.sessionStartedAt) : 0);
-    stat3l.textContent = T.runtime;
+    stat2v.textContent = fmtEnergy(s.sessionEnergyKwh); stat2l.textContent = T.charged;
+    stat3v.textContent = fmtRemaining(s); stat3l.textContent = T.remaining;
 
     surplusRow.style.display = 'none';
+
+    if (s.carName) {
+      carSection.style.display = 'block';
+      carNameEl.textContent = s.carName;
+      carStatusEl.textContent = !s.connected ? T.notConnected : (isCharging ? T.chargingActive : T.waitingSurplus);
+
+      var soc = s.carSoc != null ? Math.max(0, Math.min(100, s.carSoc)) : 0;
+      carBarFill.style.width = soc + '%';
+      if (s.carTarget != null) {
+        carBarMarker.style.left = Math.max(0, Math.min(100, s.carTarget)) + '%';
+        carBarMarker.style.display = '';
+      } else {
+        carBarMarker.style.display = 'none';
+      }
+
+      carSocLabel.textContent = T.socLabel;
+      carSocVal.textContent   = s.carSoc != null ? Math.round(s.carSoc) + '%' : '—';
+
+      carLimitLabel.textContent = T.limitLabel;
+      carLimitVal.textContent   = s.carTarget != null ? Math.round(s.carTarget) + '%' : '—';
+
+      carPlanLabel.textContent = T.planLabel;
+      carPlanVal.textContent   = (s.chargeMode === 'solar_price' && s.carReadyBy) ? s.carReadyBy : '—';
+    } else {
+      carSection.style.display = 'none';
+    }
   }
 
   function renderSimple(s) {
@@ -262,7 +412,9 @@ function onHomeyReady(Homey) {
     setSwitchVisual(currentEnabled);
     bindControlSwitch();
     modeSelect.style.display = 'none';
+    chargeNowRow.style.display = 'none';
 
+    stat1group.className = 'stat-value' + (s.isOn ? ' charging' : '');
     stat1v.textContent = fmtPower(s.powerW); stat1l.textContent = T.power;
     stat2v.textContent = fmtEnergy(s.todayKwh); stat2l.textContent = T.today;
     stat3v.textContent = fmtDuration(s.todayRuntimeMs); stat3l.textContent = T.runtime;
@@ -270,6 +422,8 @@ function onHomeyReady(Homey) {
     surplusLabel.textContent = T.minSurplus;
     surplusValue.textContent = fmtPower(s.minSurplusW);
     surplusRow.style.display = 'flex';
+
+    carSection.style.display = 'none';
   }
 
   function render(s) {

@@ -112,6 +112,8 @@ class EmsDevice extends Device {
     await this._restorePriceForecast();
     // Charge session log (energy + cost per charging session, any charge mode).
     await this._restoreChargeSessions();
+    // Daily energy/runtime for the ems-device widget's simple-device "today" stat.
+    await this._restoreSimpleDailyStats();
 
     this._api = new HomeyLocalApi({
       homey:  this.homey,
@@ -194,8 +196,8 @@ class EmsDevice extends Device {
     this.log('[EMS] initialized');
   }
 
-  async onDeleted() { this._stopTick(); this._flushHistorySave(); }
-  async onUninit()  { this._stopTick(); this._flushHistorySave(); }
+  async onDeleted() { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); }
+  async onUninit()  { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); }
 
   async onSettings({ newSettings, changedKeys }) {
     if (changedKeys.includes('homey_api_key')) {
@@ -425,6 +427,7 @@ class EmsDevice extends Device {
       await this._maybeFetchPvForecast(cfg); // rate-limited internally (≥3 h between fetches)
       await this._updatePvForecastCapabilities(); // recompute today/tomorrow/now from cache (no API call)
       this._checkPriceForecastStaleness(); // one-shot notification if a fed forecast goes stale
+      this._saveSimpleDailyStats(); // persist the ems-device widget's "today" stat — see lib/ems/widget.js
     }
 
     if (!enabled || !hasKey) {

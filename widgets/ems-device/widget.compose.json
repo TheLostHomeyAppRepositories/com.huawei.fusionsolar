@@ -37,6 +37,10 @@
     "setMode": {
       "method": "POST",
       "path": "/mode"
+    },
+    "setChargeNow": {
+      "method": "POST",
+      "path": "/charge-now"
     }
   },
   "images": {

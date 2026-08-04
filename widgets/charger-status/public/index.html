@@ -74,15 +74,15 @@
     <div class="stats">
       <div>
         <div class="stat-value" id="statPower">—</div>
-        <div class="stat-label">Power</div>
+        <div class="stat-label" id="labelPower">Power</div>
       </div>
       <div>
         <div class="stat-value" id="statAmps">—</div>
-        <div class="stat-label">Amps</div>
+        <div class="stat-label" id="labelAmps">Amps</div>
       </div>
       <div>
         <div class="stat-value" id="statTimer">—</div>
-        <div class="stat-label">Session</div>
+        <div class="stat-label" id="labelSession">Session</div>
       </div>
     </div>
   </div>
@@ -99,17 +99,62 @@ function onHomeyReady(Homey) {
   const statAmps = document.getElementById('statAmps');
   const statTimer = document.getElementById('statTimer');
 
-  const LABELS = {
-    not_connected: ['Idle', 'No car connected'],
-    connected: ['Connected', 'Ready to start'],
-    smart_charging: ['Smart Charging', 'Waiting for a flow to start'],
-    charging: ['Charging', ''],
-    paused: ['Paused', 'Same session — resumes at your last limit'],
-    fully_charged: ['Fully Charged', 'Cable still connected'],
-    finishing: ['Finishing', 'Car topping off — almost full'],
-    offline: ['Charger Offline', 'Not connected to Homey'],
-    error: ['Error', 'Check the charger'],
-  };
+  const T = (function () {
+    const de = {
+      power: 'Leistung', amps: 'Ampere', session: 'Sitzung',
+      notAvailable: 'Nicht verfügbar', unreachable: 'Lader nicht erreichbar',
+      charging: 'Lädt', paused: 'Pausiert', resumesAt: 'Setzt fort bei ',
+      states: {
+        not_connected: ['Leerlauf', 'Kein Auto verbunden'],
+        connected: ['Verbunden', 'Bereit zum Start'],
+        smart_charging: ['Smart Charging', 'Wartet auf einen Flow-Start'],
+        charging: ['Lädt', ''],
+        paused: ['Pausiert', 'Gleiche Sitzung — setzt bei letztem Limit fort'],
+        fully_charged: ['Vollständig geladen', 'Kabel noch angeschlossen'],
+        finishing: ['Abschluss', 'Auto lädt fast voll'],
+        offline: ['Lader offline', 'Nicht mit Homey verbunden'],
+        error: ['Fehler', 'Lader prüfen'],
+      },
+    };
+    const nl = {
+      power: 'Vermogen', amps: 'Ampère', session: 'Sessie',
+      notAvailable: 'Niet beschikbaar', unreachable: 'Lader niet bereikbaar',
+      charging: 'Laadt', paused: 'Gepauzeerd', resumesAt: 'Hervat bij ',
+      states: {
+        not_connected: ['Inactief', 'Geen auto verbonden'],
+        connected: ['Verbonden', 'Klaar om te starten'],
+        smart_charging: ['Smart Charging', 'Wacht op een flow-start'],
+        charging: ['Laadt', ''],
+        paused: ['Gepauzeerd', 'Zelfde sessie — hervat bij laatste limiet'],
+        fully_charged: ['Volledig opgeladen', 'Kabel nog aangesloten'],
+        finishing: ['Afronden', 'Auto bijna vol'],
+        offline: ['Lader offline', 'Niet verbonden met Homey'],
+        error: ['Fout', 'Controleer de lader'],
+      },
+    };
+    const en = {
+      power: 'Power', amps: 'Amps', session: 'Session',
+      notAvailable: 'Not available', unreachable: 'Charger unreachable',
+      charging: 'Charging', paused: 'Paused', resumesAt: 'Resumes at ',
+      states: {
+        not_connected: ['Idle', 'No car connected'],
+        connected: ['Connected', 'Ready to start'],
+        smart_charging: ['Smart Charging', 'Waiting for a flow to start'],
+        charging: ['Charging', ''],
+        paused: ['Paused', 'Same session — resumes at your last limit'],
+        fully_charged: ['Fully Charged', 'Cable still connected'],
+        finishing: ['Finishing', 'Car topping off — almost full'],
+        offline: ['Charger Offline', 'Not connected to Homey'],
+        error: ['Error', 'Check the charger'],
+      },
+    };
+    const l = navigator.language || '';
+    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  })();
+
+  document.getElementById('labelPower').textContent   = T.power;
+  document.getElementById('labelAmps').textContent    = T.amps;
+  document.getElementById('labelSession').textContent = T.session;
 
   let sessionStartTime = null;
 
@@ -130,7 +175,7 @@ function onHomeyReady(Homey) {
 
   function render(s) {
     if (!s || s.error) {
-      statusLabel.textContent = 'Not available';
+      statusLabel.textContent = T.notAvailable;
       statusLabel.className = 'status-label';
       statusSub.textContent = s && s.error ? s.error : '';
       card.className = 'card';
@@ -141,7 +186,7 @@ function onHomeyReady(Homey) {
     }
 
     const st = s.sessionStatus || 'not_connected';
-    const [label, sub] = LABELS[st] || [st, ''];
+    const [label, sub] = T.states[st] || [st, ''];
 
     // Photo per state: each state has its own ring color where a photo
     // exists — white (connected), pulsing white/blue (charging), orange
@@ -172,11 +217,11 @@ function onHomeyReady(Homey) {
 
     statusLabel.className = 'status-label' + (st === 'error' ? ' error' : '');
     if (st === 'charging' && s.requestedAmps) {
-      statusLabel.textContent = 'Charging \u00b7 ' + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
+      statusLabel.textContent = T.charging + ' \u00b7 ' + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
       statusSub.textContent = '';
     } else if (st === 'paused' && s.requestedAmps) {
-      statusLabel.textContent = 'Paused';
-      statusSub.textContent = 'Resumes at ' + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
+      statusLabel.textContent = T.paused;
+      statusSub.textContent = T.resumesAt + (s.limitKw ? s.limitKw + ' (' + s.requestedAmps + 'A)' : s.requestedAmps + 'A') + ' / ' + s.phaseLabel;
     } else {
       statusLabel.textContent = label;
       statusSub.textContent = sub;
@@ -202,7 +247,7 @@ function onHomeyReady(Homey) {
       const s = await Homey.api('GET', '/status');
       render(s);
     } catch (err) {
-      render({ error: 'Charger unreachable' });
+      render({ error: T.unreachable });
     }
   }
 
