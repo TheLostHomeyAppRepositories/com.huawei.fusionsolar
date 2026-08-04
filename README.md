@@ -855,9 +855,10 @@ A configurable time-series chart of a chosen capability (e.g. solar power, grid 
 
 Live status card for a single EMS-controlled device — pick any configured **EV charger**, **heat pump**, **boiler**, **pool pump** or **dehumidifier** via a search field in the widget settings (add the same widget multiple times for several devices).
 
-- **EV charger:** connection state, current power, assigned car (+ SoC), current session's energy and duration, and a **charging-mode selector** (Solar / Solar + Off-peak / Solar + Low tariff / Solar + Price / Always charge) you can change directly from the widget
-- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight), and an editable **minimum surplus (W)** field
-- Updates every **5 seconds**; changes take effect immediately (restarts the EMS tick loop, same as saving App Settings)
+- **EV charger:** connection state, current power, assigned car (+ SoC), current session's energy and duration
+- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight), and the configured **minimum surplus (W)** threshold
+- **All devices:** an **"EMS control" switch** — turns EMS's control of *this specific device* on or off, independent of any other device or the app-wide settings. Off means EMS leaves it alone entirely (no start/stop/current commands). Everything else on the card (charging mode, minimum surplus, amp limits, …) is read-only — change those in App Settings.
+- Updates every **5 seconds**; the control switch takes effect immediately (restarts the EMS tick loop, same as saving App Settings)
 
 ---
 

@@ -916,6 +916,9 @@ class EmsDevice extends Device {
         // How long a higher amp target must hold before the EMS steps up (anti-thrash).
         // Per-charger; falls back to the global STEP_HOLD_MS default (30 s).
         stepHoldMs:  Math.max(0, Number(c.step_hold_s) || 30) * 1000,
+        // Per-device "EMS controls this device" toggle — undefined/missing means
+        // enabled (backward-compatible default). See lib/ems/widget.js.
+        enabled:     c.enabled !== false,
       };
     }));
   }

@@ -30,13 +30,13 @@
       "method": "GET",
       "path": "/status"
     },
+    "setEnabled": {
+      "method": "POST",
+      "path": "/enabled"
+    },
     "setMode": {
       "method": "POST",
       "path": "/mode"
-    },
-    "setMinSurplus": {
-      "method": "POST",
-      "path": "/min-surplus"
     }
   },
   "images": {

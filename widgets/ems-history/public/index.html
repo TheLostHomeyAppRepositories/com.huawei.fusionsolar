@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+/* Colors come from Homey's own --homey-* variables (widget styling guide),
+   which follow the dashboard's light/dark setting. The previous version keyed
+   dark-mode overrides off ":root[data-theme=dark]" — that's the Artifacts
+   convention, not Homey's; Homey never sets that attribute, so this widget
+   was permanently stuck in light styling. The handful of accent dot colors
+   with no direct --homey- equivalent are now gated on Homey's actual
+   .homey-dark-mode marker class instead. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -13,7 +20,7 @@ html, body {
 }
 
 .card {
-  background: #fff;
+  background: var(--homey-background-color);
   border-radius: 16px;
   padding: 12px 14px 4px;
   height: 100%;
@@ -39,7 +46,7 @@ html, body {
 .title {
   font-size: 12px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--homey-text-color);
   letter-spacing: .3px;
 }
 .refresh-btn {
@@ -47,12 +54,12 @@ html, body {
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: #aaa;
+  color: var(--homey-text-color-light);
   padding: 2px 4px;
   border-radius: 6px;
   line-height: 1;
 }
-.refresh-btn:hover { color: #555; background: #f4f4f4; }
+.refresh-btn:hover { color: var(--homey-text-color); background: rgba(128,128,128,0.12); }
 
 /* ── Day nav ── */
 .day-nav {
@@ -68,20 +75,20 @@ html, body {
   border: none;
   cursor: pointer;
   font-size: 15px;
-  color: #007aff;
+  color: var(--homey-text-color-blue);
   padding: 2px 6px;
   border-radius: 6px;
   line-height: 1;
   flex-shrink: 0;
 }
-.nav-btn:hover { background: #f0f5ff; }
-.nav-btn:disabled { color: #c7c7cc; cursor: default; }
+.nav-btn:hover { background: rgba(10,132,255,0.12); }
+.nav-btn:disabled { color: var(--homey-text-color-light); cursor: default; }
 .nav-btn:disabled:hover { background: none; }
 
 .day-label-nav {
   font-size: 11px;
   font-weight: 600;
-  color: #3a3a3c;
+  color: var(--homey-text-color);
   text-align: center;
   flex: 1;
   white-space: nowrap;
@@ -101,7 +108,7 @@ html, body {
 .day-label {
   font-size: 9px;
   font-weight: 700;
-  color: #bbb;
+  color: var(--homey-text-color-light);
   text-transform: uppercase;
   letter-spacing: .8px;
   padding: 8px 0 4px 20px;
@@ -123,7 +130,7 @@ html, body {
   top: 16px;
   bottom: -3px;
   width: 1px;
-  background: #f0f0f0;
+  background: var(--homey-line-color-light, rgba(128,128,128,0.15));
 }
 .event-row:last-child::before { display: none; }
 
@@ -131,7 +138,7 @@ html, body {
 .event-row.ev-system {
   margin: 4px 0 2px;
 }
-.event-row.ev-system::before { background: #e8e8f0; }
+.event-row.ev-system::before { background: var(--homey-line-color, rgba(128,128,128,0.3)); }
 
 .dot {
   width: 13px;
@@ -139,8 +146,8 @@ html, body {
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: 2px;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px #e0e0e0;
+  border: 2px solid var(--homey-background-color);
+  box-shadow: 0 0 0 1px var(--homey-line-color, rgba(128,128,128,0.3));
 }
 
 /* System events: diamond shape instead of circle */
@@ -164,7 +171,7 @@ html, body {
 .event-mode {
   font-size: 11.5px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--homey-text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -174,12 +181,12 @@ html, body {
 .ev-system .event-mode {
   font-size: 10.5px;
   font-weight: 500;
-  color: #888;
+  color: var(--homey-text-color-light);
 }
 
 .event-time {
   font-size: 9.5px;
-  color: #bbb;
+  color: var(--homey-text-color-light);
   white-space: nowrap;
   flex-shrink: 0;
   margin-left: auto;
@@ -187,7 +194,7 @@ html, body {
 
 .event-detail {
   font-size: 10px;
-  color: #888;
+  color: var(--homey-text-color-light);
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
@@ -196,7 +203,7 @@ html, body {
 
 .empty {
   font-size: 12px;
-  color: #bbb;
+  color: var(--homey-text-color-light);
   text-align: center;
   padding: 24px 0;
   flex: 1;
@@ -205,7 +212,8 @@ html, body {
   justify-content: center;
 }
 
-/* ── Dot colours ── */
+/* ── Dot colours — deliberately constant across themes (each color IDs an
+   EMS mode/event type, not a text-on-background contrast choice) ── */
 .dot-solar-ev           { background: #34c759; }
 .dot-solar-hp           { background: #30d158; }
 .dot-solar-boiler       { background: #32ade6; }
@@ -229,27 +237,12 @@ html, body {
 .dot-app-start          { background: #8e8e93; }
 .dot-app-update         { background: #5e5ce6; }
 
-/* ── Dark mode (only via Homey data-theme attribute) ── */
-:root[data-theme="dark"] .card { background: #1e1e22; }
-:root[data-theme="dark"] .title { color: #f2f2f2; }
-:root[data-theme="dark"] .refresh-btn { color: #666; }
-:root[data-theme="dark"] .refresh-btn:hover { color: #aaa; background: #2c2c31; }
-:root[data-theme="dark"] .event-row::before { background: #2e2e33; }
-:root[data-theme="dark"] .ev-system::before { background: #38383d; }
-:root[data-theme="dark"] .dot { border-color: #1e1e22; box-shadow: 0 0 0 1px #3a3a3f; }
-:root[data-theme="dark"] .event-mode { color: #f2f2f2; }
-:root[data-theme="dark"] .ev-system .event-mode { color: #8a8a8f; }
-:root[data-theme="dark"] .event-time { color: #666; }
-:root[data-theme="dark"] .event-detail { color: #8a8a8f; }
-:root[data-theme="dark"] .empty { color: #555; }
-:root[data-theme="dark"] .day-label { color: #555; }
-:root[data-theme="dark"] .dot-holding  { background: #5a5a5f; }
-:root[data-theme="dark"] .dot-idle     { background: #4a4a4f; }
-:root[data-theme="dark"] .dot-disabled { background: #4a4a4f; }
-:root[data-theme="dark"] .day-label-nav { color: #c7c7cc; }
-:root[data-theme="dark"] .nav-btn { color: #0a84ff; }
-:root[data-theme="dark"] .nav-btn:hover { background: #1c2a3a; }
-:root[data-theme="dark"] .nav-btn:disabled { color: #3a3a3f; }
+/* The three neutral-grey dots are too washed-out on a dark card — darken them
+   using Homey's actual dark-mode marker class (not the Artifacts data-theme
+   attribute, which Homey never sets). */
+.homey-dark-mode .dot-holding  { background: #5a5a5f; }
+.homey-dark-mode .dot-idle     { background: #4a4a4f; }
+.homey-dark-mode .dot-disabled { background: #4a4a4f; }
 </style>
 </head>
 <body>

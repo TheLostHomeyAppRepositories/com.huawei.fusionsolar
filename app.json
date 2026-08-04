@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.3.2",
+  "version": "1.4.1",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -11767,13 +11767,13 @@
           "method": "GET",
           "path": "/status"
         },
+        "setEnabled": {
+          "method": "POST",
+          "path": "/enabled"
+        },
         "setMode": {
           "method": "POST",
           "path": "/mode"
-        },
-        "setMinSurplus": {
-          "method": "POST",
-          "path": "/min-surplus"
         }
       }
     },

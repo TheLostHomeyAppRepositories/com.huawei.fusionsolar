@@ -588,6 +588,15 @@ test('_evaluateSimpleDevices — control disabled → no action', async () => {
   assert.strictEqual(d._setOnCalls.length, 0);
 });
 
+test('_evaluateSimpleDevices — a per-device enabled:false is left alone even with ample surplus (type-wide control stays on)', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev({ enabled: false })], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  assert.strictEqual(d._setOnCalls.length, 0); // never touched
+  assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
+});
+
 test('_evaluateSimpleDevices — battery hard-stop forces a running device off', async () => {
   const d = makeSimpleDevice();
   const now = Date.now();
@@ -1294,6 +1303,27 @@ test('_evaluateEvChargers — grid_import_limit_kw unset (0) → unlimited, ceil
   assert.strictEqual(d._getChargerState('c1').currentAmps, 32); // unaffected — no ceiling configured
 });
 
+// ── chargerControl: per-device "EMS controls this device" toggle ─────────────
+test('_evaluateEvChargers — a charger with enabled:false is left alone even with ample surplus', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false, enabled: false, powerW: 0 };
+  const d = makeChargerDevice();
+  const battery = { soc: 90, powerW: 0 };
+  await d._evaluateEvChargers(battery, -5000, [charger], {}, null, null); // 5 kW export surplus
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null); // never started
+});
+test('_evaluateEvChargers — a disabled charger is skipped even while other enabled chargers are still managed', async () => {
+  // Instant charging (P0) sets amps directly in one tick (unlike the solar-surplus
+  // loop, which has a 30s anti-thrash step-hold) — the reliable way to assert an
+  // immediate amp change within a single call, same as the other P0 tests above.
+  const disabled = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false, enabled: false };
+  const enabled  = { id: 'c2', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false };
+  const d = makeChargerDevice({ getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined) });
+  const battery = { soc: 90, powerW: 0 };
+  await d._evaluateEvChargers(battery, 0, [disabled, enabled], {}, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null);
+  assert.strictEqual(d._getChargerState('c2').currentAmps, 32);
+});
+
 // ── simpleDevices: whole-house grid-import ceiling (grid_import_limit_kw) ────
 test('_evaluateSimpleDevices — a new start is denied when the grid-import ceiling has no headroom', async () => {
   const now = Date.now();
@@ -1528,6 +1558,7 @@ test('getEmsControllableStatus — charger kind reports live power, mode and an 
   assert.strictEqual(status.chargeMode, 'solar_price');
   assert.strictEqual(status.sessionEnergyKwh, 1.23);
   assert.strictEqual(status.carName, null);
+  assert.strictEqual(status.enabled, true); // no enabled field in cfg → defaults to true
 });
 test('getEmsControllableStatus — unknown id → not_found', async () => {
   const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
@@ -1541,53 +1572,59 @@ test('getEmsControllableStatus — simple-device kind reports on/off, power and 
   const status = await d.getEmsControllableStatus('b1');
   assert.strictEqual(status.kind, 'boiler');
   assert.strictEqual(status.isOn, true);
+  assert.strictEqual(status.enabled, true);
   assert.strictEqual(status.powerW, 1200);
   assert.strictEqual(status.minSurplusW, 1800);
   assert.strictEqual(status.todayKwh, 3.4);
   assert.strictEqual(status.todayRuntimeMs, 7_200_000);
   assert.ok(status.runtimeMs >= 120_000);
 });
-
-test('setEmsChargerMode — rejects an invalid mode without touching config', async () => {
-  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
-  let saved = null;
-  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
-  const res = await d.setEmsChargerMode('c1', 'bogus');
-  assert.strictEqual(res.error, 'invalid_mode');
-  assert.strictEqual(saved, null);
-  assert.strictEqual(cfg.chargers[0].charge_mode, 'solar');
+test('getEmsControllableStatus — a disabled simple device reports isOn from the live capability, not the stale stateMap', async () => {
+  // EMS never touches a disabled device's stateMap (simpleDevices.js skips it
+  // entirely), so getEmsControllableStatus must fall back to device.actualOn —
+  // here the real onoff capability (true) disagrees with the stale EMS
+  // bookkeeping (isOn: false, from before the device was disabled).
+  const cfg = { boiler_devices: [{ id: 'b1', enabled: false }] };
+  const d = makeWidgetDevice({ _getConfig: () => cfg, _cap: async (id, cap) => (cap === 'onoff' ? true : null) });
+  d._boilerStates.set('b1', { isOn: false, startedAt: null });
+  const status = await d.getEmsControllableStatus('b1');
+  assert.strictEqual(status.enabled, false);
+  assert.strictEqual(status.isOn, true); // from device.actualOn, not the stale stateMap
 });
-test('setEmsChargerMode — patches the mode, persists, and restarts the tick', async () => {
-  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
+test('getEmsControllableStatus — a disabled charger still reports enabled:false', async () => {
+  const cfg = { chargers: [{ id: 'c1', enabled: false }] };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    _getChargers: async ({ chargers }) => chargers.map((c) => ({ id: c.id, connected: false, powerW: 0, chargeMode: 'solar' })),
+  });
+  const status = await d.getEmsControllableStatus('c1');
+  assert.strictEqual(status.enabled, false);
+});
+
+test('setEmsDeviceEnabled — disables a charger, persists, and restarts the tick', async () => {
+  const cfg = { chargers: [{ id: 'c1' }] };
   let saved = null, restarted = false;
   const d = makeWidgetDevice({
     _getConfig: () => cfg,
     homey: { settings: { set: (k, v) => { saved = v; } } },
     _startTick() { restarted = true; },
   });
-  const res = await d.setEmsChargerMode('c1', 'always');
+  const res = await d.setEmsDeviceEnabled('c1', false);
   assert.deepStrictEqual(res, { ok: true });
-  assert.strictEqual(cfg.chargers[0].charge_mode, 'always');
+  assert.strictEqual(cfg.chargers[0].enabled, false);
   assert.strictEqual(saved, cfg);
   assert.strictEqual(restarted, true);
 });
-test('setEmsChargerMode — unknown charger id → not_found', async () => {
-  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
-  assert.strictEqual((await d.setEmsChargerMode('nope', 'solar')).error, 'not_found');
-});
-
-test('setEmsSimpleDeviceMinSurplus — patches min_surplus_w on the matching simple device', async () => {
-  const cfg = { boiler_devices: [{ id: 'b1', min_surplus_w: 1500 }] };
-  let saved = null;
-  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
-  const res = await d.setEmsSimpleDeviceMinSurplus('b1', 2200);
+test('setEmsDeviceEnabled — re-enables a simple device', async () => {
+  const cfg = { boiler_devices: [{ id: 'b1', enabled: false }] };
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
+  const res = await d.setEmsDeviceEnabled('b1', true);
   assert.deepStrictEqual(res, { ok: true });
-  assert.strictEqual(cfg.boiler_devices[0].min_surplus_w, 2200);
-  assert.strictEqual(saved, cfg);
+  assert.strictEqual(cfg.boiler_devices[0].enabled, true);
 });
-test('setEmsSimpleDeviceMinSurplus — a charger id is rejected (chargers have no min_surplus_w)', async () => {
-  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [{ id: 'c1' }] }) });
-  assert.strictEqual((await d.setEmsSimpleDeviceMinSurplus('c1', 2200)).error, 'not_found');
+test('setEmsDeviceEnabled — unknown device id → not_found', async () => {
+  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
+  assert.strictEqual((await d.setEmsDeviceEnabled('nope', false)).error, 'not_found');
 });
 
 test('getEmsBatteryStatus — classifies the orange zone and surfaces the active price mode', async () => {

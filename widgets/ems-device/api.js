@@ -32,6 +32,18 @@ module.exports = {
     }
   },
 
+  async setEnabled({ homey, body }) {
+    const device = getEmsDevice(homey);
+    if (!device) return { error: 'no_ems_device' };
+    const { device: id, enabled } = body || {};
+    if (!id) return { error: 'missing_params' };
+    try {
+      return await device.setEmsDeviceEnabled(id, enabled);
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
   async setMode({ homey, body }) {
     const device = getEmsDevice(homey);
     if (!device) return { error: 'no_ems_device' };
@@ -39,18 +51,6 @@ module.exports = {
     if (!id || !mode) return { error: 'missing_params' };
     try {
       return await device.setEmsChargerMode(id, mode);
-    } catch (e) {
-      return { error: e.message };
-    }
-  },
-
-  async setMinSurplus({ homey, body }) {
-    const device = getEmsDevice(homey);
-    if (!device) return { error: 'no_ems_device' };
-    const { device: id, watts } = body || {};
-    if (!id) return { error: 'missing_params' };
-    try {
-      return await device.setEmsSimpleDeviceMinSurplus(id, watts);
     } catch (e) {
       return { error: e.message };
     }
