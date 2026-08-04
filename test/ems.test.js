@@ -200,6 +200,64 @@ test('_dualTariffWindow — missing/invalid window for today → isHigh false', 
   assert.strictEqual(w.isHigh, false);
 });
 
+// ── price: _dualTariffPriceAt (dual tariff at an arbitrary point in time, not just
+// "now" — used to build the EMS Forecast widget's 24h timeline) ─────────────────
+test('_dualTariffPriceAt — high price inside the window, low outside', () => {
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } } });
+  const cfg = { price_config: { mode: 'dual', price_low: 0.10, price_high: 0.30, high_windows: { 3: { start: '08:00', end: '20:00' } } } };
+  const inWindow  = Date.UTC(2024, 0, 3, 10, 30); // Wed 2024-01-03, dayOfWeek 3
+  const outWindow = Date.UTC(2024, 0, 3, 22, 0);
+  assert.strictEqual(d._dualTariffPriceAt(cfg, inWindow), 0.30);
+  assert.strictEqual(d._dualTariffPriceAt(cfg, outWindow), 0.10);
+});
+
+// ── price: getEmsPriceStatus (EMS Forecast widget — follows whatever tariff model
+// is actually configured, not just "Price forecast") ────────────────────────────
+test('getEmsPriceStatus — fixed mode returns the configured fixed price', () => {
+  const d = makeDevice({ _getConfig: () => ({ price_config: { mode: 'fixed', price_fixed: 0.219, currency: 'CHF' } }) });
+  const s = d.getEmsPriceStatus();
+  assert.strictEqual(s.mode, 'fixed');
+  assert.strictEqual(s.currency, 'CHF');
+  assert.strictEqual(s.price, 0.219);
+});
+test('getEmsPriceStatus — variable mode reflects the last flow-pushed value, null when never set', () => {
+  const d1 = makeDevice({ _variablePrice: 0.257, _getConfig: () => ({ price_config: { mode: 'variable', currency: 'EUR' } }) });
+  assert.strictEqual(d1.getEmsPriceStatus().price, 0.257);
+  const d2 = makeDevice({ _variablePrice: null, _getConfig: () => ({ price_config: { mode: 'variable' } }) });
+  assert.strictEqual(d2.getEmsPriceStatus().price, null);
+});
+test('getEmsPriceStatus — dual mode returns a 24-slot hourly timeline built from the high/low windows', () => {
+  const d = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _getConfig: () => ({ price_config: { mode: 'dual', price_low: 0.10, price_high: 0.30, high_windows: { 1: { start: '08:00', end: '20:00' } } } }),
+  });
+  const s = d.getEmsPriceStatus();
+  assert.strictEqual(s.mode, 'dual');
+  assert.strictEqual(s.slots.length, 24);
+  assert.ok(s.slots.every((slot) => slot.price === 0.10 || slot.price === 0.30));
+  assert.strictEqual(s.slots[0].end - s.slots[0].start, 3600_000);
+});
+test('getEmsPriceStatus — dual mode reports not configured when no window has both start+end', () => {
+  const d = makeDevice({ _getConfig: () => ({ price_config: { mode: 'dual', high_windows: {} } }) });
+  assert.strictEqual(d.getEmsPriceStatus().configured, false);
+});
+test('getEmsPriceStatus — forecast mode delegates to getPriceForecast()', () => {
+  const d = makeDevice({ _getConfig: () => ({ price_config: { mode: 'forecast', currency: 'CHF' } }) });
+  d._priceForecast = [{ start: Date.now() - 1000, end: Date.now() + 3600_000, price: 0.199 }];
+  d._priceForecastUpdatedAt = Date.now();
+  const s = d.getEmsPriceStatus();
+  assert.strictEqual(s.mode, 'forecast');
+  assert.strictEqual(s.nowPrice, 0.199);
+  assert.strictEqual(s.slots.length, 1);
+});
+test('getEmsPriceStatus — defaults to fixed mode with price 0 when price_config is missing', () => {
+  const d = makeDevice({ _getConfig: () => ({}) });
+  const s = d.getEmsPriceStatus();
+  assert.strictEqual(s.mode, 'fixed');
+  assert.strictEqual(s.price, 0);
+  assert.strictEqual(s.currency, 'CHF');
+});
+
 // ── chargerControl: _bestPhases ──────────────────────────────────────────────
 test('_bestPhases — 3-phase above threshold, 1-phase below', () => {
   const d = makeDevice();

@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.40",
+  "version": "1.2.42",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -11804,6 +11804,28 @@
         "setZones": {
           "method": "POST",
           "path": "/zones"
+        }
+      }
+    },
+    "ems-forecast": {
+      "id": "ems-forecast",
+      "name": {
+        "en": "EMS Forecast",
+        "de": "EMS Prognose",
+        "nl": "EMS-prognose",
+        "fr": "Prévision EMS"
+      },
+      "height": 460,
+      "transparent": false,
+      "settings": [],
+      "images": {
+        "light": "/widgets/ems-forecast/preview-light.png",
+        "dark": "/widgets/ems-forecast/preview-dark.png"
+      },
+      "api": {
+        "getForecast": {
+          "method": "GET",
+          "path": "/forecast"
         }
       }
     }

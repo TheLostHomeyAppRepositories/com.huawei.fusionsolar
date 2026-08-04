@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Colors come from Homey's own --homey-* variables (see the widget styling
+     guide), which the dashboard sets according to the user's light/dark theme
+     choice — NOT the OS-level prefers-color-scheme, which widgets don't get to
+     read reliably. Never hardcode light/dark pairs here. The bar hues below
+     (green→red for price) are content-driven, not theme colors, same approach
+     as the settings page's own price-forecast chart. */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+    background: transparent;
+    color: var(--homey-text-color);
+  }
+  .card { background: var(--homey-background-color); border-radius: 16px; padding: 14px; }
+  .head { display: flex; align-items: center; justify-content: space-between; }
+  .title { font-size: 15px; font-weight: 700; }
+  .refresh-btn {
+    border: none; background: rgba(128,128,128,0.12); color: var(--homey-text-color-light);
+    width: 24px; height: 24px; border-radius: 8px; font-size: 13px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .refresh-btn:active { transform: scale(0.92); }
+  .refresh-btn.spin { animation: emsfc-spin 0.6s linear; }
+  @keyframes emsfc-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .section { margin-top: 14px; }
+  .section:first-of-type { margin-top: 12px; }
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .sec-label { font-size: 12px; font-weight: 600; color: var(--homey-text-color); }
+  .sec-status { font-size: 10px; color: var(--homey-text-color-light); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sec-status.warn { color: var(--homey-text-color-orange, #f5a524); }
+
+  .minmax-row { display: flex; justify-content: space-between; font-size: 9px; color: var(--homey-text-color-light); margin: 4px 0 2px; }
+  .chart { display: flex; align-items: flex-end; height: 54px; gap: 1px; position: relative; }
+  .bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0; position: relative; }
+  .bar-now-label {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; font-weight: 600; color: var(--homey-color-blue, #007aff); white-space: nowrap;
+  }
+  .axis-row { display: flex; gap: 1px; margin-top: 2px; }
+  .axis-cell { flex: 1; min-width: 2px; font-size: 8px; color: var(--homey-text-color-light); text-align: center; white-space: nowrap; }
+
+  /* Flat, single-value display for the price section in "fixed"/"variable" tariff
+     mode, where there's no future timeline to chart — just the one current price. */
+  .flat-row { display: flex; align-items: baseline; gap: 6px; padding: 10px 0 4px; }
+  .flat-value { font-size: 22px; font-weight: 700; }
+  .flat-unit { font-size: 12px; color: var(--homey-text-color-light); }
+
+  .divider { height: 1px; background: var(--homey-line-color-light, rgba(128,128,128,0.2)); margin-top: 14px; }
+  .sec-no-data { font-size: 11px; color: var(--homey-text-color-light); text-align: center; padding: 18px 4px; }
+  .no-data { font-size: 12px; color: var(--homey-text-color-light); text-align: center; padding: 20px 4px; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="no-data" id="noData" style="display:none"></div>
+    <div id="content" style="display:none">
+      <div class="head">
+        <div class="title" id="title">—</div>
+        <button class="refresh-btn" id="refreshBtn" type="button" title="">↻</button>
+      </div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-label" id="solarLabel">—</div>
+          <div class="sec-status" id="solarStatus"></div>
+        </div>
+        <div id="solarBody">
+          <div class="minmax-row" id="solarMinMax"></div>
+          <div class="chart" id="solarChart"></div>
+          <div class="axis-row" id="solarAxis"></div>
+        </div>
+        <div class="sec-no-data" id="solarNoData" style="display:none"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-label" id="priceLabel">—</div>
+          <div class="sec-status" id="priceStatus"></div>
+        </div>
+        <div class="flat-row" id="priceFlat" style="display:none">
+          <div class="flat-value" id="priceFlatValue">—</div>
+          <div class="flat-unit" id="priceFlatUnit"></div>
+        </div>
+        <div id="priceBody">
+          <div class="minmax-row" id="priceMinMax"></div>
+          <div class="chart" id="priceChart"></div>
+          <div class="axis-row" id="priceAxis"></div>
+        </div>
+        <div class="sec-no-data" id="priceNoData" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+  var T = (function () {
+    var de = {
+      title: 'EMS Prognose', unreachable: 'EMS-Gerät nicht erreichbar',
+      solarLabel: 'Solar (Solcast)', priceLabel: 'Strompreis',
+      now: 'jetzt', slotsAhead: 'Slot(s) voraus', updated: 'aktualisiert', minAgo: 'Min. her',
+      neverUpdated: 'nie aktualisiert', staleWarn: '⚠ veraltet',
+      notConfiguredSolar: 'Solcast nicht konfiguriert', notConfiguredPrice: 'Preis nicht konfiguriert',
+      noDataYet: 'Noch keine Prognosedaten', refresh: 'Aktualisieren',
+      priceModeFixed: 'Fixpreis', priceModeVariable: 'Live-Preis (Flow)', priceModeDual: 'Hoch-/Niedertarif',
+    };
+    var nl = {
+      title: 'EMS-prognose', unreachable: 'EMS-apparaat niet bereikbaar',
+      solarLabel: 'Zon (Solcast)', priceLabel: 'Stroomprijs',
+      now: 'nu', slotsAhead: 'slot(en) vooruit', updated: 'bijgewerkt', minAgo: 'min geleden',
+      neverUpdated: 'nooit bijgewerkt', staleWarn: '⚠ verouderd',
+      notConfiguredSolar: 'Solcast niet geconfigureerd', notConfiguredPrice: 'Prijs niet geconfigureerd',
+      noDataYet: 'Nog geen prognosegegevens', refresh: 'Vernieuwen',
+      priceModeFixed: 'Vaste prijs', priceModeVariable: 'Live prijs (flow)', priceModeDual: 'Hoog-/laagtarief',
+    };
+    var en = {
+      title: 'EMS Forecast', unreachable: 'EMS device unreachable',
+      solarLabel: 'Solar (Solcast)', priceLabel: 'Electricity price',
+      now: 'now', slotsAhead: 'slot(s) ahead', updated: 'updated', minAgo: 'min ago',
+      neverUpdated: 'never updated', staleWarn: '⚠ stale',
+      notConfiguredSolar: 'Solcast not configured', notConfiguredPrice: 'Price not configured',
+      noDataYet: 'No forecast data yet', refresh: 'Refresh',
+      priceModeFixed: 'Fixed price', priceModeVariable: 'Live price (flow)', priceModeDual: 'Low/high tariff',
+    };
+    var l = navigator.language || '';
+    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  })();
+
+  var card       = document.getElementById('card');
+  var noData     = document.getElementById('noData');
+  var content    = document.getElementById('content');
+  var titleEl    = document.getElementById('title');
+  var refreshBtn = document.getElementById('refreshBtn');
+
+  var solarLabel  = document.getElementById('solarLabel');
+  var solarStatus = document.getElementById('solarStatus');
+  var solarBody   = document.getElementById('solarBody');
+  var solarNoData = document.getElementById('solarNoData');
+  var solarMinMax = document.getElementById('solarMinMax');
+  var solarChart  = document.getElementById('solarChart');
+  var solarAxis   = document.getElementById('solarAxis');
+
+  var priceLabel     = document.getElementById('priceLabel');
+  var priceStatus    = document.getElementById('priceStatus');
+  var priceFlat      = document.getElementById('priceFlat');
+  var priceFlatValue = document.getElementById('priceFlatValue');
+  var priceFlatUnit  = document.getElementById('priceFlatUnit');
+  var priceBody      = document.getElementById('priceBody');
+  var priceNoData    = document.getElementById('priceNoData');
+  var priceMinMax    = document.getElementById('priceMinMax');
+  var priceChart     = document.getElementById('priceChart');
+  var priceAxis      = document.getElementById('priceAxis');
+
+  titleEl.textContent      = T.title;
+  refreshBtn.title         = T.refresh;
+  solarLabel.textContent   = T.solarLabel;
+  priceLabel.textContent   = T.priceLabel;
+
+  function showNoData(msg) {
+    content.style.display = 'none';
+    noData.style.display  = 'block';
+    noData.textContent    = msg;
+  }
+
+  function statusLine(nowText, count, ageMin, stale) {
+    var parts = [];
+    if (nowText != null) parts.push(T.now + ' ' + nowText);
+    parts.push(count + ' ' + T.slotsAhead);
+    parts.push(ageMin == null ? T.neverUpdated : (T.updated + ' ' + ageMin + ' ' + T.minAgo));
+    if (stale) parts.push(T.staleWarn);
+    return parts.join(' · ');
+  }
+
+  // Generic bar-chart renderer shared by both sections — mirrors the settings
+  // page's own price-forecast chart (App Settings → Electricity Price).
+  // slots: [{ start, end, value }] ascending; colorFn(pct 0..100, isNow) -> css color.
+  function renderChart(chartEl, axisEl, minMaxEl, slots, nowMs, opts) {
+    if (!slots.length) {
+      chartEl.innerHTML = '';
+      axisEl.innerHTML = '';
+      minMaxEl.innerHTML = '<span>' + T.noDataYet + '</span><span></span>';
+      return;
+    }
+    var values = slots.map(function (s) { return s.value; });
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
+    var range = (max - min) || 1;
+
+    minMaxEl.innerHTML =
+      '<span>▲ ' + opts.formatValue(max) + '</span>' +
+      '<span>▼ ' + opts.formatValue(min) + '</span>';
+
+    var barsHtml = '';
+    slots.forEach(function (s) {
+      var pct    = Math.round(((s.value - min) / range) * 100);
+      var height = Math.max(6, pct);
+      var isNow  = s.start <= nowMs && nowMs < s.end;
+      var bg     = opts.colorFn(pct, isNow);
+      var title  = opts.formatLabel(s, isNow);
+      barsHtml += '<div class="bar" title="' + esc(title) + '" style="height:' + height + '%;background:' + bg + '">' +
+        (isNow ? '<span class="bar-now-label">' + esc(opts.formatValue(s.value)) + '</span>' : '') +
+        '</div>';
+    });
+    chartEl.innerHTML = barsHtml;
+
+    var labelInterval = slots.length <= 12 ? 2 : slots.length <= 24 ? 3 : 4;
+    var lastIdx = slots.length - 1;
+    var axisHtml = '';
+    slots.forEach(function (s, i) {
+      var isRegular = i % labelInterval === 0 && i !== lastIdx;
+      var tooCloseToEnd = isRegular && (lastIdx - i) < labelInterval;
+      var showLabel = (isRegular && !tooCloseToEnd) || i === lastIdx;
+      var txt = showLabel ? esc(new Date(s.start).toLocaleTimeString(undefined, { hour: '2-digit' })) : '';
+      axisHtml += '<div class="axis-cell">' + txt + '</div>';
+    });
+    axisEl.innerHTML = axisHtml;
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderSolar(pv, nowMs) {
+    if (!pv || pv.error || !pv.configured) {
+      solarBody.style.display = 'none';
+      solarNoData.style.display = 'block';
+      solarNoData.textContent = T.notConfiguredSolar;
+      solarStatus.textContent = '';
+      return;
+    }
+    solarBody.style.display = '';
+    solarNoData.style.display = 'none';
+    solarStatus.className = 'sec-status' + (pv.stale ? ' warn' : '');
+    solarStatus.textContent = statusLine(
+      pv.nowKw != null ? pv.nowKw.toFixed(2) + ' kW' : null,
+      (pv.slots || []).filter(function (s) { return s.end > nowMs; }).length,
+      pv.ageMin, pv.stale
+    );
+    var slots = (pv.slots || [])
+      .filter(function (s) { return s.end > nowMs; })
+      .slice(0, 48)
+      .map(function (s) { return { start: s.end - s.h * 3600000, end: s.end, value: s.kw }; });
+    renderChart(solarChart, solarAxis, solarMinMax, slots, nowMs, {
+      formatValue: function (v) { return v.toFixed(2) + ' kW'; },
+      formatLabel: function (s, isNow) {
+        return new Date(s.start).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) +
+          ': ' + s.value.toFixed(2) + ' kW' + (isNow ? ' (' + T.now + ')' : '');
+      },
+      colorFn: function (pct, isNow) {
+        return isNow ? 'var(--homey-color-blue, #007aff)' : 'var(--homey-color-orange, #f5a524)';
+      },
+    });
+  }
+
+  // Follows whatever tariff model is actually configured under App Settings →
+  // Electricity Price (lib/ems/price.js#getEmsPriceStatus): fixed/variable show the
+  // single current value (no chart — there's no future to show), dual shows a 24h
+  // hourly timeline built from the high/low windows, forecast shows the real D10
+  // price-forecast chart, unchanged from before.
+  function showPriceNoData(msg) {
+    priceFlat.style.display = 'none';
+    priceBody.style.display = 'none';
+    priceNoData.style.display = 'block';
+    priceNoData.textContent = msg;
+    priceStatus.textContent = '';
+  }
+
+  function showPriceFlat(value, unit, modeLabel) {
+    priceBody.style.display = 'none';
+    priceNoData.style.display = 'none';
+    priceFlat.style.display = 'flex';
+    priceFlatValue.textContent = value;
+    priceFlatUnit.textContent = unit;
+    priceStatus.className = 'sec-status';
+    priceStatus.textContent = modeLabel;
+  }
+
+  function showPriceChart(slots, currency, statusText, warn) {
+    priceFlat.style.display = 'none';
+    priceBody.style.display = '';
+    priceNoData.style.display = 'none';
+    priceStatus.className = 'sec-status' + (warn ? ' warn' : '');
+    priceStatus.textContent = statusText;
+    renderChart(priceChart, priceAxis, priceMinMax, slots, Date.now(), {
+      formatValue: function (v) { return v.toFixed(3) + ' ' + currency; },
+      formatLabel: function (s, isNow) {
+        return new Date(s.start).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) +
+          ': ' + s.value.toFixed(3) + ' ' + currency + (isNow ? ' (' + T.now + ')' : '');
+      },
+      colorFn: function (pct, isNow) {
+        if (isNow) return 'var(--homey-color-blue, #007aff)';
+        var hue = Math.round(120 - (pct / 100) * 120); // 120=green (cheap) → 0=red (expensive)
+        return 'hsl(' + hue + ',65%,50%)';
+      },
+    });
+  }
+
+  function renderPrice(price, nowMs) {
+    if (!price || price.error) { showPriceNoData(T.notConfiguredPrice); return; }
+    var mode = price.mode || 'forecast';
+    var currency = price.currency || '';
+
+    if (mode === 'fixed' || mode === 'variable') {
+      if (price.price == null) { showPriceNoData(T.notConfiguredPrice); return; }
+      showPriceFlat(price.price.toFixed(3), currency + '/kWh', mode === 'fixed' ? T.priceModeFixed : T.priceModeVariable);
+      return;
+    }
+
+    if (mode === 'dual') {
+      if (!price.configured) { showPriceNoData(T.notConfiguredPrice); return; }
+      var dualSlots = (price.slots || []).map(function (s) { return { start: s.start, end: s.end, value: s.price }; });
+      showPriceChart(dualSlots, currency, T.priceModeDual, false);
+      return;
+    }
+
+    // forecast
+    if (!price.configured) { showPriceNoData(T.notConfiguredPrice); return; }
+    var fcSlots = (price.slots || [])
+      .filter(function (s) { return s.end > nowMs; })
+      .slice(0, 48)
+      .map(function (s) { return { start: s.start, end: s.end, value: s.price }; });
+    showPriceChart(fcSlots, currency, statusLine(
+      price.nowPrice != null ? Number(price.nowPrice).toFixed(3) : null,
+      price.slotCount || 0, price.ageMin, price.stale
+    ), price.stale);
+  }
+
+  function render(data) {
+    if (!data || data.error) { showNoData(T.unreachable); return; }
+    content.style.display = 'block';
+    noData.style.display  = 'none';
+    var nowMs = Date.now();
+    renderSolar(data.pv, nowMs);
+    renderPrice(data.price, nowMs);
+
+    requestAnimationFrame(function () {
+      var rect = card.getBoundingClientRect();
+      Homey.setHeight(Math.ceil(rect.bottom) + 4);
+    });
+  }
+
+  async function refresh() {
+    try {
+      var data = await Homey.api('GET', '/forecast');
+      render(data);
+    } catch (err) {
+      render({ error: 'unreachable' });
+    }
+  }
+
+  refreshBtn.addEventListener('click', function () {
+    refreshBtn.classList.remove('spin');
+    void refreshBtn.offsetWidth; // restart animation
+    refreshBtn.classList.add('spin');
+    refresh();
+  });
+
+  Homey.ready({ height: 460 });
+  refresh();
+  // Forecasts refresh server-side at most every ~1h (price) / ~3h (Solcast), so a
+  // fast poll here would just re-render identical data — 60s keeps it responsive
+  // without unnecessary work.
+  setInterval(refresh, 60000);
+}
+</script>
+</body>
+</html>

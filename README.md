@@ -724,7 +724,7 @@ All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": [
 
 ## Dashboard Widgets
 
-The app includes 11 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
+The app includes 12 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
 
 All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
 
@@ -871,6 +871,21 @@ Aggregate view of the EMS's Home Battery SoC and its priority zones — mirrors 
 - **Normal SoC** and **Reserve SoC** are editable directly on the widget
 - Status line shows whether price-optimised grid-charging is currently active or holding discharge, when configured
 - Updates every **5 seconds**
+
+---
+
+### EMS Forecast (EMS Prognose)
+
+Two stacked charts showing what the EMS is planning against: the Solcast **solar forecast** (kW per slot, next up to 24h, bar chart) and the **electricity price** — whichever tariff model is actually configured under App Settings → Electricity Price, not just "Price forecast":
+
+| Tariff model (App Settings) | Widget shows |
+|------------------------------|--------------|
+| Fixed price                  | The fixed value, as a single number (no chart — it doesn't change) |
+| Variable (via flow)          | The last value pushed by the `Set electricity price` flow action, as a single number (no future is known) |
+| Low / high tariff            | A 24h hourly step-chart built from the configured weekday high/low windows |
+| Price forecast (day-ahead)   | The real ingested forecast — colour-graded cheap→green to expensive→red, same as the settings-page preview |
+
+The current slot/value is highlighted in both charts where a timeline is shown; a ↻ button forces an immediate re-read (the underlying forecasts themselves still only refresh server-side at Solcast's/your price source's own interval — this doesn't trigger a new fetch from either service). Each section shows its own "not configured" hint when that data source isn't set up. No settings — reads directly from the EMS device. Updates every **60 seconds**.
 
 ---
 
