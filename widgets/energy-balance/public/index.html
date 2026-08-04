@@ -79,13 +79,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(0,0,0,0.06);
+    /* Homey doesn't expose a token for this subtle chip tint, and a fixed
+       mid-grey translucency reads fine on both light and dark card
+       backgrounds — no per-theme override needed. */
+    background: rgba(128,128,128,0.1);
     border-radius: 10px;
     padding: 5px 9px;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .metric-chip { background: rgba(255,255,255,0.08); }
   }
 
   .metric-label {

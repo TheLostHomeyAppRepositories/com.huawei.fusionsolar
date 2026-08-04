@@ -4,15 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  /* Colors come from Homey's own --homey-* variables (widget styling guide),
+     which follow the dashboard's light/dark setting — NOT the OS-level
+     prefers-color-scheme, which widgets don't reliably get. */
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
     font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
     background: transparent;
-    color: #1a1a1a;
+    color: var(--homey-text-color);
   }
   .card {
-    background: #ffffff;
+    background: var(--homey-background-color);
     border-radius: 16px;
     padding: 12px;
   }
@@ -44,29 +47,19 @@
   .muted img { filter: grayscale(35%) brightness(0.95); }
 
   .status-label { font-size: 15px; font-weight: 700; margin-top: 10px; }
-  .status-label.error { color: #e53935; }
+  .status-label.error { color: var(--homey-text-color-red); }
   .sub {
-    font-size: 11px; color: #888; margin-top: 2px;
+    font-size: 11px; color: var(--homey-text-color-light); margin-top: 2px;
     /* Always occupy one line, even when empty — states differ in whether
        they have a sub-line (Charging doesn't, Paused/Smart do), and the
        widget height is measured once, so a variable text block leaves a
        trail in some states and would clip in others */
     min-height: 14px;
   }
-  .divider { height: 1px; background: #eee; margin-top: 10px; }
+  .divider { height: 1px; background: var(--homey-line-color-light, rgba(128,128,128,0.2)); margin-top: 10px; }
   .stats { display: flex; justify-content: space-between; margin-top: 9px; }
-  .stat-value { font-size: 16px; font-weight: 700; color: #1c66ff; }
-  .stat-label { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
-
-  /* Dark mode last, so these rules win the cascade */
-  @media (prefers-color-scheme: dark) {
-    html, body { color: #f2f2f2; }
-    .card { background: #1e1e22; }
-    .divider { background: #333; }
-    .sub { color: #8a8a8f; }
-    .stat-label { color: #8a8a8f; }
-    .stat-value { color: #5a8cff; }
-  }
+  .stat-value { font-size: 16px; font-weight: 700; color: var(--homey-text-color-blue); }
+  .stat-label { font-size: 9px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
 </style>
 </head>
 <body>

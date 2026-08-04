@@ -1,4 +1,16 @@
 {
+  "1.3.2": {
+    "en": "Fixed: the EMS Device and EMS Battery Usage widgets always rendered in dark mode, ignoring the Homey app's light/dark setting. They used the OS-level 'prefers-color-scheme' media query, which widgets can't rely on — switched to Homey's own --homey-* theme variables (per the official widget styling guide), so they now correctly follow the dashboard's actual light/dark setting.",
+    "de": "Behoben: Die Widgets EMS-Gerät und EMS-Batterienutzung waren immer im Dunkelmodus, unabhängig von der Hell/Dunkel-Einstellung der Homey-App. Sie nutzten die Betriebssystem-Abfrage 'prefers-color-scheme', auf die sich Widgets nicht verlassen können — umgestellt auf Homeys eigene --homey-*-Theme-Variablen (gemäss offiziellem Widget-Styleguide), sodass sie jetzt korrekt der tatsächlichen Hell/Dunkel-Einstellung des Dashboards folgen."
+  },
+  "1.3.1": {
+    "en": "The EMS Battery Usage widget now also shows the current energy in kWh (e.g. \"8.7 of 13.4 kWh\"), not just the % SoC — based on the usable-capacity value already set per battery under Home Batteries in App Settings.",
+    "de": "Das EMS-Batterienutzung-Widget zeigt jetzt zusätzlich zum SoC in % auch die aktuelle Energie in kWh an (z. B. \"8,7 von 13,4 kWh\") — basierend auf der bereits pro Batterie unter Home-Batterien in den App-Einstellungen hinterlegten nutzbaren Kapazität."
+  },
+  "1.3.0": {
+    "en": "Two new dashboard widgets for the EMS: \"EMS Device\" shows a live status card for any one configured EV charger, heat pump, boiler, pool pump or dehumidifier (pick it by name in the widget settings) — chargers get a charging-mode selector, other devices get an on/off state, today's energy/runtime, and an editable minimum-surplus field, all controllable right from the widget. \"EMS Battery Usage\" shows the aggregate battery SoC with its priority zones, with the Normal/Reserve SoC thresholds editable directly on the widget.",
+    "de": "Zwei neue Dashboard-Widgets für die EMS: \"EMS-Gerät\" zeigt eine Live-Statuskarte für einen frei wählbaren konfigurierten EV-Lader, Wärmepumpe, Boiler, Poolpumpe oder Entfeuchter (Auswahl per Namenssuche in den Widget-Einstellungen) — bei Ladern gibt es eine Lademodus-Auswahl, bei den anderen Geräten An/Aus-Status, heutige Energie/Laufzeit und ein editierbares Mindestüberschuss-Feld, alles direkt im Widget steuerbar. \"EMS Batterienutzung\" zeigt den aggregierten Batterie-Ladestand mit den Prioritätszonen, Normal-/Reserve-SoC-Schwellen sind direkt im Widget editierbar."
+  },
   "1.2.39": {
     "en": "Fixed: saving EMS settings with cars configured re-called setCapabilityOptions (which sets each car's tile title) every time, even when the title hadn't actually changed — Homey recommends against calling this repeatedly. It's now only called when the title text actually changes, same as the existing guard on the electricity-price currency unit.",
     "de": "Behoben: Beim Speichern der EMS-Einstellungen mit konfigurierten Autos wurde setCapabilityOptions (setzt den Kachel-Titel jedes Autos) jedes Mal erneut aufgerufen, auch wenn sich der Titel gar nicht geändert hatte — Homey rät von wiederholten Aufrufen ab. Wird jetzt nur noch aufgerufen, wenn sich der Titeltext tatsächlich ändert, analog zur bestehenden Absicherung bei der Währungseinheit des Strompreises."

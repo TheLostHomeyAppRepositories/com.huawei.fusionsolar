@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.39",
+  "version": "1.3.2",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -11727,6 +11727,79 @@
         "getData": {
           "method": "GET",
           "path": "/"
+        }
+      }
+    },
+    "ems-device": {
+      "id": "ems-device",
+      "name": {
+        "en": "EMS Device",
+        "de": "EMS-Gerät",
+        "nl": "EMS-apparaat",
+        "fr": "Appareil EMS"
+      },
+      "height": 300,
+      "transparent": false,
+      "settings": [
+        {
+          "id": "device",
+          "type": "autocomplete",
+          "title": {
+            "en": "Device (EV charger, heat pump, boiler, pool, dehumidifier)",
+            "de": "Gerät (EV-Lader, Wärmepumpe, Boiler, Pool, Entfeuchter)",
+            "nl": "Apparaat (EV-lader, warmtepomp, boiler, zwembad, ontvochtiger)",
+            "fr": "Appareil (borne EV, pompe à chaleur, chauffe-eau, piscine, déshumidificateur)"
+          },
+          "hint": {
+            "en": "Search by device name. Only devices configured under EMS → Settings are shown.",
+            "de": "Nach Gerätenamen suchen. Nur Geräte, die unter EMS → Einstellungen konfiguriert sind, werden angezeigt.",
+            "nl": "Zoek op apparaatnaam. Alleen apparaten die onder EMS → Instellingen zijn geconfigureerd, worden weergegeven.",
+            "fr": "Rechercher par nom d'appareil. Seuls les appareils configurés sous EMS → Paramètres sont affichés."
+          }
+        }
+      ],
+      "images": {
+        "light": "/widgets/ems-device/preview-light.png",
+        "dark": "/widgets/ems-device/preview-dark.png"
+      },
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/status"
+        },
+        "setMode": {
+          "method": "POST",
+          "path": "/mode"
+        },
+        "setMinSurplus": {
+          "method": "POST",
+          "path": "/min-surplus"
+        }
+      }
+    },
+    "ems-battery": {
+      "id": "ems-battery",
+      "name": {
+        "en": "EMS Battery Usage",
+        "de": "EMS Batterienutzung",
+        "nl": "EMS Batterijgebruik",
+        "fr": "EMS Utilisation de la batterie"
+      },
+      "height": 220,
+      "transparent": false,
+      "settings": [],
+      "images": {
+        "light": "/widgets/ems-battery/preview-light.png",
+        "dark": "/widgets/ems-battery/preview-dark.png"
+      },
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/status"
+        },
+        "setZones": {
+          "method": "POST",
+          "path": "/zones"
         }
       }
     }

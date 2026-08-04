@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Colors come from Homey's own --homey-* variables (see the widget styling
+     guide), which the dashboard sets according to the user's light/dark theme
+     choice — NOT the OS-level prefers-color-scheme, which widgets don't get to
+     read reliably. Never hardcode light/dark pairs here again. */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+    background: transparent;
+    color: var(--homey-text-color);
+  }
+  .card { background: var(--homey-background-color); border-radius: 16px; padding: 14px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+    background: rgba(128,128,128,0.15); color: var(--homey-text-color-light); white-space: nowrap; flex-shrink: 0;
+  }
+  .badge.on  { background: rgba(52,199,89,0.16);  color: var(--homey-text-color-green); }
+  .badge.off { background: rgba(128,128,128,0.15); color: var(--homey-text-color-light); }
+
+  .mode-select {
+    margin-top: 10px; width: 100%; font-size: 12px; font-weight: 600;
+    padding: 7px 10px; border-radius: 10px; border: 1px solid var(--homey-line-color, rgba(128,128,128,0.3));
+    background: rgba(128,128,128,0.08); color: var(--homey-text-color); appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .divider { height: 1px; background: var(--homey-line-color-light, rgba(128,128,128,0.2)); margin-top: 12px; }
+  .stats { display: flex; justify-content: space-between; margin-top: 10px; }
+  .stat-value { font-size: 16px; font-weight: 700; color: var(--homey-text-color-blue); }
+  .stat-label { font-size: 9px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
+  .sub-line { font-size: 11px; color: var(--homey-text-color-light); margin-top: 6px; min-height: 14px; }
+
+  .surplus-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 8px; }
+  .surplus-row label { font-size: 11px; color: var(--homey-text-color-light); }
+  .surplus-row input {
+    width: 76px; font-size: 13px; font-weight: 600; text-align: right;
+    padding: 5px 8px; border-radius: 8px; border: 1px solid var(--homey-line-color, rgba(128,128,128,0.3));
+    background: rgba(128,128,128,0.08); color: var(--homey-text-color);
+  }
+  .surplus-row .unit { font-size: 11px; color: var(--homey-text-color-light); }
+
+  .no-data { font-size: 12px; color: var(--homey-text-color-light); text-align: center; padding: 20px 4px; }
+  .saved-flash { color: var(--homey-text-color-green) !important; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="no-data" id="noData" style="display:none"></div>
+    <div id="content" style="display:none">
+      <div class="head">
+        <div class="name" id="name">—</div>
+        <div class="badge" id="badge">—</div>
+      </div>
+      <div class="sub-line" id="subLine"></div>
+
+      <select class="mode-select" id="modeSelect" style="display:none"></select>
+
+      <div class="divider"></div>
+      <div class="stats">
+        <div>
+          <div class="stat-value" id="stat1v">—</div>
+          <div class="stat-label" id="stat1l">—</div>
+        </div>
+        <div>
+          <div class="stat-value" id="stat2v">—</div>
+          <div class="stat-label" id="stat2l">—</div>
+        </div>
+        <div>
+          <div class="stat-value" id="stat3v">—</div>
+          <div class="stat-label" id="stat3l">—</div>
+        </div>
+      </div>
+
+      <div class="surplus-row" id="surplusRow" style="display:none">
+        <label id="surplusLabel">—</label>
+        <div>
+          <input type="number" id="surplusInput" min="0" step="50">
+          <span class="unit">W</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+  var T = (function () {
+    var de = {
+      noSetting: 'Bitte Gerät in den Widget-Einstellungen auswählen',
+      unreachable: 'EMS-Gerät nicht erreichbar',
+      notFound: 'Gerät nicht mehr konfiguriert',
+      connected: 'Verbunden', notConnected: 'Nicht verbunden',
+      on: 'An', off: 'Aus',
+      power: 'Leistung', today: 'Heute', session: 'Sitzung', car: 'Fahrzeug', runtime: 'Laufzeit',
+      minSurplus: 'Min. Überschuss',
+      modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-Peak', solar_lowtariff: 'Solar + Niedertarif', solar_price: 'Solar + Preis', always: 'Immer laden' },
+    };
+    var nl = {
+      noSetting: 'Selecteer een apparaat in de widget-instellingen',
+      unreachable: 'EMS-apparaat niet bereikbaar',
+      notFound: 'Apparaat niet meer geconfigureerd',
+      connected: 'Verbonden', notConnected: 'Niet verbonden',
+      on: 'Aan', off: 'Uit',
+      power: 'Vermogen', today: 'Vandaag', session: 'Sessie', car: 'Auto', runtime: 'Looptijd',
+      minSurplus: 'Min. overschot',
+      modes: { solar: 'Zon', solar_offpeak: 'Zon + daltarief', solar_lowtariff: 'Zon + laag tarief', solar_price: 'Zon + prijs', always: 'Altijd laden' },
+    };
+    var en = {
+      noSetting: 'Select a device in widget settings',
+      unreachable: 'EMS device unreachable',
+      notFound: 'Device no longer configured',
+      connected: 'Connected', notConnected: 'Not connected',
+      on: 'On', off: 'Off',
+      power: 'Power', today: 'Today', session: 'Session', car: 'Car', runtime: 'Runtime',
+      minSurplus: 'Min. surplus',
+      modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-peak', solar_lowtariff: 'Solar + Low tariff', solar_price: 'Solar + Price', always: 'Always charge' },
+    };
+    var l = navigator.language || '';
+    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  })();
+
+  var card       = document.getElementById('card');
+  var noData     = document.getElementById('noData');
+  var content    = document.getElementById('content');
+  var nameEl     = document.getElementById('name');
+  var badgeEl    = document.getElementById('badge');
+  var subLineEl  = document.getElementById('subLine');
+  var modeSelect = document.getElementById('modeSelect');
+  var stat1v = document.getElementById('stat1v'), stat1l = document.getElementById('stat1l');
+  var stat2v = document.getElementById('stat2v'), stat2l = document.getElementById('stat2l');
+  var stat3v = document.getElementById('stat3v'), stat3l = document.getElementById('stat3l');
+  var surplusRow   = document.getElementById('surplusRow');
+  var surplusLabel = document.getElementById('surplusLabel');
+  var surplusInput = document.getElementById('surplusInput');
+
+  function fmtPower(w) {
+    if (w === null || w === undefined) return '—';
+    var kw = w / 1000;
+    return kw >= 1 ? kw.toFixed(1) + ' kW' : Math.round(w) + ' W';
+  }
+  function fmtEnergy(kwh) {
+    if (kwh === null || kwh === undefined) return '—';
+    return kwh.toFixed(1) + ' kWh';
+  }
+  function fmtDuration(ms) {
+    if (!ms || ms <= 0) return '—';
+    var mins = Math.floor(ms / 60000);
+    if (mins < 60) return mins + 'm';
+    var h = Math.floor(mins / 60);
+    return h + 'h ' + (mins % 60) + 'm';
+  }
+
+  function showNoData(msg) {
+    content.style.display = 'none';
+    noData.style.display  = 'block';
+    noData.textContent    = msg;
+  }
+
+  var settings = {};
+  try { settings = Homey.getSettings() || {}; } catch (e) {}
+  var deviceSetting = settings.device;
+  var deviceId = (deviceSetting && typeof deviceSetting === 'object') ? deviceSetting.id
+               : (typeof deviceSetting === 'string' ? deviceSetting : null);
+
+  if (!deviceId) {
+    document.body.classList.remove('loading');
+    showNoData(T.noSetting);
+    Homey.ready({ height: 90 });
+    return;
+  }
+
+  var modeSelectBound = false;
+  var surplusBoundId  = null;
+  var lastKind = null;
+
+  function bindModeSelect() {
+    if (modeSelectBound) return;
+    modeSelectBound = true;
+    modeSelect.addEventListener('change', function () {
+      Homey.api('POST', '/mode', { device: deviceId, mode: modeSelect.value }).catch(function () {});
+    });
+  }
+  function bindSurplusInput() {
+    if (surplusBoundId) return;
+    surplusBoundId = 1;
+    var commit = function () {
+      var w = parseInt(surplusInput.value, 10);
+      if (!isFinite(w) || w < 0) return;
+      Homey.api('POST', '/min-surplus', { device: deviceId, watts: w }).catch(function () {});
+    };
+    surplusInput.addEventListener('change', commit);
+    surplusInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commit(); surplusInput.blur(); } });
+  }
+
+  function renderCharger(s) {
+    nameEl.textContent = s.name || '—';
+    badgeEl.className   = 'badge' + (s.connected ? ' on' : '');
+    badgeEl.textContent  = s.connected ? T.connected : T.notConnected;
+    subLineEl.textContent = s.carName ? (T.car + ': ' + s.carName + (s.carSoc != null ? ' · ' + Math.round(s.carSoc) + '%' : '')) : '';
+
+    if (modeSelect.children.length === 0) {
+      Object.keys(T.modes).forEach(function (m) {
+        var opt = document.createElement('option');
+        opt.value = m; opt.textContent = T.modes[m];
+        modeSelect.appendChild(opt);
+      });
+    }
+    modeSelect.value = s.chargeMode || 'solar';
+    modeSelect.style.display = '';
+    bindModeSelect();
+
+    stat1v.textContent = fmtPower(s.powerW); stat1l.textContent = T.power;
+    stat2v.textContent = fmtEnergy(s.sessionEnergyKwh); stat2l.textContent = T.session;
+    stat3v.textContent = fmtDuration(s.sessionStartedAt ? (Date.now() - s.sessionStartedAt) : 0);
+    stat3l.textContent = T.runtime;
+
+    surplusRow.style.display = 'none';
+  }
+
+  function renderSimple(s) {
+    nameEl.textContent = s.name || '—';
+    badgeEl.className   = 'badge' + (s.isOn ? ' on' : ' off');
+    badgeEl.textContent  = s.isOn ? T.on : T.off;
+    subLineEl.textContent = '';
+
+    modeSelect.style.display = 'none';
+
+    stat1v.textContent = fmtPower(s.powerW); stat1l.textContent = T.power;
+    stat2v.textContent = fmtEnergy(s.todayKwh); stat2l.textContent = T.today;
+    stat3v.textContent = fmtDuration(s.todayRuntimeMs); stat3l.textContent = T.runtime;
+
+    surplusLabel.textContent = T.minSurplus;
+    if (document.activeElement !== surplusInput) surplusInput.value = s.minSurplusW != null ? s.minSurplusW : '';
+    surplusRow.style.display = 'flex';
+    bindSurplusInput();
+  }
+
+  function render(s) {
+    if (!s || s.error === 'no_ems_device') { showNoData(T.unreachable); return; }
+    if (!s || s.error === 'not_found')     { showNoData(T.notFound); return; }
+    if (!s || s.error)                     { showNoData(T.unreachable); return; }
+
+    content.style.display = 'block';
+    noData.style.display  = 'none';
+
+    if (s.kind === 'charger') renderCharger(s); else renderSimple(s);
+    lastKind = s.kind;
+
+    requestAnimationFrame(function () {
+      var rect = card.getBoundingClientRect();
+      Homey.setHeight(Math.ceil(rect.bottom) + 4);
+    });
+  }
+
+  async function refresh() {
+    try {
+      var s = await Homey.api('GET', '/status?device=' + encodeURIComponent(deviceId));
+      render(s);
+    } catch (err) {
+      render({ error: 'unreachable' });
+    }
+  }
+
+  Homey.ready({ height: 220 });
+  refresh();
+  setInterval(refresh, 5000);
+}
+</script>
+</body>
+</html>

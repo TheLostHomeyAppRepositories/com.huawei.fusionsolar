@@ -4,32 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+  /* Colors come from Homey's own --homey-* variables (widget styling guide),
+     which follow the dashboard's light/dark setting — NOT the OS-level
+     prefers-color-scheme, which widgets don't reliably get. The purple/orange
+     "active session" accent has no direct --homey- equivalent, so its dark-mode
+     shade is gated on Homey's own .homey-dark-mode class instead of a media
+     query — that class reflects the dashboard's actual theme choice. */
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
     font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
     background: transparent;
-    color: #1a1a1a;
+    color: var(--homey-text-color);
   }
   .card {
-    background: #ffffff;
+    background: var(--homey-background-color);
     border-radius: 16px;
     padding: 12px 14px;
     height: 100%;
     overflow-y: auto;
   }
-  .session-row { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .session-row { padding: 8px 0; border-bottom: 1px solid var(--homey-line-color-light, rgba(128,128,128,0.15)); }
   .session-row:last-child { border-bottom: none; }
   .top-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .date-range { font-size: 12px; font-weight: 600; }
-  .date-range .arrow { color: #bbb; font-weight: 400; margin: 0 3px; }
-  .phase-tag { font-size: 10px; color: #888; background: #f4f4f4; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
+  .date-range .arrow { color: var(--homey-text-color-light); font-weight: 400; margin: 0 3px; }
+  .phase-tag { font-size: 10px; color: var(--homey-text-color-light); background: rgba(128,128,128,0.12); padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
   .bottom-line { display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px; }
-  .duration-energy { font-size: 11px; color: #999; }
-  .duration-energy b { color: #444; font-weight: 700; }
-  .reason { font-size: 10px; color: #bbb; }
+  .duration-energy { font-size: 11px; color: var(--homey-text-color-light); }
+  .duration-energy b { color: var(--homey-text-color); font-weight: 700; }
+  .reason { font-size: 10px; color: var(--homey-text-color-light); }
   .active {
-    background: #f4f1ff;
+    background: rgba(109, 74, 255, 0.1);
     border-radius: 10px;
     padding: 8px 10px;
     margin: -4px -10px 4px -10px;
@@ -41,27 +47,15 @@
     background: #6d4aff; margin-right: 5px;
     box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.15);
   }
-  .active.paused { background: #fff5e8; }
+  .active.paused { background: rgba(255, 149, 0, 0.1); }
   .active.paused .date-range { color: #e08600; }
   .active.paused .live-dot { background: #ff9500; box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.15); }
-  .empty { font-size: 12px; color: #999; padding: 12px 0; text-align: center; }
+  .empty { font-size: 12px; color: var(--homey-text-color-light); padding: 12px 0; text-align: center; }
 
-  /* Dark mode last, so these rules win the cascade */
-  @media (prefers-color-scheme: dark) {
-    html, body { color: #f2f2f2; }
-    .card { background: #1e1e22; }
-    .session-row { border-color: #2e2e33; }
-    .date-range .arrow { color: #666; }
-    .duration-energy { color: #8a8a8f; }
-    .duration-energy b { color: #d5d5da; }
-    .phase-tag { background: #2c2c31; color: #9a9aa0; }
-    .reason { color: #6a6a70; }
-    .active { background: #26243a; }
-    .active .date-range { color: #9678ff; }
-    .active.paused { background: #35291a; }
-    .active.paused .date-range { color: #ffb04d; }
-    .empty { color: #8a8a8f; }
-  }
+  /* Homey's own dark-mode marker (see comment above) — lighten the two accent
+     colors for contrast against a dark card, exactly as before. */
+  .homey-dark-mode .active .date-range { color: #9678ff; }
+  .homey-dark-mode .active.paused .date-range { color: #ffb04d; }
 </style>
 </head>
 <body>

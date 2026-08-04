@@ -52,6 +52,7 @@ class FusionSolarKioskApp extends App {
     this._capHistoryInited = false;
     this._registerSensorChartAutocomplete();
     this.homey.setTimeout(() => this._initCapHistory(), 5000);
+    this._registerEmsDeviceAutocomplete();
 
     // EMS charger triggers — global cards, filter by charger_device_id arg vs state
     this.homey.flow
@@ -323,6 +324,52 @@ class FusionSolarKioskApp extends App {
       const a = Math.abs(v);
       if (a >= 1000) return (v / 1000).toFixed(1) + ' kW';
       return v.toFixed(1);
+    }
+  }
+
+  // ── ems-device widget: controllable-device picker ──────────────────────
+
+  /**
+   * Register the autocomplete listener for the ems-device widget's "device"
+   * setting — searches every EV charger and simple device (heat pump/boiler/
+   * pool/dehumidifier) configured on the EMS driver's device. Called once from
+   * onInit() — safe to call before the EMS device is ready (falls back to an
+   * empty list until it is).
+   */
+  _registerEmsDeviceAutocomplete() {
+    const KIND_LABEL = {
+      charger: { en: 'EV charger', de: 'EV-Lader', nl: 'EV-lader' },
+      heat_pump: { en: 'Heat pump', de: 'Wärmepumpe', nl: 'Warmtepomp' },
+      boiler: { en: 'Boiler', de: 'Boiler', nl: 'Boiler' },
+      pool: { en: 'Pool', de: 'Pool', nl: 'Zwembad' },
+      dehumidifier: { en: 'Dehumidifier', de: 'Entfeuchter', nl: 'Ontvochtiger' },
+    };
+    try {
+      const widget = this.homey.dashboards.getWidget('ems-device');
+      const lang   = this.homey.i18n.getLanguage() || 'en';
+
+      widget.registerSettingAutocompleteListener('device', async (query) => {
+        try {
+          const driver  = this.homey.drivers.getDriver('energy_management');
+          const devices = driver.getDevices();
+          if (!devices.length) return [];
+          const list = await devices[0].getEmsControllableDevices();
+          const q    = (query || '').toLowerCase();
+          return list
+            .filter((d) => !q || d.name.toLowerCase().includes(q))
+            .map((d) => ({
+              id: d.id,
+              name: d.name,
+              description: (KIND_LABEL[d.kind] && (KIND_LABEL[d.kind][lang] || KIND_LABEL[d.kind].en)) || d.kind,
+            }));
+        } catch (e) {
+          this.error('ems-device autocomplete error:', e.message);
+          return [];
+        }
+      });
+      this.log('ems-device: autocomplete registered');
+    } catch (e) {
+      this.error('ems-device: autocomplete registration failed:', e.message);
     }
   }
 

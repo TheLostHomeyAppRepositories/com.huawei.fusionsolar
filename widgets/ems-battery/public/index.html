@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Colors come from Homey's own --homey-* variables (see the widget styling
+     guide), which the dashboard sets according to the user's light/dark theme
+     choice — NOT the OS-level prefers-color-scheme, which widgets don't get to
+     read reliably. Never hardcode light/dark pairs here again. */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "Helvetica Neue", Roboto, Arial, sans-serif;
+    background: transparent;
+    color: var(--homey-text-color);
+  }
+  .card { background: var(--homey-background-color); border-radius: 16px; padding: 14px; }
+  .head { display: flex; align-items: center; justify-content: space-between; }
+  .title { font-size: 15px; font-weight: 700; }
+  .soc { font-size: 15px; font-weight: 700; }
+  .soc.green  { color: var(--homey-text-color-green); }
+  .soc.orange { color: var(--homey-text-color-orange); }
+  .soc.red    { color: var(--homey-text-color-red); }
+  .kwh-line { font-size: 11px; color: var(--homey-text-color-light); margin-top: 2px; min-height: 14px; }
+
+  .bar-wrap { position: relative; margin-top: 12px; height: 16px; }
+  .bar-track {
+    position: absolute; inset: 0; border-radius: 8px; overflow: hidden;
+    background: rgba(128,128,128,0.14); display: flex;
+  }
+  .bar-fill { height: 100%; transition: width 0.3s ease; }
+  .bar-fill.green  { background: var(--homey-color-green, #22c55e); }
+  .bar-fill.orange { background: var(--homey-color-orange, #f5a524); }
+  .bar-fill.red    { background: var(--homey-color-red, #ef4444); }
+  .bar-marker {
+    position: absolute; top: -3px; width: 2px; height: 22px; background: var(--homey-line-color, rgba(128,128,128,0.5));
+  }
+
+  .zones-row { display: flex; justify-content: space-between; margin-top: 8px; }
+  .zone-field { display: flex; align-items: center; gap: 4px; }
+  .zone-field label { font-size: 10px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.3px; }
+  .zone-field input {
+    width: 46px; font-size: 12px; font-weight: 600; text-align: right;
+    padding: 3px 5px; border-radius: 6px; border: 1px solid var(--homey-line-color, rgba(128,128,128,0.3));
+    background: rgba(128,128,128,0.08); color: var(--homey-text-color);
+  }
+  .zone-field .pct { font-size: 11px; color: var(--homey-text-color-light); }
+
+  .divider { height: 1px; background: var(--homey-line-color-light, rgba(128,128,128,0.2)); margin-top: 12px; }
+  .status-line { font-size: 12px; color: var(--homey-text-color-light); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.charge { background: var(--homey-color-green, #22c55e); }
+  .status-dot.hold   { background: var(--homey-color-orange, #f5a524); }
+  .status-dot.idle   { background: rgba(128,128,128,0.35); }
+
+  .no-data { font-size: 12px; color: var(--homey-text-color-light); text-align: center; padding: 20px 4px; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="no-data" id="noData" style="display:none"></div>
+    <div id="content" style="display:none">
+      <div class="head">
+        <div class="title" id="title">—</div>
+        <div class="soc" id="socVal">—</div>
+      </div>
+      <div class="kwh-line" id="kwhLine"></div>
+
+      <div class="bar-wrap">
+        <div class="bar-track"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+        <div class="bar-marker" id="markerReserve" style="display:none"></div>
+        <div class="bar-marker" id="markerNormal"></div>
+      </div>
+
+      <div class="zones-row">
+        <div class="zone-field">
+          <label id="reserveLabel">—</label>
+          <input type="number" id="reserveInput" min="0" max="100" step="1">
+          <span class="pct">%</span>
+        </div>
+        <div class="zone-field">
+          <label id="normalLabel">—</label>
+          <input type="number" id="normalInput" min="0" max="100" step="1">
+          <span class="pct">%</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="status-line">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">—</span>
+      </div>
+    </div>
+  </div>
+
+<script type="text/javascript">
+function onHomeyReady(Homey) {
+  var T = (function () {
+    var de = {
+      title: 'Batterienutzung', noBattery: 'Keine Batterie konfiguriert', unreachable: 'EMS-Gerät nicht erreichbar',
+      reserve: 'Reserve', normal: 'Normal', kwhOf: 'von',
+      zoneGreen: 'Volles Budget', zoneOrange: 'Reserve-Zone', zoneRed: 'Geschützt — lädt Batterie',
+      priceCharge: 'Preisgeladen', priceHold: 'Entladen gesperrt (Preis)', priceIdle: 'Preisladen aktiviert',
+    };
+    var nl = {
+      title: 'Batterijgebruik', noBattery: 'Geen batterij geconfigureerd', unreachable: 'EMS-apparaat niet bereikbaar',
+      reserve: 'Reserve', normal: 'Normaal', kwhOf: 'van',
+      zoneGreen: 'Volledig budget', zoneOrange: 'Reservezone', zoneRed: 'Beschermd — batterij laadt',
+      priceCharge: 'Prijsladen actief', priceHold: 'Ontladen geblokkeerd (prijs)', priceIdle: 'Prijsladen ingeschakeld',
+    };
+    var en = {
+      title: 'Battery Usage', noBattery: 'No battery configured', unreachable: 'EMS device unreachable',
+      reserve: 'Reserve', normal: 'Normal', kwhOf: 'of',
+      zoneGreen: 'Full budget', zoneOrange: 'Reserve zone', zoneRed: 'Protected — battery charging',
+      priceCharge: 'Price-charging', priceHold: 'Discharge held (price)', priceIdle: 'Price-charging enabled',
+    };
+    var l = navigator.language || '';
+    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  })();
+
+  var card    = document.getElementById('card');
+  var noData  = document.getElementById('noData');
+  var content = document.getElementById('content');
+  var titleEl = document.getElementById('title');
+  var socVal  = document.getElementById('socVal');
+  var kwhLine = document.getElementById('kwhLine');
+  var barFill = document.getElementById('barFill');
+  var markerReserve = document.getElementById('markerReserve');
+  var markerNormal  = document.getElementById('markerNormal');
+  var reserveLabel  = document.getElementById('reserveLabel');
+  var reserveInput  = document.getElementById('reserveInput');
+  var normalLabel   = document.getElementById('normalLabel');
+  var normalInput   = document.getElementById('normalInput');
+  var statusDot  = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+
+  titleEl.textContent      = T.title;
+  reserveLabel.textContent = T.reserve;
+  normalLabel.textContent  = T.normal;
+
+  function showNoData(msg) {
+    content.style.display = 'none';
+    noData.style.display  = 'block';
+    noData.textContent    = msg;
+  }
+
+  var bound = false;
+  function bindInputs() {
+    if (bound) return;
+    bound = true;
+    var commitNormal = function () {
+      var v = parseInt(normalInput.value, 10);
+      if (!isFinite(v)) return;
+      Homey.api('POST', '/zones', { normalSoc: v }).catch(function () {});
+    };
+    var commitReserve = function () {
+      var v = parseInt(reserveInput.value, 10);
+      if (!isFinite(v)) return;
+      Homey.api('POST', '/zones', { reserveSoc: v }).catch(function () {});
+    };
+    normalInput.addEventListener('change', commitNormal);
+    normalInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitNormal(); normalInput.blur(); } });
+    reserveInput.addEventListener('change', commitReserve);
+    reserveInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitReserve(); reserveInput.blur(); } });
+  }
+
+  function render(s) {
+    if (!s || s.error) { showNoData(T.unreachable); return; }
+    if (!s.hasBattery)  { showNoData(T.noBattery); return; }
+
+    content.style.display = 'block';
+    noData.style.display  = 'none';
+
+    var soc = s.soc != null ? Math.round(s.soc) : null;
+    socVal.textContent = soc != null ? soc + '%' : '—';
+    socVal.className   = 'soc ' + s.zone;
+    barFill.className  = 'bar-fill ' + s.zone;
+    barFill.style.width = (soc != null ? soc : 0) + '%';
+
+    kwhLine.textContent = (s.energyKwh != null && s.capacityKwh != null)
+      ? s.energyKwh.toFixed(1) + ' ' + T.kwhOf + ' ' + s.capacityKwh.toFixed(1) + ' kWh'
+      : '';
+
+    markerNormal.style.left = s.normalSoc + '%';
+    if (s.reserveSoc != null) {
+      markerReserve.style.left = s.reserveSoc + '%';
+      markerReserve.style.display = '';
+    } else {
+      markerReserve.style.display = 'none';
+    }
+
+    if (document.activeElement !== normalInput)  normalInput.value  = s.normalSoc;
+    if (document.activeElement !== reserveInput) reserveInput.value = s.reserveSoc != null ? s.reserveSoc : '';
+    bindInputs();
+
+    var dotClass = 'idle', text = s.zone === 'red' ? T.zoneRed : s.zone === 'orange' ? T.zoneOrange : T.zoneGreen;
+    if (s.priceEnabled) {
+      if (s.priceMode === 'charge') { dotClass = 'charge'; text = T.priceCharge; }
+      else if (s.priceMode === 'hold') { dotClass = 'hold'; text = T.priceHold; }
+      else { text += ' · ' + T.priceIdle; }
+    }
+    statusDot.className = 'status-dot ' + dotClass;
+    statusText.textContent = text;
+
+    requestAnimationFrame(function () {
+      var rect = card.getBoundingClientRect();
+      Homey.setHeight(Math.ceil(rect.bottom) + 4);
+    });
+  }
+
+  async function refresh() {
+    try {
+      var s = await Homey.api('GET', '/status');
+      render(s);
+    } catch (err) {
+      render({ error: 'unreachable' });
+    }
+  }
+
+  Homey.ready({ height: 190 });
+  refresh();
+  setInterval(refresh, 5000);
+}
+</script>
+</body>
+</html>

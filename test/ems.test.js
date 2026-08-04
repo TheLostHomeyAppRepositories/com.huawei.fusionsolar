@@ -16,6 +16,7 @@ const priceForecastMixin = require('../lib/ems/priceForecast');
 const simpleDevicesMixin = require('../lib/ems/simpleDevices');
 const exportLimitMixin = require('../lib/ems/exportLimit');
 const chargeSessionsMixin = require('../lib/ems/chargeSessions');
+const widgetMixin         = require('../lib/ems/widget');
 const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
@@ -1440,4 +1441,208 @@ test('getEmsChargeSessions — returns newest first, capped, as shallow clones',
   assert.strictEqual(out[0].energyKwh, 2); // newest first
   out[0].energyKwh = 999;
   assert.strictEqual(d._chargeSessions[1].energyKwh, 2); // clone, not a live reference
+});
+
+// ── widget: lib/ems/widget.js (ems-device / ems-battery widget backend) ─────
+function makeWidgetDevice(extra = {}) {
+  const dev = {
+    log() {}, error() {},
+    _chargerStates:      new Map(),
+    _heatPumpStates:     new Map(),
+    _boilerStates:       new Map(),
+    _poolStates:         new Map(),
+    _dehumidifierStates: new Map(),
+    _batteryStates:      new Map(),
+    _carStates: [],
+    homey: { clock: { getTimezone: () => 'Europe/Zurich' }, settings: { set() {} } },
+    _cap: async () => null,
+    _stopTick() {}, _startTick() {},
+    _validateConfig() { return false; },
+    _getConfig() { return {}; },
+  };
+  Object.assign(dev, widgetMixin, chargerMixin, simpleDevicesMixin, batteryMixin, carsMixin, extra);
+  return dev;
+}
+
+test('_trackSimpleDeviceDaily — accumulates kWh and runtime only while isOn', () => {
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily([{ id: 'd1', powerW: 2000 }], new Map([['d1', { isOn: true }]]), 3600_000);
+  assert.deepStrictEqual(d._simpleDeviceDaily('d1'), { kwh: 2, runtimeMs: 3600_000 });
+});
+test('_trackSimpleDeviceDaily — an off device accumulates nothing', () => {
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily([{ id: 'd1', powerW: 2000 }], new Map([['d1', { isOn: false }]]), 3600_000);
+  assert.deepStrictEqual(d._simpleDeviceDaily('d1'), { kwh: 0, runtimeMs: 0 });
+});
+test('_simpleDeviceDaily — resets once the stored date no longer matches today', () => {
+  const d = makeWidgetDevice();
+  d._simpleDailyStats = { d1: { date: '2000-01-01', kwh: 5, runtimeMs: 999 } };
+  assert.deepStrictEqual(d._simpleDeviceDaily('d1'), { kwh: 0, runtimeMs: 0 });
+});
+
+test('getEmsControllableDevices — lists chargers and simple devices, resolving names via the API', async () => {
+  const d = makeWidgetDevice({
+    _getConfig: () => ({ chargers: [{ id: 'c1' }], heat_pump_devices: [{ id: 'h1' }] }),
+    _api: { getDevices: async () => ({ c1: { id: 'c1', name: 'Carport' }, h1: { id: 'h1', name: 'Heat pump' } }) },
+  });
+  assert.deepStrictEqual(await d.getEmsControllableDevices(), [
+    { id: 'c1', kind: 'charger', name: 'Carport' },
+    { id: 'h1', kind: 'heat_pump', name: 'Heat pump' },
+  ]);
+});
+test('getEmsControllableDevices — falls back to a truncated id when the local API is unavailable', async () => {
+  const d = makeWidgetDevice({
+    _getConfig: () => ({ chargers: [{ id: 'c1234567890' }] }),
+    _api: { getDevices: async () => { throw new Error('no api key'); } },
+  });
+  const list = await d.getEmsControllableDevices();
+  assert.strictEqual(list.length, 1);
+  assert.strictEqual(list[0].name, 'c1234567…');
+});
+
+test('_findControllable — finds charger and simple-device entries, null for an unknown id', () => {
+  const d = makeWidgetDevice();
+  const cfg = { chargers: [{ id: 'c1' }], boiler_devices: [{ id: 'b1' }] };
+  assert.deepStrictEqual(d._findControllable(cfg, 'c1'), { kind: 'charger', entry: cfg.chargers[0] });
+  assert.deepStrictEqual(d._findControllable(cfg, 'b1'), { kind: 'boiler', entry: cfg.boiler_devices[0] });
+  assert.strictEqual(d._findControllable(cfg, 'nope'), null);
+});
+
+test('getEmsControllableStatus — charger kind reports live power, mode and an active session', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar_price', max_amps: 16, min_amps: 6, ev_phases: '1' }] };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    // _getChargers lives directly on the EmsDevice class (device.js), not in a
+    // mixin — stub it here the same way _getBattery is stubbed below.
+    _getChargers: async ({ chargers }) => chargers.map((c) => ({
+      id: c.id, connected: true, powerW: 3000, chargeMode: c.charge_mode,
+    })),
+    _api: { getDevice: async () => ({ name: 'Carport' }) },
+  });
+  const st = d._getChargerState('c1');
+  st.sessionActive = true; st.sessionStartedAt = Date.now() - 60_000; st.sessionEnergyKwh = 1.234;
+  const status = await d.getEmsControllableStatus('c1');
+  assert.strictEqual(status.kind, 'charger');
+  assert.strictEqual(status.name, 'Carport');
+  assert.strictEqual(status.connected, true);
+  assert.strictEqual(status.chargeMode, 'solar_price');
+  assert.strictEqual(status.sessionEnergyKwh, 1.23);
+  assert.strictEqual(status.carName, null);
+});
+test('getEmsControllableStatus — unknown id → not_found', async () => {
+  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
+  assert.strictEqual((await d.getEmsControllableStatus('nope')).error, 'not_found');
+});
+test('getEmsControllableStatus — simple-device kind reports on/off, power and today\'s stats', async () => {
+  const cfg = { boiler_devices: [{ id: 'b1', min_surplus_w: 1800, cap_power: 'measure_power' }] };
+  const d = makeWidgetDevice({ _getConfig: () => cfg, _cap: async () => 1200 });
+  d._boilerStates.set('b1', { isOn: true, startedAt: Date.now() - 120_000 });
+  d._simpleDailyStats = { b1: { date: d._localDateStr(), kwh: 3.4, runtimeMs: 7_200_000 } };
+  const status = await d.getEmsControllableStatus('b1');
+  assert.strictEqual(status.kind, 'boiler');
+  assert.strictEqual(status.isOn, true);
+  assert.strictEqual(status.powerW, 1200);
+  assert.strictEqual(status.minSurplusW, 1800);
+  assert.strictEqual(status.todayKwh, 3.4);
+  assert.strictEqual(status.todayRuntimeMs, 7_200_000);
+  assert.ok(status.runtimeMs >= 120_000);
+});
+
+test('setEmsChargerMode — rejects an invalid mode without touching config', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
+  let saved = null;
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
+  const res = await d.setEmsChargerMode('c1', 'bogus');
+  assert.strictEqual(res.error, 'invalid_mode');
+  assert.strictEqual(saved, null);
+  assert.strictEqual(cfg.chargers[0].charge_mode, 'solar');
+});
+test('setEmsChargerMode — patches the mode, persists, and restarts the tick', async () => {
+  const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar' }] };
+  let saved = null, restarted = false;
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    homey: { settings: { set: (k, v) => { saved = v; } } },
+    _startTick() { restarted = true; },
+  });
+  const res = await d.setEmsChargerMode('c1', 'always');
+  assert.deepStrictEqual(res, { ok: true });
+  assert.strictEqual(cfg.chargers[0].charge_mode, 'always');
+  assert.strictEqual(saved, cfg);
+  assert.strictEqual(restarted, true);
+});
+test('setEmsChargerMode — unknown charger id → not_found', async () => {
+  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
+  assert.strictEqual((await d.setEmsChargerMode('nope', 'solar')).error, 'not_found');
+});
+
+test('setEmsSimpleDeviceMinSurplus — patches min_surplus_w on the matching simple device', async () => {
+  const cfg = { boiler_devices: [{ id: 'b1', min_surplus_w: 1500 }] };
+  let saved = null;
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
+  const res = await d.setEmsSimpleDeviceMinSurplus('b1', 2200);
+  assert.deepStrictEqual(res, { ok: true });
+  assert.strictEqual(cfg.boiler_devices[0].min_surplus_w, 2200);
+  assert.strictEqual(saved, cfg);
+});
+test('setEmsSimpleDeviceMinSurplus — a charger id is rejected (chargers have no min_surplus_w)', async () => {
+  const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [{ id: 'c1' }] }) });
+  assert.strictEqual((await d.setEmsSimpleDeviceMinSurplus('c1', 2200)).error, 'not_found');
+});
+
+test('getEmsBatteryStatus — classifies the orange zone and surfaces the active price mode', async () => {
+  const cfg = { min_battery_soc: 80, min_battery_soc_low: 40, battery_devices: [{ id: 'bat1', price_charge_enabled: true }] };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    _getBattery: async () => ({ soc: 60, powerW: 500, socPerDevice: { bat1: 60 } }),
+  });
+  d._batteryStates.set('bat1', { priceMode: 'charge' });
+  const status = await d.getEmsBatteryStatus();
+  assert.strictEqual(status.hasBattery, true);
+  assert.strictEqual(status.soc, 60);
+  assert.strictEqual(status.zone, 'orange');
+  assert.strictEqual(status.priceEnabled, true);
+  assert.strictEqual(status.priceMode, 'charge');
+});
+test('getEmsBatteryStatus — no battery configured', async () => {
+  const d = makeWidgetDevice({
+    _getConfig: () => ({}),
+    _getBattery: async () => ({ soc: null, powerW: null, socPerDevice: {} }),
+  });
+  assert.strictEqual((await d.getEmsBatteryStatus()).hasBattery, false);
+});
+
+test('getEmsBatteryStatus — sums capacity_kwh across batteries and derives the current energy in kWh', async () => {
+  const cfg = {
+    min_battery_soc: 80,
+    battery_devices: [{ id: 'bat1', capacity_kwh: 5 }, { id: 'bat2', capacity_kwh: 8.4 }],
+  };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    _getBattery: async () => ({ soc: 65, powerW: 0, socPerDevice: {} }),
+  });
+  const status = await d.getEmsBatteryStatus();
+  assert.strictEqual(status.capacityKwh, 13.4);
+  assert.strictEqual(status.energyKwh, 8.7); // 13.4 * 0.65 = 8.71 -> rounds to 8.7
+});
+test('getEmsBatteryStatus — no capacity configured → capacityKwh/energyKwh stay null', async () => {
+  const cfg = { min_battery_soc: 80, battery_devices: [{ id: 'bat1' }] };
+  const d = makeWidgetDevice({
+    _getConfig: () => cfg,
+    _getBattery: async () => ({ soc: 65, powerW: 0, socPerDevice: {} }),
+  });
+  const status = await d.getEmsBatteryStatus();
+  assert.strictEqual(status.capacityKwh, null);
+  assert.strictEqual(status.energyKwh, null);
+});
+
+test('setEmsBatteryZones — clamps values to 0..100 and persists', async () => {
+  const cfg = {};
+  let saved = null;
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
+  const res = await d.setEmsBatteryZones({ normalSoc: 150, reserveSoc: -10 });
+  assert.deepStrictEqual(res, { ok: true });
+  assert.strictEqual(cfg.min_battery_soc, 100);
+  assert.strictEqual(cfg.min_battery_soc_low, 0);
+  assert.strictEqual(saved, cfg);
 });

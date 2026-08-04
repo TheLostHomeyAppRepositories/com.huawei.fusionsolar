@@ -21,6 +21,7 @@ const batteryMixin        = require('../../lib/ems/battery');
 const pvForecastMixin     = require('../../lib/ems/pvForecast');
 const priceForecastMixin  = require('../../lib/ems/priceForecast');
 const chargeSessionsMixin = require('../../lib/ems/chargeSessions');
+const widgetMixin         = require('../../lib/ems/widget');
 
 // Price + car SOC change slowly — refresh every Nth tick (~60 s) rather than every
 // 15 s tick, to cut settings reads and per-car HTTP calls (see _tickBody).
@@ -474,6 +475,12 @@ class EmsDevice extends Device {
     // independent of charge mode (see lib/ems/chargeSessions.js). TICK_MS as dt is an
     // approximation (ticks aren't perfectly regular), close enough for energy totals.
     for (const c of chargers) this._trackChargeSession(c, cfg, TICK_MS);
+    // Daily energy/runtime tracking for the ems-device widget's "today" stat —
+    // see lib/ems/widget.js. Cheap (in-memory, no I/O) so it's fine every tick.
+    this._trackSimpleDeviceDaily(heatPumps,     this._heatPumpStates,     TICK_MS);
+    this._trackSimpleDeviceDaily(boilers,       this._boilerStates,       TICK_MS);
+    this._trackSimpleDeviceDaily(pools,         this._poolStates,         TICK_MS);
+    this._trackSimpleDeviceDaily(dehumidifiers, this._dehumidifierStates, TICK_MS);
     if (gridW !== null) {
       await this._set('measure_solar_surplus', Math.max(0, Math.round(-gridW)));
       await this._set('measure_grid_power', Math.round(gridW));
@@ -1030,6 +1037,7 @@ Object.assign(
   pvForecastMixin,
   priceForecastMixin,
   chargeSessionsMixin,
+  widgetMixin,
 );
 
 module.exports = EmsDevice;

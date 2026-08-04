@@ -724,7 +724,7 @@ All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": [
 
 ## Dashboard Widgets
 
-The app includes 9 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
+The app includes 11 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
 
 All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
 
@@ -848,6 +848,27 @@ Recent Energy Management System events — mode changes, device start/stop and c
 ### Sensor Chart (Sensor-Verlauf)
 
 A configurable time-series chart of a chosen capability (e.g. solar power, grid power, SoC), for a quick trend view directly on the dashboard.
+
+---
+
+### EMS Device (EMS-Gerät)
+
+Live status card for a single EMS-controlled device — pick any configured **EV charger**, **heat pump**, **boiler**, **pool pump** or **dehumidifier** via a search field in the widget settings (add the same widget multiple times for several devices).
+
+- **EV charger:** connection state, current power, assigned car (+ SoC), current session's energy and duration, and a **charging-mode selector** (Solar / Solar + Off-peak / Solar + Low tariff / Solar + Price / Always charge) you can change directly from the widget
+- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight), and an editable **minimum surplus (W)** field
+- Updates every **5 seconds**; changes take effect immediately (restarts the EMS tick loop, same as saving App Settings)
+
+---
+
+### EMS Battery Usage (EMS Batterienutzung)
+
+Aggregate view of the EMS's Home Battery SoC and its priority zones — mirrors the **Battery** section of App Settings.
+
+- Colour-coded SoC bar (green = full budget, orange = reserve zone, red = protected/hard-stop) with markers for the configured thresholds
+- **Normal SoC** and **Reserve SoC** are editable directly on the widget
+- Status line shows whether price-optimised grid-charging is currently active or holding discharge, when configured
+- Updates every **5 seconds**
 
 ---
 
