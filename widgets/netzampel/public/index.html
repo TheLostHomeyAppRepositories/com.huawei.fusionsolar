@@ -158,7 +158,9 @@
 </div>
 
 <script>
-var T = (function() {
+// Language comes from the API payload (Homey i18n.getLanguage()), not
+// navigator.language — see widgets/ems-device/api.js.
+var DICTS = (function() {
   var de = {
     export: 'Einspeisung', exportSub: 'ins Netz',
     import: 'Netzbezug',   importSub: 'vom Netz',
@@ -174,9 +176,20 @@ var T = (function() {
     import: 'Grid import',  importSub: 'from grid',
     self:   'Self-sufficient', selfSub: 'PV covers load',
   };
-  var l = navigator.language;
-  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  return { de: de, nl: nl, en: en };
 })();
+function dictFor(code) {
+  var l = String(code || '');
+  return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+}
+var activeLang = null;
+var T = dictFor(navigator.language); // placeholder until the first payload arrives
+function applyLang(code) {
+  if (!code || code === activeLang) return false;
+  activeLang = code;
+  T = dictFor(code);
+  return true;
+}
 
 function fmt(w) {
   if (w === null || w === undefined) return '—';
@@ -257,14 +270,22 @@ function onHomeyReady(Homey) {
 
   function load() {
     Homey.api('GET', '/', {})
-      .then(function(data) { if (data) render(data); })
+      .then(function(data) { applyLang(data && data.lang); if (data) render(data); })
       .catch(function(err) { console.error('netzampel error:', err); });
   }
 
   load();
-  setInterval(load, 5000); // update every 5s — status changes quickly
+  // Polling stops entirely while the dashboard is hidden — it used to keep running
+  // around the clock — and catches up immediately on return.
+  var POLL_MS = 5000; // update every 5s — status changes quickly
+  var pollTimer = null;
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(load, POLL_MS); }
+  function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  if (!document.hidden) startPolling();
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) load();
+    if (document.hidden) { stopPolling(); return; }
+    load();
+    startPolling();
   });
 }
 </script>

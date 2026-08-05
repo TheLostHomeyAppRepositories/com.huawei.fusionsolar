@@ -177,7 +177,12 @@
 
 <script type="text/javascript">
 function onHomeyReady(Homey) {
-  var T = (function () {
+  // The active language comes from the API payload (Homey's own i18n.getLanguage()),
+  // NOT from navigator.language — that is the browser/OS language, which can differ from
+  // the Homey app language (an English phone paired with a German Homey used to render
+  // the widget in English). navigator.language is only the placeholder for the moment
+  // before the first response lands.
+  var DICTS = (function () {
     var de = {
       noSetting: 'Bitte Gerät in den Widget-Einstellungen auswählen',
       unreachable: 'EMS-Gerät nicht erreichbar',
@@ -190,6 +195,7 @@ function onHomeyReady(Homey) {
       modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-Peak', solar_lowtariff: 'Solar + Niedertarif', solar_price: 'Solar + Preis', always: 'Immer laden' },
       chargingActive: 'Ladevorgang aktiv …', waitingSurplus: 'Wartet auf Überschuss …',
       socLabel: 'Ladestand', planLabel: 'Plan', limitLabel: 'Ladelimit',
+      writeFailed: 'Änderung fehlgeschlagen',
     };
     var nl = {
       noSetting: 'Selecteer een apparaat in de widget-instellingen',
@@ -203,6 +209,7 @@ function onHomeyReady(Homey) {
       modes: { solar: 'Zon', solar_offpeak: 'Zon + daltarief', solar_lowtariff: 'Zon + laag tarief', solar_price: 'Zon + prijs', always: 'Altijd laden' },
       chargingActive: 'Bezig met laden …', waitingSurplus: 'Wacht op overschot …',
       socLabel: 'Laadstand', planLabel: 'Plan', limitLabel: 'Laadlimiet',
+      writeFailed: 'Wijziging mislukt',
     };
     var en = {
       noSetting: 'Select a device in widget settings',
@@ -216,10 +223,24 @@ function onHomeyReady(Homey) {
       modes: { solar: 'Solar', solar_offpeak: 'Solar + Off-peak', solar_lowtariff: 'Solar + Low tariff', solar_price: 'Solar + Price', always: 'Always charge' },
       chargingActive: 'Charging in progress …', waitingSurplus: 'Waiting for surplus …',
       socLabel: 'Charge level', planLabel: 'Plan', limitLabel: 'Charge limit',
+      writeFailed: 'Change failed',
     };
-    var l = navigator.language || '';
-    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+    return { de: de, nl: nl, en: en };
   })();
+  function dictFor(code) {
+    var l = String(code || '');
+    return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+  }
+  var activeLang = null;
+  var T = dictFor(navigator.language); // placeholder until the first payload arrives
+  // Returns true when the language actually changed, so callers can rebuild the bits
+  // that are only constructed once (the <select> options).
+  function applyLang(code) {
+    if (!code || code === activeLang) return false;
+    activeLang = code;
+    T = dictFor(code);
+    return true;
+  }
 
   var card       = document.getElementById('card');
   var noData     = document.getElementById('noData');
@@ -296,6 +317,12 @@ function onHomeyReady(Homey) {
     document.body.classList.remove('loading');
     showNoData(T.noSetting);
     Homey.ready({ height: 90 });
+    // Without a device there is no status poll, so the language would never arrive —
+    // fetch it once so this message is localised too (the endpoint answers with
+    // { error: 'no_device_selected', lang } when no device is given).
+    Homey.api('GET', '/status')
+      .then(function (r) { if (r && applyLang(r.lang)) showNoData(T.noSetting); })
+      .catch(function () {});
     return;
   }
 
@@ -304,6 +331,36 @@ function onHomeyReady(Homey) {
   var lastKind = null;
   var currentEnabled = null;
   var currentChargeNow = null;
+
+  // A failed write used to be swallowed by `.catch(() => {})`, so the control simply
+  // sprang back on some later poll with no explanation. Show the reason for a few
+  // seconds instead; renders leave the sub-line alone while a message is on screen.
+  var errorUntil = 0;
+  function flashError(msg) {
+    errorUntil = Date.now() + 4000;
+    subLineEl.textContent = '⚠ ' + msg;
+    subLineEl.style.color = 'var(--homey-text-color-red, #ef4444)';
+  }
+  function clearSubLine() {
+    if (Date.now() < errorUntil) return; // keep the error visible
+    subLineEl.textContent = '';
+    subLineEl.style.color = '';
+  }
+
+  // Every control write goes through here: the UI already changed optimistically, so on
+  // success we confirm with an immediate refresh instead of waiting up to POLL_MS, and on
+  // failure we roll the optimistic change back and say why.
+  function write(path, body, rollback) {
+    Homey.api('POST', path, body)
+      .then(function (res) {
+        if (res && res.error) throw new Error(res.error);
+        refresh();
+      })
+      .catch(function (err) {
+        if (rollback) rollback();
+        flashError((err && err.message) ? err.message : T.writeFailed);
+      });
+  }
 
   function setSwitchVisualEl(el, on) {
     el.className = 'switch' + (on ? ' on' : '');
@@ -315,10 +372,14 @@ function onHomeyReady(Homey) {
     if (controlBound) return;
     controlBound = true;
     controlSwitch.addEventListener('click', function () {
+      var prev = currentEnabled;
       var next = !currentEnabled;
       currentEnabled = next;
-      setSwitchVisual(next); // optimistic — next poll confirms
-      Homey.api('POST', '/enabled', { device: deviceId, enabled: next }).catch(function () {});
+      setSwitchVisual(next); // optimistic
+      write('/enabled', { device: deviceId, enabled: next }, function () {
+        currentEnabled = prev;
+        setSwitchVisual(prev);
+      });
     });
   }
   function bindChargeNowSwitch() {
@@ -327,10 +388,14 @@ function onHomeyReady(Homey) {
     if (chargeNowBound) return;
     chargeNowBound = true;
     chargeNowSwitch.addEventListener('click', function () {
+      var prev = currentChargeNow;
       var next = !currentChargeNow;
       currentChargeNow = next;
-      setSwitchVisualEl(chargeNowSwitch, next); // optimistic — next poll confirms
-      Homey.api('POST', '/charge-now', { chargeNow: next }).catch(function () {});
+      setSwitchVisualEl(chargeNowSwitch, next); // optimistic
+      write('/charge-now', { chargeNow: next }, function () {
+        currentChargeNow = prev;
+        setSwitchVisualEl(chargeNowSwitch, prev);
+      });
     });
   }
   var modeSelectBound = false;
@@ -338,20 +403,30 @@ function onHomeyReady(Homey) {
     if (modeSelectBound) return;
     modeSelectBound = true;
     modeSelect.addEventListener('change', function () {
-      Homey.api('POST', '/mode', { device: deviceId, mode: modeSelect.value }).catch(function () {});
+      var prev = modeSelect.dataset.applied || 'solar';
+      var next = modeSelect.value;
+      modeSelect.dataset.applied = next;
+      write('/mode', { device: deviceId, mode: next }, function () {
+        modeSelect.value = prev;
+        modeSelect.dataset.applied = prev;
+      });
     });
   }
   function renderCharger(s) {
     nameEl.textContent = s.name || '—';
     badgeEl.className   = 'badge' + (s.connected ? ' on' : '');
     badgeEl.textContent  = s.connected ? T.connected : T.notConnected;
-    subLineEl.textContent = '';
+    clearSubLine();
 
     currentEnabled = s.enabled !== false;
     setSwitchVisual(currentEnabled);
     bindControlSwitch();
 
-    if (modeSelect.children.length === 0) {
+    // Rebuild when empty OR when the language changed — the options are otherwise
+    // built once and would keep the language they were first rendered in.
+    if (modeSelect.children.length === 0 || modeSelect.dataset.lang !== String(activeLang)) {
+      modeSelect.innerHTML = '';
+      modeSelect.dataset.lang = String(activeLang);
       Object.keys(T.modes).forEach(function (m) {
         var opt = document.createElement('option');
         opt.value = m; opt.textContent = T.modes[m];
@@ -359,6 +434,7 @@ function onHomeyReady(Homey) {
       });
     }
     modeSelect.value = s.chargeMode || 'solar';
+    modeSelect.dataset.applied = modeSelect.value; // rollback reference for a failed write
     modeSelect.style.display = '';
     bindModeSelect();
 
@@ -406,7 +482,7 @@ function onHomeyReady(Homey) {
     nameEl.textContent = s.name || '—';
     badgeEl.className   = 'badge' + (s.isOn ? ' on' : ' off');
     badgeEl.textContent  = s.isOn ? T.on : T.off;
-    subLineEl.textContent = '';
+    clearSubLine();
 
     currentEnabled = s.enabled !== false;
     setSwitchVisual(currentEnabled);
@@ -426,21 +502,30 @@ function onHomeyReady(Homey) {
     carSection.style.display = 'none';
   }
 
+  // Homey.setHeight() crosses the iframe boundary, so only call it when the height has
+  // actually changed rather than on every single poll.
+  var lastHeight = 0;
+  function syncHeight() {
+    requestAnimationFrame(function () {
+      var h = Math.ceil(card.getBoundingClientRect().bottom) + 4;
+      if (h === lastHeight) return;
+      lastHeight = h;
+      Homey.setHeight(h);
+    });
+  }
+
   function render(s) {
-    if (!s || s.error === 'no_ems_device') { showNoData(T.unreachable); return; }
-    if (!s || s.error === 'not_found')     { showNoData(T.notFound); return; }
-    if (!s || s.error)                     { showNoData(T.unreachable); return; }
+    applyLang(s && s.lang); // authoritative language, before anything is drawn
+    if (!s || s.error === 'no_ems_device') { showNoData(T.unreachable); syncHeight(); return; }
+    if (!s || s.error === 'not_found')     { showNoData(T.notFound);   syncHeight(); return; }
+    if (!s || s.error)                     { showNoData(T.unreachable); syncHeight(); return; }
 
     content.style.display = 'block';
     noData.style.display  = 'none';
 
     if (s.kind === 'charger') renderCharger(s); else renderSimple(s);
     lastKind = s.kind;
-
-    requestAnimationFrame(function () {
-      var rect = card.getBoundingClientRect();
-      Homey.setHeight(Math.ceil(rect.bottom) + 4);
-    });
+    syncHeight();
   }
 
   async function refresh() {
@@ -452,9 +537,24 @@ function onHomeyReady(Homey) {
     }
   }
 
+  // The EMS recomputes only every TICK_MS (15 s) and this endpoint reads that tick's
+  // cached snapshot, so a faster poll just re-fetches identical data. Poll in step with
+  // the tick — writes confirm themselves immediately via write() above, so the slower
+  // cadence costs nothing in responsiveness. While the dashboard is hidden we stop
+  // entirely (an open widget used to poll around the clock) and catch up on return.
+  var POLL_MS = 15000;
+  var timer = null;
+  function startPolling() { if (!timer) timer = setInterval(refresh, POLL_MS); }
+  function stopPolling()  { if (timer) { clearInterval(timer); timer = null; } }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
+
   Homey.ready({ height: 220 });
   refresh();
-  setInterval(refresh, 5000);
+  if (!document.hidden) startPolling();
 }
 </script>
 </body>

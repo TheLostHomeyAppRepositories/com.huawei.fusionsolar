@@ -102,7 +102,10 @@
 
 <script type="text/javascript">
 function onHomeyReady(Homey) {
-  var T = (function () {
+  // Language comes from the API payload (Homey's own i18n.getLanguage()), not from
+  // navigator.language — that is the browser/OS language and can differ from the Homey
+  // app language. See widgets/ems-device/api.js for the full rationale.
+  var DICTS = (function () {
     var de = {
       title: 'EMS Prognose', unreachable: 'EMS-Gerät nicht erreichbar',
       solarLabel: 'Solar (Solcast)', priceLabel: 'Strompreis',
@@ -130,9 +133,25 @@ function onHomeyReady(Homey) {
       noDataYet: 'No forecast data yet', refresh: 'Refresh',
       priceModeFixed: 'Fixed price', priceModeVariable: 'Live price (flow)', priceModeDual: 'Low/high tariff',
     };
-    var l = navigator.language || '';
-    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+    return { de: de, nl: nl, en: en };
   })();
+  function dictFor(code) {
+    var l = String(code || '');
+    return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+  }
+  var activeLang = null;
+  var T = dictFor(navigator.language); // placeholder until the first payload arrives
+  function applyLang(code) {
+    if (!code || code === activeLang) return false;
+    activeLang = code;
+    T = dictFor(code);
+    // Static chrome is written once at startup — refresh it on a language change.
+    titleEl.textContent    = T.title;
+    refreshBtn.title       = T.refresh;
+    solarLabel.textContent = T.solarLabel;
+    priceLabel.textContent = T.priceLabel;
+    return true;
+  }
 
   var card       = document.getElementById('card');
   var noData     = document.getElementById('noData');
@@ -335,18 +354,26 @@ function onHomeyReady(Homey) {
     ), price.stale);
   }
 
+  // Homey.setHeight() crosses the iframe boundary — only call it on an actual change.
+  var lastHeight = 0;
+  function syncHeight() {
+    requestAnimationFrame(function () {
+      var h = Math.ceil(card.getBoundingClientRect().bottom) + 4;
+      if (h === lastHeight) return;
+      lastHeight = h;
+      Homey.setHeight(h);
+    });
+  }
+
   function render(data) {
-    if (!data || data.error) { showNoData(T.unreachable); return; }
+    applyLang(data && data.lang); // authoritative language, before anything is drawn
+    if (!data || data.error) { showNoData(T.unreachable); syncHeight(); return; }
     content.style.display = 'block';
     noData.style.display  = 'none';
     var nowMs = Date.now();
     renderSolar(data.pv, nowMs);
     renderPrice(data.price, nowMs);
-
-    requestAnimationFrame(function () {
-      var rect = card.getBoundingClientRect();
-      Homey.setHeight(Math.ceil(rect.bottom) + 4);
-    });
+    syncHeight();
   }
 
   async function refresh() {
@@ -365,12 +392,22 @@ function onHomeyReady(Homey) {
     refresh();
   });
 
+  // Forecasts refresh server-side at most every ~1h (price) / ~3h (Solcast), so a fast
+  // poll would just re-render identical data — 60s keeps it responsive without waste.
+  // While the dashboard is hidden we stop entirely and catch up on return.
+  var POLL_MS = 60000;
+  var timer = null;
+  function startPolling() { if (!timer) timer = setInterval(refresh, POLL_MS); }
+  function stopPolling()  { if (timer) { clearInterval(timer); timer = null; } }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
+
   Homey.ready({ height: 460 });
   refresh();
-  // Forecasts refresh server-side at most every ~1h (price) / ~3h (Solcast), so a
-  // fast poll here would just re-render identical data — 60s keeps it responsive
-  // without unnecessary work.
-  setInterval(refresh, 60000);
+  if (!document.hidden) startPolling();
 }
 </script>
 </body>

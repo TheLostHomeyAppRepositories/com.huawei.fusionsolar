@@ -1361,6 +1361,92 @@ test('_evaluateEvChargers — grid_import_limit_kw unset (0) → unlimited, ceil
   assert.strictEqual(d._getChargerState('c1').currentAmps, 32); // unaffected — no ceiling configured
 });
 
+// ── chargerControl: grid-import ceiling must claim a DELTA, not the total ────
+// Regression guard. this._gridImportCommittedW is seeded per-tick (device.js _tickBody)
+// from the MEASURED grid import, which already contains whatever the charger is drawing
+// right now. Claiming the new target on top of that counted the same charger twice: a
+// charger comfortably inside the ceiling was stopped, its draw then left the meter
+// reading, the next tick saw headroom and restarted it — a permanent 15 s cycle.
+// NOTE: unlike the tests above, these seed _gridImportCommittedW from gridW exactly as
+// production does, instead of hardcoding 0 — that mismatch is what hid the bug.
+test('_evaluateEvChargers — a running charger already inside the ceiling is NOT stopped (no double-count)', async () => {
+  const HOUSE_W = 1000, DRAW_W = 16 * 3 * 230; // 11040 W; total 12040 W under a 15 kW ceiling
+  const gridW = HOUSE_W + DRAW_W;
+  const charger = {
+    id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false,
+    chargeMode: 'always', powerW: DRAW_W, rawPowerW: DRAW_W,
+  };
+  const d = makeChargerDevice({ _gridImportCommittedW: Math.max(0, gridW) }); // seeded as production does
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 3 }); // already running
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, gridW, [charger], { grid_import_limit_kw: 15 }, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 16); // held, not stopped
+});
+test('_evaluateEvChargers — a charger whose own draw pushes the house over the ceiling steps DOWN rather than stopping', async () => {
+  const HOUSE_W = 4460, DRAW_W = 16 * 3 * 230; // total 15500 W — 500 W over a 15 kW ceiling
+  const gridW = HOUSE_W + DRAW_W;
+  const charger = {
+    id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false,
+    chargeMode: 'always', powerW: DRAW_W, rawPowerW: DRAW_W,
+  };
+  const d = makeChargerDevice({ _gridImportCommittedW: Math.max(0, gridW) });
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 3 });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, gridW, [charger], { grid_import_limit_kw: 15 }, null, null);
+  const amps = d._getChargerState('c1').currentAmps;
+  assert.strictEqual(amps, 15); // 15 A × 3 ph = 10350 W → 14810 W total, back under the ceiling
+  assert.ok(HOUSE_W + amps * 3 * 230 <= 15000);
+});
+test('_evaluateEvChargers — a second charger still gets only the real remaining headroom', async () => {
+  // c1 already drawing 11040 W of a 15 kW ceiling, house 1000 W → 2960 W left, which is
+  // below c1's own minimum rung, so c2 must get nothing. Guards against the delta fix
+  // accidentally freeing up headroom that isn't there.
+  const HOUSE_W = 1000, DRAW_W = 16 * 3 * 230;
+  const gridW = HOUSE_W + DRAW_W;
+  const mk = (id, powerW) => ({
+    id, connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false,
+    chargeMode: 'always', powerW, rawPowerW: powerW,
+  });
+  const d = makeChargerDevice({ _gridImportCommittedW: Math.max(0, gridW) });
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 3 });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, gridW, [mk('c1', DRAW_W), mk('c2', 0)],
+    { grid_import_limit_kw: 15 }, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 16); // keeps its own draw
+  assert.strictEqual(d._getChargerState('c2').currentAmps, null); // no headroom for a second
+});
+
+// ── chargerControl: price-charge budget claims the GRANTED power, never a stranded max ──
+test('_evaluateEvChargers — price budget is claimed for the amps actually granted, not the theoretical max', async () => {
+  // 5 kW house ceiling leaves room for 7 A × 3 ph (4830 W) of a 16 A charger. The price
+  // budget must be charged 4830 W — not the 11040 W max the charger asked for.
+  // Anchored on the real clock: _evaluateEvChargers reads Date.now() internally, so a
+  // hardcoded past timestamp would silently route through the stale-forecast fail-safe
+  // instead of the cheap-slot path this test is about.
+  const now = Date.now();
+  const slots = [{ start: now - 60_000, end: now + 3600_000, price: 0.10 }];
+  const charger = {
+    id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false,
+    chargeMode: 'solar_price', carId: 'car1', powerW: 0, rawPowerW: 0,
+  };
+  const d = makeChargerDevice({
+    _gridImportCommittedW: 0, _priceChargeCommittedW: 0,
+    _priceForecast: slots, _priceForecastUpdatedAt: now,
+    _carStates: [{ id: 'car1', name: 'Car', soc: 10, target: 80, capacityKwh: 60, readyBy: '07:00' }],
+  });
+  const cfg = { grid_import_limit_kw: 5, price_charge_max_grid_kw: 100, price_ev_precondition_h: 0 };
+  const allocated = await d._evaluateEvChargers({ soc: 90, powerW: 0 }, 0, [charger], cfg, null, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 7);
+  assert.strictEqual(allocated, 7 * 3 * 230);            // 4830 W
+  assert.strictEqual(d._priceChargeCommittedW, 4830);    // was 11040 before the fix
+  assert.strictEqual(d._gridImportCommittedW, 4830);
+});
+test('_priceChargeCapAmps — caps the request to the remaining price budget, and is pure', async () => {
+  const d = makeChargerDevice({ _priceChargeCommittedW: 8000 });
+  const cfg = { price_charge_max_grid_kw: 10 }; // 2000 W left → 8 A @ 1 ph (1840 W); 9 A = 2070 W too much
+  assert.strictEqual(d._priceChargeCapAmps(cfg, 32, 1), 8);
+  assert.strictEqual(d._priceChargeCommittedW, 8000); // unchanged — must not claim
+  assert.strictEqual(d._priceChargeCapAmps({}, 32, 1), 32); // no budget configured → unlimited
+  assert.strictEqual(d._priceChargeCapAmps({ price_charge_max_grid_kw: 1 }, 32, 3), 0); // nothing fits
+});
+
 // ── chargerControl: per-device "EMS controls this device" toggle ─────────────
 test('_evaluateEvChargers — a charger with enabled:false is left alone even with ample surplus', async () => {
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false, enabled: false, powerW: 0 };
@@ -1475,6 +1561,31 @@ test('_trackChargeSession — accumulates energy over ticks and finalizes on dis
   assert.strictEqual(s.currency, 'CHF');
   assert.strictEqual(s.avgPrice, 0.30); // fixed price the whole session
   assert.strictEqual(Math.round(s.cost * 100) / 100, Math.round(expectedKwh * 0.30 * 100) / 100);
+});
+test('_trackChargeSession — bills the MEASURED draw, not the amps×phases estimate floor', () => {
+  // Regression guard. device.js _getChargers sets powerW = max(rawPowerW, estimate) purely
+  // to stop a false "no surplus" charger stop during startup lag. Billing that estimate
+  // inflated logged kWh/cost by up to ~3× for any car drawing less than commanded
+  // (tapering near full, or a 1-phase car on a 3-phase charger).
+  const d = makeChargerDevice();
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 3 }); // commanded 11040 W
+  const charger = { id: 'c1', connected: true, rawPowerW: 4000, powerW: 16 * 3 * 230 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000); // 1 h
+  d._trackChargeSession({ ...charger, connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000);
+  const s = d.getEmsChargeSessions()[0];
+  assert.strictEqual(s.energyKwh, 4);      // 4000 W for 1 h — was 11.04 kWh before the fix
+  assert.strictEqual(s.cost, 1.2);         // 4 kWh × 0.30 — was 3.31 CHF
+  assert.strictEqual(s.avgPrice, 0.3);
+});
+test('_trackChargeSession — falls back to the estimate when the charger reports no power at all', () => {
+  // rawPowerW null (no measure_power capability) → powerW (the estimate) is all we have.
+  const d = makeChargerDevice();
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: null, powerW: 2000 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000); // 1 h
+  d._trackChargeSession({ ...charger, connected: false, powerW: 0 }, cfg, 15_000);
+  assert.strictEqual(d.getEmsChargeSessions()[0].energyKwh, 2);
 });
 test('_trackChargeSession — negligible-energy sessions are not logged', () => {
   const d = makeChargerDevice({ _chargeSessions: [] });

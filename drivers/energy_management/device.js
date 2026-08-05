@@ -473,6 +473,14 @@ class EmsDevice extends Device {
     // not EMS-controlled) is accounted for before any EMS-controlled load claims more.
     // Claimed by the battery price-charge check above and every EV-charger tier that
     // draws unconditionally (Instant/Always/Off-peak/Price/Low-tariff) in chargerControl.js.
+    //
+    // Because the seed is a MEASUREMENT, it already contains whatever EMS-controlled
+    // loads are running right now. Any consumer that re-claims its full draw every tick
+    // (EV chargers, battery force-charge) must therefore claim only the DELTA — it takes
+    // its own current draw back out of the total first. Consumers that claim once on a
+    // NEW start and not again while running (the on/off simple devices) correctly stay
+    // part of this baseline. Getting that wrong made a charger inside the ceiling stop
+    // and restart every tick — see chargerControl.js _gridImportClaimAmps.
     this._gridImportCommittedW = Math.max(0, gridW || 0);
     // Charge-session energy/cost tracking — every configured charger, every tick,
     // independent of charge mode (see lib/ems/chargeSessions.js). TICK_MS as dt is an
@@ -746,13 +754,21 @@ class EmsDevice extends Device {
         // the main-fuse safety limit, skip grid-charging this tick (falls back to
         // whatever mode applies instead — see below).
         const limitKw = Number(cfg.grid_import_limit_kw) || 0;
-        const fitsCeiling = limitKw <= 0 || (this._gridImportCommittedW || 0) + chargeW <= limitKw * 1000;
+        // Delta claim, same reasoning as the EV chargers (chargerControl.js
+        // _gridImportClaimAmps): the running total is seeded from the MEASURED grid
+        // import, so a battery that was ALREADY force-charging last tick has its draw in
+        // there. Claiming chargeW on top would count it twice and deny a force-charge
+        // that is in fact comfortably inside the ceiling — then re-allow it next tick
+        // once the draw left the meter reading, oscillating the trigger.
+        const alreadyChargingW = st.priceMode === 'charge' ? chargeW : 0;
+        const baselineW   = Math.max(0, (this._gridImportCommittedW || 0) - alreadyChargingW);
+        const fitsCeiling = limitKw <= 0 || baselineW + chargeW <= limitKw * 1000;
         if (!fitsCeiling) {
           this._debugLog(`battery ${device.id}: force-charge DENIED — grid import ceiling (${limitKw}kW) has no headroom`);
           decision.mode = decision.reserveSlots?.length ? 'hold' : 'normal';
         } else {
           this._priceChargeCommittedW += chargeW;
-          this._gridImportCommittedW = (this._gridImportCommittedW || 0) + chargeW;
+          this._gridImportCommittedW = baselineW + chargeW;
         }
       }
       if (decision.mode === st.priceMode) continue; // unchanged — don't re-fire every tick

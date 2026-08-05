@@ -99,7 +99,9 @@ function onHomeyReady(Homey) {
   const statAmps = document.getElementById('statAmps');
   const statTimer = document.getElementById('statTimer');
 
-  const T = (function () {
+  // Language comes from the API payload (Homey i18n.getLanguage()), not
+  // navigator.language — see widgets/ems-device/api.js.
+  const DICTS = (function () {
     const de = {
       power: 'Leistung', amps: 'Ampere', session: 'Sitzung',
       notAvailable: 'Nicht verfügbar', unreachable: 'Lader nicht erreichbar',
@@ -148,13 +150,30 @@ function onHomeyReady(Homey) {
         error: ['Error', 'Check the charger'],
       },
     };
-    const l = navigator.language || '';
-    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+    return { de, nl, en };
   })();
+  function dictFor(code) {
+    const l = String(code || '');
+    return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+  }
+  let activeLang = null;
+  let T = dictFor(navigator.language); // placeholder until the first payload arrives
+  function applyLang(code) {
+    if (!code || code === activeLang) return false;
+    activeLang = code;
+    T = dictFor(code);
+    applyStaticLabels();
+    return true;
+  }
 
-  document.getElementById('labelPower').textContent   = T.power;
-  document.getElementById('labelAmps').textContent    = T.amps;
-  document.getElementById('labelSession').textContent = T.session;
+  // Re-applied on a language change so these never stay in the language the widget
+  // first rendered in (which would leave a mixed-language UI).
+  function applyStaticLabels() {
+    document.getElementById('labelPower').textContent   = T.power;
+    document.getElementById('labelAmps').textContent    = T.amps;
+    document.getElementById('labelSession').textContent = T.session;
+  }
+  applyStaticLabels();
 
   let sessionStartTime = null;
 
@@ -245,15 +264,32 @@ function onHomeyReady(Homey) {
   async function refresh() {
     try {
       const s = await Homey.api('GET', '/status');
+      applyLang(s && s.lang);
       render(s);
     } catch (err) {
       render({ error: T.unreachable });
     }
   }
 
+  // Polling (and the 1 s countdown tick) stop entirely while the dashboard is hidden —
+  // this widget used to keep both running around the clock — and catch up on return.
+  var pollTimer = null, tickTimerId = null;
+  function startPolling() {
+    if (!pollTimer)    pollTimer    = setInterval(refresh, 5000);
+    if (!tickTimerId)  tickTimerId  = setInterval(tickTimer, 1000);
+  }
+  function stopPolling() {
+    if (pollTimer)   { clearInterval(pollTimer);   pollTimer = null; }
+    if (tickTimerId) { clearInterval(tickTimerId); tickTimerId = null; }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
+
   refresh();
-  setInterval(refresh, 5000);
-  setInterval(tickTimer, 1000);
+  if (!document.hidden) startPolling();
 
   // Size the widget to fit the full photo plus the status/stats area,
   // whatever width the dashboard gives us. padding-top-based aspect

@@ -229,7 +229,9 @@
 </div>
 
 <script>
-var T = (function() {
+// Language comes from the API payload (Homey i18n.getLanguage()), not
+// navigator.language — see widgets/ems-device/api.js.
+var DICTS = (function() {
   var de = {
     pvToday:      'PV heute',
     exportToday:  'Einspeisung heute',
@@ -263,20 +265,37 @@ var T = (function() {
     charged:      'Charged',
     discharged:   'Discharged',
   };
-  var l = navigator.language;
-  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  return { de: de, nl: nl, en: en };
 })();
+function dictFor(code) {
+  var l = String(code || '');
+  return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+}
+var activeLang = null;
+var T = dictFor(navigator.language); // placeholder until the first payload arrives
+function applyLang(code) {
+  if (!code || code === activeLang) return false;
+  activeLang = code;
+  T = dictFor(code);
+  applyStaticLabels();
+  return true;
+}
 
 // Apply static labels
-document.getElementById('label-pv-today').textContent     = T.pvToday;
-document.getElementById('label-export-today').textContent = T.exportToday;
-document.getElementById('label-import-today').textContent = T.importToday;
-document.getElementById('label-house-today').textContent  = T.houseToday;
-document.getElementById('baseline-hint').textContent      = T.baseline;
-document.getElementById('label-selfcons').textContent     = T.selfCons;
-document.getElementById('label-selfsuff').textContent     = T.selfSuff;
-document.getElementById('label-charged').textContent      = T.charged;
-document.getElementById('label-discharged').textContent   = T.discharged;
+// Re-applied on a language change so static labels never stay in the
+// language the widget first rendered in (mixed-language UI).
+function applyStaticLabels() {
+  document.getElementById('label-pv-today').textContent     = T.pvToday;
+  document.getElementById('label-export-today').textContent = T.exportToday;
+  document.getElementById('label-import-today').textContent = T.importToday;
+  document.getElementById('label-house-today').textContent  = T.houseToday;
+  document.getElementById('baseline-hint').textContent      = T.baseline;
+  document.getElementById('label-selfcons').textContent     = T.selfCons;
+  document.getElementById('label-selfsuff').textContent     = T.selfSuff;
+  document.getElementById('label-charged').textContent      = T.charged;
+  document.getElementById('label-discharged').textContent   = T.discharged;
+}
+applyStaticLabels();
 
 function fmtKwh(v) {
   if (v === null || v === undefined) return '…';
@@ -364,14 +383,22 @@ function onHomeyReady(Homey) {
 
   function load() {
     Homey.api('GET', '/', {})
-      .then(function(data) { if (data) render(data); })
+      .then(function(data) { applyLang(data && data.lang); if (data) render(data); })
       .catch(function(err) { console.error('widget load error:', err); });
   }
 
   load();
-  setInterval(load, 10000);
+  // Polling stops entirely while the dashboard is hidden — it used to keep running
+  // around the clock — and catches up immediately on return.
+  var POLL_MS = 10000;
+  var pollTimer = null;
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(load, POLL_MS); }
+  function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  if (!document.hidden) startPolling();
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) load();
+    if (document.hidden) { stopPolling(); return; }
+    load();
+    startPolling();
   });
 }
 </script>

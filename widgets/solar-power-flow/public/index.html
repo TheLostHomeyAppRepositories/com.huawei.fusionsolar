@@ -186,13 +186,27 @@
 </div>
 
 <script>
-var T = (function() {
+// Language comes from the API payload (Homey i18n.getLanguage()), not
+// navigator.language — see widgets/ems-device/api.js.
+var DICTS = (function() {
   var de = { grid: 'Netz', batt: 'Batterie', house: 'Haus',  export: 'Einspeisung', import: 'Bezug'  };
   var nl = { grid: 'Net',  batt: 'Batterij', house: 'Huis',  export: 'Teruglevering', import: 'Afname' };
   var en = { grid: 'Grid', batt: 'Battery',  house: 'House', export: 'Export',       import: 'Import' };
-  var l = navigator.language;
-  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  return { de: de, nl: nl, en: en };
 })();
+function dictFor(code) {
+  var l = String(code || '');
+  return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+}
+var activeLang = null;
+var T = dictFor(navigator.language); // placeholder until the first payload arrives
+function applyLang(code) {
+  if (!code || code === activeLang) return false;
+  activeLang = code;
+  T = dictFor(code);
+  applyStaticLabels();
+  return true;
+}
 
 var C = {
   pv:        '#F59E0B',
@@ -382,14 +396,19 @@ function onHomeyReady(Homey) {
 
   function load() {
     Homey.api('GET', '/', {})
-      .then(function(data) { if (data) render(data); })
+      .then(function(data) { applyLang(data && data.lang); if (data) render(data); })
       .catch(function(err) { console.error('widget error:', err); });
   }
 
   // Apply translated node labels
-  document.getElementById('label-grid').textContent  = T.grid;
-  document.getElementById('label-batt').textContent  = T.batt;
-  document.getElementById('label-house').textContent = T.house;
+  // Re-applied on a language change so static labels never stay in the
+  // language the widget first rendered in (mixed-language UI).
+  function applyStaticLabels() {
+    document.getElementById('label-grid').textContent  = T.grid;
+    document.getElementById('label-batt').textContent  = T.batt;
+    document.getElementById('label-house').textContent = T.house;
+  }
+  applyStaticLabels();
 
   // Initial line positioning once DOM is painted
   requestAnimationFrame(function() {
@@ -397,9 +416,17 @@ function onHomeyReady(Homey) {
   });
 
   load();
-  setInterval(load, 5000);
+  // Polling stops entirely while the dashboard is hidden — it used to keep running
+  // around the clock — and catches up immediately on return.
+  var POLL_MS = 5000;
+  var pollTimer = null;
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(load, POLL_MS); }
+  function stopPolling()  { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  if (!document.hidden) startPolling();
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) load();
+    if (document.hidden) { stopPolling(); return; }
+    load();
+    startPolling();
   });
 }
 </script>

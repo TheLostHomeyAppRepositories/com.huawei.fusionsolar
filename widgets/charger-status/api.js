@@ -11,12 +11,19 @@ function getChargerDevice(homey) {
     || getDevice(homey, 'smartcharger_emma_modbus');
 }
 
+// Dashboard language from Homey itself, not navigator.language in the widget — that is
+// the browser/OS language and can differ from the Homey app language. See
+// widgets/ems-device/api.js for the full rationale.
+function lang(homey) {
+  try { return homey.i18n.getLanguage() || 'en'; } catch (e) { return 'en'; }
+}
+
 module.exports = {
   async getStatus({ homey }) {
     const device = getChargerDevice(homey);
     if (!device || typeof device.getWidgetStatus !== 'function') {
-      return { error: 'No charger registered' };
+      return { error: 'No charger registered', lang: lang(homey) };
     }
-    return device.getWidgetStatus();
+    return { ...device.getWidgetStatus(), lang: lang(homey) };
   },
 };

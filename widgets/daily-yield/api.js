@@ -2,6 +2,13 @@
 
 const { getDevice, cap } = require('../../lib/widget-data');
 
+// Dashboard language from Homey itself, not navigator.language in the widget — that is
+// the browser/OS language and can differ from the Homey app language. See
+// widgets/ems-device/api.js for the full rationale.
+function lang(homey) {
+  try { return homey.i18n.getLanguage() || 'en'; } catch (e) { return 'en'; }
+}
+
 module.exports = {
   async getData({ homey }) {
 
@@ -25,6 +32,6 @@ module.exports = {
       ? Math.round(dailyKwh * 0.401 * 10) / 10
       : null;
 
-    return { dailyKwh, totalKwh, optimizerTotal, optimizerOnline, co2SavedKg };
+    return { dailyKwh, totalKwh, optimizerTotal, optimizerOnline, co2SavedKg, lang: lang(homey) };
   },
 };

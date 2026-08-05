@@ -8,15 +8,20 @@ function getEmsDevice(homey) {
   } catch { return null; }
 }
 
+// Dashboard language from Homey itself, not navigator.language — see ems-device/api.js.
+function lang(homey) {
+  try { return homey.i18n.getLanguage() || 'en'; } catch (e) { return 'en'; }
+}
+
 module.exports = {
 
   async getStatus({ homey }) {
     const device = getEmsDevice(homey);
-    if (!device) return { error: 'no_ems_device' };
+    if (!device) return { error: 'no_ems_device', lang: lang(homey) };
     try {
-      return await device.getEmsBatteryStatus();
+      return { ...(await device.getEmsBatteryStatus()), lang: lang(homey) };
     } catch (e) {
-      return { error: e.message };
+      return { error: e.message, lang: lang(homey) };
     }
   },
 

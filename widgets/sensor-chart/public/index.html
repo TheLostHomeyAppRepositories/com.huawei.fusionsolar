@@ -177,7 +177,9 @@
 
 <script>
 /* ── Translations ────────────────────────────────────── */
-var T = (function() {
+// Language comes from the API payload (Homey i18n.getLanguage()), not
+// navigator.language — see widgets/ems-device/api.js.
+var DICTS = (function() {
   var de = {
     label1:'PV-Ausgabe', label2:'Batterie', label3:'Netz', label4:'Leistungsaufnahme',
     noData:'Noch keine Daten – wird gesammelt…',
@@ -193,9 +195,20 @@ var T = (function() {
     noData:'No data yet – collecting…',
     noSetting:'Select a device in widget settings',
   };
-  var l = navigator.language || '';
-  return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+  return { de: de, nl: nl, en: en };
 })();
+function dictFor(code) {
+  var l = String(code || '');
+  return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+}
+var activeLang = null;
+var T = dictFor(navigator.language); // placeholder until the first payload arrives
+function applyLang(code) {
+  if (!code || code === activeLang) return false;
+  activeLang = code;
+  T = dictFor(code);
+  return true;
+}
 
 /* ── Config ──────────────────────────────────────────── */
 var COLORS  = ['#22C55E', '#3B82F6', '#8B5CF6', '#EF4444'];
@@ -569,6 +582,7 @@ function onHomeyReady(Homey) {
   function load() {
     Homey.api('GET', buildUrl(), {})
       .then(function(data) {
+        applyLang(data && data.lang);
         document.body.classList.remove('loading');
         if (!data || !data.series) return;
         updateLegend(data.series, names);
@@ -646,8 +660,16 @@ function onHomeyReady(Homey) {
   load();
   resetPoll();
 
+  // Stop polling entirely while the dashboard is hidden — it used to keep running around
+  // the clock — and catch up immediately on return. resetPoll() re-arms the same timer
+  // the stepper controls already use, so the two never fight over pollTimer.
   document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) load();
+    if (document.hidden) {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      return;
+    }
+    load();
+    resetPoll();
   });
 }
 </script>

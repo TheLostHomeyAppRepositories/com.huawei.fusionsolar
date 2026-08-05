@@ -72,7 +72,9 @@ function onHomeyReady(Homey) {
   const settings = Homey.getSettings();
   const maxRows = parseInt(settings.rows || '5', 10);
 
-  const T = (function () {
+  // Language comes from the API payload (Homey i18n.getLanguage()), not
+  // navigator.language — see widgets/ems-device/api.js.
+  const DICTS = (function () {
     const de = {
       loading: 'Lädt…', notAvailable: 'Nicht verfügbar', unreachable: 'Lader nicht erreichbar',
       paused: 'Pausiert', inProgress: 'Läuft', startedAt: 'gestartet ', soFar: 'bisher', noSessions: 'Noch keine Sitzungen',
@@ -88,9 +90,20 @@ function onHomeyReady(Homey) {
       paused: 'Paused', inProgress: 'In progress', startedAt: 'started ', soFar: 'so far', noSessions: 'No sessions yet',
       months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     };
-    const l = navigator.language || '';
-    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+    return { de, nl, en };
   })();
+  function dictFor(code) {
+    const l = String(code || '');
+    return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+  }
+  let activeLang = null;
+  let T = dictFor(navigator.language); // placeholder until the first payload arrives
+  function applyLang(code) {
+    if (!code || code === activeLang) return false;
+    activeLang = code;
+    T = dictFor(code);
+    return true;
+  }
   emptyEl.textContent = T.loading;
 
   function fmtDate(ts) {
@@ -205,6 +218,7 @@ function onHomeyReady(Homey) {
   async function refresh() {
     try {
       const data = await Homey.api('GET', '/sessions');
+      applyLang(data && data.lang);
       render(data);
     } catch (err) {
       render({ error: T.unreachable });
@@ -229,6 +243,7 @@ function onHomeyReady(Homey) {
   async function firstLoad() {
     try {
       const data = await Homey.api('GET', '/sessions');
+      applyLang(data && data.lang);
       render(data);
       callReadyMeasured(!!(data && data.current && data.current.startTime));
     } catch (err) {
@@ -237,9 +252,25 @@ function onHomeyReady(Homey) {
     }
   }
 
+  // Polling (and the 1 s live-duration tick) stop entirely while the dashboard is hidden —
+  // this widget used to keep both running around the clock — and catch up on return.
+  var pollTimer = null, tickTimerId = null;
+  function startPolling() {
+    if (!pollTimer)   pollTimer   = setInterval(refresh, 10000);
+    if (!tickTimerId) tickTimerId = setInterval(tickLive, 1000);
+  }
+  function stopPolling() {
+    if (pollTimer)   { clearInterval(pollTimer);   pollTimer = null; }
+    if (tickTimerId) { clearInterval(tickTimerId); tickTimerId = null; }
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
+
   firstLoad();
-  setInterval(refresh, 10000);
-  setInterval(tickLive, 1000);
+  if (!document.hidden) startPolling();
 
   // Safety net: never leave the widget stuck in its loading state
   setTimeout(() => callReadyMeasured(false), 3000);

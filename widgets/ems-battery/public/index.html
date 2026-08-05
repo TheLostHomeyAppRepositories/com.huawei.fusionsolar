@@ -96,28 +96,46 @@
 
 <script type="text/javascript">
 function onHomeyReady(Homey) {
-  var T = (function () {
+  // Language comes from the API payload (Homey's own i18n.getLanguage()), not from
+  // navigator.language — that is the browser/OS language and can differ from the Homey
+  // app language. See widgets/ems-device/api.js for the full rationale.
+  var DICTS = (function () {
     var de = {
       title: 'Batterienutzung', noBattery: 'Keine Batterie konfiguriert', unreachable: 'EMS-Gerät nicht erreichbar',
       reserve: 'Reserve', normal: 'Normal', kwhOf: 'von',
       zoneGreen: 'Volles Budget', zoneOrange: 'Reserve-Zone', zoneRed: 'Geschützt — lädt Batterie',
-      priceCharge: 'Preisgeladen', priceHold: 'Entladen gesperrt (Preis)', priceIdle: 'Preisladen aktiviert',
+      priceCharge: 'Preisgeladen', priceHold: 'Entladen gesperrt (Preis)', priceIdle: 'Preisladen aktiviert', writeFailed: 'Änderung fehlgeschlagen',
     };
     var nl = {
       title: 'Batterijgebruik', noBattery: 'Geen batterij geconfigureerd', unreachable: 'EMS-apparaat niet bereikbaar',
       reserve: 'Reserve', normal: 'Normaal', kwhOf: 'van',
       zoneGreen: 'Volledig budget', zoneOrange: 'Reservezone', zoneRed: 'Beschermd — batterij laadt',
-      priceCharge: 'Prijsladen actief', priceHold: 'Ontladen geblokkeerd (prijs)', priceIdle: 'Prijsladen ingeschakeld',
+      priceCharge: 'Prijsladen actief', priceHold: 'Ontladen geblokkeerd (prijs)', priceIdle: 'Prijsladen ingeschakeld', writeFailed: 'Wijziging mislukt',
     };
     var en = {
       title: 'Battery Usage', noBattery: 'No battery configured', unreachable: 'EMS device unreachable',
       reserve: 'Reserve', normal: 'Normal', kwhOf: 'of',
       zoneGreen: 'Full budget', zoneOrange: 'Reserve zone', zoneRed: 'Protected — battery charging',
-      priceCharge: 'Price-charging', priceHold: 'Discharge held (price)', priceIdle: 'Price-charging enabled',
+      priceCharge: 'Price-charging', priceHold: 'Discharge held (price)', priceIdle: 'Price-charging enabled', writeFailed: 'Change failed',
     };
-    var l = navigator.language || '';
-    return l.startsWith('de') ? de : l.startsWith('nl') ? nl : en;
+    return { de: de, nl: nl, en: en };
   })();
+  function dictFor(code) {
+    var l = String(code || '');
+    return l.indexOf('de') === 0 ? DICTS.de : l.indexOf('nl') === 0 ? DICTS.nl : DICTS.en;
+  }
+  var activeLang = null;
+  var T = dictFor(navigator.language); // placeholder until the first payload arrives
+  function applyLang(code) {
+    if (!code || code === activeLang) return false;
+    activeLang = code;
+    T = dictFor(code);
+    // These three are set once at startup, so refresh them on a language change.
+    titleEl.textContent      = T.title;
+    reserveLabel.textContent = T.reserve;
+    normalLabel.textContent  = T.normal;
+    return true;
+  }
 
   var card    = document.getElementById('card');
   var noData  = document.getElementById('noData');
@@ -145,6 +163,28 @@ function onHomeyReady(Homey) {
     noData.textContent    = msg;
   }
 
+  // A failed write used to be swallowed, so the field just reverted on a later poll with
+  // no explanation. Confirm with an immediate refresh instead of waiting a whole poll,
+  // and on failure restore the previous value and say why.
+  var errorUntil = 0;
+  var lastStatus = null;
+  function flashError(msg) {
+    errorUntil = Date.now() + 4000;
+    statusText.textContent = '⚠ ' + msg;
+    statusText.style.color = 'var(--homey-text-color-red, #ef4444)';
+  }
+  function writeZones(body, rollback) {
+    Homey.api('POST', '/zones', body)
+      .then(function (res) {
+        if (res && res.error) throw new Error(res.error);
+        refresh();
+      })
+      .catch(function (err) {
+        rollback();
+        flashError((err && err.message) ? err.message : T.writeFailed);
+      });
+  }
+
   var bound = false;
   function bindInputs() {
     if (bound) return;
@@ -152,12 +192,14 @@ function onHomeyReady(Homey) {
     var commitNormal = function () {
       var v = parseInt(normalInput.value, 10);
       if (!isFinite(v)) return;
-      Homey.api('POST', '/zones', { normalSoc: v }).catch(function () {});
+      var prev = lastStatus ? lastStatus.normalSoc : null;
+      writeZones({ normalSoc: v }, function () { if (prev != null) normalInput.value = prev; });
     };
     var commitReserve = function () {
       var v = parseInt(reserveInput.value, 10);
       if (!isFinite(v)) return;
-      Homey.api('POST', '/zones', { reserveSoc: v }).catch(function () {});
+      var prev = lastStatus ? lastStatus.reserveSoc : null;
+      writeZones({ reserveSoc: v }, function () { reserveInput.value = prev != null ? prev : ''; });
     };
     normalInput.addEventListener('change', commitNormal);
     normalInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitNormal(); normalInput.blur(); } });
@@ -166,8 +208,10 @@ function onHomeyReady(Homey) {
   }
 
   function render(s) {
-    if (!s || s.error) { showNoData(T.unreachable); return; }
-    if (!s.hasBattery)  { showNoData(T.noBattery); return; }
+    applyLang(s && s.lang); // authoritative language, before anything is drawn
+    if (!s || s.error) { showNoData(T.unreachable); syncHeight(); return; }
+    if (!s.hasBattery)  { showNoData(T.noBattery); syncHeight(); return; }
+    lastStatus = s;
 
     content.style.display = 'block';
     noData.style.display  = 'none';
@@ -201,11 +245,22 @@ function onHomeyReady(Homey) {
       else { text += ' · ' + T.priceIdle; }
     }
     statusDot.className = 'status-dot ' + dotClass;
-    statusText.textContent = text;
+    if (Date.now() >= errorUntil) { // don't overwrite a visible error message
+      statusText.textContent = text;
+      statusText.style.color = '';
+    }
 
+    syncHeight();
+  }
+
+  // Homey.setHeight() crosses the iframe boundary — only call it on an actual change.
+  var lastHeight = 0;
+  function syncHeight() {
     requestAnimationFrame(function () {
-      var rect = card.getBoundingClientRect();
-      Homey.setHeight(Math.ceil(rect.bottom) + 4);
+      var h = Math.ceil(card.getBoundingClientRect().bottom) + 4;
+      if (h === lastHeight) return;
+      lastHeight = h;
+      Homey.setHeight(h);
     });
   }
 
@@ -218,9 +273,22 @@ function onHomeyReady(Homey) {
     }
   }
 
+  // The EMS recomputes only every TICK_MS (15 s), so a faster poll re-fetches identical
+  // data; writes confirm themselves immediately via writeZones(). Stop entirely while
+  // the dashboard is hidden and catch up on return.
+  var POLL_MS = 15000;
+  var timer = null;
+  function startPolling() { if (!timer) timer = setInterval(refresh, POLL_MS); }
+  function stopPolling()  { if (timer) { clearInterval(timer); timer = null; } }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
+
   Homey.ready({ height: 190 });
   refresh();
-  setInterval(refresh, 5000);
+  if (!document.hidden) startPolling();
 }
 </script>
 </body>

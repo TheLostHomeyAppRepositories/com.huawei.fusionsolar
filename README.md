@@ -448,11 +448,13 @@ The same price forecast can also drive the home battery itself — a Homey equiv
 
 Unlike EV charging, there's no "by" deadline — a battery has no real-world moment it must be ready by, so instead of a fixed clock-time cutoff, the EMS looks at a **rolling 24-hour window from now** and picks the cheapest hours within it to reach Target SOC, firing *Force Charge* when now is one of them. This lets it hold out for a genuinely cheaper hour later instead of being forced to commit early. Independently, it picks the `N` most expensive upcoming hours in that same window (the reserve) and fires *Max Discharge Power* outside them, *Normal Mode* inside them. If the price forecast is stale or missing, or a battery isn't SoC-readable, this does nothing — battery behaviour falls back to whatever the inverter/battery already does on its own. A live preview under each battery's price fields ("Refresh plan") shows, from the current forecast, what the battery is doing right now and its planned charge/reserve windows for the next 24h.
 
-**Shared grid-import budget:** since the home battery and any EV chargers in "Solar & cheapest hours (forecast)" / "Solar & low tariff" mode can all independently decide to grid-charge in the same cheap hour, an optional **Grid import limit for price-charging** field (under *Grid Meter*, `0` = unlimited) caps their combined draw. The battery is allocated first each tick (it evaluates earlier); chargers that no longer fit the remaining budget simply skip grid-charging that tick and fall back to solar-only, rather than all committing at once and overloading the site's main fuse. EMS Diagnostics shows how much of the budget is currently committed.
+**Shared grid-import budget:** since the home battery and any EV chargers in "Solar & cheapest hours (forecast)" / "Solar & low tariff" mode can all independently decide to grid-charge in the same cheap hour, an optional **Grid import limit for price-charging** field (under *Grid Meter*, `0` = unlimited) caps their combined draw. The battery is allocated first each tick (it evaluates earlier); a charger is then capped to the highest amp rung that still fits what's left, and only skips grid-charging entirely — falling back to solar-only — when not even its minimum current fits. Each charger is charged against the budget for the amps it was *actually* granted, not for the maximum it asked for. (Before 1.2.43 the theoretical maximum was reserved up front and never released when the whole-house ceiling below subsequently granted less, which exhausted the budget far faster than reality and could wrongly deny a second price/low-tariff charger; the figure shown in Diagnostics was correspondingly too high.) EMS Diagnostics shows how much of the budget is currently committed.
 
 **Live plan previews:** both the battery (its price fields) and each EV charger in a price-aware mode have a "↻ Refresh plan" button showing, from the current forecast, whether it's grid-charging right now and its planned cheap-hour window(s) for the next 24h — no need to wait and watch to find out.
 
 **Grid import limit — whole house (load shedding):** the budget above only caps *price-driven* grid-charging; several EMS behaviours draw grid power unconditionally regardless of price — Instant charging, "Always charge" chargers, and Off-peak-window charging. An optional **Grid import limit — whole house** field (also under *Grid Meter*, `0` = unlimited) sets a hard ceiling on *total* grid import, e.g. matching the site's main fuse rating. Every tick the EMS starts from the actually-measured house import (so ordinary baseline load — fridge, lights, whatever isn't EMS-controlled — is already accounted for) and, if any of these unconditional tiers would push total import over the limit, gracefully steps the charging current down to the highest amp rung that still fits rather than stopping outright; if even the minimum amp doesn't fit, the charger is held off entirely for that tick. Home Battery force-charge is included too — since its power is a fixed value set via your own flow rather than an adjustable amp, it's simply skipped for the tick if it wouldn't fit. This is layered *under* the price-charging budget above: a price/low-tariff charger must pass both checks. EMS Diagnostics shows how much of the ceiling is currently committed.
+
+> **How the ceiling is counted.** Because the starting figure is a *measurement*, it already contains whatever EMS-controlled loads are running right now. Anything that re-claims its full draw every tick — EV chargers and Home Battery force-charge — therefore takes its own current draw back out before asking for headroom, and only the difference is charged against the ceiling. Loads that claim once when they start and not again while running (heat pump, boiler, pool pump, dehumidifier) correctly stay part of that measured baseline. Without this a charger sitting comfortably inside the limit would be counted twice, get stopped, then restart on the next tick once its draw left the meter reading — a permanent 15-second on/off cycle (fixed in 1.2.43). A charger whose house load has since risen *above* the ceiling now steps its current down to fit instead of stopping.
 
 **Stale-forecast notification:** if a price forecast that was previously being fed goes more than 48h without an update (the source flow likely broke or was removed), the EMS sends a one-shot Homey notification instead of silently falling back to continuous charging — it re-arms once fresh data arrives, so a later outage notifies again.
 
@@ -460,7 +462,7 @@ Unlike EV charging, there's no "by" deadline — a battery has no real-world mom
 
 #### Charge sessions
 
-Every configured EV charger (any charging mode — solar, off-peak, price-optimised, low-tariff, always) gets a per-session energy and cost log, shown under **App Settings → Energy Management → 🔌 Charge Sessions**. A session runs from the car being plugged in to being unplugged; energy only accumulates on ticks where the charger actually draws power, so pauses within one plug-in period (waiting for surplus, a cheaper price slot, battery protection, …) don't split it into several entries. Cost is computed from whatever the **Electricity Price** tariff model reports at each tick (Fixed / Low-high / Variable / Price forecast) — sessions where no price was known at all show energy only, with cost left blank. Sessions under 0.05 kWh (e.g. a brief plug-in) aren't logged. The last 200 sessions are kept.
+Every configured EV charger (any charging mode — solar, off-peak, price-optimised, low-tariff, always) gets a per-session energy and cost log, shown under **App Settings → Energy Management → 🔌 Charge Sessions**. A session runs from the car being plugged in to being unplugged; energy only accumulates on ticks where the charger actually draws power, so pauses within one plug-in period (waiting for surplus, a cheaper price slot, battery protection, …) don't split it into several entries. Energy is integrated from the charger's **measured** power, not from the current the EMS commanded — a car that self-caps below the commanded amps (tapering near full, or a 1-phase car on a 3-phase charger) is billed for what it actually drew. Before 1.2.43 the commanded estimate was used, which could overstate a session's kWh and cost by up to about 3×; entries logged before that release keep their original figures. Cost is computed from whatever the **Electricity Price** tariff model reports at each tick (Fixed / Low-high / Variable / Price forecast) — sessions where no price was known at all show energy only, with cost left blank. Sessions under 0.05 kWh (e.g. a brief plug-in) aren't logged. The last 200 sessions are kept.
 
 #### Configuration & diagnostics
 
@@ -728,6 +730,12 @@ The app includes 12 Homey dashboard widgets that provide live and daily energy d
 
 All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
 
+Behaviour shared by every widget:
+
+- **Language** follows the language set in the Homey app itself (`homey.i18n.getLanguage()`, delivered with each API response), *not* the browser or phone language — an English phone paired with a German Homey still renders German widgets. Available in English, German and Dutch.
+- **Theme** follows the dashboard's light/dark setting via Homey's own `--homey-*` CSS variables, not the OS-level `prefers-color-scheme`.
+- **Polling stops entirely while the dashboard isn't on screen** and resumes with an immediate refresh when you return, so an open widget doesn't keep updating in the background. The per-widget intervals below therefore apply only while the widget is actually visible.
+
 ---
 
 ### Solar Power Flow
@@ -859,7 +867,7 @@ Live status card for a single EMS-controlled device — pick any configured **EV
 
 - **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight, saved to the device store roughly every 60s so it survives an app restart), and the configured **minimum surplus (W)** threshold (read-only — change it in App Settings)
 - **All devices:** an **"EMS control" switch** — turns EMS's control of *this specific device* on or off, independent of any other device or the app-wide settings. Off means EMS leaves it alone entirely (no start/stop/current commands).
-- Updates every **5 seconds**; changes take effect immediately (restarts the EMS tick loop, same as saving App Settings)
+- Updates every **15 seconds**, matching the EMS's own tick — polling faster only re-fetches that tick's cached snapshot. Responsiveness doesn't suffer, because every control you change (switch, charging-mode dropdown) applies optimistically and then confirms itself with an immediate refresh rather than waiting for the next poll. If the write fails, the control springs back to its previous state and shows the reason instead of silently reverting later. Changes take effect immediately (restarts the EMS tick loop, same as saving App Settings)
 
 ---
 
@@ -868,9 +876,9 @@ Live status card for a single EMS-controlled device — pick any configured **EV
 Aggregate view of the EMS's Home Battery SoC and its priority zones — mirrors the **Battery** section of App Settings.
 
 - Colour-coded SoC bar (green = full budget, orange = reserve zone, red = protected/hard-stop) with markers for the configured thresholds
-- **Normal SoC** and **Reserve SoC** are editable directly on the widget
+- **Normal SoC** and **Reserve SoC** are editable directly on the widget — an edited value confirms itself immediately, and on failure restores the previous value with the reason shown
 - Status line shows whether price-optimised grid-charging is currently active or holding discharge, when configured
-- Updates every **5 seconds**
+- Updates every **15 seconds**, matching the EMS's own tick
 
 ---
 

@@ -8,27 +8,35 @@ function getEmsDevice(homey) {
   } catch { return null; }
 }
 
+// The dashboard language comes from Homey itself, NOT from navigator.language inside the
+// widget — that is the browser/OS language and can differ from the Homey app language
+// (an English phone paired with a German Homey used to show English widgets). Returned
+// with every payload so the view picks its translations from the authoritative source.
+function lang(homey) {
+  try { return homey.i18n.getLanguage() || 'en'; } catch (e) { return 'en'; }
+}
+
 module.exports = {
 
   async getDevices({ homey }) {
     const device = getEmsDevice(homey);
-    if (!device) return { error: 'no_ems_device', devices: [] };
+    if (!device) return { error: 'no_ems_device', devices: [], lang: lang(homey) };
     try {
-      return { devices: await device.getEmsControllableDevices() };
+      return { devices: await device.getEmsControllableDevices(), lang: lang(homey) };
     } catch (e) {
-      return { error: e.message, devices: [] };
+      return { error: e.message, devices: [], lang: lang(homey) };
     }
   },
 
   async getStatus({ homey, query }) {
     const device = getEmsDevice(homey);
-    if (!device) return { error: 'no_ems_device' };
+    if (!device) return { error: 'no_ems_device', lang: lang(homey) };
     const id = query && query.device;
-    if (!id) return { error: 'no_device_selected' };
+    if (!id) return { error: 'no_device_selected', lang: lang(homey) };
     try {
-      return await device.getEmsControllableStatus(id);
+      return { ...(await device.getEmsControllableStatus(id)), lang: lang(homey) };
     } catch (e) {
-      return { error: e.message };
+      return { error: e.message, lang: lang(homey) };
     }
   },
 
