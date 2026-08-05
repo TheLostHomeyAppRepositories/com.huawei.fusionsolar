@@ -409,6 +409,10 @@ class FusionSolarKioskApp extends App {
    */
   _loadCapHistory() {
     let loaded = 0;
+    // Collected while walking the currently paired devices, then handed to the orphan
+    // cleanup below — the same walk answers both "what do I restore" and "what is stale".
+    const validLogIds = new Set();
+    let enumerationComplete = true;
     try {
       const drivers = this.homey.drivers.getDrivers();
       for (const driver of Object.values(drivers)) {
@@ -421,19 +425,61 @@ class FusionSolarKioskApp extends App {
               if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
 
               const logId = `${deviceId}::${capId}`;
+              validLogIds.add(logId);
               const raw   = this.homey.settings.get(`sch_hist_${logId}`);
               if (!Array.isArray(raw) || raw.length === 0) continue;
 
-              const points = raw.map(([t, v]) => ({ t: new Date(t).toISOString(), v }));
+              // Keep the timestamp as epoch ms, exactly as persisted. It used to be
+              // inflated into a 24-character ISO string per point — several times the
+              // memory of a number, for a value that is only ever compared and
+              // re-serialised numerically.
+              const points = raw.map(([t, v]) => ({ t: Number(t), v }));
               this._capHistory.set(logId, points);
               loaded++;
             }
           }
-        } catch (e) { /* skip */ }
+        } catch (e) { enumerationComplete = false; /* skip unavailable driver */ }
       }
       if (loaded > 0) this.log(`sensor-chart: restored ${loaded} series from settings`);
     } catch (e) {
+      enumerationComplete = false;
       this.error('sensor-chart: _loadCapHistory error:', e.message);
+    }
+    this._pruneOrphanCapHistory(validLogIds, enumerationComplete);
+  }
+
+  /**
+   * Delete persisted series (`sch_hist_<logId>`) whose device or capability no longer
+   * exists. _loadCapHistory only ever restores series for currently paired devices, so
+   * an orphan is invisible in memory but stays in homey.settings forever — every removed
+   * or re-paired device left ~1500 points behind, accumulating silently across years.
+   *
+   * Deliberately conservative: skipped whenever the device walk above hit an error, and
+   * never run on an empty device list (far more likely a startup-timing artefact than the
+   * user genuinely having removed every device). A wrongly deleted key costs real history.
+   *
+   * @param {Set<string>} validLogIds        logIds backed by a currently paired device
+   * @param {boolean}     enumerationComplete false if any driver/device lookup threw
+   */
+  _pruneOrphanCapHistory(validLogIds, enumerationComplete) {
+    if (!enumerationComplete) {
+      this.log('sensor-chart: skipping orphan cleanup — device list was incomplete this start');
+      return;
+    }
+    if (validLogIds.size === 0) return;
+    try {
+      const PREFIX = 'sch_hist_';
+      const keys = this.homey.settings.getKeys() || [];
+      let removed = 0;
+      for (const key of keys) {
+        if (!key.startsWith(PREFIX)) continue;
+        if (validLogIds.has(key.slice(PREFIX.length))) continue;
+        this.homey.settings.unset(key);
+        removed++;
+      }
+      if (removed) this.log(`sensor-chart: removed ${removed} orphaned history series from settings`);
+    } catch (e) {
+      this.error('sensor-chart: orphan cleanup failed:', e.message);
     }
   }
 
@@ -445,7 +491,8 @@ class FusionSolarKioskApp extends App {
     if (!this._capHistory || this._capHistory.size === 0) return;
     try {
       for (const [logId, points] of this._capHistory.entries()) {
-        const compact = points.map((p) => [new Date(p.t).getTime(), Math.round(p.v * 100) / 100]);
+        // p.t is already epoch ms — no Date round-trip needed.
+        const compact = points.map((p) => [p.t, Math.round(p.v * 100) / 100]);
         this.homey.settings.set(`sch_hist_${logId}`, compact);
       }
       this.log(`sensor-chart: saved ${this._capHistory.size} series to settings`);
@@ -460,7 +507,9 @@ class FusionSolarKioskApp extends App {
    */
   _snapshotAllCaps() {
     if (!this._capHistory) return;
-    const now = new Date().toISOString();
+    // Epoch ms, not an ISO string: this value is written once per point per minute and
+    // only ever compared/serialised numerically, so a string was pure overhead.
+    const now = Date.now();
     const max = FusionSolarKioskApp.CAP_HISTORY_MAX;
     try {
       const drivers = this.homey.drivers.getDrivers();
@@ -507,7 +556,7 @@ class FusionSolarKioskApp extends App {
       if (!id) continue;
 
       const points   = this._capHistory ? (this._capHistory.get(id) || []) : [];
-      const filtered = points.filter((p) => new Date(p.t).getTime() >= cutoff);
+      const filtered = points.filter((p) => p.t >= cutoff);
       series.push({ id, points: filtered });
     }
 
