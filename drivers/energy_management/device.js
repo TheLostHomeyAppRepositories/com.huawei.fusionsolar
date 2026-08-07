@@ -156,20 +156,13 @@ class EmsDevice extends Device {
         await this._ingestPriceForecast(args.prices, args.period || 'next_hours');
       });
 
-    // Flow action: external app / schedule sets a car's target SOC.
-    const carTargetCard = this.homey.flow.getActionCard('ems_set_car_target_soc');
-    carTargetCard.registerArgumentAutocompleteListener('car', async (query) => {
-      const cars = this._getConfig().car_devices || [];
-      const q = (query || '').toLowerCase();
-      return cars
-        .filter((c) => !q || (c.name || '').toLowerCase().includes(q))
-        .map((c) => ({ id: c.id, name: c.name || c.id }));
-    });
-    carTargetCard.registerRunListener(async (args) => {
-      if (args.device.id !== this.id) return;
-      const carId = args.car && args.car.id;
-      if (!carId) throw new Error('No car selected');
-      const soc = Math.round(Number(args.soc));
+    // Sets a car's target SOC and relays it to the vehicle. Extracted from the flow
+    // action's run listener so the ems-device widget can take exactly the same path:
+    // the widget must not talk to the car itself, it only states the target and lets the
+    // user's generated "Set charge <soc>%" flow do the rest.
+    // Exposed on the device (not a local helper) so api.js can reach it.
+    this.setCarTargetSoc = async (carId, rawSoc) => {
+      const soc = Math.round(Number(rawSoc));
       if (!Number.isFinite(soc) || soc < 0 || soc > 100) throw new Error('Target SOC must be 0–100');
       this._carTargets[carId] = soc;
       await this.setStoreValue('carTargets', this._carTargets).catch(() => {});
@@ -189,6 +182,23 @@ class EmsDevice extends Device {
           { car_device_id: (car && car.device_id) || carId, target_pct: String(soc) },
         )
         .catch((e) => this.log(`[EMS] ems_set_car_target trigger failed: ${e.message}`));
+      return soc;
+    };
+
+    // Flow action: external app / schedule sets a car's target SOC.
+    const carTargetCard = this.homey.flow.getActionCard('ems_set_car_target_soc');
+    carTargetCard.registerArgumentAutocompleteListener('car', async (query) => {
+      const cars = this._getConfig().car_devices || [];
+      const q = (query || '').toLowerCase();
+      return cars
+        .filter((c) => !q || (c.name || '').toLowerCase().includes(q))
+        .map((c) => ({ id: c.id, name: c.name || c.id }));
+    });
+    carTargetCard.registerRunListener(async (args) => {
+      if (args.device.id !== this.id) return;
+      const carId = args.car && args.car.id;
+      if (!carId) throw new Error('No car selected');
+      await this.setCarTargetSoc(carId, args.soc);
     });
 
     this._applyPriceCurrencyUnit(this._getConfig());

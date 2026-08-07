@@ -79,6 +79,20 @@
   .car-bar-track { flex: 1; position: relative; height: 10px; border-radius: 6px; background: rgba(128,128,128,0.14); overflow: hidden; }
   .car-bar-fill { height: 100%; background: var(--homey-color-green, #22c55e); border-radius: 6px; transition: width 0.3s ease; }
   .car-bar-marker { position: absolute; top: -2px; width: 2px; height: 14px; background: var(--homey-line-color, rgba(128,128,128,0.6)); }
+  /* Ladeziel-Auswahl. Bewusst unter dem Balken statt als Markierungen darauf: der Track ist
+     10 px hoch und hat overflow:hidden, Tippziele darin waeren winzig und abgeschnitten. */
+  .car-picks { display: flex; gap: 6px; margin-top: 8px; }
+  .car-pick {
+    flex: 1; padding: 4px 0; font: inherit; font-size: 11px; font-weight: 600;
+    color: var(--homey-text-color-light); background: rgba(128,128,128,0.12);
+    border: 1px solid transparent; border-radius: 999px; cursor: pointer;
+  }
+  .car-pick.is-active {
+    color: var(--homey-text-color); background: rgba(34,197,94,0.18);
+    border-color: var(--homey-color-green, #22c55e);
+  }
+  .car-pick:disabled { opacity: 0.5; cursor: default; }
+  .car-pick.is-error { border-color: var(--homey-color-red, #ef4444); }
   .car-stats { display: flex; justify-content: space-between; margin-top: 8px; }
   .car-stat-value { font-size: 13px; font-weight: 700; color: var(--homey-text-color); }
   .car-stat-label { font-size: 9px; color: var(--homey-text-color-light); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 1px; }
@@ -156,6 +170,11 @@
             <div class="car-bar-fill" id="carBarFill" style="width:0%"></div>
             <div class="car-bar-marker" id="carBarMarker" style="display:none"></div>
           </div>
+        </div>
+        <div class="car-picks" id="carPicks" style="display:none">
+          <button type="button" class="car-pick" data-soc="80">80%</button>
+          <button type="button" class="car-pick" data-soc="90">90%</button>
+          <button type="button" class="car-pick" data-soc="100">100%</button>
         </div>
         <div class="car-stats">
           <div>
@@ -265,6 +284,40 @@ function onHomeyReady(Homey) {
   var carStatusEl = document.getElementById('carStatus');
   var carBarFill   = document.getElementById('carBarFill');
   var carBarMarker = document.getElementById('carBarMarker');
+  var carPicks = document.getElementById('carPicks');
+  var _carId = null;          // aus /status; Schluessel fuer POST /ems/car-target
+  var _pickBusy = false;      // verhindert Doppelklicks waehrend der Anfrage laeuft
+
+  // Hebt den Chip hervor, der dem aktuellen Ladeziel entspricht.
+  function _paintPicks(target) {
+    var t = target != null ? Math.round(target) : null;
+    Array.prototype.forEach.call(carPicks.children, function(btn) {
+      btn.classList.toggle('is-active', t !== null && Number(btn.dataset.soc) === t);
+      btn.classList.remove('is-error');
+      btn.disabled = _pickBusy;
+    });
+  }
+
+  carPicks.addEventListener('click', async function(ev) {
+    var btn = ev.target.closest('.car-pick');
+    if (!btn || !_carId || _pickBusy) return;
+    var soc = Number(btn.dataset.soc);
+    // Optimistisch schalten: das Ziel laeuft ueber einen Flow zum Fahrzeug, die Antwort
+    // des naechsten /status-Abrufs kaeme sonst erst Sekunden spaeter.
+    _pickBusy = true;
+    _paintPicks(soc);
+    carLimitVal.textContent = soc + '%';
+    try {
+      var res = await Homey.api('POST', '/ems/car-target', { carId: _carId, soc: soc });
+      if (res && res.error) throw new Error(res.error);
+    } catch (e) {
+      btn.classList.add('is-error');   // Anzeige korrigiert sich beim naechsten /status
+    } finally {
+      _pickBusy = false;
+      Array.prototype.forEach.call(carPicks.children, function(b) { b.disabled = false; });
+    }
+  });
+
   var carSocVal = document.getElementById('carSocVal'), carSocLabel = document.getElementById('carSocLabel');
   var carPlanVal = document.getElementById('carPlanVal'), carPlanLabel = document.getElementById('carPlanLabel');
   var carLimitVal = document.getElementById('carLimitVal'), carLimitLabel = document.getElementById('carLimitLabel');
@@ -470,6 +523,16 @@ function onHomeyReady(Homey) {
 
       carLimitLabel.textContent = T.limitLabel;
       carLimitVal.textContent   = s.carTarget != null ? Math.round(s.carTarget) + '%' : '—';
+
+      // Ladeziel-Auswahl nur zeigen, wenn ueberhaupt ein Fahrzeug gebunden ist — der
+      // carId kommt aus derselben Antwort und ist der Schluessel fuer die Route.
+      _carId = s.carId || null;
+      if (_carId) {
+        carPicks.style.display = '';
+        _paintPicks(s.carTarget);
+      } else {
+        carPicks.style.display = 'none';
+      }
 
       carPlanLabel.textContent = T.planLabel;
       carPlanVal.textContent   = (s.chargeMode === 'solar_price' && s.carReadyBy) ? s.carReadyBy : '—';
