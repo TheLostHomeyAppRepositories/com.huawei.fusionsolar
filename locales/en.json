@@ -665,10 +665,6 @@
         },
         "ruleOfThumb": "Rule of thumb: have real hourly price data (e.g. Power by the Hour, Tibber)? Use <b>Cheapest hours</b> — it's the most accurate. Only a fixed cheap/expensive schedule, no live prices? Use <b>Off-peak window</b> or <b>Low tariff</b> depending on which schedule you already maintain."
       },
-      "enableControl": {
-        "title": "Enable EMS control",
-        "desc": "The EMS automatically controls EV charging based on solar surplus and off-peak schedule. Disable to charge manually."
-      },
       "solarFirst": {
         "title": "Solar surplus priority",
         "desc": "During the off-peak window: if solar surplus is available, the EMS uses it instead of the grid. Disable to always charge at the configured off-peak limit during the window, regardless of solar."

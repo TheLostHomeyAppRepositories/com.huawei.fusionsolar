@@ -665,10 +665,6 @@
         },
         "ruleOfThumb": "Vuistregel: heb je echte uurprijsgegevens (bijv. Power by the Hour, Tibber)? Gebruik <b>Goedkoopste uren</b> — dat is het nauwkeurigst. Alleen een vast goedkoop/duur-schema, geen live prijzen? Gebruik <b>Daltarief-venster</b> of <b>Laag tarief</b>, afhankelijk van welk schema je al bijhoudt."
       },
-      "enableControl": {
-        "title": "EMS-besturing inschakelen",
-        "desc": "De EMS regelt EV-laden automatisch op basis van zonneoverschot en daltarief-schema. Uitschakelen om handmatig te laden."
-      },
       "solarFirst": {
         "title": "Prioriteit voor zonneoverschot",
         "desc": "Tijdens het daltarief-venster: als zonneoverschot beschikbaar is, gebruikt de EMS dit in plaats van het net. Uitschakelen om tijdens het venster altijd op de ingestelde daltarieflimiet te laden, ongeacht zon."

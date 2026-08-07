@@ -665,10 +665,6 @@
         },
         "ruleOfThumb": "Faustregel: echte stündliche Preisdaten vorhanden (z. B. Power by the Hour, Tibber)? Dann <b>Günstigste Stunden</b> nutzen — am genauesten. Nur ein fester Günstig-/Teuer-Zeitplan, keine Live-Preise? Dann <b>Off-Peak-Fenster</b> oder <b>Niedertarif</b>, je nachdem welchen Zeitplan du bereits pflegst."
       },
-      "enableControl": {
-        "title": "EMS-Steuerung aktivieren",
-        "desc": "Das EMS steuert das EV-Laden automatisch anhand von Solarüberschuss und Off-Peak-Zeitplan. Deaktivieren für manuelles Laden."
-      },
       "solarFirst": {
         "title": "Solarüberschuss-Priorität",
         "desc": "Während des Off-Peak-Fensters: ist Solarüberschuss vorhanden, nutzt das EMS ihn statt des Netzes. Deaktivieren, um während des Fensters immer mit dem eingestellten Off-Peak-Limit zu laden, unabhängig von Solar."

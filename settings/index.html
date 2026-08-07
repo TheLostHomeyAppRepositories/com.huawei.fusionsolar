@@ -1025,17 +1025,6 @@
           <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="evChargers.addButton">+ Add charger</button>
       <label class="ems-toggle-row">
         <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-charger-control" onchange="emsChargerControlAll(this); emsGuardControl(this,'ems-charger-list','chargerStartCard',null,'ems-charger-control-hint')">
-          <span class="ems-toggle-slider"></span>
-        </span>
-        <span>
-          <span class="ems-toggle-title" data-i18n="evChargers.enableControl.title">Enable EMS control</span>
-          <span class="ems-toggle-desc" data-i18n="evChargers.enableControl.desc">The EMS automatically controls EV charging based on solar surplus and off-peak schedule. Disable to charge manually.</span>
-          <span id="ems-charger-control-hint" class="ems-control-hint"></span>
-        </span>
-      </label>
-      <label class="ems-toggle-row">
-        <span class="ems-toggle-switch">
           <input type="checkbox" id="ems-offpeak-solar-first" checked>
           <span class="ems-toggle-slider"></span>
         </span>
@@ -4341,16 +4330,25 @@
       // below the list — two switches with the same label, each editable in only one
       // place, which read as "they never stay in sync". Missing means enabled, matching
       // chargerControl.js (`enabled !== false`).
+      // Gleiche Schiebeschalter-Optik wie die Bereichsschalter der Seite (ems-toggle-switch
+      // + ems-toggle-slider), damit gleiche Bedeutung auch gleich aussieht. Seit dieser
+      // Schalter der einzige ist, der EMS-Steuerung fuer den Lader bestimmt, soll er nicht
+      // wie ein beilaeufiges Haekchen zwischen Ampere und Phasen wirken.
       var enGroup = document.createElement('label');
-      enGroup.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:11px;color:#6e6e73;cursor:pointer';
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
       var enChk = document.createElement('input');
       enChk.type = 'checkbox';
       enChk.className = 'ems-charger-enabled';
       enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
       var enTxt = document.createElement('span');
       enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
       enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
-      enGroup.appendChild(enChk); enGroup.appendChild(enTxt);
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
       configRow.appendChild(enGroup);
 
       // Charging mode (per charger)
@@ -7467,13 +7465,6 @@
 
     // ── Collect row data for save ─────────────────────────────────────────────
 
-    // Sammelaktion des Abschnitts-Schalters: setzt jedes Lader-Kaestchen auf denselben Wert.
-    // Der Schalter selbst speichert nichts mehr — damit gibt es nur noch EINE gespeicherte
-    // Wahrheit je Lader statt zweier, von denen eine die andere still ueberstimmte.
-    function emsChargerControlAll(master) {
-      document.querySelectorAll('#ems-charger-list .ems-charger-enabled')
-        .forEach(function(chk) { chk.checked = master.checked; });
-    }
 
     function emsGetChargers() {
       var result = [];
@@ -7681,10 +7672,6 @@
       document.getElementById('ems-offpeak-weekend-rows').style.display                        = wkd ? 'flex' : 'none';
       if (cfg.offpeak_weekend_start) document.getElementById('ems-offpeak-weekend-start').value = cfg.offpeak_weekend_start;
       if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
-      // Abgeleitet: an, wenn jeder Lader einzeln aktiv ist. Der Schalter speichert nichts
-      // mehr — er ist eine Sammelaktion fuer die Kaestchen der Lader-Zeilen. Vorher war er
-      // ein zweites Flag, das das Geraete-Flag still ueberstimmte.
-      document.getElementById('ems-charger-control').checked = (cfg.chargers || []).every(function(c) { return c.enabled !== false; });
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
       document.getElementById('ems-price-charge-max-grid').value                                = cfg.price_charge_max_grid_kw || 0;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
