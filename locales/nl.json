@@ -683,7 +683,8 @@
           "desc": "Stel aparte start- en eindtijden in voor EV-laden op zaterdag en zondag."
         }
       },
-      "rowEnabled": "EMS-aansturing"
+      "rowEnabled": "EMS-aansturing",
+      "rowEnabledHint": "Staat dit uit, dan laat het EMS dit apparaat volledig met rust — het wordt niet in- of uitgeschakeld."
     },
     "cars": {
       "title": "🚙 Auto's",
@@ -700,34 +701,22 @@
     "heatPumps": {
       "title": "♨️ Warmtepompen",
       "hint": "Voeg elke warmtepomp toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om te starten, en optioneel een startvertraging (overschot moet dit aantal seconden aanhouden voordat de EMS inschakelt) en een stopvertraging (overschot mag dit aantal seconden wegvallen voordat de EMS uitschakelt — voorkomt snel schakelen).",
-      "addButton": "+ Warmtepomp toevoegen",
-      "enableControl": {
-        "desc": "De EMS start en stopt warmtepompen automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om warmtepompen handmatig te bedienen."
-      }
+      "addButton": "+ Warmtepomp toevoegen"
     },
     "boilers": {
       "title": "🚿 Boilers / Elektrische boilers",
       "hint": "Voeg elke boiler of elektrische boiler toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om in te schakelen, en optioneel een start- en stopvertraging om snel schakelen te voorkomen.",
-      "addButton": "+ Boiler / heater toevoegen",
-      "enableControl": {
-        "desc": "De EMS start en stopt boilers/elektrische boilers automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
-      }
+      "addButton": "+ Boiler / heater toevoegen"
     },
     "pool": {
       "title": "💧 Zwembad / Whirlpool",
       "hint": "Voeg je zwembad- of whirlpoolpomp toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
-      "addButton": "+ Zwembad / whirlpool toevoegen",
-      "enableControl": {
-        "desc": "De EMS start en stopt de zwembad-/whirlpoolpomp automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
-      }
+      "addButton": "+ Zwembad / whirlpool toevoegen"
     },
     "dehumidifier": {
       "title": "💨 Ontvochtiger",
       "hint": "Voeg je ontvochtiger toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
-      "addButton": "+ Ontvochtiger toevoegen",
-      "enableControl": {
-        "desc": "De EMS start en stopt de ontvochtiger automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
-      }
+      "addButton": "+ Ontvochtiger toevoegen"
     },
     "inverter": {
       "title": "☀️ Zonne-omvormer",

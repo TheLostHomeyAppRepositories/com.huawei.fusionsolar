@@ -1107,17 +1107,6 @@
           <p class="ems-hint" data-i18n="heatPumps.hint">Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).</p>
           <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddHeatPumpRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="heatPumps.addButton">+ Add heat pump</button>
-          <label class="ems-toggle-row">
-            <span class="ems-toggle-switch">
-              <input type="checkbox" id="ems-heatpump-control" onchange="emsGuardControl(this,'ems-heatpump-list','hpStartCard','hpStopCard','ems-heatpump-control-hint')">
-              <span class="ems-toggle-slider"></span>
-            </span>
-            <span>
-              <span class="ems-toggle-title" data-i18n="simpleDevice.enableControl.title">Enable EMS control</span>
-              <span class="ems-toggle-desc" data-i18n="heatPumps.enableControl.desc">The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually.</span>
-              <span id="ems-heatpump-control-hint" class="ems-control-hint"></span>
-            </span>
-          </label>
         </div>
       </details>
 
@@ -1128,17 +1117,6 @@
           <p class="ems-hint" data-i18n="boilers.hint">Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.</p>
           <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddBoilerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="boilers.addButton">+ Add boiler / heater</button>
-          <label class="ems-toggle-row">
-            <span class="ems-toggle-switch">
-              <input type="checkbox" id="ems-boiler-control" onchange="emsGuardControl(this,'ems-boiler-list','boilerStartCard','boilerStopCard','ems-boiler-control-hint')">
-              <span class="ems-toggle-slider"></span>
-            </span>
-            <span>
-              <span class="ems-toggle-title" data-i18n="simpleDevice.enableControl.title">Enable EMS control</span>
-              <span class="ems-toggle-desc" data-i18n="boilers.enableControl.desc">The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually.</span>
-              <span id="ems-boiler-control-hint" class="ems-control-hint"></span>
-            </span>
-          </label>
         </div>
       </details>
 
@@ -1149,17 +1127,6 @@
           <p class="ems-hint" data-i18n="pool.hint">Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddPoolRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="pool.addButton">+ Add pool / whirlpool</button>
-          <label class="ems-toggle-row">
-            <span class="ems-toggle-switch">
-              <input type="checkbox" id="ems-pool-control" onchange="emsGuardControl(this,'ems-pool-list','poolStartCard','poolStopCard','ems-pool-control-hint')">
-              <span class="ems-toggle-slider"></span>
-            </span>
-            <span>
-              <span class="ems-toggle-title" data-i18n="simpleDevice.enableControl.title">Enable EMS control</span>
-              <span class="ems-toggle-desc" data-i18n="pool.enableControl.desc">The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually.</span>
-              <span id="ems-pool-control-hint" class="ems-control-hint"></span>
-            </span>
-          </label>
         </div>
       </details>
 
@@ -1170,17 +1137,6 @@
           <p class="ems-hint" data-i18n="dehumidifier.hint">Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-dehumidifier-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDehumidifierRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="dehumidifier.addButton">+ Add dehumidifier</button>
-          <label class="ems-toggle-row">
-            <span class="ems-toggle-switch">
-              <input type="checkbox" id="ems-dehumidifier-control" onchange="emsGuardControl(this,'ems-dehumidifier-list','dehumidifierStartCard','dehumidifierStopCard','ems-dehumidifier-control-hint')">
-              <span class="ems-toggle-slider"></span>
-            </span>
-            <span>
-              <span class="ems-toggle-title" data-i18n="simpleDevice.enableControl.title">Enable EMS control</span>
-              <span class="ems-toggle-desc" data-i18n="dehumidifier.enableControl.desc">The EMS automatically starts and stops the dehumidifier based on available solar surplus and battery state. Disable to control manually.</span>
-              <span id="ems-dehumidifier-control-hint" class="ems-control-hint"></span>
-            </span>
-          </label>
         </div>
       </details>
 
@@ -4349,7 +4305,16 @@
       enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
       enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
       enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
-      configRow.appendChild(enGroup);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
 
       // Charging mode (per charger)
       var modeRow = document.createElement('div');
@@ -4671,6 +4636,36 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
+      // Schalter je Geraet, gleiche Optik wie die uebrigen Schalter der Seite. Loest den
+      // bisherigen Bereichsschalter ab: der war ein zweites gespeichertes Flag, das das
+      // Geraete-Flag still ueberstimmte — dieselbe Konstruktion, die bei den Ladern zu
+      // widerspruechlichen Anzeigen gefuehrt hat. Fehlender Wert heisst an.
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-simple-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
+
       entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
@@ -4701,6 +4696,7 @@
         var startupGrace = entry.querySelector('input[data-field=startup_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
         var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
+        var enChk    = entry.querySelector('.ems-simple-enabled');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           var _sg = startupGrace ? parseInt(startupGrace.value, 10) : NaN;
@@ -4716,6 +4712,8 @@
             startup_grace_s:       isFinite(_sg) ? _sg : 120,
             max_run_min:           parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
             restart_cooldown_min:  parseInt(cooldown ? cooldown.value : 0,    10) || 0,
+            // Ausdruecklich in beide Richtungen, damit Seite und Widget nie auseinanderlaufen.
+            enabled:               enChk ? enChk.checked : true,
             start_card:            entry.dataset.hpStartCard || '',
             stop_card:       entry.dataset.hpStopCard  || '',
           });
@@ -4791,6 +4789,7 @@
         var startupGrace = entry.querySelector('input[data-field=startup_grace_s]');
         var maxRun   = entry.querySelector('input[data-field=max_run_min]');
         var cooldown = entry.querySelector('input[data-field=restart_cooldown_min]');
+        var enChk    = entry.querySelector('.ems-simple-enabled');
         if (sel && sel.value) {
           var dev = _emsDevices ? _emsDevices.find(function(d) { return d.id === sel.value; }) : null;
           var _sg = startupGrace ? parseInt(startupGrace.value, 10) : NaN;
@@ -4806,6 +4805,8 @@
             startup_grace_s:      isFinite(_sg) ? _sg : 120,
             max_run_min:          parseInt(maxRun   ? maxRun.value   : 0,    10) || 0,
             restart_cooldown_min: parseInt(cooldown ? cooldown.value : 0,    10) || 0,
+            // Ausdruecklich in beide Richtungen, damit Seite und Widget nie auseinanderlaufen.
+            enabled:               enChk ? enChk.checked : true,
             start_card:           entry.dataset[startDataKey] || '',
             stop_card:            entry.dataset[stopDataKey]  || '',
           });
@@ -5298,6 +5299,36 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
+      // Schalter je Geraet, gleiche Optik wie die uebrigen Schalter der Seite. Loest den
+      // bisherigen Bereichsschalter ab: der war ein zweites gespeichertes Flag, das das
+      // Geraete-Flag still ueberstimmte — dieselbe Konstruktion, die bei den Ladern zu
+      // widerspruechlichen Anzeigen gefuehrt hat. Fehlender Wert heisst an.
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-simple-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
+
       entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
@@ -5502,6 +5533,36 @@
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
+      // Schalter je Geraet, gleiche Optik wie die uebrigen Schalter der Seite. Loest den
+      // bisherigen Bereichsschalter ab: der war ein zweites gespeichertes Flag, das das
+      // Geraete-Flag still ueberstimmte — dieselbe Konstruktion, die bei den Ladern zu
+      // widerspruechlichen Anzeigen gefuehrt hat. Fehlender Wert heisst an.
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-simple-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
+
       entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
@@ -5705,6 +5766,36 @@
 
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
+
+      // Schalter je Geraet, gleiche Optik wie die uebrigen Schalter der Seite. Loest den
+      // bisherigen Bereichsschalter ab: der war ein zweites gespeichertes Flag, das das
+      // Geraete-Flag still ueberstimmte — dieselbe Konstruktion, die bei den Ladern zu
+      // widerspruechlichen Anzeigen gefuehrt hat. Fehlender Wert heisst an.
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-simple-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
 
       entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
@@ -7675,10 +7766,6 @@
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
       document.getElementById('ems-price-charge-max-grid').value                                = cfg.price_charge_max_grid_kw || 0;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
-      document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control !== false;
-      document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control !== false;
-      document.getElementById('ems-pool-control').checked                                      = cfg.pool_control !== false;
-      document.getElementById('ems-dehumidifier-control').checked                              = cfg.dehumidifier_control !== false;
       emsRenderPriceConfig(cfg.price_config);
       emsRenderCars(cfg.car_devices);
       var _elEnabled = document.getElementById('ems-export-limit-enabled');
@@ -7786,10 +7873,6 @@
           offpeak_weekend_start: document.getElementById('ems-offpeak-weekend-start').value.trim() || '22:00',
           offpeak_weekend_end:   document.getElementById('ems-offpeak-weekend-end').value.trim() || '06:00',
         } : {}),
-        heat_pump_control:            document.getElementById('ems-heatpump-control').checked,
-        boiler_control:               document.getElementById('ems-boiler-control').checked,
-        pool_control:                 document.getElementById('ems-pool-control').checked,
-        dehumidifier_control:         document.getElementById('ems-dehumidifier-control').checked,
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
         price_charge_max_grid_kw:     Math.max(0, parseFloat(document.getElementById('ems-price-charge-max-grid').value) || 0),
         grid_import_limit_kw:         Math.max(0, parseFloat(document.getElementById('ems-grid-import-limit').value) || 0),

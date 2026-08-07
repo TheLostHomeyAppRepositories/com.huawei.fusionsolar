@@ -683,7 +683,8 @@
           "desc": "Separate Start-/Endzeiten fürs EV-Laden an Samstag und Sonntag festlegen."
         }
       },
-      "rowEnabled": "EMS-Steuerung"
+      "rowEnabled": "EMS-Steuerung",
+      "rowEnabledHint": "Wenn aus, lässt das EMS dieses Gerät völlig in Ruhe — es wird weder ein- noch ausgeschaltet."
     },
     "cars": {
       "title": "🚙 Fahrzeuge",
@@ -700,34 +701,22 @@
     "heatPumps": {
       "title": "♨️ Wärmepumpen",
       "hint": "Jede Wärmepumpe hinzufügen, die das EMS steuern soll. Mindest-Solarüberschuss zum Starten festlegen, optional eine Einschaltverzögerung (Überschuss muss so viele Sekunden anhalten, bevor das EMS einschaltet) und eine Ausschaltverzögerung (Überschuss darf so viele Sekunden fehlen, bevor das EMS ausschaltet — verhindert Kurzläufe).",
-      "addButton": "+ Wärmepumpe hinzufügen",
-      "enableControl": {
-        "desc": "Das EMS startet und stoppt Wärmepumpen automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
-      }
+      "addButton": "+ Wärmepumpe hinzufügen"
     },
     "boilers": {
       "title": "🚿 Boiler / Heizstäbe",
       "hint": "Jeden Boiler oder Heizstab hinzufügen, den das EMS steuern soll. Mindest-Solarüberschuss zum Einschalten festlegen, optional eine Ein- und Ausschaltverzögerung gegen schnelles Schalten.",
-      "addButton": "+ Boiler / Heizstab hinzufügen",
-      "enableControl": {
-        "desc": "Das EMS startet und stoppt Boiler/Heizstäbe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
-      }
+      "addButton": "+ Boiler / Heizstab hinzufügen"
     },
     "pool": {
       "title": "💧 Pool / Whirlpool",
       "hint": "Die Pool- oder Whirlpool-Pumpe hinzufügen. Das EMS lässt sie laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
-      "addButton": "+ Pool / Whirlpool hinzufügen",
-      "enableControl": {
-        "desc": "Das EMS startet und stoppt die Pool-/Whirlpool-Pumpe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
-      }
+      "addButton": "+ Pool / Whirlpool hinzufügen"
     },
     "dehumidifier": {
       "title": "💨 Entfeuchter",
       "hint": "Den Entfeuchter hinzufügen. Das EMS lässt ihn laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
-      "addButton": "+ Entfeuchter hinzufügen",
-      "enableControl": {
-        "desc": "Das EMS startet und stoppt den Entfeuchter automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
-      }
+      "addButton": "+ Entfeuchter hinzufügen"
     },
     "inverter": {
       "title": "☀️ Solar-Wechselrichter",

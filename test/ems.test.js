@@ -639,11 +639,16 @@ test('_pvForecastUntilKwh — sums up to a wall-clock cutoff today', () => {
 });
 
 // ── simpleDevices: _evaluateSimpleDevices state machine ──────────────────────
-test('_evaluateSimpleDevices — control disabled → no action', async () => {
+test('_evaluateSimpleDevices — a leftover class-wide control flag is ignored', async () => {
+  // Bis 1.2.79 gab es neben dem Geraete-Flag ein klassenweites, das VOR ihm geprueft wurde
+  // und es still ueberstimmte — die Ursache widerspruechlicher Anzeigen zwischen
+  // Einstellungsseite und Widget. Es ist entfernt; eine alte Konfiguration kann den Wert
+  // aber noch enthalten, und dann darf er nichts mehr bewirken.
   const d = makeSimpleDevice();
-  const r = await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()], new Map(), 'start', 'stop', 'tok', 'ctrl', { ctrl: false });
-  assert.strictEqual(r, 0);
-  assert.strictEqual(d._setOnCalls.length, 0);
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { ctrl: false, min_battery_soc: 80 });
+  assert.ok(d._setOnCalls.length > 0, 'das alte Klassen-Flag darf das Geraet nicht mehr blockieren');
 });
 
 test('_evaluateSimpleDevices — a per-device enabled:false is left alone even with ample surplus (type-wide control stays on)', async () => {

@@ -683,7 +683,8 @@
           "desc": "Set separate start and end times for EV charging on Saturday and Sunday."
         }
       },
-      "rowEnabled": "EMS control"
+      "rowEnabled": "EMS control",
+      "rowEnabledHint": "When off, the EMS leaves this device alone entirely — it is neither started nor stopped."
     },
     "cars": {
       "title": "🚙 Cars",
@@ -700,34 +701,22 @@
     "heatPumps": {
       "title": "♨️ Heat Pumps",
       "hint": "Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).",
-      "addButton": "+ Add heat pump",
-      "enableControl": {
-        "desc": "The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually."
-      }
+      "addButton": "+ Add heat pump"
     },
     "boilers": {
       "title": "🚿 Boilers / Immersion Heaters",
       "hint": "Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.",
-      "addButton": "+ Add boiler / heater",
-      "enableControl": {
-        "desc": "The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually."
-      }
+      "addButton": "+ Add boiler / heater"
     },
     "pool": {
       "title": "💧 Pool / Whirlpool",
       "hint": "Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
-      "addButton": "+ Add pool / whirlpool",
-      "enableControl": {
-        "desc": "The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually."
-      }
+      "addButton": "+ Add pool / whirlpool"
     },
     "dehumidifier": {
       "title": "💨 Dehumidifier",
       "hint": "Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
-      "addButton": "+ Add dehumidifier",
-      "enableControl": {
-        "desc": "The EMS automatically starts and stops the dehumidifier based on available solar surplus and battery state. Disable to control manually."
-      }
+      "addButton": "+ Add dehumidifier"
     },
     "inverter": {
       "title": "☀️ Solar Inverter",

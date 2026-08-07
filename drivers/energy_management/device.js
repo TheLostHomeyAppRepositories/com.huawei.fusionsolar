@@ -312,11 +312,12 @@ class EmsDevice extends Device {
   async _migrateControlFlags() {
     const cfg = this.homey.settings.get('ems_config') || {};
     if (cfg._controlPerDevice) return;
-    // Nur die Lader: ihre Zeilen haben seit 1.2.76 einen Schalter je Geraet. Die vier
-    // einfachen Geraeteklassen behalten ihren klassenweiten Schalter, solange ihre Zeilen
-    // keinen eigenen haben — sonst waeren sie gar nicht mehr abschaltbar.
     const CLASSES = [
-      ['charger_control', 'chargers'],
+      ['charger_control',      'chargers'],
+      ['heat_pump_control',    'heat_pump_devices'],
+      ['boiler_control',       'boiler_devices'],
+      ['pool_control',         'pool_devices'],
+      ['dehumidifier_control', 'dehumidifier_devices'],
     ];
     for (const [flag, listKey] of CLASSES) {
       if (cfg[flag] === false) {
