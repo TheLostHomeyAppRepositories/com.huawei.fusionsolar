@@ -841,6 +841,39 @@
             <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.deactivateHint">Hysteresis — fire limit OFF</div>
           </div>
         </div>
+
+        <div style="border-top:1px solid #e5e5ea;margin:4px 0 10px"></div>
+        <div style="font-size:11px;color:#6e6e73;font-weight:600;margin-bottom:6px" data-i18n="exportLimit.moreTriggers">Additional reasons to limit</div>
+
+        <label class="ems-toggle-row">
+          <span class="ems-toggle-switch">
+            <input type="checkbox" id="ems-export-limit-neg-price"
+              onchange="document.getElementById('ems-export-limit-price-row').style.display=this.checked?'block':'none'">
+            <span class="ems-toggle-slider"></span>
+          </span>
+          <span>
+            <span class="ems-toggle-title" data-i18n="exportLimit.negPrice.title">Limit when the electricity price is negative</span>
+            <span class="ems-toggle-desc" data-i18n="exportLimit.negPrice.desc">While feeding in costs money instead of earning it, the limit is applied regardless of the battery SOC. Uses the price from the Electricity Price section. Released again as soon as the price rises above the threshold.</span>
+          </span>
+        </label>
+        <div id="ems-export-limit-price-row" style="display:none;margin:6px 0 12px 0;max-width:220px">
+          <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.priceThreshold">Limit below price</label>
+          <input id="ems-export-limit-price-threshold" type="number" value="0" step="0.01"
+            style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+          <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.priceThresholdHint">Per kWh. 0 = only at genuinely negative prices.</div>
+        </div>
+
+        <label class="ems-toggle-row">
+          <span class="ems-toggle-switch">
+            <input type="checkbox" id="ems-export-limit-zero">
+            <span class="ems-toggle-slider"></span>
+          </span>
+          <span>
+            <span class="ems-toggle-title" data-i18n="exportLimit.zero.title">Never feed in (zero export)</span>
+            <span class="ems-toggle-desc" data-i18n-html="exportLimit.zero.desc">Holds the limit permanently, independent of SOC, export and price — the two rules above then no longer apply. Use this if your grid operator prohibits feed-in. <strong>Surplus that neither the battery nor a device can take is lost.</strong></span>
+          </span>
+        </label>
+
         <div class="ems-callout">
           <span data-i18n-html="exportLimit.setupHint"><strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed.</span>
         </div>
@@ -7792,6 +7825,14 @@
       }
       if (cfg.export_limit_trigger_soc    !== undefined) document.getElementById('ems-export-limit-trigger-soc').value    = cfg.export_limit_trigger_soc;
       if (cfg.export_limit_deactivate_soc !== undefined) document.getElementById('ems-export-limit-deactivate-soc').value = cfg.export_limit_deactivate_soc;
+      var _elNegPrice = document.getElementById('ems-export-limit-neg-price');
+      if (_elNegPrice) {
+        _elNegPrice.checked = !!cfg.export_limit_on_negative_price;
+        document.getElementById('ems-export-limit-price-row').style.display = cfg.export_limit_on_negative_price ? 'block' : 'none';
+      }
+      if (cfg.export_limit_price_threshold !== undefined) document.getElementById('ems-export-limit-price-threshold').value = cfg.export_limit_price_threshold;
+      var _elZero = document.getElementById('ems-export-limit-zero');
+      if (_elZero) _elZero.checked = !!cfg.export_limit_zero_export;
       document.getElementById('ems-pvforecast-enabled').checked = !!cfg.pv_forecast_enabled;
       if (cfg.solcast_api_key     !== undefined) document.getElementById('ems-solcast-api-key').value     = cfg.solcast_api_key;
       if (cfg.solcast_resource_id !== undefined) document.getElementById('ems-solcast-resource-id').value = cfg.solcast_resource_id;
@@ -7893,6 +7934,9 @@
         export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,
         export_limit_trigger_soc:     parseInt(document.getElementById('ems-export-limit-trigger-soc').value, 10) || 95,
         export_limit_deactivate_soc:  parseInt(document.getElementById('ems-export-limit-deactivate-soc').value, 10) || 90,
+        export_limit_on_negative_price: document.getElementById('ems-export-limit-neg-price').checked,
+        export_limit_price_threshold: parseFloat(document.getElementById('ems-export-limit-price-threshold').value) || 0,
+        export_limit_zero_export:     document.getElementById('ems-export-limit-zero').checked,
         pv_forecast_enabled:          document.getElementById('ems-pvforecast-enabled').checked,
         solcast_api_key:              document.getElementById('ems-solcast-api-key').value.trim(),
         solcast_resource_id:          document.getElementById('ems-solcast-resource-id').value.trim(),

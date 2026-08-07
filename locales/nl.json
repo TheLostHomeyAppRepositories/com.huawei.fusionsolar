@@ -290,6 +290,17 @@
       "activateHint": "Batterij vol — limiet AAN activeren",
       "deactivateAt": "Deactiveren bij SOC < (%)",
       "deactivateHint": "Hysterese — limiet UIT activeren",
+      "moreTriggers": "Andere redenen om te begrenzen",
+      "negPrice": {
+        "title": "Begrenzen bij een negatieve stroomprijs",
+        "desc": "Zolang terugleveren geld kost in plaats van oplevert, wordt er begrensd ongeacht het accuniveau. Gebruikt de prijs uit het onderdeel Stroomprijs. Wordt weer vrijgegeven zodra de prijs boven de drempel komt."
+      },
+      "priceThreshold": "Begrenzen onder prijs",
+      "priceThresholdHint": "Per kWh. 0 = alleen bij werkelijk negatieve prijzen.",
+      "zero": {
+        "title": "Nooit terugleveren (nul-teruglevering)",
+        "desc": "Houdt de begrenzing permanent aan, ongeacht accuniveau, teruglevering en prijs — de twee regels hierboven gelden dan niet meer. Gebruik dit als je netbeheerder teruglevering verbiedt. <strong>Overschot dat noch de accu noch een apparaat kan opnemen, gaat verloren.</strong>"
+      },
       "setupHint": "<strong>Instellen:</strong> Klik in de sectie <em>Omvormer</em> hierboven op <em>✓ Flows aanmaken / bijwerken</em> om de flows <em>Exportlimiet inschakelen</em> en <em>Exportlimiet uitschakelen</em> te genereren. De coördinator activeert deze flows automatisch — geen extra Homey-flow nodig."
     },
     "diag": {

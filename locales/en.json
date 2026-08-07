@@ -290,6 +290,17 @@
       "activateHint": "Battery full — fire limit ON",
       "deactivateAt": "Deactivate at SOC < (%)",
       "deactivateHint": "Hysteresis — fire limit OFF",
+      "moreTriggers": "Additional reasons to limit",
+      "negPrice": {
+        "title": "Limit when the electricity price is negative",
+        "desc": "While feeding in costs money instead of earning it, the limit is applied regardless of the battery SOC. Uses the price from the Electricity Price section. Released again as soon as the price rises above the threshold."
+      },
+      "priceThreshold": "Limit below price",
+      "priceThresholdHint": "Per kWh. 0 = only at genuinely negative prices.",
+      "zero": {
+        "title": "Never feed in (zero export)",
+        "desc": "Holds the limit permanently, independent of SOC, export and price — the two rules above then no longer apply. Use this if your grid operator prohibits feed-in. <strong>Surplus that neither the battery nor a device can take is lost.</strong>"
+      },
       "setupHint": "<strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed."
     },
     "diag": {

@@ -290,6 +290,17 @@
       "activateHint": "Batterie voll — Limit AN auslösen",
       "deactivateAt": "Deaktivieren bei SOC < (%)",
       "deactivateHint": "Hysterese — Limit AUS auslösen",
+      "moreTriggers": "Weitere Gründe zum Begrenzen",
+      "negPrice": {
+        "title": "Begrenzen bei negativem Strompreis",
+        "desc": "Solange das Einspeisen Geld kostet statt einbringt, wird unabhängig vom Batteriestand begrenzt. Verwendet den Preis aus dem Bereich Strompreis. Wird wieder freigegeben, sobald der Preis über der Schwelle liegt."
+      },
+      "priceThreshold": "Begrenzen unter Preis",
+      "priceThresholdHint": "Pro kWh. 0 = nur bei echten Negativpreisen.",
+      "zero": {
+        "title": "Nie einspeisen (Nulleinspeisung)",
+        "desc": "Hält die Begrenzung dauerhaft, unabhängig von Ladestand, Einspeisung und Preis — die beiden Regeln darüber gelten dann nicht mehr. Sinnvoll, wenn der Netzbetreiber die Einspeisung untersagt. <strong>Überschuss, den weder Batterie noch Geräte aufnehmen können, geht verloren.</strong>"
+      },
       "setupHint": "<strong>Einrichtung:</strong> Im Abschnitt <em>Wechselrichter</em> oben auf <em>✓ Flows erstellen/aktualisieren</em> klicken, um die Flows <em>Enable export limit</em> und <em>Disable export limit</em> zu erzeugen. Der Koordinator löst diese Flows automatisch aus — kein zusätzlicher Homey-Flow nötig."
     },
     "diag": {

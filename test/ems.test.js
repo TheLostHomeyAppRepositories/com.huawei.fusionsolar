@@ -782,6 +782,77 @@ test('_evaluateExportLimit — disabling while active fires OFF', async () => {
   assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
 });
 
+// ── exportLimit: zero export (permanent) ─────────────────────────────────────
+const ZERO_CFG = { ...EXPORT_CFG, export_limit_zero_export: true };
+test('_evaluateExportLimit — zero export activates even without meter readings', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(ZERO_CFG, { soc: null }, null);
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_on']);
+});
+test('_evaluateExportLimit — zero export never deactivates on its own', async () => {
+  const d = makeExportDevice({ _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
+  await d._evaluateExportLimit(ZERO_CFG, { soc: 10 }, 2000); // empty battery, importing
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — zero export fires ON only once', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(ZERO_CFG, { soc: 50 }, -500);
+  await d._evaluateExportLimit(ZERO_CFG, { soc: 50 }, -500);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_on']);
+});
+test('_evaluateExportLimit — turning zero export off releases the limit', async () => {
+  const d = makeExportDevice({ _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 50 }, -500); // back to SoC rules, 50% < 90%
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+
+// ── exportLimit: negative electricity price ──────────────────────────────────
+function makePriceExportDevice(price, extra = {}) {
+  return makeExportDevice({ _getCurrentPrice: () => price, ...extra });
+}
+const PRICE_CFG = { ...EXPORT_CFG, export_limit_on_negative_price: true };
+test('_evaluateExportLimit — negative price activates below the trigger SoC', async () => {
+  const d = makePriceExportDevice(-0.02);
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_on']);
+});
+test('_evaluateExportLimit — a positive price does not activate on its own', async () => {
+  const d = makePriceExportDevice(0.18);
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+});
+test('_evaluateExportLimit — negative price is ignored while the option is off', async () => {
+  const d = makePriceExportDevice(-0.02);
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+});
+test('_evaluateExportLimit — an unknown price does not activate', async () => {
+  const d = makePriceExportDevice(null);
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+});
+test('_evaluateExportLimit — a custom price threshold applies', async () => {
+  const d = makePriceExportDevice(0.01);
+  await d._evaluateExportLimit({ ...PRICE_CFG, export_limit_price_threshold: 0.05 }, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, true);
+});
+test('_evaluateExportLimit — a low price holds the limit while the SoC drops', async () => {
+  const d = makePriceExportDevice(-0.02, { _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — the limit is released once the price recovers', async () => {
+  const d = makePriceExportDevice(0.18, { _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+
 // ── pvForecast: _forecastGateBlocksStarts (solar-forecast start gate) ─────────
 test('_forecastGateBlocksStarts — off / manual / adaptive / guards', () => {
   const now = Date.UTC(2026, 0, 1, 10, 0, 0);
