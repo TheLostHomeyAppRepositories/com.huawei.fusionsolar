@@ -1025,7 +1025,7 @@
           <button class="btn-secondary" onclick="emsAddChargerRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="evChargers.addButton">+ Add charger</button>
       <label class="ems-toggle-row">
         <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-charger-control" onchange="emsGuardControl(this,'ems-charger-list','chargerStartCard',null,'ems-charger-control-hint')">
+          <input type="checkbox" id="ems-charger-control" onchange="emsChargerControlAll(this); emsGuardControl(this,'ems-charger-list','chargerStartCard',null,'ems-charger-control-hint')">
           <span class="ems-toggle-slider"></span>
         </span>
         <span>
@@ -7467,6 +7467,14 @@
 
     // ── Collect row data for save ─────────────────────────────────────────────
 
+    // Sammelaktion des Abschnitts-Schalters: setzt jedes Lader-Kaestchen auf denselben Wert.
+    // Der Schalter selbst speichert nichts mehr — damit gibt es nur noch EINE gespeicherte
+    // Wahrheit je Lader statt zweier, von denen eine die andere still ueberstimmte.
+    function emsChargerControlAll(master) {
+      document.querySelectorAll('#ems-charger-list .ems-charger-enabled')
+        .forEach(function(chk) { chk.checked = master.checked; });
+    }
+
     function emsGetChargers() {
       var result = [];
       document.querySelectorAll('#ems-charger-list .ems-entry').forEach(function(entry) {
@@ -7673,11 +7681,10 @@
       document.getElementById('ems-offpeak-weekend-rows').style.display                        = wkd ? 'flex' : 'none';
       if (cfg.offpeak_weekend_start) document.getElementById('ems-offpeak-weekend-start').value = cfg.offpeak_weekend_start;
       if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
-      // Fehlender Wert heisst "an": das EMS bricht nur bei ausdruecklichem false ab
-      // (chargerControl.js: `cfg.charger_control === false`), und das Widget zeigt
-      // ebenso `!== false`. Mit `=== true` stand hier "aus", waehrend das EMS das Geraet
-      // in Wahrheit steuerte — genau die Abweichung zwischen Seite und Kachel.
-      document.getElementById('ems-charger-control').checked                                    = cfg.charger_control !== false;
+      // Abgeleitet: an, wenn jeder Lader einzeln aktiv ist. Der Schalter speichert nichts
+      // mehr — er ist eine Sammelaktion fuer die Kaestchen der Lader-Zeilen. Vorher war er
+      // ein zweites Flag, das das Geraete-Flag still ueberstimmte.
+      document.getElementById('ems-charger-control').checked = (cfg.chargers || []).every(function(c) { return c.enabled !== false; });
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
       document.getElementById('ems-price-charge-max-grid').value                                = cfg.price_charge_max_grid_kw || 0;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
@@ -7792,7 +7799,6 @@
           offpeak_weekend_start: document.getElementById('ems-offpeak-weekend-start').value.trim() || '22:00',
           offpeak_weekend_end:   document.getElementById('ems-offpeak-weekend-end').value.trim() || '06:00',
         } : {}),
-        charger_control:              document.getElementById('ems-charger-control').checked,
         heat_pump_control:            document.getElementById('ems-heatpump-control').checked,
         boiler_control:               document.getElementById('ems-boiler-control').checked,
         pool_control:                 document.getElementById('ems-pool-control').checked,

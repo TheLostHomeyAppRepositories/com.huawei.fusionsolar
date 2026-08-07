@@ -123,6 +123,7 @@ class EmsDevice extends Device {
     await this._ensureCapabilities();
     await this._syncCarCapabilities(this._getConfig()); // add car caps only when a car is configured
     await this._syncPvForecastCapabilities(this._getConfig()); // pv forecast caps only when Solcast is configured
+    await this._migrateControlFlags(); // fold class-wide control flags onto each device
     await this._migrateConfig(); // run once on startup, writes back if format changed
     const _startupCfg = this._getConfig(); // clamp any out-of-range values on startup too
     if (this._validateConfig(_startupCfg)) this.homey.settings.set('ems_config', _startupCfg);
@@ -301,6 +302,34 @@ class EmsDevice extends Device {
   }
 
   /** Runs once at startup: converts legacy field names and writes the result back. */
+  // "EMS controls this class" was a second, class-wide flag that short-circuited before the
+  // per-device one was ever read — two stored truths for one question, and the class flag
+  // silently won. Fold it into the per-device flag so only one remains.
+  //
+  // Own guard key, not _migrated: that one has long since been set on existing installs,
+  // so this would never run. A class that was switched OFF must disable its devices — the
+  // whole point is that nobody's EMS starts controlling things it was told not to touch.
+  async _migrateControlFlags() {
+    const cfg = this.homey.settings.get('ems_config') || {};
+    if (cfg._controlPerDevice) return;
+    // Nur die Lader: ihre Zeilen haben seit 1.2.76 einen Schalter je Geraet. Die vier
+    // einfachen Geraeteklassen behalten ihren klassenweiten Schalter, solange ihre Zeilen
+    // keinen eigenen haben — sonst waeren sie gar nicht mehr abschaltbar.
+    const CLASSES = [
+      ['charger_control', 'chargers'],
+    ];
+    for (const [flag, listKey] of CLASSES) {
+      if (cfg[flag] === false) {
+        const list = cfg[listKey] || [];
+        for (const entry of list) entry.enabled = false;
+        this.log(`[EMS] migrating ${flag}=false onto ${list.length} device(s) in ${listKey}`);
+      }
+      delete cfg[flag];
+    }
+    cfg._controlPerDevice = true;
+    this.homey.settings.set('ems_config', cfg);
+  }
+
   async _migrateConfig() {
     const cfg     = this.homey.settings.get('ems_config') || {};
     if (cfg._migrated) return;
