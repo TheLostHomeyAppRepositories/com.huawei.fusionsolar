@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.91",
+  "version": "1.2.92",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -12238,7 +12238,41 @@
             ]
           }
         ]
-      }
+      },
+    {
+      "id": "ems_device_enabled",
+      "title": {
+        "en": "EMS control for a device !{{is|is not}} active",
+        "de": "EMS-Steuerung für ein Gerät !{{ist|ist nicht}} aktiv",
+        "nl": "EMS-regeling voor een apparaat !{{is|is niet}} actief"
+      },
+      "titleFormatted": {
+        "en": "EMS control for [[target]] !{{is|is not}} active",
+        "de": "EMS-Steuerung für [[target]] !{{ist|ist nicht}} aktiv",
+        "nl": "EMS-regeling voor [[target]] !{{is|is niet}} actief"
+      },
+      "args": [
+        {
+          "name": "device",
+          "type": "device",
+          "filter": "driver_id=energy_management"
+        },
+        {
+          "name": "target",
+          "type": "autocomplete",
+          "title": {
+            "en": "Device",
+            "de": "Gerät",
+            "nl": "Apparaat"
+          },
+          "placeholder": {
+            "en": "Charger, heat pump, boiler, pool or dehumidifier",
+            "de": "Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter",
+            "nl": "Lader, warmtepomp, boiler, zwembad of ontvochtiger"
+          }
+        }
+      ]
+    }
     ]
   },
   "widgets": {

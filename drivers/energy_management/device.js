@@ -225,8 +225,9 @@ class EmsDevice extends Device {
     // single charger or simple device out of it (holiday, maintenance) and leaves the
     // rest running. Writes through setEmsDeviceEnabled so all three entry points share
     // one path and cannot drift apart.
-    const devEnabledCard = this.homey.flow.getActionCard('ems_set_device_enabled');
-    devEnabledCard.registerArgumentAutocompleteListener('target', async (query) => {
+    // One picker definition for both the action and the ems_device_enabled condition, so
+    // the two cards can never end up offering different device lists.
+    this._controllableAutocomplete = async (query) => {
       const q = (query || '').toLowerCase();
       const out = [];
       for (const d of this._listControllables(this._getConfig())) {
@@ -234,13 +235,29 @@ class EmsDevice extends Device {
         if (!q || name.toLowerCase().includes(q)) out.push({ id: d.id, name });
       }
       return out;
-    });
+    };
+
+    const devEnabledCard = this.homey.flow.getActionCard('ems_set_device_enabled');
+    devEnabledCard.registerArgumentAutocompleteListener('target', this._controllableAutocomplete);
     devEnabledCard.registerRunListener(async (args) => {
       if (args.device.id !== this.id) return;
       const id = args.target && args.target.id;
       if (!id) throw new Error('No device selected');
       const res = await this.setEmsDeviceEnabled(id, args.enabled === 'true');
       if (res && res.error) throw new Error(res.error);
+    });
+
+    // The matching question to the action above, so a flow can check before it switches.
+    // No "is this my EMS device" guard here: a condition has to answer, and returning
+    // early would answer "no" rather than staying silent.
+    const devEnabledCond = this.homey.flow.getConditionCard('ems_device_enabled');
+    devEnabledCond.registerArgumentAutocompleteListener('target', this._controllableAutocomplete);
+    devEnabledCond.registerRunListener(async (args) => {
+      const id = args.target && args.target.id;
+      if (!id) throw new Error('No device selected');
+      const enabled = this._isControllableEnabled(this._getConfig(), id);
+      if (enabled === null) throw new Error(`Device ${id} is no longer configured in the EMS`);
+      return enabled;
     });
 
     this._applyPriceCurrencyUnit(this._getConfig());

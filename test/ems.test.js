@@ -1841,6 +1841,29 @@ test('_findControllable — finds charger and simple-device entries, null for an
   assert.strictEqual(d._findControllable(cfg, 'nope'), null);
 });
 
+test('_isControllableEnabled — absent flag counts as enabled, false as disabled', () => {
+  const d = makeWidgetDevice();
+  const cfg = {
+    chargers:       [{ id: 'c1' }, { id: 'c2', enabled: false }, { id: 'c3', enabled: true }],
+    boiler_devices: [{ id: 'b1', enabled: false }],
+  };
+  assert.strictEqual(d._isControllableEnabled(cfg, 'c1'), true);  // opt-out
+  assert.strictEqual(d._isControllableEnabled(cfg, 'c2'), false);
+  assert.strictEqual(d._isControllableEnabled(cfg, 'c3'), true);
+  assert.strictEqual(d._isControllableEnabled(cfg, 'b1'), false);
+});
+test('_isControllableEnabled — null for an unknown id, distinct from a disabled device', () => {
+  const d = makeWidgetDevice();
+  assert.strictEqual(d._isControllableEnabled({ chargers: [{ id: 'c1', enabled: false }] }, 'gone'), null);
+});
+test('_isControllableEnabled — agrees with how chargerControl filters', () => {
+  const d = makeWidgetDevice();
+  const chargers = [{ id: 'c1' }, { id: 'c2', enabled: false }, { id: 'c3', enabled: true }];
+  const kept = chargers.filter((c) => c.enabled !== false).map((c) => c.id);
+  const viaHelper = chargers.filter((c) => d._isControllableEnabled({ chargers }, c.id)).map((c) => c.id);
+  assert.deepStrictEqual(viaHelper, kept);
+});
+
 test('_listControllables — lists chargers first, then the four simple classes', () => {
   const d = makeWidgetDevice();
   const cfg = {

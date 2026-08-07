@@ -913,5 +913,10 @@
     "en": "New flow action: enable or disable EMS control for a single charger, heat pump, boiler, pool or dehumidifier — so one device can be taken out of the EMS from a flow without stopping the whole EMS.",
     "de": "Neue Flow-Aktion: EMS-Steuerung für einen einzelnen Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter ein- oder ausschalten — damit ein Gerät per Flow aus dem EMS genommen werden kann, ohne das ganze EMS zu stoppen.",
     "nl": "Nieuwe flow-actie: EMS-regeling voor één lader, warmtepomp, boiler, zwembad of ontvochtiger in- of uitschakelen — zodat één apparaat via een flow uit het EMS gehaald kan worden zonder het hele EMS te stoppen."
+  },
+  "1.2.92": {
+    "en": "New flow condition: check whether EMS control is active for a single charger, heat pump, boiler, pool or dehumidifier — the counterpart to the action added in 1.2.91.",
+    "de": "Neue Flow-Bedingung: prüfen, ob die EMS-Steuerung für einen einzelnen Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter aktiv ist — das Gegenstück zur Aktion aus 1.2.91.",
+    "nl": "Nieuwe flow-voorwaarde: controleren of de EMS-regeling actief is voor één lader, warmtepomp, boiler, zwembad of ontvochtiger — de tegenhanger van de actie uit 1.2.91."
   }
 }
