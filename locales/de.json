@@ -201,7 +201,7 @@
     "group": {
       "dataSources": "Datenquellen",
       "controlledDevices": "Gesteuerte Geräte",
-      "tariffAutomation": "Tarif & Automatisierung",
+      "tariffAutomation": "Automatisierung",
       "diagnostics": "Diagnose"
     },
     "devicePriority": {

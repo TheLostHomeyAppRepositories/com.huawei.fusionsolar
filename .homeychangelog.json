@@ -928,5 +928,10 @@
     "en": "The whole-house grid import limit hint still referred to the price-charging budget removed in 1.2.93. It now states what the limit actually measures against.",
     "de": "Der Hilfetext zum Haus-Netzbezugslimit verwies noch auf das in 1.2.93 entfernte Preislade-Budget. Er nennt jetzt, worauf sich das Limit tatsächlich bezieht.",
     "nl": "De hulptekst bij de netafnamegrens verwees nog naar het in 1.2.93 verwijderde prijsladen-budget. Hij vermeldt nu waar de grens werkelijk op gebaseerd is."
+  },
+  "1.2.95": {
+    "en": "Renamed the settings group \"Tariff & automation\" to \"Automation\" — the electricity price section moved out of it earlier.",
+    "de": "Die Einstellungsgruppe „Tarif & Automatisierung“ heißt neu „Automatisierung“ — der Strompreis-Bereich ist zuvor daraus weggezogen.",
+    "nl": "De instellingengroep „Tarief & automatisering” heet nu „Automatisering” — het onderdeel Stroomprijs is er eerder uit verplaatst."
   }
 }

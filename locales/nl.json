@@ -201,7 +201,7 @@
     "group": {
       "dataSources": "Gegevensbronnen",
       "controlledDevices": "Aangestuurde apparaten",
-      "tariffAutomation": "Tarief & automatisering",
+      "tariffAutomation": "Automatisering",
       "diagnostics": "Diagnose"
     },
     "devicePriority": {

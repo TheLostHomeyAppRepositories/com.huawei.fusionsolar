@@ -201,7 +201,7 @@
     "group": {
       "dataSources": "Data sources",
       "controlledDevices": "Controlled devices",
-      "tariffAutomation": "Tariff & automation",
+      "tariffAutomation": "Automation",
       "diagnostics": "Diagnostics"
     },
     "devicePriority": {
