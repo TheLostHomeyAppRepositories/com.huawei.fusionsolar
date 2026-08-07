@@ -284,7 +284,7 @@
       "subtitle": " · automatisch",
       "enable": {
         "title": "Wechselrichter automatisch limitieren, wenn Batterie voll ist",
-        "desc": "Erreicht der Batterie-SOC den <em>Aktivierungs</em>-Schwellenwert (Standard 95%) und speist die Solaranlage ins Netz ein, löst der EMS den Wechselrichter-Flow <em>Enable export limit</em> aus. Löst <em>Disable export limit</em> aus, wenn der SOC unter den <em>Deaktivierungs</em>-Schwellenwert (Standard 90%) fällt oder die Einspeisung stoppt. Aktivieren, um Schwellenwerte anzupassen und die Einrichtungsanleitung zu sehen."
+        "desc": "Erreicht der Batterie-SOC den <em>Aktivierungs</em>-Schwellenwert (Standard 95%) und speist die Solaranlage ins Netz ein, löst das EMS den Wechselrichter-Flow <em>Enable export limit</em> aus. Löst <em>Disable export limit</em> aus, wenn der SOC unter den <em>Deaktivierungs</em>-Schwellenwert (Standard 90%) fällt oder die Einspeisung stoppt. Aktivieren, um Schwellenwerte anzupassen und die Einrichtungsanleitung zu sehen."
       },
       "activateAt": "Aktivieren bei SOC ≥ (%)",
       "activateHint": "Batterie voll — Limit AN auslösen",
@@ -421,12 +421,12 @@
       "batteryPower": "Batterieleistung (W):",
       "batteryPowerHint": "positiv = lädt (nimmt Überschuss auf)  ·  negativ = entlädt",
       "power": "Leistung (W):",
-      "heatPumpPowerHint": "Während des Betriebs zählt der EMS die gemessene Wärmepumpenlast als verfügbaren Überschuss, damit sie nicht sofort wieder ausgeschaltet wird.",
+      "heatPumpPowerHint": "Während des Betriebs zählt das EMS die gemessene Wärmepumpenlast als verfügbaren Überschuss, damit das Gerät nicht sofort wieder ausgeschaltet wird.",
       "heatPumpNoPowerCap": "Keine Leistungs-Capability — die Wärmepumpe schaltet nur anhand des rohen Solarüberschusses ein/aus (kann ihren eigenen Verbrauch nicht als Überschuss zählen).",
-      "simpleDevicePowerHint": "Während des Betriebs zählt der EMS die gemessene {{label}}-Last als verfügbaren Überschuss, damit sie nicht sofort wieder ausgeschaltet wird.",
+      "simpleDevicePowerHint": "Während des Betriebs zählt das EMS die gemessene {{label}}-Last als verfügbaren Überschuss, damit das Gerät nicht sofort wieder ausgeschaltet wird.",
       "simpleDeviceNoPowerCap": "Keine Leistungs-Capability — das Gerät schaltet nur anhand des rohen Solarüberschusses ein/aus (kann seinen eigenen Verbrauch nicht als Überschuss zählen).",
       "chargingState": "Ladestatus:",
-      "chargerCapsNote": "<b>Ladestatus</b> zeigt dem EMS, ob das Fahrzeug angeschlossen ist und lädt. <b>Leistung (W)</b> dient zur Verfolgung des tatsächlichen Verbrauchs. Der EMS sendet Ladestrom-Befehle per Flow — den Trigger im Abschnitt \"Flow setup\" unten einrichten.",
+      "chargerCapsNote": "<b>Ladestatus</b> zeigt dem EMS, ob das Fahrzeug angeschlossen ist und lädt. <b>Leistung (W)</b> dient zur Verfolgung des tatsächlichen Verbrauchs. Das EMS sendet Ladestrom-Befehle per Flow — den Trigger im Abschnitt \"Flow setup\" unten einrichten.",
       "deviceLabel": {
         "boiler": "Boiler",
         "poolPump": "Poolpumpen",
@@ -468,11 +468,11 @@
       "creating": "Wird erstellt…",
       "errorGeneric": "Fehler",
       "flowsCreated": "Flow(s) in \"_Huawei EMS\" erstellt",
-      "howBoiler": "<b>Funktionsweise:</b> Der EMS löst zwei separate Trigger aus: \"<b>EMS: start boiler</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop boiler</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
-      "howPool": "<b>Funktionsweise:</b> Der EMS löst zwei separate Trigger aus: \"<b>EMS: start pool</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop pool</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
-      "howDehumidifier": "<b>Funktionsweise:</b> Der EMS löst zwei separate Trigger aus: \"<b>EMS: start dehumidifier</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop dehumidifier</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
-      "howHeatPump": "<b>Funktionsweise:</b> Der EMS löst zwei separate Trigger aus: \"<b>EMS: start heat pump</b>\" (Off-Peak oder Solarüberschuss) und \"<b>EMS: stop heat pump</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
-      "howCharger": "<b>Funktionsweise:</b> Der EMS löst bei jeder Änderung den Trigger \"<b>EMS: set charger current</b>\" auf dem EMS-Gerät aus. Einen Homey-Flow mit diesem Trigger erstellen und die Lader-Aktion hinzufügen. <br><br> <b>Verfügbare Tokens:</b> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase1</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase2</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase3</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">amps</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">charger_device_id</code> <br><br> <b>Bei amps = 0</b> → Laden stoppen (z. B. Lader ausschalten).",
+      "howBoiler": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start boiler</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop boiler</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
+      "howPool": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start pool</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop pool</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
+      "howDehumidifier": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start dehumidifier</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop dehumidifier</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
+      "howHeatPump": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start heat pump</b>\" (Off-Peak oder Solarüberschuss) und \"<b>EMS: stop heat pump</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
+      "howCharger": "<b>Funktionsweise:</b> Das EMS löst bei jeder Änderung den Trigger \"<b>EMS: set charger current</b>\" auf dem EMS-Gerät aus. Einen Homey-Flow mit diesem Trigger erstellen und die Lader-Aktion hinzufügen. <br><br> <b>Verfügbare Tokens:</b> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase1</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase2</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase3</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">amps</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">charger_device_id</code> <br><br> <b>Bei amps = 0</b> → Laden stoppen (z. B. Lader ausschalten).",
       "chargerIdLabel": "Lader-ID (für Bedingungsfilter):",
       "flowsUsingThisTrigger": "Flows, die diesen Trigger nutzen:",
       "chargerFlowsHint": "Pro Lader werden 1–2 Flows erstellt, jeweils mit eigenem Trigger: \"EMS wants to set current\" und optional \"EMS wants to start charging\". Mehr als ein Flow pro Trigger und Lader führt zu doppelten Befehlen.",
@@ -495,7 +495,7 @@
       "run": "Ausführen",
       "triggerUnknown": "Trigger für diesen Flow unbekannt — Flows neu laden",
       "runBtn": "▶ Ausführen",
-      "fireTitle": "Löst \"{{card}}\" genau so aus, wie es der EMS tun würde — führt den Flow wirklich aus",
+      "fireTitle": "Löst \"{{card}}\" genau so aus, wie es das EMS tun würde — führt den Flow wirklich aus",
       "fired": "✓ ausgelöst",
       "failedRun": "⚠ fehlgeschlagen",
       "flowSetupLabel": "Flow-Setup",
@@ -506,7 +506,7 @@
       "couldNotCreateFlows": "Flows konnten nicht erstellt werden",
       "flowsCreatedSetTrigger": "Flow(s) in \"_Huawei EMS\" erstellt — Trigger in Homey setzen",
       "howInverter": "<b>Funktionsweise:</b> Jede Zeile unten erstellt einen Homey-Flow in \"_Huawei EMS\". Die passende Aktions-Karte aus deinen installierten Apps rechts wählen. Danach in Homey einen eigenen Trigger hinzufügen (z. B. eine Preis-App). <br><br> <b>Beispiel:</b> <b>WENN</b> Tibber-Preis &gt; 0.30 CHF → <b>DANN</b> Max. Einspeiseleistung auf 0 W setzen",
-      "howCar": "<b>Funktionsweise:</b> Die \"Ladelimit setzen\"-Aktion deines Fahrzeugs wählen sowie zwei Zielwerte (z. B. 80% im Alltag, 100% vor einer Reise). <b>Flows erstellen</b> — dabei werden zwei Flows zu \"_Huawei EMS\" hinzugefügt: <b>WENN</b> \"EMS: set car target charge\" (dieses Fahrzeug, dieser %) <b>DANN</b> deine Fahrzeug-Aktion mit dem festen %. Der EMS löst den Trigger aus, wenn die Flow-Aktion \"<b>EMS: set car target charge (%)</b>\" aufgerufen wird (soc = 80 oder 100).",
+      "howCar": "<b>Funktionsweise:</b> Die \"Ladelimit setzen\"-Aktion deines Fahrzeugs wählen sowie zwei Zielwerte (z. B. 80% im Alltag, 100% vor einer Reise). <b>Flows erstellen</b> — dabei werden zwei Flows zu \"_Huawei EMS\" hinzugefügt: <b>WENN</b> \"EMS: set car target charge\" (dieses Fahrzeug, dieser %) <b>DANN</b> deine Fahrzeug-Aktion mit dem festen %. Das EMS löst den Trigger aus, wenn die Flow-Aktion \"<b>EMS: set car target charge (%)</b>\" aufgerufen wird (soc = 80 oder 100).",
       "chargeFlowsForCar": "Lade-Flows für dieses Fahrzeug:",
       "noCarFlowsYet": "Noch keine Flows — unten \"Create charge flows\" nutzen.",
       "createChargeFlows": "Lade-Flows erstellen",
@@ -517,7 +517,7 @@
       "flowsCreatedLower": "Flow(s) erstellt"
     },
     "priceFlowSetup": {
-      "how": "<b>Funktionsweise:</b> Das Gerät wählen, das stündliche Preise veröffentlicht (z. B. deine <b>Power by the Hour</b>-Station), und unten dessen Trigger-Karte. Der EMS erstellt einen Flow für <code>this_day</code>, vorverdrahtet mit der Aktion \"Set price forecast\". <b>Ein manueller Schritt bleibt:</b> den erstellten Flow öffnen und das <b>Prices</b>-Token vom Trigger in das \"Prices\"-Feld der Aktion ziehen — Homey erlaubt Apps diese Token-Verdrahtung nicht automatisch.",
+      "how": "<b>Funktionsweise:</b> Das Gerät wählen, das stündliche Preise veröffentlicht (z. B. deine <b>Power by the Hour</b>-Station), und unten dessen Trigger-Karte. Das EMS erstellt einen Flow für <code>this_day</code>, vorverdrahtet mit der Aktion \"Set price forecast\". <b>Ein manueller Schritt bleibt:</b> den erstellten Flow öffnen und das <b>Prices</b>-Token vom Trigger in das \"Prices\"-Feld der Aktion ziehen — Homey erlaubt Apps diese Token-Verdrahtung nicht automatisch.",
       "nextHoursWarn": "<b>⚠ Keinen <code>next_hours</code>-Flow mit demselben Prices-Token erstellen.</b> <code>this_day</code> und <code>tomorrow</code> verankern das Array beide an einer festen <b>Mitternachts</b>-Grenze — sicher zu kombinieren, und normalerweise ausreichend für eine vollständige 2-Tages-Ansicht. <code>next_hours</code> verankert stattdessen an der <b>aktuellen Stunde</b>; sendet deine Quelle (z. B. Power by the Hour) immer die vollen Tagespreise ab Mitternacht, verschiebt die Einspeisung desselben Tokens in einen <code>next_hours</code>-Flow jeden Preis um die seit Mitternacht vergangenen Stunden — stillschweigende Datenverfälschung. Falls bereits ein solcher Flow existiert, in Homey löschen (oder dessen Aktion leeren).",
       "cardTip": "<b>Welche Trigger-Karte?</b> Die wählen, die <u>einmal</u> mit dem gesamten Paket kommender Stundenpreise auslöst — ihre Token-Liste (unter dem Dropdown gezeigt) sollte etwas wie <code>Prices</code> mit einer vollständigen Liste enthalten, keine Einzelzahl. <u>Nicht</u> eine Karte wählen, die jede Stunde nur mit dem aktuellen Preis auslöst (z. B. \"Price changed\" / \"Prijs update\") — das liefert nur einen Wert, keine Prognose. Bei <b>Power by the Hour</b> heisst diese meist <i>\"New prices received\" / \"Nieuwe prijzen ontvangen\" / \"Neue Preise erhalten\"</i> — unten mit ★ markiert, wenn auf dem gewählten Gerät gefunden.",
       "priceDevice": "Preis-Gerät:",
@@ -549,7 +549,7 @@
       "targetSoc": "Ziel-SOC (%)",
       "liveReadingTitle": "Aktueller Live-Wert dieser Capability",
       "readFromVehicle": "Vom Fahrzeug gelesen.",
-      "noCapabilitySelected": "Keine Capability gewählt — der EMS führt den Zielladestand virtuell. Änderbar über die Flow-Aktion \"EMS: set car target charge\" (80 / 90 / 100 %).",
+      "noCapabilitySelected": "Keine Capability gewählt — das EMS führt den Zielladestand virtuell. Änderbar über die Flow-Aktion \"EMS: set car target charge\" (80 / 90 / 100 %).",
       "selectCapability": "— Capability wählen —"
     },
     "batteryFlowRows": {
@@ -576,11 +576,11 @@
       "cooldownHint": "Min. — Neustart-Sperre nach automatischem Stopp (verhindert Kurzläufe)",
       "minPowerHint": "W — \"läuft noch\"-Schwellenwert: darunter gilt der Zyklus als beendet (0 = aus)",
       "surplusHintTitle": "Mindestens benötigter Solarüberschuss zum Einschalten (W)",
-      "sustainHintTitle": "Überschuss muss so viele Sekunden anhalten, bevor der EMS einschaltet (0 = sofort starten)",
-      "graceHintTitle": "Überschuss darf so viele Sekunden fehlen, bevor der EMS ausschaltet (0 = sofort stoppen)",
+      "sustainHintTitle": "Überschuss muss so viele Sekunden anhalten, bevor das EMS einschaltet (0 = sofort starten)",
+      "graceHintTitle": "Überschuss darf so viele Sekunden fehlen, bevor das EMS ausschaltet (0 = sofort stoppen)",
       "startupGraceHintTitle": "Nur bei Statusquelle = Leistungsaufnahme: nach einem EMS-Start so lange auf Leistung warten, bevor ein Wert unter dem Schwellenwert als externes AUS zählt. Langsam hochlaufende Geräte (Wärmepumpen) benötigen mehr Zeit.",
       "maxRunHintTitle": "Wenn gesetzt, läuft das Gerät genau diese Dauer und ignoriert Überschuss-Einbrüche währenddessen (0 = läuft solange Überschuss verfügbar ist)",
-      "cooldownHintTitle": "Mindestminuten, bevor der EMS nach einem Leistungsabfall-Stopp neu starten darf (0 = kein Limit)",
+      "cooldownHintTitle": "Mindestminuten, bevor das EMS nach einem Leistungsabfall-Stopp neu starten darf (0 = kein Limit)",
       "minPowerHintTitle": "Während des Betriebs: stoppen, wenn die gemessene Leistung unter diesen Wert fällt (0 = deaktiviert; benötigt Power (W)-Capability)",
       "stateSource": "Statusquelle:",
       "advancedSettings": "Erweiterte Einstellungen",
@@ -592,7 +592,7 @@
       "stateSrcHint": {
         "onoff": "Liest den Ein/Aus-Schalter des Geräts — der Normalfall.",
         "power": "Liest den Status anhand gemessener Leistung (benötigt eine Power-Capability) — für Dauerplugs, bei denen Start/Stopp eine interne Last schaltet (Poolheizung/Filter).",
-        "ems": "Der EMS vertraut seiner eigenen Start-/Stopp-Buchführung und übernimmt den Gerätestatus nie — für Geräte, die per Sollwert/Hysterese gesteuert werden (z. B. eine Wärmepumpe), bei denen weder Schalter noch Leistung den EMS-Befehl widerspiegeln."
+        "ems": "Das EMS vertraut seiner eigenen Start-/Stopp-Buchführung und übernimmt den Gerätestatus nie — für Geräte, die per Sollwert/Hysterese gesteuert werden (z. B. eine Wärmepumpe), bei denen weder Schalter noch Leistung das EMS-Befehl widerspiegeln."
       }
     },
     "chargers": {
@@ -608,7 +608,7 @@
       },
       "modeHint": {
         "solar": "Lädt nur, wenn genug Solarüberschuss vorhanden ist; die Leistung folgt dem Überschuss.",
-        "solarOffpeak": "Lädt tagsüber mit Solarüberschuss. Ist das Fahrzeug bei Beginn des festen Off-Peak-Zeitfensters (eingestellt unter EV Chargers → Off-Peak Charging, aktiviert über den Off-Peak-Schalter auf der EMS-Gerätekachel) noch nicht am Ziel, lädt es während dieses Fensters mit voller Leistung — das Fenster ist immer zur gleichen Zeit, nicht preisabhängig.",
+        "solarOffpeak": "Lädt tagsüber mit Solarüberschuss. Ist das Fahrzeug bei Beginn des festen Off-Peak-Zeitfensters (eingestellt unter EV Chargers → Off-Peak Charging, aktiviert über den Off-Peak-Schalter auf das EMS-Gerätekachel) noch nicht am Ziel, lädt es während dieses Fensters mit voller Leistung — das Fenster ist immer zur gleichen Zeit, nicht preisabhängig.",
         "solarLowtariff": "Lädt tagsüber mit Solarüberschuss. Lädt mit voller Leistung, wann immer der \"Niedrig-/Hochtarif\"-Zeitplan (Electricity Price → Low / high tariff) gerade NIEDRIG sagt — nutzt dasselbe Wochentagsfenster statt eines separaten Off-Peak-Zeitplans.",
         "solarPrice": "Lädt zuerst mit Solarüberschuss. Was Solar bis zur \"Ready by\"-Deadline des Fahrzeugs (unter Cars eingestellt) nicht deckt, wird in den tatsächlich günstigsten Stunden geladen, basierend auf der Live-Preisprognose (Electricity Price → Set price forecast Flow) — kein festes Fenster.",
         "always": "Lädt mit maximal möglicher Leistung, sobald das Kabel eingesteckt ist — unabhängig von Solar oder Batteriestatus."
@@ -629,7 +629,7 @@
       "adjustmentIntervalHint": "Sek. — so lange muss der Überschuss anhalten, bevor der Ladestrom erhöht wird (höher = weniger Anpassungen)",
       "maxCurrentTitle": "Max. Strom (A)",
       "phasesTitle": "Anzahl Phasen, die dieser Lader nutzt",
-      "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt der EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um"
+      "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt das EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um"
     },
     "pvForecast": {
       "subtitleOff": "aus",
@@ -648,22 +648,34 @@
       "compare": {
         "summary": "Welchen \"Lademodus\" soll ich wählen?",
         "intro": "Die drei folgenden Modi nutzen Netzstrom ausserhalb des Solarüberschusses — jeder löst das anders:",
-        "offpeak":  { "name": "Off-Peak-Fenster",          "when": "<b>Wann:</b> festes tägliches Zeitfenster, jeden Tag gleich", "setup": "<b>Einrichtung:</b> Off-Peak-Lade-Zeitplan unten" },
-        "lowtariff":{ "name": "Niedertarif",                "when": "<b>Wann:</b> immer wenn dein Niedrig/Hoch-Wochentagsplan NIEDRIG sagt", "setup": "<b>Einrichtung:</b> Electricity Price → Low / high tariff" },
-        "cheapest": { "name": "Günstigste Stunden (Prognose)","when": "<b>Wann:</b> dynamisch — die tatsächlich günstigsten Stunden anhand echter Preisdaten", "setup": "<b>Einrichtung:</b> Electricity Price → Price forecast + Cars → Ready by" },
+        "offpeak": {
+          "name": "Off-Peak-Fenster",
+          "when": "<b>Wann:</b> festes tägliches Zeitfenster, jeden Tag gleich",
+          "setup": "<b>Einrichtung:</b> Off-Peak-Lade-Zeitplan unten"
+        },
+        "lowtariff": {
+          "name": "Niedertarif",
+          "when": "<b>Wann:</b> immer wenn dein Niedrig/Hoch-Wochentagsplan NIEDRIG sagt",
+          "setup": "<b>Einrichtung:</b> Electricity Price → Low / high tariff"
+        },
+        "cheapest": {
+          "name": "Günstigste Stunden (Prognose)",
+          "when": "<b>Wann:</b> dynamisch — die tatsächlich günstigsten Stunden anhand echter Preisdaten",
+          "setup": "<b>Einrichtung:</b> Electricity Price → Price forecast + Cars → Ready by"
+        },
         "ruleOfThumb": "Faustregel: echte stündliche Preisdaten vorhanden (z. B. Power by the Hour, Tibber)? Dann <b>Günstigste Stunden</b> nutzen — am genauesten. Nur ein fester Günstig-/Teuer-Zeitplan, keine Live-Preise? Dann <b>Off-Peak-Fenster</b> oder <b>Niedertarif</b>, je nachdem welchen Zeitplan du bereits pflegst."
       },
       "enableControl": {
         "title": "EMS-Steuerung aktivieren",
-        "desc": "Der EMS steuert das EV-Laden automatisch anhand von Solarüberschuss und Off-Peak-Zeitplan. Deaktivieren für manuelles Laden."
+        "desc": "Das EMS steuert das EV-Laden automatisch anhand von Solarüberschuss und Off-Peak-Zeitplan. Deaktivieren für manuelles Laden."
       },
       "solarFirst": {
         "title": "Solarüberschuss-Priorität",
-        "desc": "Während des Off-Peak-Fensters: ist Solarüberschuss vorhanden, nutzt der EMS ihn statt des Netzes. Deaktivieren, um während des Fensters immer mit dem eingestellten Off-Peak-Limit zu laden, unabhängig von Solar."
+        "desc": "Während des Off-Peak-Fensters: ist Solarüberschuss vorhanden, nutzt das EMS ihn statt des Netzes. Deaktivieren, um während des Fensters immer mit dem eingestellten Off-Peak-Limit zu laden, unabhängig von Solar."
       },
       "offpeak": {
         "title": "Off-Peak-Laden",
-        "toggleHint": "Aktivierung/Deaktivierung über den <b>Off-Peak</b>-Schalter auf der EMS-Gerätekachel in Homey.",
+        "toggleHint": "Aktivierung/Deaktivierung über den <b>Off-Peak</b>-Schalter auf das EMS-Gerätekachel in Homey.",
         "weekday": "Wochentag",
         "weekend": "Wochenende",
         "start": "Start",
@@ -684,36 +696,46 @@
     },
     "simpleDevice": {
       "subtitle": " · EMS schaltet ein/aus, wenn Solarüberschuss verfügbar ist",
-      "enableControl": { "title": "EMS-Steuerung aktivieren" }
+      "enableControl": {
+        "title": "EMS-Steuerung aktivieren"
+      }
     },
     "heatPumps": {
       "title": "♨️ Wärmepumpen",
-      "hint": "Jede Wärmepumpe hinzufügen, die der EMS steuern soll. Mindest-Solarüberschuss zum Starten festlegen, optional eine Einschaltverzögerung (Überschuss muss so viele Sekunden anhalten, bevor der EMS einschaltet) und eine Ausschaltverzögerung (Überschuss darf so viele Sekunden fehlen, bevor der EMS ausschaltet — verhindert Kurzläufe).",
+      "hint": "Jede Wärmepumpe hinzufügen, die das EMS steuern soll. Mindest-Solarüberschuss zum Starten festlegen, optional eine Einschaltverzögerung (Überschuss muss so viele Sekunden anhalten, bevor das EMS einschaltet) und eine Ausschaltverzögerung (Überschuss darf so viele Sekunden fehlen, bevor das EMS ausschaltet — verhindert Kurzläufe).",
       "addButton": "+ Wärmepumpe hinzufügen",
-      "enableControl": { "desc": "Der EMS startet und stoppt Wärmepumpen automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung." }
+      "enableControl": {
+        "desc": "Das EMS startet und stoppt Wärmepumpen automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
+      }
     },
     "boilers": {
       "title": "🚿 Boiler / Heizstäbe",
-      "hint": "Jeden Boiler oder Heizstab hinzufügen, den der EMS steuern soll. Mindest-Solarüberschuss zum Einschalten festlegen, optional eine Ein- und Ausschaltverzögerung gegen schnelles Schalten.",
+      "hint": "Jeden Boiler oder Heizstab hinzufügen, den das EMS steuern soll. Mindest-Solarüberschuss zum Einschalten festlegen, optional eine Ein- und Ausschaltverzögerung gegen schnelles Schalten.",
       "addButton": "+ Boiler / Heizstab hinzufügen",
-      "enableControl": { "desc": "Der EMS startet und stoppt Boiler/Heizstäbe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung." }
+      "enableControl": {
+        "desc": "Das EMS startet und stoppt Boiler/Heizstäbe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
+      }
     },
     "pool": {
       "title": "💧 Pool / Whirlpool",
-      "hint": "Die Pool- oder Whirlpool-Pumpe hinzufügen. Der EMS lässt sie laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
+      "hint": "Die Pool- oder Whirlpool-Pumpe hinzufügen. Das EMS lässt sie laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
       "addButton": "+ Pool / Whirlpool hinzufügen",
-      "enableControl": { "desc": "Der EMS startet und stoppt die Pool-/Whirlpool-Pumpe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung." }
+      "enableControl": {
+        "desc": "Das EMS startet und stoppt die Pool-/Whirlpool-Pumpe automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
+      }
     },
     "dehumidifier": {
       "title": "💨 Entfeuchter",
-      "hint": "Den Entfeuchter hinzufügen. Der EMS lässt ihn laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
+      "hint": "Den Entfeuchter hinzufügen. Das EMS lässt ihn laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
       "addButton": "+ Entfeuchter hinzufügen",
-      "enableControl": { "desc": "Der EMS startet und stoppt den Entfeuchter automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung." }
+      "enableControl": {
+        "desc": "Das EMS startet und stoppt den Entfeuchter automatisch anhand von verfügbarem Solarüberschuss und Batteriestatus. Deaktivieren für manuelle Steuerung."
+      }
     },
     "inverter": {
       "title": "☀️ Solar-Wechselrichter",
       "subtitle": " · Quelle für Solarproduktion",
-      "desc": "Der EMS liest hier die Solarproduktion (W), um den verfügbaren Überschuss zu berechnen. Mehrere Wechselrichter werden summiert.",
+      "desc": "Das EMS liest hier die Solarproduktion (W), um den verfügbaren Überschuss zu berechnen. Mehrere Wechselrichter werden summiert.",
       "addButton": "+ Wechselrichter hinzufügen"
     },
     "houseMeter": {
@@ -725,7 +747,7 @@
     "homeBatteries": {
       "title": "🔋 Hausbatterien",
       "subtitle": " · optional · schützt den Batterie-SOC",
-      "desc": "Optional, aber empfohlen. Der EMS nutzt den Batterie-SOC zum Batterieschutz — fällt der SOC unter das Minimum, werden Überschussgeräte gestoppt und das EV-Laden gedrosselt oder pausiert.",
+      "desc": "Optional, aber empfohlen. Das EMS nutzt den Batterie-SOC zum Batterieschutz — fällt der SOC unter das Minimum, werden Überschussgeräte gestoppt und das EV-Laden gedrosselt oder pausiert.",
       "addButton": "+ Batterie hinzufügen",
       "socZones": {
         "title": "Batterie-SOC-Zonen",
@@ -775,16 +797,16 @@
     "emsInfo": {
       "title": "Energy Management System",
       "reloadDevices": "↻ Geräte neu laden",
-      "summary": "Wie funktioniert der EMS? — Einrichtung & flow-basierte Steuerung",
+      "summary": "Wie funktioniert das EMS? — Einrichtung & flow-basierte Steuerung",
       "details": "▼ Details",
-      "whatTitle": "🔋 Was macht der EMS?",
-      "whatBody": "Der EMS überwacht alle 15 Sekunden Solarüberschuss, Batterie-SOC und Netzleistung und steuert automatisch EV-Lader, Wärmepumpen, Boiler, Poolpumpen und Entfeuchter — maximiert den Eigenverbrauch, ohne die Batterie unter das eingestellte Minimum zu entladen oder Strom aus dem Netz zu beziehen. Eine optionale Solcast-Solarprognose kann das Starten von Geräten an einem Tag mit schlechter Prognose zurückhalten, um die Batterie für den Abend zu schonen.",
+      "whatTitle": "🔋 Was macht das EMS?",
+      "whatBody": "Das EMS überwacht alle 15 Sekunden Solarüberschuss, Batterie-SOC und Netzleistung und steuert automatisch EV-Lader, Wärmepumpen, Boiler, Poolpumpen und Entfeuchter — maximiert den Eigenverbrauch, ohne die Batterie unter das eingestellte Minimum zu entladen oder Strom aus dem Netz zu beziehen. Eine optionale Solcast-Solarprognose kann das Starten von Geräten an einem Tag mit schlechter Prognose zurückhalten, um die Batterie für den Abend zu schonen.",
       "step1Title": "1 · Geräte laden",
-      "step1Body": "Auf <b>↻ Geräte neu laden</b> klicken (oben rechts). Der EMS liest alle Homey-Geräte ein. Danach über die Dropdowns unten die passenden Geräte und Capabilities den jeweiligen Rollen zuweisen.",
+      "step1Body": "Auf <b>↻ Geräte neu laden</b> klicken (oben rechts). Das EMS liest alle Homey-Geräte ein. Danach über die Dropdowns unten die passenden Geräte und Capabilities den jeweiligen Rollen zuweisen.",
       "step2Title": "2 · Konfigurierbare Abschnitte",
       "secInverter": "<span style=\"font-weight:600\">Wechselrichter</span> — Misst die PV-Produktion (W). Mehrere Geräte werden summiert.",
       "secMeter": "<span style=\"font-weight:600\">Netzzähler (P1)</span> — Netzanschlusszähler: positiv = Bezug, negativ = Einspeisung. Grundlage aller Steuerungsentscheidungen.",
-      "secHouse": "<span style=\"font-weight:600\">Hausverbrauch</span> — Optional: direkter Hauslastzähler. Falls nicht angegeben, berechnet der EMS den Verbrauch aus der Energiebilanz (PV − Netz − Batterie).",
+      "secHouse": "<span style=\"font-weight:600\">Hausverbrauch</span> — Optional: direkter Hauslastzähler. Falls nicht angegeben, berechnet das EMS den Verbrauch aus der Energiebilanz (PV − Netz − Batterie).",
       "secBattery": "<span style=\"font-weight:600\">Hausbatterien</span> — SOC-Capability und nutzbare Kapazität (kWh) zuweisen. Einen <b>Normal-SOC</b> (volles Budget darüber) und optional einen niedrigeren <b>Reserve-SOC</b> festlegen — Verbraucher werden unterhalb der Reserve pausiert, dazwischen gedrosselt. <b>Flow-Aktionen</b> nutzen, um Flows zu erstellen, die die Batterie über Homey-Flows zwangsladen, zwangsentladen oder deren Lade-/Entladeleistung begrenzen. Eine <b>Einspeiselimit</b>-Option kann Flows am Wechselrichter auslösen, wenn die Batterie voll ist und trotzdem eingespeist wird.",
       "secSolcast": "<span style=\"font-weight:600\">Solarprognose (Solcast)</span> — Optional. Eine kostenlose Solcast-Hobbyist-Resource-ID + API-Schlüssel eingeben, um eine PV-Prognose zu erhalten (heute/morgen, bis zu 7 Tage voraus; mehrere Standorte, z. B. Ost- + Westdach, werden summiert). Wird unter <em>Diagnostics → EMS Diagnostics</em> angezeigt und steht als Flow-Trigger/-Bedingung zur Verfügung. Die <b>Solarprognose-Startsperre</b> (unter Hausbatterien) kann das Starten von Geräten an einem Tag mit schlechter Prognose zurückhalten, manuell (kWh-Schwellenwert) oder adaptiv (basierend auf Batteriekapazität + SOC).",
       "secChargers": "<span style=\"font-weight:600\">EV-Lader</span> — Stufenlose Stromsteuerung 6–32 A (1- oder 3-phasig, mit automatischer Phasenumschaltung falls unterstützt). Ein eingebauter Filter verhindert schnelles Hoch-/Runterregeln. Flows müssen in Homey verknüpft werden, um den Ladestrom zu setzen. Optional ein Fahrzeug pro Lader zuweisen, um dessen SOC zu verfolgen und einen Zielladestand zu setzen.",
@@ -792,7 +814,7 @@
       "secOthers": "<span style=\"font-weight:600\">Boiler / Pools / Entfeuchter</span> — Gleiche Logik wie Wärmepumpen, jeweils mit eigenen Start-/Stopp-Flow-Karten.",
       "secPriority": "<span style=\"font-weight:600\">Prioritätsreihenfolge</span> — Festlegen, welcher Gerätetyp zuerst Überschuss erhält: z. B. EV-Lader → Wärmepumpe → Boiler → Pool → Entfeuchter. Geräte mit niedrigerer Priorität erhalten nur, was übrig bleibt.",
       "step3Title": "3 · Steuerung über Homey-Flows",
-      "step3Intro": "Der EMS entscheidet, <em>wann</em> ein Gerät läuft, sendet aber nie direkte Gerätebefehle — stattdessen löst er <b>Flow-Trigger-Karten</b> aus, die du in Homey mit deinen Geräten verknüpfst:",
+      "step3Intro": "Das EMS entscheidet, <em>wann</em> ein Gerät läuft, sendet aber nie direkte Gerätebefehle — stattdessen löst er <b>Flow-Trigger-Karten</b> aus, die du in Homey mit deinen Geräten verknüpfst:",
       "flowEvCurrent": "<span style=\"font-weight:600\">EV — Ladestrom setzen</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to set charger current\"</em> → Tokens <code>amps</code>, <code>phase1/2/3</code>, <code>charger_device_id</code>. Aktion: Lader-App \"Set current\".</span>",
       "flowEvStart": "<span style=\"font-weight:600\">EV — Laden starten</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start charging\"</em> — löst einmalig aus, wenn das Laden aktiviert wird (für Lader-Apps, die einen expliziten Start-Befehl benötigen).</span>",
       "flowHeatPump": "<span style=\"font-weight:600\">Wärmepumpe — Start / Stopp</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start heat pump\"</em> / <em>\"EMS wants to stop heat pump\"</em>. Löst nur aus, wenn Überschuss ≥ Mindestschwellenwert.</span>",
@@ -809,7 +831,7 @@
     "gridMeter": {
       "title": "⚡ Netzzähler",
       "subtitle": " · Quelle für Netzbezug / -einspeisung",
-      "desc": "Der EMS liest hier die Netzleistung, um den verfügbaren Überschuss zu berechnen. Positiv = Bezug, negativ = Einspeisung. Mehrere Zähler werden summiert.",
+      "desc": "Das EMS liest hier die Netzleistung, um den verfügbaren Überschuss zu berechnen. Positiv = Bezug, negativ = Einspeisung. Mehrere Zähler werden summiert.",
       "addButton": "+ Zähler hinzufügen",
       "kwUnlimited": "kW · 0 = unbegrenzt",
       "priceLimit": {
@@ -818,7 +840,7 @@
       },
       "importLimit": {
         "title": "Netzbezugslimit — ganzes Haus (Lastabwurf)",
-        "desc": "Eine harte Sicherheitsobergrenze für den GESAMTEN Netzbezug (z. B. passend zur Hauptsicherung), getrennt vom und angewendet <em>zusätzlich unter</em> dem Preislade-Budget oben. Bei jedem Tick geht der EMS vom bereits gemessenen Hausbezug aus und reduziert oder hält EV-Laden zurück (Sofortladen / Always-Charge / Off-Peak / Preis / Niedertarif — alle Stufen, die sonst unbegrenzt Strom beziehen würden), die Batterie-Zwangsladung sowie jeden neuen Start von Wärmepumpe / Boiler / Pool / Entfeuchter, um unter diesem Limit zu bleiben — EV-Lader reduzieren wo möglich schrittweise die Ladeleistung, die übrigen Gerätetypen (nur ein/aus) bekommen den Start schlicht verweigert, wenn er nicht mehr passt. Bei 0 belassen, falls kein Haus-Limit benötigt wird."
+        "desc": "Eine harte Sicherheitsobergrenze für den GESAMTEN Netzbezug (z. B. passend zur Hauptsicherung), getrennt vom und angewendet <em>zusätzlich unter</em> dem Preislade-Budget oben. Bei jedem Tick geht das EMS vom bereits gemessenen Hausbezug aus und reduziert oder hält EV-Laden zurück (Sofortladen / Always-Charge / Off-Peak / Preis / Niedertarif — alle Stufen, die sonst unbegrenzt Strom beziehen würden), die Batterie-Zwangsladung sowie jeden neuen Start von Wärmepumpe / Boiler / Pool / Entfeuchter, um unter diesem Limit zu bleiben — EV-Lader reduzieren wo möglich schrittweise die Ladeleistung, die übrigen Gerätetypen (nur ein/aus) bekommen den Start schlicht verweigert, wenn er nicht mehr passt. Bei 0 belassen, falls kein Haus-Limit benötigt wird."
       }
     }
   }

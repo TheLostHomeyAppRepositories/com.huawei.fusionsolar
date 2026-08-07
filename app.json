@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.62",
+  "version": "1.2.63",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -7359,7 +7359,7 @@
         },
         "hint": {
           "en": "Fires when the EMS needs to change an EV charger's current. Paste the Charger Device ID from the EMS settings. Use [amps], [phase1], [phase2], [phase3] tokens in the charger action.",
-          "de": "Wird ausgelöst wenn das EMS den Ladestrom anpassen möchte. Charger Geräte-ID aus den EMS-Einstellungen einfügen.",
+          "de": "Wird ausgelöst wenn das EMS den Ladestrom anpassen möchte. Charger Geräte-ID aus das EMS-Einstellungen einfügen.",
           "nl": "Wordt geactiveerd wanneer het EMS de laadstroom van een laadpaal wil wijzigen. Plak de laadpaal apparaat-ID uit de EMS-instellingen. Gebruik de tokens [amps], [phase1], [phase2], [phase3] in de actie van de laadpaal."
         },
         "args": [
@@ -7475,7 +7475,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the heat pump on (off-peak hours active or sufficient solar surplus).",
-          "de": "Wird ausgelöst wenn der EMS die Wärmepumpe einschalten möchte (Nebenzeit aktiv oder ausreichend Solar-Überschuss).",
+          "de": "Wird ausgelöst wenn das EMS die Wärmepumpe einschalten möchte (Nebenzeit aktiv oder ausreichend Solar-Überschuss).",
           "nl": "Wordt geactiveerd wanneer het EMS de warmtepomp wil inschakelen (daltarief actief of voldoende zonne-overschot)."
         },
         "args": [
@@ -7515,7 +7515,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the heat pump off (battery priority or no surplus).",
-          "de": "Wird ausgelöst wenn der EMS die Wärmepumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
+          "de": "Wird ausgelöst wenn das EMS die Wärmepumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
           "nl": "Wordt geactiveerd wanneer het EMS de warmtepomp wil uitschakelen (voorrang voor de batterij of geen overschot)."
         },
         "args": [
@@ -7555,7 +7555,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the boiler/heater on (sufficient solar surplus available).",
-          "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
+          "de": "Wird ausgelöst wenn das EMS den Boiler/Heizstab einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
           "nl": "Wordt geactiveerd wanneer het EMS de boiler/verwarming wil inschakelen (voldoende zonne-overschot beschikbaar)."
         },
         "args": [
@@ -7595,7 +7595,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the boiler/heater off (battery priority or no surplus).",
-          "de": "Wird ausgelöst wenn der EMS den Boiler/Heizstab ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
+          "de": "Wird ausgelöst wenn das EMS den Boiler/Heizstab ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
           "nl": "Wordt geactiveerd wanneer het EMS de boiler/verwarming wil uitschakelen (voorrang voor de batterij of geen overschot)."
         },
         "args": [
@@ -7635,7 +7635,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the pool pump on (sufficient solar surplus available).",
-          "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
+          "de": "Wird ausgelöst wenn das EMS die Pool-Pumpe einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
           "nl": "Wordt geactiveerd wanneer het EMS de zwembadpomp wil inschakelen (voldoende zonne-overschot beschikbaar)."
         },
         "args": [
@@ -7675,7 +7675,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the pool pump off (battery priority or no surplus).",
-          "de": "Wird ausgelöst wenn der EMS die Pool-Pumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
+          "de": "Wird ausgelöst wenn das EMS die Pool-Pumpe ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
           "nl": "Wordt geactiveerd wanneer het EMS de zwembadpomp wil uitschakelen (voorrang voor de batterij of geen overschot)."
         },
         "args": [
@@ -7715,7 +7715,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the dehumidifier on (sufficient solar surplus available).",
-          "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
+          "de": "Wird ausgelöst wenn das EMS den Luftentfeuchter einschalten möchte (ausreichend Solar-Überschuss verfügbar).",
           "nl": "Wordt geactiveerd wanneer het EMS de ontvochtiger wil inschakelen (voldoende zonne-overschot beschikbaar)."
         },
         "args": [
@@ -7755,7 +7755,7 @@
         },
         "hint": {
           "en": "Fires when the EMS wants to turn the dehumidifier off (battery priority or no surplus).",
-          "de": "Wird ausgelöst wenn der EMS den Luftentfeuchter ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
+          "de": "Wird ausgelöst wenn das EMS den Luftentfeuchter ausschalten möchte (Batterie-Priorität oder kein Überschuss).",
           "nl": "Wordt geactiveerd wanneer het EMS de ontvochtiger wil uitschakelen (voorrang voor de batterij of geen overschot)."
         },
         "args": [
@@ -8263,7 +8263,7 @@
         },
         "hint": {
           "en": "Fires when the EMS target charge for a car changes. Use the Target SOC token to set the charge limit on your vehicle.",
-          "de": "Wird ausgelöst, wenn sich der EMS-Ziel-Ladestand eines Autos ändert. Nutze das Ziel-SOC-Token, um das Ladelimit am Fahrzeug zu setzen.",
+          "de": "Wird ausgelöst, wenn sich das EMS-Ziel-Ladestand eines Autos ändert. Nutze das Ziel-SOC-Token, um das Ladelimit am Fahrzeug zu setzen.",
           "nl": "Wordt geactiveerd wanneer de EMS-doellading van een auto verandert. Gebruik het doel-SOC-token om de laadlimiet op je voertuig in te stellen."
         },
         "args": [
@@ -12727,7 +12727,7 @@
     },
     "1.1.99": {
       "en": "EMS: Start-Sustain / Stop-Grace timers for heat pumps, boilers and pool: configurable delay before starting (surplus must hold) and before stopping (grace period tolerates brief surplus drops) — prevents short cycling. Timeline notifications: EMS posts to the Homey Timeline when it starts or stops a device and when battery SOC crosses a threshold; can be disabled in EMS device settings. Settings page redesigned for clarity: emoji section headers, intro text per section, labels renamed from technical jargon (W min / s sustain / s grace) to plain language (W to start / s start delay / s stop delay), Battery SOC zone bar improved, layout fixes for device rows.",
-      "de": "EMS: Start-Sustain / Stop-Grace-Timer für Wärmepumpen, Boiler und Pool: konfigurierbarer Startverzögerungs-Timer (Überschuss muss für X Sekunden stabil sein) und Stoppverzögerung (kurze Überschuss-Einbrüche werden toleriert) — verhindert kurzes Takten. Timeline-Benachrichtigungen: EMS postet im Homey-Timeline, wenn ein Gerät gestartet oder gestoppt wird oder der Batterie-SOC einen Schwellenwert überschreitet; deaktivierbar in den EMS-Geräteeinstellungen. Einstellungsseite für normale Nutzer überarbeitet: Emoji-Sektionsüberschriften, Einführungstexte je Sektion, Bezeichnungen vereinfacht (W to start / s start delay / s stop delay), Batterie-SOC-Zonen-Balken verbessert, Layout-Fehler in Gerätezeilen behoben.",
+      "de": "EMS: Start-Sustain / Stop-Grace-Timer für Wärmepumpen, Boiler und Pool: konfigurierbarer Startverzögerungs-Timer (Überschuss muss für X Sekunden stabil sein) und Stoppverzögerung (kurze Überschuss-Einbrüche werden toleriert) — verhindert kurzes Takten. Timeline-Benachrichtigungen: EMS postet im Homey-Timeline, wenn ein Gerät gestartet oder gestoppt wird oder der Batterie-SOC einen Schwellenwert überschreitet; deaktivierbar in das EMS-Geräteeinstellungen. Einstellungsseite für normale Nutzer überarbeitet: Emoji-Sektionsüberschriften, Einführungstexte je Sektion, Bezeichnungen vereinfacht (W to start / s start delay / s stop delay), Batterie-SOC-Zonen-Balken verbessert, Layout-Fehler in Gerätezeilen behoben.",
       "nl": "EMS: Start-Sustain / Stop-Grace-timers voor warmtepompen, boilers en zwembad: instelbare startvertraging (overschot moet X seconden aanhouden) en stopvertraging (korte overschotdruppels worden getolereerd) — voorkomt kort takten. Tijdlijnmeldingen: EMS plaatst een melding in de Homey-tijdlijn bij het starten of stoppen van een apparaat en bij het overschrijden van een batterij-SOC-drempelwaarde; uit te schakelen in de EMS-apparaatinstellingen. Instellingenpagina vereenvoudigd: emoji-sectiekoppen, inleiding per sectie, labels omgezet naar begrijpelijke taal (W to start / s start delay / s stop delay), batterij-SOC-zone verbeterd, lay-outproblemen in apparaatrijen opgelost."
     },
     "1.1.98": {
@@ -12742,12 +12742,12 @@
     },
     "1.1.96": {
       "en": "EMS: Bug fixes and new Export Limit Coordinator. Bug 1 (multi-device budget): heat pumps / boilers / pools of the same type now correctly share the surplus budget within the priority loop — a second device of the same type no longer starts when there is only enough surplus for one. Bug 2 (double battery read): _getBattery now caches per-device SOC, eliminating a second API call per battery per tick in _checkBatteryTriggers. Bug 3 (house power display): the calculated house load no longer includes EV charger power in the fallback formula. Sensor failure protection: if the grid meter returns null for up to 60 s (4 ticks), the EMS uses the last valid reading and continues; after 60 s it halts device control and shows an error status. Export Limit Coordinator: when enabled in EMS settings, the EMS automatically fires the inverter 'Enable export limit' trigger when the battery reaches the configured SOC and solar is exporting, and 'Disable export limit' when SOC drops below the deactivate threshold.",
-      "de": "EMS: Fehlerbehebungen und neuer Export-Limit-Koordinator. Bug 1 (Multi-Geräte-Budget): Wärmepumpen / Boiler / Pools desselben Typs teilen das Überschuss-Budget nun korrekt — ein zweites Gerät des gleichen Typs startet nicht mehr, wenn nur für eines ausreichend Überschuss vorhanden ist. Bug 2 (doppelter Batterie-API-Aufruf): _getBattery cached den SOC pro Gerät, sodass _checkBatteryTriggers keinen zweiten API-Aufruf je Batterie je Tick mehr benötigt. Bug 3 (Hausverbrauch-Anzeige): Die berechnete Haushaltslast enthält in der Fallback-Formel keinen EV-Lader-Verbrauch mehr. Sensor-Ausfallschutz: Wenn der Netzstrom-Sensor bis zu 60 s (4 Ticks) null zurückgibt, verwendet der EMS den letzten gültigen Wert; nach 60 s wird die Gerätesteuerung pausiert und eine Fehlermeldung angezeigt. Export-Limit-Koordinator: Wenn in den EMS-Einstellungen aktiviert, löst der EMS automatisch den Wechselrichter-Trigger 'Einspeisebegrenzung aktivieren' aus, wenn die Batterie den konfigurierten SOC erreicht und Solar einspeist, und deaktiviert sie, wenn der SOC unter den Deaktivierungsschwellenwert fällt.",
+      "de": "EMS: Fehlerbehebungen und neuer Export-Limit-Koordinator. Bug 1 (Multi-Geräte-Budget): Wärmepumpen / Boiler / Pools desselben Typs teilen das Überschuss-Budget nun korrekt — ein zweites Gerät des gleichen Typs startet nicht mehr, wenn nur für eines ausreichend Überschuss vorhanden ist. Bug 2 (doppelter Batterie-API-Aufruf): _getBattery cached den SOC pro Gerät, sodass _checkBatteryTriggers keinen zweiten API-Aufruf je Batterie je Tick mehr benötigt. Bug 3 (Hausverbrauch-Anzeige): Die berechnete Haushaltslast enthält in der Fallback-Formel keinen EV-Lader-Verbrauch mehr. Sensor-Ausfallschutz: Wenn der Netzstrom-Sensor bis zu 60 s (4 Ticks) null zurückgibt, verwendet das EMS den letzten gültigen Wert; nach 60 s wird die Gerätesteuerung pausiert und eine Fehlermeldung angezeigt. Export-Limit-Koordinator: Wenn in das EMS-Einstellungen aktiviert, löst das EMS automatisch den Wechselrichter-Trigger 'Einspeisebegrenzung aktivieren' aus, wenn die Batterie den konfigurierten SOC erreicht und Solar einspeist, und deaktiviert sie, wenn der SOC unter den Deaktivierungsschwellenwert fällt.",
       "nl": "EMS: Bugfixes en nieuwe Export Limit Coördinator. Bug 1 (multi-apparaat budget): warmtepompen / boilers / zwembaden van hetzelfde type delen nu het overschotbudget correct. Bug 2 (dubbele batterij-API-aanroep): _getBattery slaat de SOC per apparaat op zodat _checkBatteryTriggers geen tweede API-aanroep per batterij per tick nodig heeft. Bug 3 (huisverbruik weergave): het berekende huisverbruik bevat in de fallback-formule geen EV-laderverbruik meer. Sensorfout bescherming: als de netmeter tot 60 s null retourneert, gebruikt de EMS de laatste geldige waarde; na 60 s wordt de apparaatbediening gepauzeerd. Export Limit Coördinator: wanneer ingeschakeld in de EMS-instellingen, activeert de EMS automatisch de omvormer-trigger 'Exportlimiet inschakelen' wanneer de batterij de geconfigureerde SOC bereikt."
     },
     "1.1.95": {
       "en": "EMS: Fixed charger stopping immediately after start. When the charger's power capability reports 0 W during startup lag, the EMS now uses the expected power (amps × phases × 230 W) as a floor, preventing the surplus budget from collapsing to zero before the charger's capability catches up with the actual draw.",
-      "de": "EMS: Lader startet nicht mehr sofort wieder ab. Wenn die Leistungs-Capability des Laders beim Start kurz 0 W meldet, verwendet der EMS die erwartete Leistung (Ampere × Phasen × 230 W) als Mindestwert. Dadurch bricht das Surplus-Budget nicht auf null ein, bevor die Capability den tatsächlichen Verbrauch meldet.",
+      "de": "EMS: Lader startet nicht mehr sofort wieder ab. Wenn die Leistungs-Capability des Laders beim Start kurz 0 W meldet, verwendet das EMS die erwartete Leistung (Ampere × Phasen × 230 W) als Mindestwert. Dadurch bricht das Surplus-Budget nicht auf null ein, bevor die Capability den tatsächlichen Verbrauch meldet.",
       "nl": "EMS: Lader stopt niet meer direct na het starten. Wanneer de vermogenscapability van de lader tijdens de opstartvertraging 0 W rapporteert, gebruikt de EMS nu het verwachte vermogen (ampère × fasen × 230 W) als ondergrens, zodat het surplusbudget niet naar nul zakt voordat de capability de werkelijke afname bijhoudt."
     },
     "1.1.94": {

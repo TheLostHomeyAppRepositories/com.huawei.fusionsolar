@@ -648,9 +648,21 @@
       "compare": {
         "summary": "Which \"Charging mode\" should I pick?",
         "intro": "Three modes below use grid power outside solar surplus — each solves it differently:",
-        "offpeak":  { "name": "Off-peak window",         "when": "<b>When:</b> fixed daily time window, same every day", "setup": "<b>Setup:</b> Off-Peak Charging schedule below" },
-        "lowtariff":{ "name": "Low tariff",               "when": "<b>When:</b> whenever your Low/High weekday schedule says LOW", "setup": "<b>Setup:</b> Electricity Price → Low / high tariff" },
-        "cheapest": { "name": "Cheapest hours (forecast)","when": "<b>When:</b> dynamically — the actual cheapest hours, per real price data", "setup": "<b>Setup:</b> Electricity Price → Price forecast + Cars → Ready by" },
+        "offpeak": {
+          "name": "Off-peak window",
+          "when": "<b>When:</b> fixed daily time window, same every day",
+          "setup": "<b>Setup:</b> Off-Peak Charging schedule below"
+        },
+        "lowtariff": {
+          "name": "Low tariff",
+          "when": "<b>When:</b> whenever your Low/High weekday schedule says LOW",
+          "setup": "<b>Setup:</b> Electricity Price → Low / high tariff"
+        },
+        "cheapest": {
+          "name": "Cheapest hours (forecast)",
+          "when": "<b>When:</b> dynamically — the actual cheapest hours, per real price data",
+          "setup": "<b>Setup:</b> Electricity Price → Price forecast + Cars → Ready by"
+        },
         "ruleOfThumb": "Rule of thumb: have real hourly price data (e.g. Power by the Hour, Tibber)? Use <b>Cheapest hours</b> — it's the most accurate. Only a fixed cheap/expensive schedule, no live prices? Use <b>Off-peak window</b> or <b>Low tariff</b> depending on which schedule you already maintain."
       },
       "enableControl": {
@@ -684,31 +696,41 @@
     },
     "simpleDevice": {
       "subtitle": " · EMS switches on/off when solar surplus is available",
-      "enableControl": { "title": "Enable EMS control" }
+      "enableControl": {
+        "title": "Enable EMS control"
+      }
     },
     "heatPumps": {
       "title": "♨️ Heat Pumps",
       "hint": "Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).",
       "addButton": "+ Add heat pump",
-      "enableControl": { "desc": "The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually." }
+      "enableControl": {
+        "desc": "The EMS automatically starts and stops heat pumps based on available solar surplus and battery state. Disable to control heat pumps manually."
+      }
     },
     "boilers": {
       "title": "🚿 Boilers / Immersion Heaters",
       "hint": "Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.",
       "addButton": "+ Add boiler / heater",
-      "enableControl": { "desc": "The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually." }
+      "enableControl": {
+        "desc": "The EMS automatically starts and stops boilers/immersion heaters based on available solar surplus and battery state. Disable to control manually."
+      }
     },
     "pool": {
       "title": "💧 Pool / Whirlpool",
       "hint": "Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
       "addButton": "+ Add pool / whirlpool",
-      "enableControl": { "desc": "The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually." }
+      "enableControl": {
+        "desc": "The EMS automatically starts and stops the pool/whirlpool pump based on available solar surplus and battery state. Disable to control manually."
+      }
     },
     "dehumidifier": {
       "title": "💨 Dehumidifier",
       "hint": "Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
       "addButton": "+ Add dehumidifier",
-      "enableControl": { "desc": "The EMS automatically starts and stops the dehumidifier based on available solar surplus and battery state. Disable to control manually." }
+      "enableControl": {
+        "desc": "The EMS automatically starts and stops the dehumidifier based on available solar surplus and battery state. Disable to control manually."
+      }
     },
     "inverter": {
       "title": "☀️ Solar Inverter",

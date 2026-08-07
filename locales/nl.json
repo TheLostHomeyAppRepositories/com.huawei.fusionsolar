@@ -423,7 +423,7 @@
       "power": "Vermogen (W):",
       "heatPumpPowerHint": "Terwijl actief telt de EMS het gemeten warmtepompvermogen mee als beschikbaar overschot, zodat deze niet meteen weer wordt uitgeschakeld.",
       "heatPumpNoPowerCap": "Geen vermogen-capability — de warmtepomp schakelt alleen op basis van ruw zonneoverschot aan/uit (kan het eigen verbruik niet als overschot meetellen).",
-      "simpleDevicePowerHint": "Terwijl actief telt de EMS het gemeten verbruik van {{label}} mee als beschikbaar overschot, zodat het niet meteen weer wordt uitgeschakeld.",
+      "simpleDevicePowerHint": "Terwijl actief telt de EMS het gemeten verbruik van {{label}} mee als beschikbaar overschot, zodat het apparaat niet meteen weer wordt uitgeschakeld.",
       "simpleDeviceNoPowerCap": "Geen vermogen-capability — het apparaat schakelt alleen op basis van ruw zonneoverschot aan/uit (kan het eigen verbruik niet als overschot meetellen).",
       "chargingState": "Laadstatus:",
       "chargerCapsNote": "<b>Laadstatus</b> vertelt de EMS of de auto is aangesloten en aan het laden is. <b>Vermogen (W)</b> wordt gebruikt om het werkelijke verbruik bij te houden. De EMS stuurt laadstroomcommando's via een Flow — stel de trigger in de sectie \"Flow instellen\" hieronder in.",
@@ -648,9 +648,21 @@
       "compare": {
         "summary": "Welke \"Laadmodus\" moet ik kiezen?",
         "intro": "Drie modi hieronder gebruiken netstroom buiten het zonneoverschot om — elk lost dit anders op:",
-        "offpeak":  { "name": "Daltarief-venster",         "when": "<b>Wanneer:</b> vast dagelijks tijdvenster, elke dag hetzelfde", "setup": "<b>Instellen:</b> schema Daltarief laden hieronder" },
-        "lowtariff":{ "name": "Laag tarief",               "when": "<b>Wanneer:</b> wanneer je Laag/Hoog-weekdagschema LAAG aangeeft", "setup": "<b>Instellen:</b> Elektriciteitsprijs → Laag / hoog tarief" },
-        "cheapest": { "name": "Goedkoopste uren (prognose)","when": "<b>Wanneer:</b> dynamisch — de daadwerkelijk goedkoopste uren, op basis van echte prijsgegevens", "setup": "<b>Instellen:</b> Elektriciteitsprijs → Prijsprognose + Auto's → Klaar om" },
+        "offpeak": {
+          "name": "Daltarief-venster",
+          "when": "<b>Wanneer:</b> vast dagelijks tijdvenster, elke dag hetzelfde",
+          "setup": "<b>Instellen:</b> schema Daltarief laden hieronder"
+        },
+        "lowtariff": {
+          "name": "Laag tarief",
+          "when": "<b>Wanneer:</b> wanneer je Laag/Hoog-weekdagschema LAAG aangeeft",
+          "setup": "<b>Instellen:</b> Elektriciteitsprijs → Laag / hoog tarief"
+        },
+        "cheapest": {
+          "name": "Goedkoopste uren (prognose)",
+          "when": "<b>Wanneer:</b> dynamisch — de daadwerkelijk goedkoopste uren, op basis van echte prijsgegevens",
+          "setup": "<b>Instellen:</b> Elektriciteitsprijs → Prijsprognose + Auto's → Klaar om"
+        },
         "ruleOfThumb": "Vuistregel: heb je echte uurprijsgegevens (bijv. Power by the Hour, Tibber)? Gebruik <b>Goedkoopste uren</b> — dat is het nauwkeurigst. Alleen een vast goedkoop/duur-schema, geen live prijzen? Gebruik <b>Daltarief-venster</b> of <b>Laag tarief</b>, afhankelijk van welk schema je al bijhoudt."
       },
       "enableControl": {
@@ -684,31 +696,41 @@
     },
     "simpleDevice": {
       "subtitle": " · EMS schakelt aan/uit wanneer zonneoverschot beschikbaar is",
-      "enableControl": { "title": "EMS-besturing inschakelen" }
+      "enableControl": {
+        "title": "EMS-besturing inschakelen"
+      }
     },
     "heatPumps": {
       "title": "♨️ Warmtepompen",
       "hint": "Voeg elke warmtepomp toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om te starten, en optioneel een startvertraging (overschot moet dit aantal seconden aanhouden voordat de EMS inschakelt) en een stopvertraging (overschot mag dit aantal seconden wegvallen voordat de EMS uitschakelt — voorkomt snel schakelen).",
       "addButton": "+ Warmtepomp toevoegen",
-      "enableControl": { "desc": "De EMS start en stopt warmtepompen automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om warmtepompen handmatig te bedienen." }
+      "enableControl": {
+        "desc": "De EMS start en stopt warmtepompen automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om warmtepompen handmatig te bedienen."
+      }
     },
     "boilers": {
       "title": "🚿 Boilers / Elektrische boilers",
       "hint": "Voeg elke boiler of elektrische boiler toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om in te schakelen, en optioneel een start- en stopvertraging om snel schakelen te voorkomen.",
       "addButton": "+ Boiler / heater toevoegen",
-      "enableControl": { "desc": "De EMS start en stopt boilers/elektrische boilers automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen." }
+      "enableControl": {
+        "desc": "De EMS start en stopt boilers/elektrische boilers automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
+      }
     },
     "pool": {
       "title": "💧 Zwembad / Whirlpool",
       "hint": "Voeg je zwembad- of whirlpoolpomp toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
       "addButton": "+ Zwembad / whirlpool toevoegen",
-      "enableControl": { "desc": "De EMS start en stopt de zwembad-/whirlpoolpomp automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen." }
+      "enableControl": {
+        "desc": "De EMS start en stopt de zwembad-/whirlpoolpomp automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
+      }
     },
     "dehumidifier": {
       "title": "💨 Ontvochtiger",
       "hint": "Voeg je ontvochtiger toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
       "addButton": "+ Ontvochtiger toevoegen",
-      "enableControl": { "desc": "De EMS start en stopt de ontvochtiger automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen." }
+      "enableControl": {
+        "desc": "De EMS start en stopt de ontvochtiger automatisch op basis van het beschikbare zonneoverschot en de batterijstatus. Uitschakelen om handmatig te bedienen."
+      }
     },
     "inverter": {
       "title": "☀️ Zonne-omvormer",
