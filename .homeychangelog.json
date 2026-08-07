@@ -1,4 +1,8 @@
 {
+  "1.2.71": {
+    "en": "Instant charging stays on now. It was defined as a push button that fell back the moment it was pressed, and its state was never readable — so it could not stay switched on at all. It is a switch now and remains on until charging ends. The EMS switches it off by itself once no charger is connected any more, so it does not silently carry over and charge the next car at full power. Existing devices are migrated automatically on the first start after the update.",
+    "de": "Sofortladen bleibt jetzt eingeschaltet. Es war als Taster definiert, der im Moment des Drückens zurückfiel, und sein Zustand war nie auslesbar — es konnte also gar nicht eingeschaltet bleiben. Nun ist es ein Schalter und bleibt an, bis der Ladevorgang endet. Das EMS schaltet ihn selbst aus, sobald kein Lader mehr verbunden ist, damit er nicht unbemerkt bestehen bleibt und das nächste Fahrzeug sofort mit voller Leistung lädt. Bestehende Geräte werden beim ersten Start nach dem Update automatisch umgestellt."
+  },
   "1.2.70": {
     "en": "Registered the missing route for the charge-limit buttons. A widget's handlers only become reachable once they are declared alongside the widget itself; the handler existed since 1.2.69 but nothing pointed at it, so every tap ran into a dead end.",
     "de": "Die fehlende Route für die Ladelimit-Schaltflächen registriert. Die Handler eines Widgets sind erst erreichbar, wenn sie beim Widget selbst deklariert sind; der Handler existierte seit 1.2.69, aber nichts verwies darauf — jedes Tippen lief daher ins Leere."

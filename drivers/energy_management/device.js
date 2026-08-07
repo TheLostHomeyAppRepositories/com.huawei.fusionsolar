@@ -1039,6 +1039,17 @@ class EmsDevice extends Device {
   // _postNotification / _addHistoryEvent / _saveHistory / getEmsHistory → lib/ems/history.js
 
   async _ensureCapabilities() {
+    // charge_now used to be uiComponent "button" with getable:false — a momentary push
+    // button that fell back the instant it was pressed, so instant charging could never
+    // stay on. It is a toggle now, but an existing device keeps the options it was created
+    // with: changing app.json alone does nothing here. Drop and re-add it once so the new
+    // options take effect. Guarded by a store flag so it happens exactly one time.
+    if (this.hasCapability('charge_now') && !this.getStoreValue('chargeNowIsToggle')) {
+      this.log('[EMS] migrating charge_now from button to toggle');
+      await this.removeCapability('charge_now').catch(() => {});
+      await this.addCapability('charge_now').catch((e) => this.error('[EMS] re-add charge_now failed:', e));
+      await this.setStoreValue('chargeNowIsToggle', true).catch(() => {});
+    }
     if (this.hasCapability('measure_power.surplus')) await this.removeCapability('measure_power.surplus').catch(() => {});
     if (this.hasCapability('measure_power.grid'))    await this.removeCapability('measure_power.grid').catch(() => {});
     if (this.hasCapability('measure_power.pv'))      await this.removeCapability('measure_power.pv').catch(() => {});

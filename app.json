@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.70",
+  "version": "1.2.71",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1576,9 +1576,9 @@
         "de": "Sofortladen",
         "nl": "Direct laden"
       },
-      "getable": false,
+      "getable": true,
       "setable": true,
-      "uiComponent": "button",
+      "uiComponent": "toggle",
       "uiQuickAction": true,
       "insights": false,
       "icon": "/assets/capabilities/charge_now.svg"
