@@ -343,6 +343,8 @@
     }
     .ems-config-row { display:grid; grid-template-columns:80px 1fr; gap:5px 10px; align-items:center; padding:4px 0 2px 2px; }
     .ems-config-row input { width:80px !important; }
+    /* Der EMS-Schalter ist kein Zahlenfeld — die 80px-Regel oben darf ihn nicht treffen. */
+    .ems-config-row .ems-toggle-switch input { width:auto !important; }
     .ems-row-remove {
       padding:3px 8px; font-size:12px; border:1px solid #d1d1d6; border-radius:5px;
       background:#fff; cursor:pointer; color:#c0392b; line-height:1;
@@ -4312,7 +4314,7 @@
       enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
       enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
       var enWrap = document.createElement('div');
-      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
       enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
       configRow.appendChild(enWrap);
 
@@ -4662,7 +4664,7 @@
       enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
       enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
       var enWrap = document.createElement('div');
-      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
       enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
       configRow.appendChild(enWrap);
 
@@ -5325,7 +5327,7 @@
       enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
       enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
       var enWrap = document.createElement('div');
-      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
       enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
       configRow.appendChild(enWrap);
 
@@ -5559,7 +5561,7 @@
       enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
       enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
       var enWrap = document.createElement('div');
-      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
       enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
       configRow.appendChild(enWrap);
 
@@ -5793,7 +5795,7 @@
       enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
       enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
       var enWrap = document.createElement('div');
-      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%';
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
       enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
       configRow.appendChild(enWrap);
 
