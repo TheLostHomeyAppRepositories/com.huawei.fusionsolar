@@ -662,7 +662,7 @@
     },
     "evChargers": {
       "title": "🚗 EV-Lader",
-      "subtitle": " · Prioritätsreihenfolge",
+      "subtitle": " · Solarüberschuss & Tarif",
       "addButton": "+ Lader hinzufügen",
       "compare": {
         "summary": "Welchen \"Lademodus\" soll ich wählen?",

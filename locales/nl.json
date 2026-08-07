@@ -662,7 +662,7 @@
     },
     "evChargers": {
       "title": "🚗 EV-laders",
-      "subtitle": " · prioriteitsvolgorde",
+      "subtitle": " · zonneoverschot & tarief",
       "addButton": "+ Lader toevoegen",
       "compare": {
         "summary": "Welke \"Laadmodus\" moet ik kiezen?",

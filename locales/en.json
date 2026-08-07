@@ -662,7 +662,7 @@
     },
     "evChargers": {
       "title": "🚗 EV Chargers",
-      "subtitle": " · priority order",
+      "subtitle": " · solar surplus & tariff",
       "addButton": "+ Add charger",
       "compare": {
         "summary": "Which \"Charging mode\" should I pick?",

@@ -903,5 +903,10 @@
     "en": "Shortened the section subtitle shared by heat pumps, boilers, pool and dehumidifier so it fits on one line.",
     "de": "Untertitel von Wärmepumpen, Boiler, Pool und Entfeuchter gekürzt, damit er auf eine Zeile passt.",
     "nl": "Ondertitel van warmtepompen, boilers, zwembad en ontvochtiger ingekort zodat hij op één regel past."
+  },
+  "1.2.90": {
+    "en": "The EV Chargers section subtitle said \"priority order\", left over from when the charging order lived there. It now describes what the section actually controls.",
+    "de": "Der Untertitel des Bereichs EV-Lader lautete „Prioritätsreihenfolge“ — ein Überbleibsel, als die Ladereihenfolge dort stand. Er beschreibt jetzt, was der Bereich wirklich steuert.",
+    "nl": "De ondertitel van het onderdeel EV-laders zei „prioriteitsvolgorde”, een overblijfsel van toen de laadvolgorde daar stond. Hij beschrijft nu wat het onderdeel echt regelt."
   }
 }
