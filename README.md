@@ -897,6 +897,49 @@ The current slot/value is highlighted in both charts where a timeline is shown; 
 
 ---
 
+## Languages
+
+English and German are complete. Dutch is complete everywhere the app renders its own text and
+falls back to English for the parts Homey renders from `app.json`.
+
+| Surface | What it covers | en | de | nl |
+|---|---|---|---|---|
+| `locales/*.json` | App code, pairing, the entire settings page | 667 | 667 | **667** |
+| Widgets (12) | All dashboard widget text | 128 | 128 | **128** |
+| `app.json` | Driver names, device settings, capability titles, flow cards | 1361 | 1349 | **1349** |
+
+### What a Dutch user sees today
+
+Dutch throughout the settings page, all twelve widgets, pairing, and every message the app shows
+or logs itself. English for driver names in the device list, device setting labels, capability
+titles on the tile, and flow card text. Homey falls back to `en` per string, so nothing is
+missing or blank — those parts are simply English.
+
+### Scope
+
+Dutch is complete. The twelve `app.json` entries still without `nl` are `units` — `W`, `kW`,
+`kWh`, `%`, `/kWh` — which are identical in every language and which `de` does not carry either.
+
+Driver names follow the German wording as the guide to what counts as a product designation:
+whatever `de` leaves in English stays English in `nl` too (`Inverter`, `Smart Charger`,
+`SDongle A`, `Solar`). Only what `de` translates is translated — `Battery` → `Batterij`,
+`Power Meter` → `Energiemeter`, `Plant` → `Installatie`, `Grid` → `Net`, `Home` → `Huis`.
+
+Flow card titles keep Homey's `!{{a|b}}` toggle syntax and `[[token]]` placeholders. Both were
+checked mechanically across all 540 translated strings before they were written to `app.json`:
+tokens must appear in the translation exactly as in the English, and every toggle must still
+carry two non-empty branches.
+
+### French
+
+Ten strings in widget metadata used to carry an `fr` translation, out of 1361 translatable
+objects — the remainder of an abandoned start, with no `locales/fr.json` behind it. A French
+user therefore saw ten French labels in an otherwise English app, which reads worse than
+consistent English. They were removed in 1.2.60. Adding French means starting from `en`, not
+from those ten.
+
+---
+
 ## Technical Background
 
 - **Kiosk:** HTTP polling of the public FusionSolar Kiosk API
