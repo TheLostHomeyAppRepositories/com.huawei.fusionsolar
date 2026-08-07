@@ -220,6 +220,29 @@ class EmsDevice extends Device {
       await this.setCarTargetSoc(carId, args.soc);
     });
 
+    // Per-device EMS control — the flow counterpart to the switch in the settings page
+    // and in the ems-device widget. ems_set_enabled covers the whole EMS; this takes a
+    // single charger or simple device out of it (holiday, maintenance) and leaves the
+    // rest running. Writes through setEmsDeviceEnabled so all three entry points share
+    // one path and cannot drift apart.
+    const devEnabledCard = this.homey.flow.getActionCard('ems_set_device_enabled');
+    devEnabledCard.registerArgumentAutocompleteListener('target', async (query) => {
+      const q = (query || '').toLowerCase();
+      const out = [];
+      for (const d of this._listControllables(this._getConfig())) {
+        const name = (await this._widgetDeviceName(d.id)) || d.id;
+        if (!q || name.toLowerCase().includes(q)) out.push({ id: d.id, name });
+      }
+      return out;
+    });
+    devEnabledCard.registerRunListener(async (args) => {
+      if (args.device.id !== this.id) return;
+      const id = args.target && args.target.id;
+      if (!id) throw new Error('No device selected');
+      const res = await this.setEmsDeviceEnabled(id, args.enabled === 'true');
+      if (res && res.error) throw new Error(res.error);
+    });
+
     this._applyPriceCurrencyUnit(this._getConfig());
     this._startTick();
     this.log('[EMS] initialized');

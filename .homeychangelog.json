@@ -908,5 +908,10 @@
     "en": "The EV Chargers section subtitle said \"priority order\", left over from when the charging order lived there. It now describes what the section actually controls.",
     "de": "Der Untertitel des Bereichs EV-Lader lautete „Prioritätsreihenfolge“ — ein Überbleibsel, als die Ladereihenfolge dort stand. Er beschreibt jetzt, was der Bereich wirklich steuert.",
     "nl": "De ondertitel van het onderdeel EV-laders zei „prioriteitsvolgorde”, een overblijfsel van toen de laadvolgorde daar stond. Hij beschrijft nu wat het onderdeel echt regelt."
+  },
+  "1.2.91": {
+    "en": "New flow action: enable or disable EMS control for a single charger, heat pump, boiler, pool or dehumidifier — so one device can be taken out of the EMS from a flow without stopping the whole EMS.",
+    "de": "Neue Flow-Aktion: EMS-Steuerung für einen einzelnen Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter ein- oder ausschalten — damit ein Gerät per Flow aus dem EMS genommen werden kann, ohne das ganze EMS zu stoppen.",
+    "nl": "Nieuwe flow-actie: EMS-regeling voor één lader, warmtepomp, boiler, zwembad of ontvochtiger in- of uitschakelen — zodat één apparaat via een flow uit het EMS gehaald kan worden zonder het hele EMS te stoppen."
   }
 }

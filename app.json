@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.90",
+  "version": "1.2.91",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -10726,6 +10726,67 @@
           }
         ]
       },
+    {
+      "id": "ems_set_device_enabled",
+      "title": {
+        "en": "Enable or disable EMS control for a device",
+        "de": "EMS-Steuerung für ein Gerät ein- oder ausschalten",
+        "nl": "EMS-regeling voor een apparaat in- of uitschakelen"
+      },
+      "titleFormatted": {
+        "en": "Set EMS control for [[target]] to [[enabled]]",
+        "de": "EMS-Steuerung für [[target]] auf [[enabled]] setzen",
+        "nl": "EMS-regeling voor [[target]] op [[enabled]] zetten"
+      },
+      "args": [
+        {
+          "name": "device",
+          "type": "device",
+          "filter": "driver_id=energy_management"
+        },
+        {
+          "name": "target",
+          "type": "autocomplete",
+          "title": {
+            "en": "Device",
+            "de": "Gerät",
+            "nl": "Apparaat"
+          },
+          "placeholder": {
+            "en": "Charger, heat pump, boiler, pool or dehumidifier",
+            "de": "Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter",
+            "nl": "Lader, warmtepomp, boiler, zwembad of ontvochtiger"
+          }
+        },
+        {
+          "name": "enabled",
+          "type": "dropdown",
+          "title": {
+            "en": "State",
+            "de": "Zustand",
+            "nl": "Status"
+          },
+          "values": [
+            {
+              "id": "true",
+              "label": {
+                "en": "Enable",
+                "de": "Aktivieren",
+                "nl": "Inschakelen"
+              }
+            },
+            {
+              "id": "false",
+              "label": {
+                "en": "Disable",
+                "de": "Deaktivieren",
+                "nl": "Uitschakelen"
+              }
+            }
+          ]
+        }
+      ]
+    },
       {
         "id": "ems_set_electricity_price",
         "title": {

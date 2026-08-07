@@ -1841,6 +1841,40 @@ test('_findControllable — finds charger and simple-device entries, null for an
   assert.strictEqual(d._findControllable(cfg, 'nope'), null);
 });
 
+test('_listControllables — lists chargers first, then the four simple classes', () => {
+  const d = makeWidgetDevice();
+  const cfg = {
+    chargers:            [{ id: 'c1' }, { id: 'c2' }],
+    heat_pump_devices:   [{ id: 'h1' }],
+    boiler_devices:      [{ id: 'b1' }],
+    pool_devices:        [{ id: 'p1' }],
+    dehumidifier_devices:[{ id: 'd1' }],
+  };
+  assert.deepStrictEqual(d._listControllables(cfg), [
+    { id: 'c1', kind: 'charger' }, { id: 'c2', kind: 'charger' },
+    { id: 'h1', kind: 'heat_pump' }, { id: 'b1', kind: 'boiler' },
+    { id: 'p1', kind: 'pool' }, { id: 'd1', kind: 'dehumidifier' },
+  ]);
+});
+test('_listControllables — empty config yields an empty list', () => {
+  const d = makeWidgetDevice();
+  assert.deepStrictEqual(d._listControllables({}), []);
+});
+test('_listControllables — skips half-configured rows with no device picked', () => {
+  const d = makeWidgetDevice();
+  const cfg = { chargers: [{ id: '' }, { id: 'c2' }], pool_devices: [{}] };
+  assert.deepStrictEqual(d._listControllables(cfg), [{ id: 'c2', kind: 'charger' }]);
+});
+test('_listControllables — every entry it offers can be resolved by _findControllable', () => {
+  const d = makeWidgetDevice();
+  const cfg = { chargers: [{ id: 'c1' }], heat_pump_devices: [{ id: 'h1' }], pool_devices: [{ id: 'p1' }] };
+  for (const item of d._listControllables(cfg)) {
+    const found = d._findControllable(cfg, item.id);
+    assert.ok(found, `${item.id} offered but not resolvable`);
+    assert.strictEqual(found.kind, item.kind);
+  }
+});
+
 test('getEmsControllableStatus — charger kind reports live power, mode and an active session', async () => {
   const cfg = { chargers: [{ id: 'c1', charge_mode: 'solar_price', max_amps: 16, min_amps: 6, ev_phases: '1' }] };
   const d = makeWidgetDevice({
