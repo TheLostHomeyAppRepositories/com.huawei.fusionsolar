@@ -1223,28 +1223,6 @@ module.exports = {
   },
 
   /** GET /ems/charge-sessions — completed charging sessions (energy + cost), newest first */
-  /**
-   * POST /ems/car-target — sets a car's target SOC from the ems-device widget.
-   *
-   * Takes the same path as the ems_set_car_target_soc flow action: it records the target
-   * and fires the ems_set_car_target trigger, which the user's generated "Set charge
-   * <soc>%" flow picks up and applies to the vehicle. The widget never talks to the car
-   * itself, so this works for any brand the user has such a flow for.
-   */
-  async postEmsCarTarget({ homey, body }) {
-    try {
-      const { carId, soc } = body || {};
-      if (!carId) return { error: 'Missing carId' };
-      const devices = homey.drivers.getDriver('energy_management').getDevices();
-      if (!devices.length) return { error: 'No EMS device found' };
-      const dev = devices[0];
-      if (typeof dev.setCarTargetSoc !== 'function') return { error: 'EMS device does not support car targets' };
-      return { ok: true, soc: await dev.setCarTargetSoc(carId, soc) };
-    } catch (e) {
-      return { error: e.message };
-    }
-  },
-
   async getEmsChargeSessions({ homey }) {
     try {
       const driver  = homey.drivers.getDriver('energy_management');

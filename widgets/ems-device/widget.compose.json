@@ -41,6 +41,10 @@
     "setChargeNow": {
       "method": "POST",
       "path": "/charge-now"
+    },
+    "setCarTarget": {
+      "method": "POST",
+      "path": "/car-target"
     }
   },
   "images": {

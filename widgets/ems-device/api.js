@@ -64,6 +64,23 @@ module.exports = {
     }
   },
 
+  // POST /car-target — charge-limit buttons under the car bar.
+  //
+  // Must live here, not in the app's api.js: a widget's Homey.api() calls are routed to
+  // its own api.js, so an app-level route is simply unreachable from the tile.
+  async setCarTarget({ homey, body }) {
+    const device = getEmsDevice(homey);
+    if (!device) return { error: 'no_ems_device' };
+    const { carId, soc } = body || {};
+    if (!carId) return { error: 'missing_car_id' };
+    if (typeof device.setCarTargetSoc !== 'function') return { error: 'car_targets_unsupported' };
+    try {
+      return { ok: true, soc: await device.setCarTargetSoc(carId, soc) };
+    } catch (e) {
+      return { error: e.message };
+    }
+  },
+
   async setChargeNow({ homey, body }) {
     const device = getEmsDevice(homey);
     if (!device) return { error: 'no_ems_device' };

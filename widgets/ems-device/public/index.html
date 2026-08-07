@@ -308,7 +308,7 @@ function onHomeyReady(Homey) {
     _paintPicks(soc);
     carLimitVal.textContent = soc + '%';
     try {
-      var res = await Homey.api('POST', '/ems/car-target', { carId: _carId, soc: soc });
+      var res = await Homey.api('POST', '/car-target', { carId: _carId, soc: soc });
       if (res && res.error) throw new Error(res.error);
     } catch (e) {
       btn.classList.add('is-error');   // Anzeige korrigiert sich beim naechsten /status

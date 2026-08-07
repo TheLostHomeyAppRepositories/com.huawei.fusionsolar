@@ -165,6 +165,12 @@ class EmsDevice extends Device {
       const soc = Math.round(Number(rawSoc));
       if (!Number.isFinite(soc) || soc < 0 || soc > 100) throw new Error('Target SOC must be 0–100');
       this._carTargets[carId] = soc;
+      (this._carTargetSetAt = this._carTargetSetAt || {})[carId] = Date.now();
+      // _carStates is what the widget's /status reads, and it is only rebuilt on the 15 s
+      // tick. Without this the very next poll — a second or two after the click — still
+      // returns the old target and the widget snaps back before the tick ever runs.
+      const liveState = (this._carStates || []).find((s) => s.id === carId);
+      if (liveState) liveState.target = soc;
       await this.setStoreValue('carTargets', this._carTargets).catch(() => {});
       const car = (this._getConfig().car_devices || []).find((c) => c.id === carId);
       const carName = (car && car.name) || 'Car';
@@ -184,6 +190,17 @@ class EmsDevice extends Device {
         .catch((e) => this.log(`[EMS] ems_set_car_target trigger failed: ${e.message}`));
       return soc;
     };
+
+    // ems_set_car_target is the one trigger where several flows share a single card: the
+    // generated "Set charge 80/90/100%" flows differ only by their target_pct argument.
+    // Every other EMS trigger has one flow per purpose, so it needs no matching and none
+    // was registered here either — with the result that none of the three car flows ran.
+    // Compare as strings: the args are type "text" and the state is built with String().
+    this.homey.flow.getTriggerCard('ems_set_car_target')
+      .registerRunListener(async (args, state) => {
+        const same = (a, b) => String(a ?? '') === String(b ?? '');
+        return same(args.car_device_id, state.car_device_id) && same(args.target_pct, state.target_pct);
+      });
 
     // Flow action: external app / schedule sets a car's target SOC.
     const carTargetCard = this.homey.flow.getActionCard('ems_set_car_target_soc');

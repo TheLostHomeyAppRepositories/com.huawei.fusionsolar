@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.65",
+  "version": "1.2.70",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -86,11 +86,6 @@
     "getEmsChargerPricePlans": {
       "method": "GET",
       "path": "/ems/charger-price-plans"
-    },
-    "postEmsCarTarget": {
-      "method": "POST",
-      "path": "/ems/car-target",
-      "public": false
     },
     "getEmsChargeSessions": {
       "method": "GET",
@@ -12663,6 +12658,10 @@
         "setChargeNow": {
           "method": "POST",
           "path": "/charge-now"
+        },
+        "setCarTarget": {
+          "method": "POST",
+          "path": "/car-target"
         }
       }
     },
