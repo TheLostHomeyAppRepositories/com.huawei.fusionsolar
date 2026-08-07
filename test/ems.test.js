@@ -1967,3 +1967,70 @@ test('setEmsBatteryZones — clamps values to 0..100 and persists', async () => 
   assert.strictEqual(cfg.min_battery_soc_low, 0);
   assert.strictEqual(saved, cfg);
 });
+
+// ── _buildPriorityRuns (Geräte-Priorität) ────────────────────────────────────
+// Die Reihenfolge gilt seit 1.2.82 je Gerät statt je Geräteklasse. Entscheidend ist die
+// Blockbildung: _evaluateEvChargers verteilt Überschuss zwischen ALLEN Ladern, die es in
+// einem Aufruf bekommt — einzeln aufgerufen ginge das verloren.
+// _buildPriorityRuns lebt im chargerControl-Mixin, weil die Blockbildung nur wegen der
+// Ueberschussverteilung zwischen Ladern noetig ist.
+function makePrioDevice() {
+  return Object.assign({ log() {} }, chargerMixin);
+}
+const _prioSimple = (lists) => ({
+  heat_pump:    { list: lists.heat_pump    || [] },
+  boiler:       { list: lists.boiler       || [] },
+  pool:         { list: lists.pool         || [] },
+  dehumidifier: { list: lists.dehumidifier || [] },
+});
+
+test('_buildPriorityRuns — adjacent chargers stay in ONE run so they keep sharing surplus', () => {
+  const d = makePrioDevice();
+  const runs = d._buildPriorityRuns(
+    ['a', 'b', 'boil'],
+    [{ id: 'a' }, { id: 'b' }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }),
+  );
+  assert.strictEqual(runs.length, 2);
+  assert.strictEqual(runs[0].kind, 'charger');
+  assert.deepStrictEqual(runs[0].list.map((x) => x.id), ['a', 'b'], 'beide Lader in einem Block');
+  assert.strictEqual(runs[1].kind, 'boiler');
+});
+
+test('_buildPriorityRuns — chargers separated by another device are served one after the other', () => {
+  const d = makePrioDevice();
+  const runs = d._buildPriorityRuns(
+    ['a', 'boil', 'b'],
+    [{ id: 'a' }, { id: 'b' }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }),
+  );
+  assert.deepStrictEqual(runs.map((r) => r.kind), ['charger', 'boiler', 'charger']);
+  assert.deepStrictEqual(runs[0].list.map((x) => x.id), ['a']);
+  assert.deepStrictEqual(runs[2].list.map((x) => x.id), ['b']);
+});
+
+test('_buildPriorityRuns — a device missing from the order is appended, never dropped', () => {
+  // Ein frisch hinzugefügtes Gerät steht noch in keiner gespeicherten Reihenfolge. Es darf
+  // dadurch nicht ungesteuert bleiben — es rutscht ans Ende.
+  const d = makePrioDevice();
+  const runs = d._buildPriorityRuns(
+    ['boil'],
+    [{ id: 'neu' }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }),
+  );
+  assert.deepStrictEqual(runs.map((r) => r.kind), ['boiler', 'charger']);
+  assert.deepStrictEqual(runs[1].list.map((x) => x.id), ['neu']);
+});
+
+test('_buildPriorityRuns — an id in the order that no longer exists is ignored', () => {
+  const d = makePrioDevice();
+  const runs = d._buildPriorityRuns(['weg', 'boil'], [], _prioSimple({ boiler: [{ id: 'boil' }] }));
+  assert.deepStrictEqual(runs.map((r) => r.kind), ['boiler']);
+});
+
+test('_buildPriorityRuns — empty order falls back to configured order, nothing skipped', () => {
+  const d = makePrioDevice();
+  const runs = d._buildPriorityRuns([], [{ id: 'a' }], _prioSimple({ pool: [{ id: 'p' }] }));
+  const ids = runs.flatMap((r) => r.list.map((x) => x.id));
+  assert.deepStrictEqual(ids.sort(), ['a', 'p']);
+});

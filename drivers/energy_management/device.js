@@ -124,6 +124,7 @@ class EmsDevice extends Device {
     await this._syncCarCapabilities(this._getConfig()); // add car caps only when a car is configured
     await this._syncPvForecastCapabilities(this._getConfig()); // pv forecast caps only when Solcast is configured
     await this._migrateControlFlags(); // fold class-wide control flags onto each device
+    await this._migratePriorityOrder();  // expand the class order into device ids
     await this._migrateConfig(); // run once on startup, writes back if format changed
     const _startupCfg = this._getConfig(); // clamp any out-of-range values on startup too
     if (this._validateConfig(_startupCfg)) this.homey.settings.set('ems_config', _startupCfg);
@@ -309,6 +310,37 @@ class EmsDevice extends Device {
   // Own guard key, not _migrated: that one has long since been set on existing installs,
   // so this would never run. A class that was switched OFF must disable its devices — the
   // whole point is that nobody's EMS starts controlling things it was told not to touch.
+  // device_priority_order used to hold device CLASSES; it now holds device ids. Expand the
+  // stored class order into the ids of that class, in configured order, so the user's
+  // existing ranking survives verbatim: [charger, boiler] with two chargers becomes
+  // [chargerA, chargerB, boiler] — same behaviour, because adjacent chargers are still
+  // evaluated as one run. Own guard key; _migrated and _controlPerDevice are already set
+  // on existing installs.
+  async _migratePriorityOrder() {
+    const cfg = this.homey.settings.get('ems_config') || {};
+    if (cfg._priorityPerDevice) return;
+    const LIST_FOR = {
+      charger:      'chargers',
+      heat_pump:    'heat_pump_devices',
+      boiler:       'boiler_devices',
+      pool:         'pool_devices',
+      dehumidifier: 'dehumidifier_devices',
+    };
+    const classOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
+      ? cfg.device_priority_order
+      : Object.keys(LIST_FOR);
+    const ids = [];
+    for (const kind of classOrder) {
+      const listKey = LIST_FOR[kind];
+      if (!listKey) continue;                     // already an id, or an unknown class
+      for (const d of cfg[listKey] || []) if (d.id) ids.push(d.id);
+    }
+    cfg.device_priority_order = ids;
+    cfg._priorityPerDevice = true;
+    this.homey.settings.set('ems_config', cfg);
+    this.log(`[EMS] migrated device priority from classes to ${ids.length} device(s)`);
+  }
+
   async _migrateControlFlags() {
     const cfg = this.homey.settings.get('ems_config') || {};
     if (cfg._controlPerDevice) return;
@@ -580,9 +612,9 @@ class EmsDevice extends Device {
       return;
     }
 
-    const priorityOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
-      ? cfg.device_priority_order
-      : ['charger', 'heat_pump', 'boiler', 'pool', 'dehumidifier'];
+    // Device ids, no longer class names (see _migratePriorityOrder). Empty is harmless:
+    // _buildPriorityRuns appends anything unlisted in configured order.
+    const priorityOrder = Array.isArray(cfg.device_priority_order) ? cfg.device_priority_order : [];
     let effectiveGridW = gridW;
     // Orange zone: expand effective surplus by orange budget so devices can borrow from battery charging.
     // The budget is shared across all device types via effectiveGridW — as each type allocates power,
@@ -600,17 +632,22 @@ class EmsDevice extends Device {
       pool:         { list: pools,         states: this._poolStates,        start: 'ems_start_pool',         stop: 'ems_stop_pool',         arg: 'pool_device_id' },
       dehumidifier: { list: dehumidifiers, states: this._dehumidifierStates, start: 'ems_start_dehumidifier', stop: 'ems_stop_dehumidifier', arg: 'dehumidifier_device_id' },
     };
-    for (const deviceType of priorityOrder) {
-      if (deviceType === 'charger') {
-        const prevChargerW = chargers.reduce((s, c) => s + c.powerW, 0);
-        const allocatedW   = await this._evaluateEvChargers(battery, effectiveGridW, chargers, cfg, pvW, houseW);
+    // Priority is per device, not per device class. _buildPriorityRuns turns the stored
+    // order into runs of CONSECUTIVE same-kind devices, because _evaluateEvChargers shares
+    // surplus between the chargers handed to it in one call — evaluating them one at a time
+    // would silently drop that. Adjacent chargers therefore stay in one run and keep
+    // sharing; chargers the user deliberately separated are served one after the other.
+    for (const run of this._buildPriorityRuns(priorityOrder, chargers, simpleEval)) {
+      if (run.kind === 'charger') {
+        const prevChargerW = run.list.reduce((s, c) => s + c.powerW, 0);
+        const allocatedW   = await this._evaluateEvChargers(battery, effectiveGridW, run.list, cfg, pvW, houseW);
         // Adjust only by the delta: the existing charger draw is already reflected in gridW
         const deltaW = allocatedW - prevChargerW;
         if (effectiveGridW !== null && deltaW !== 0) effectiveGridW += deltaW;
-      } else if (simpleEval[deviceType]) {
-        const s = simpleEval[deviceType];
+      } else {
+        const s = simpleEval[run.kind];
         const allocatedW = await this._evaluateSimpleDevices(
-          battery, effectiveGridW, s.list, s.states, s.start, s.stop, s.arg, cfg,
+          battery, effectiveGridW, run.list, s.states, s.start, s.stop, s.arg, cfg,
         );
         if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
       }

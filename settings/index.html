@@ -1149,38 +1149,7 @@
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
         <span class="ems-toggle-title" data-i18n="devicePriority.evalOrder.title">Evaluation order</span>
         <span class="ems-toggle-desc" style="margin-bottom:4px" data-i18n="devicePriority.evalOrder.desc">Drag to reorder. Devices higher in the list get first claim on available solar surplus.</span>
-        <div id="ems-device-priority-list">
-          <div class="ems-priority-order-item" data-type="charger">
-            <span class="priority-rank">1</span>
-            <span class="priority-label" data-i18n="devicePriority.labelCharger">EV Chargers</span>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up" data-i18n-title="devicePriority.moveUp">▲</button>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down" data-i18n-title="devicePriority.moveDown">▼</button>
-          </div>
-          <div class="ems-priority-order-item" data-type="heat_pump">
-            <span class="priority-rank">2</span>
-            <span class="priority-label" data-i18n="devicePriority.labelHeatPump">Heat Pumps</span>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up" data-i18n-title="devicePriority.moveUp">▲</button>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down" data-i18n-title="devicePriority.moveDown">▼</button>
-          </div>
-          <div class="ems-priority-order-item" data-type="boiler">
-            <span class="priority-rank">3</span>
-            <span class="priority-label" data-i18n="devicePriority.labelBoiler">Boilers</span>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up" data-i18n-title="devicePriority.moveUp">▲</button>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down" data-i18n-title="devicePriority.moveDown">▼</button>
-          </div>
-          <div class="ems-priority-order-item" data-type="pool">
-            <span class="priority-rank">4</span>
-            <span class="priority-label" data-i18n="devicePriority.labelPool">Pool / Whirlpool</span>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up" data-i18n-title="devicePriority.moveUp">▲</button>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down" data-i18n-title="devicePriority.moveDown">▼</button>
-          </div>
-          <div class="ems-priority-order-item" data-type="dehumidifier">
-            <span class="priority-rank">5</span>
-            <span class="priority-label" data-i18n="devicePriority.labelDehumidifier">Dehumidifier</span>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,-1)" title="Move up" data-i18n-title="devicePriority.moveUp">▲</button>
-            <button class="ems-priority-move-btn" onclick="emsPriorityMove(this,1)"  title="Move down" data-i18n-title="devicePriority.moveDown">▼</button>
-          </div>
-        </div>
+        <div id="ems-device-priority-list"></div>
       </div>
         </div>
       </details>
@@ -2631,6 +2600,56 @@
       });
     }
     emsPriorityUpdateButtons();
+
+    // Baut die Prioritaetsliste aus den konfigurierten Geraeten auf. Seit 1.2.82 gilt die
+    // Reihenfolge je Geraet statt je Klasse — die fuenf fest verdrahteten Eintraege sind
+    // dadurch entfallen. Geraete, die noch in keiner gespeicherten Reihenfolge stehen
+    // (gerade hinzugefuegt), haengen hinten an, damit sie nie unbeachtet bleiben.
+    function emsRenderPriorityList(cfg) {
+      var pList = document.getElementById('ems-device-priority-list');
+      if (!pList) return;
+      var KINDS = [
+        ['chargers',             'devicePriority.labelCharger'],
+        ['heat_pump_devices',    'devicePriority.labelHeatPump'],
+        ['boiler_devices',       'devicePriority.labelBoiler'],
+        ['pool_devices',         'devicePriority.labelPool'],
+        ['dehumidifier_devices', 'devicePriority.labelDehumidifier'],
+      ];
+      var all = [];
+      KINDS.forEach(function(k) {
+        (cfg[k[0]] || []).forEach(function(d) { if (d.id) all.push({ id: d.id, kindKey: k[1] }); });
+      });
+      var order = Array.isArray(cfg.device_priority_order) ? cfg.device_priority_order : [];
+      var sorted = [];
+      order.forEach(function(id) {
+        var i = all.findIndex(function(x) { return x.id === id; });
+        if (i >= 0) sorted.push(all.splice(i, 1)[0]);
+      });
+      sorted = sorted.concat(all);
+
+      pList.innerHTML = '';
+      sorted.forEach(function(item) {
+        var dev  = _emsDevices ? _emsDevices.find(function(d) { return d.id === item.id; }) : null;
+        var kind = _H.__('settings.' + item.kindKey) || '';
+        var el = document.createElement('div');
+        el.className = 'ems-priority-order-item';
+        el.dataset.id = item.id;
+        var rank = document.createElement('span');
+        rank.className = 'priority-rank';
+        var label = document.createElement('span');
+        label.className = 'priority-label';
+        label.textContent = (dev && dev.name) ? (dev.name + ' · ' + kind) : (kind + ' · ' + String(item.id).slice(0, 8) + '…');
+        var up = document.createElement('button');
+        up.className = 'ems-priority-move-btn'; up.textContent = '▲';
+        up.onclick = function() { emsPriorityMove(up, -1); };
+        var dn = document.createElement('button');
+        dn.className = 'ems-priority-move-btn'; dn.textContent = '▼';
+        dn.onclick = function() { emsPriorityMove(dn, 1); };
+        el.appendChild(rank); el.appendChild(label); el.appendChild(up); el.appendChild(dn);
+        pList.appendChild(el);
+      });
+      emsPriorityUpdateButtons();
+    }
 
     function emsPriorityMove(btn, dir) {
       var item  = btn.closest('.ems-priority-order-item');
@@ -7781,14 +7800,7 @@
       if (cfg.solcast_api_key     !== undefined) document.getElementById('ems-solcast-api-key').value     = cfg.solcast_api_key;
       if (cfg.solcast_resource_id !== undefined) document.getElementById('ems-solcast-resource-id').value = cfg.solcast_resource_id;
       emsPvForecastToggle();
-      if (Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length) {
-        var pList = document.getElementById('ems-device-priority-list');
-        cfg.device_priority_order.forEach(function(type) {
-          var item = pList.querySelector('[data-type="' + type + '"]');
-          if (item) pList.appendChild(item);
-        });
-        emsPriorityUpdateButtons();
-      }
+      emsRenderPriorityList(cfg);
     }
 
     function emsPvForecastToggle() {
@@ -7878,7 +7890,7 @@
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
         price_charge_max_grid_kw:     Math.max(0, parseFloat(document.getElementById('ems-price-charge-max-grid').value) || 0),
         grid_import_limit_kw:         Math.max(0, parseFloat(document.getElementById('ems-grid-import-limit').value) || 0),
-        device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.type; }),
+        device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.id; }).filter(Boolean),
         scheduled_tasks:              emsGetSchedulerTasks(),
         price_config:                 emsGetPriceConfig(),
         car_devices:                  emsGetCars(),
