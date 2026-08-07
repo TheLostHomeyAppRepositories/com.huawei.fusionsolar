@@ -712,7 +712,7 @@
       "addButton": "+ Add car"
     },
     "simpleDevice": {
-      "subtitle": " · EMS switches on/off when solar surplus is available",
+      "subtitle": " · on solar surplus",
       "enableControl": {
         "title": "Enable EMS control"
       }

@@ -712,7 +712,7 @@
       "addButton": "+ Fahrzeug hinzufügen"
     },
     "simpleDevice": {
-      "subtitle": " · EMS schaltet ein/aus, wenn Solarüberschuss verfügbar ist",
+      "subtitle": " · bei Solarüberschuss",
       "enableControl": {
         "title": "EMS-Steuerung aktivieren"
       }

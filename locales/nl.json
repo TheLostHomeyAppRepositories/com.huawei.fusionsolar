@@ -712,7 +712,7 @@
       "addButton": "+ Auto toevoegen"
     },
     "simpleDevice": {
-      "subtitle": " · EMS schakelt aan/uit wanneer zonneoverschot beschikbaar is",
+      "subtitle": " · bij zonneoverschot",
       "enableControl": {
         "title": "EMS-besturing inschakelen"
       }

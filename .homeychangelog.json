@@ -898,5 +898,10 @@
     "en": "Tidied two data-source subtitles: Home Batteries now just reads \"optional\", Solar Forecast no longer repeats \"Solcast\" from its own heading.",
     "de": "Zwei Untertitel bei den Datenquellen aufgeräumt: Hausbatterien zeigt nur noch „optional“, Solarprognose wiederholt nicht mehr „Solcast“ aus der eigenen Überschrift.",
     "nl": "Twee ondertitels bij de gegevensbronnen opgeschoond: Thuisaccu’s toont nu alleen „optioneel”, Zonneprognose herhaalt „Solcast” niet meer uit de eigen kop."
+  },
+  "1.2.89": {
+    "en": "Shortened the section subtitle shared by heat pumps, boilers, pool and dehumidifier so it fits on one line.",
+    "de": "Untertitel von Wärmepumpen, Boiler, Pool und Entfeuchter gekürzt, damit er auf eine Zeile passt.",
+    "nl": "Ondertitel van warmtepompen, boilers, zwembad en ontvochtiger ingekort zodat hij op één regel past."
   }
 }
