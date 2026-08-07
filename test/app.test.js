@@ -138,3 +138,28 @@ test('_saveCapHistory — rounds values but leaves the timestamp untouched', () 
   app._saveCapHistory();
   assert.deepStrictEqual(settings['sch_hist_alive::measure_power'], [[1754400000000, 1234.57]]);
 });
+
+// ── Modbus register map: guards against a known cross-device copy-paste ──────
+// EMMA and the SmartCharger both use address 30508 for completely different things:
+//   SmartCharger address space → CHARGER_TEMPERATURE   (I32, gain 10, °C)
+//   EMMA address space         → EXTERNAL_METER_LINE_VOLTAGE_A_B (U32, gain 100, V)
+// The EMMA map once carried the charger's temperature definition verbatim, so the
+// sun2000_emma_modbus driver reported a ~400 V line voltage as "4000 °C".
+// Verified against wlcrs/huawei-solar-lib registers.py.
+const REG = require('../lib/modbus-registers.js');
+
+test('EMMA register map does not claim address 30508 (it is a line voltage there, not a temperature)', () => {
+  for (const [name, def] of Object.entries(REG.EMMA_REGISTERS)) {
+    assert.notStrictEqual(def[0], 30508,
+      `EMMA_REGISTERS.${name} points at 30508, which is EXTERNAL_METER_LINE_VOLTAGE_A_B on EMMA`);
+  }
+});
+
+test('EMMA exposes no inverter temperature at all', () => {
+  const names = [...Object.keys(REG.EMMA_REGISTERS), ...Object.keys(REG.SUN2000_EMMA_DATA_REGISTERS)];
+  assert.deepStrictEqual(names.filter((n) => /temperature/i.test(n)), []);
+});
+
+test('the SmartCharger map keeps 30508 as its temperature (that one is correct)', () => {
+  assert.deepStrictEqual(REG.SMARTCHARGER_REGISTERS.chargerTemperature.slice(0, 3), [30508, 2, 'INT32']);
+});

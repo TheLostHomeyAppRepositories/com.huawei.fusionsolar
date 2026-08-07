@@ -25,7 +25,7 @@ const {
   SMARTCHARGER_REGISTERS,
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
-const { readModbusRegisters, probeModbusUnit } = require('./lib/modbus-client');
+const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
 const { version: APP_VERSION } = require('./app.json');
 
 // ─── Register sets per driver ─────────────────────────────────────────────────
@@ -436,13 +436,29 @@ module.exports = {
    * Body: { baseIp }   e.g. "192.168.1"
    * Scans 192.168.1.1–254 on ports 502 and 6607, returns hosts that answered.
    */
-  async scanPorts({ body }) {
+  async scanPorts({ homey, body }) {
     const { baseIp } = body || {};
     if (!baseIp) return { error: 'Missing baseIp' };
 
     const PORTS      = [502, 6607];
     const TIMEOUT_MS = 400;
     const CONCURRENCY = 50;
+
+    // Hosts we poll ourselves. Huawei devices accept exactly one connection, so a bare
+    // TCP connect on port 502 is enough to kill an in-flight read. Strangers on the subnet
+    // cannot disturb our polling, so only our own hosts pay for the lock — that also keeps
+    // the lock map from collecting an entry for all 254 addresses on every scan.
+    const ownHosts = new Set();
+    for (const dId of MODBUS_DRIVER_IDS) {
+      let drv;
+      try { drv = homey.drivers.getDriver(dId); } catch { continue; }
+      for (const dev of drv.getDevices()) {
+        try {
+          const addr = (dev.getSetting('address') || '').trim();
+          if (addr) ownHosts.add(`${addr}:${parseInt(dev.getSetting('port'), 10) || 502}`);
+        } catch { /* ignore */ }
+      }
+    }
 
     // TCP connect probe
     function tcpCheck(host, port) {
@@ -457,6 +473,12 @@ module.exports = {
         sock.connect(port, host);
       });
     }
+
+    // No priority here: unlike the register check, a port scan is not urgent. It should
+    // wait its turn behind a running poll rather than interrupt it.
+    const probe = (host, port) => (ownHosts.has(`${host}:${port}`)
+      ? withHostLock(host, port, () => tcpCheck(host, port))
+      : tcpCheck(host, port));
 
     // Build task list: all IPs × all ports
     const tasks = [];
@@ -473,7 +495,7 @@ module.exports = {
     async function worker() {
       while (idx < tasks.length) {
         const { host, port } = tasks[idx++];
-        const ok = await tcpCheck(host, port);
+        const ok = await probe(host, port);
         if (ok) found.push({ host, port });
       }
     }

@@ -16,7 +16,6 @@ const MIN_INTERVAL_S     = 10;
 const REQUIRED_CAPABILITIES = [
   'measure_power',                   // PV Output Power (W)
   'measure_power.active_power',      // Inverter Active Power (W)
-  'measure_temperature.invertor',    // Inverter Temperature (°C) — register 30508
   'meter_power',                     // Inverter Total Yield (kWh)
   'meter_power.daily',               // Inverter Yield Today (kWh)
   'measure_power.grid_active_power', // Grid Active Power (W): + = import, − = export
@@ -24,6 +23,15 @@ const REQUIRED_CAPABILITIES = [
   'meter_power.grid_import',         // Total Supply from Grid (kWh)
   'meter_power.pv_total',            // Total PV Energy Yield (kWh)
   'meter_power.pv_daily',            // PV Yield Today (kWh)
+];
+
+// Capabilities that existing installs still carry and must lose on upgrade.
+// measure_temperature.invertor was fed from register 30508, which in the EMMA address
+// space is the external meter's A-B line voltage, not a temperature — it displayed a
+// ~400 V reading as "4000 °C". EMMA exposes no inverter temperature at all, so the
+// capability is removed rather than repointed. See lib/modbus-registers.js.
+const REMOVE_CAPABILITIES = [
+  'measure_temperature.invertor',
 ];
 
 class SUN2000EmmaModbusDevice extends Device {
@@ -59,6 +67,18 @@ class SUN2000EmmaModbusDevice extends Device {
   // ─── Capabilities ──────────────────────────────────────────────────────────
 
   async _ensureCapabilities() {
+    // Drop first: a capability listed here must never also be in REQUIRED_CAPABILITIES,
+    // otherwise the two loops would fight on every startup.
+    for (const cap of REMOVE_CAPABILITIES) {
+      if (this.hasCapability(cap)) {
+        try {
+          await this.removeCapability(cap);
+          this.log("removeCapability(" + cap + ") — not available via EMMA");
+        } catch (err) {
+          this.error("removeCapability(" + cap + ") failed:", err.message);
+        }
+      }
+    }
     for (const cap of REQUIRED_CAPABILITIES) {
       if (!this.hasCapability(cap)) {
         try {
@@ -174,7 +194,6 @@ class SUN2000EmmaModbusDevice extends Device {
       await this._set('meter_power.grid_import',         d.totalSupplyFromGrid  ?? null);
       await this._set('meter_power.pv_total',            d.totalPvEnergyYield   ?? null);
       await this._set('meter_power.pv_daily',            d.pvYieldToday         ?? null);
-      await this._set('measure_temperature.invertor',    d.inverterTemperature  ?? null);
 
       if (prevPower !== newPower) {
         await this.homey.flow

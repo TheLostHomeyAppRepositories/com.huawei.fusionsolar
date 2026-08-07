@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.45",
+  "version": "1.2.56",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2909,7 +2909,6 @@
       "capabilities": [
         "measure_power",
         "measure_power.active_power",
-        "measure_temperature.invertor",
         "meter_power",
         "meter_power.daily",
         "measure_power.grid_active_power",
@@ -2930,13 +2929,6 @@
           "title": {
             "en": "Active Power",
             "de": "Wirkleistung"
-          },
-          "insights": true
-        },
-        "measure_temperature.invertor": {
-          "title": {
-            "en": "Inverter Temperature",
-            "de": "Wechselrichter-Temperatur"
           },
           "insights": true
         },
