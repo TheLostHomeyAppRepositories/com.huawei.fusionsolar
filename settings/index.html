@@ -822,12 +822,25 @@
           <span class="ems-toggle-slider"></span>
         </span>
         <span>
-          <span class="ems-toggle-title" data-i18n="exportLimit.enable.title">Auto-limit inverter when battery is full</span>
-          <span class="ems-toggle-desc" data-i18n-html="exportLimit.enable.desc">When battery SOC reaches the <em>Activate</em> threshold (default 95%) and solar is exporting to the grid, the EMS fires the inverter <em>Enable export limit</em> flow. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> threshold (default 90%) or export stops. Enable to adjust thresholds and review setup instructions.</span>
+          <span class="ems-toggle-title" data-i18n="exportLimit.enable.title">Limit inverter feed-in automatically</span>
+          <span class="ems-toggle-desc" data-i18n-html="exportLimit.enable.desc">The EMS fires the inverter's <em>Enable export limit</em> and <em>Disable export limit</em> flows on its own, based on the rules you pick below. Enable to choose the rules and review the setup instructions.</span>
         </span>
       </label>
       <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="font-size:11px;color:#6e6e73;font-weight:600;margin-bottom:6px" data-i18n="exportLimit.whenToLimit">When should the inverter be limited?</div>
+
+        <label class="ems-toggle-row">
+          <span class="ems-toggle-switch">
+            <input type="checkbox" id="ems-export-limit-batfull" checked
+              onchange="document.getElementById('ems-export-limit-soc-rows').style.display=this.checked?'flex':'none'">
+            <span class="ems-toggle-slider"></span>
+          </span>
+          <span>
+            <span class="ems-toggle-title" data-i18n="exportLimit.batFull.title">When the home battery is full</span>
+            <span class="ems-toggle-desc" data-i18n="exportLimit.batFull.desc">Only useful with a home battery. Without one, leave this off and use one of the rules below.</span>
+          </span>
+        </label>
+        <div id="ems-export-limit-soc-rows" style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 12px">
           <div style="flex:1;min-width:130px">
             <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.activateAt">Activate at SOC ≥ (%)</label>
             <input id="ems-export-limit-trigger-soc" type="number" value="95" min="50" max="100" step="5"
@@ -841,9 +854,6 @@
             <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.deactivateHint">Hysteresis — fire limit OFF</div>
           </div>
         </div>
-
-        <div style="border-top:1px solid #e5e5ea;margin:4px 0 10px"></div>
-        <div style="font-size:11px;color:#6e6e73;font-weight:600;margin-bottom:6px" data-i18n="exportLimit.moreTriggers">Additional reasons to limit</div>
 
         <label class="ems-toggle-row">
           <span class="ems-toggle-switch">
@@ -7823,6 +7833,12 @@
         _elEnabled.checked = !!cfg.export_limit_enabled;
         document.getElementById('ems-export-limit-rows').style.display = cfg.export_limit_enabled ? 'block' : 'none';
       }
+      var _elBatFull = document.getElementById('ems-export-limit-batfull');
+      if (_elBatFull) {
+        // Opt-out, matching the coordinator: an older config without the flag keeps the rule on.
+        _elBatFull.checked = cfg.export_limit_on_battery_full !== false;
+        document.getElementById('ems-export-limit-soc-rows').style.display = _elBatFull.checked ? 'flex' : 'none';
+      }
       if (cfg.export_limit_trigger_soc    !== undefined) document.getElementById('ems-export-limit-trigger-soc').value    = cfg.export_limit_trigger_soc;
       if (cfg.export_limit_deactivate_soc !== undefined) document.getElementById('ems-export-limit-deactivate-soc').value = cfg.export_limit_deactivate_soc;
       var _elNegPrice = document.getElementById('ems-export-limit-neg-price');
@@ -7934,6 +7950,7 @@
         export_limit_enabled:         document.getElementById('ems-export-limit-enabled').checked,
         export_limit_trigger_soc:     parseInt(document.getElementById('ems-export-limit-trigger-soc').value, 10) || 95,
         export_limit_deactivate_soc:  parseInt(document.getElementById('ems-export-limit-deactivate-soc').value, 10) || 90,
+        export_limit_on_battery_full: document.getElementById('ems-export-limit-batfull').checked,
         export_limit_on_negative_price: document.getElementById('ems-export-limit-neg-price').checked,
         export_limit_price_threshold: parseFloat(document.getElementById('ems-export-limit-price-threshold').value) || 0,
         export_limit_zero_export:     document.getElementById('ems-export-limit-zero').checked,

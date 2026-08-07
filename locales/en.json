@@ -283,23 +283,27 @@
       "title": "📤 Export Limit Coordinator",
       "subtitle": " · automatic",
       "enable": {
-        "title": "Auto-limit inverter when battery is full",
-        "desc": "When battery SOC reaches the <em>Activate</em> threshold (default 95%) and solar is exporting to the grid, the EMS fires the inverter <em>Enable export limit</em> flow. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> threshold (default 90%) or export stops. Enable to adjust thresholds and review setup instructions."
+        "title": "Limit inverter feed-in automatically",
+        "desc": "The EMS fires the inverter's <em>Enable export limit</em> and <em>Disable export limit</em> flows on its own, based on the rules you pick below. Enable to choose the rules and review the setup instructions."
+      },
+      "batFull": {
+        "title": "When the home battery is full",
+        "desc": "Only useful with a home battery. Without one, leave this off and use one of the rules below."
       },
       "activateAt": "Activate at SOC ≥ (%)",
       "activateHint": "Battery full — fire limit ON",
       "deactivateAt": "Deactivate at SOC < (%)",
       "deactivateHint": "Hysteresis — fire limit OFF",
-      "moreTriggers": "Additional reasons to limit",
+      "whenToLimit": "When should the inverter be limited?",
       "negPrice": {
         "title": "Limit when the electricity price is negative",
-        "desc": "While feeding in costs money instead of earning it, the limit is applied regardless of the battery SOC. Uses the price from the Electricity Price section. Released again as soon as the price rises above the threshold."
+        "desc": "While feeding in costs money instead of earning it, the limit is applied — with or without a battery. Uses the price from the Electricity Price section. Released again as soon as the price rises above the threshold."
       },
       "priceThreshold": "Limit below price",
       "priceThresholdHint": "Per kWh. 0 = only at genuinely negative prices.",
       "zero": {
         "title": "Never feed in (zero export)",
-        "desc": "Holds the limit permanently, independent of SOC, export and price — the two rules above then no longer apply. Use this if your grid operator prohibits feed-in. <strong>Surplus that neither the battery nor a device can take is lost.</strong>"
+        "desc": "Holds the limit permanently, independent of export, price and battery — the two rules above then no longer apply. Use this if your grid operator prohibits feed-in. <strong>Surplus that nothing in the house can take is lost.</strong>"
       },
       "setupHint": "<strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed."
     },

@@ -283,23 +283,27 @@
       "title": "📤 Exportlimiet-coördinator",
       "subtitle": " · automatisch",
       "enable": {
-        "title": "Omvormer automatisch limiteren wanneer de batterij vol is",
-        "desc": "Wanneer de batterij-SOC de <em>Activeren</em>-drempel bereikt (standaard 95%) en zonne-energie naar het net wordt geëxporteerd, activeert de EMS de flowactie <em>Exportlimiet inschakelen</em> van de omvormer. Activeert <em>Exportlimiet uitschakelen</em> zodra de SOC onder de <em>Deactiveren</em>-drempel zakt (standaard 90%) of de export stopt. Inschakelen om drempels aan te passen en de instelinstructies te bekijken."
+        "title": "Teruglevering automatisch begrenzen",
+        "desc": "Het EMS start de flows <em>Teruglevergrens inschakelen</em> en <em>Teruglevergrens uitschakelen</em> van de omvormer zelf, op basis van de regels die je hieronder kiest. Schakel in om de regels te kiezen en de installatie-instructies te bekijken."
+      },
+      "batFull": {
+        "title": "Wanneer de thuisaccu vol is",
+        "desc": "Alleen zinvol met een thuisaccu. Zonder accu uit laten staan en een van de regels hieronder gebruiken."
       },
       "activateAt": "Activeren bij SOC ≥ (%)",
       "activateHint": "Batterij vol — limiet AAN activeren",
       "deactivateAt": "Deactiveren bij SOC < (%)",
       "deactivateHint": "Hysterese — limiet UIT activeren",
-      "moreTriggers": "Andere redenen om te begrenzen",
+      "whenToLimit": "Wanneer moet de omvormer begrensd worden?",
       "negPrice": {
         "title": "Begrenzen bij een negatieve stroomprijs",
-        "desc": "Zolang terugleveren geld kost in plaats van oplevert, wordt er begrensd ongeacht het accuniveau. Gebruikt de prijs uit het onderdeel Stroomprijs. Wordt weer vrijgegeven zodra de prijs boven de drempel komt."
+        "desc": "Zolang terugleveren geld kost in plaats van oplevert, wordt er begrensd — met of zonder accu. Gebruikt de prijs uit het onderdeel Stroomprijs. Wordt weer vrijgegeven zodra de prijs boven de drempel komt."
       },
       "priceThreshold": "Begrenzen onder prijs",
       "priceThresholdHint": "Per kWh. 0 = alleen bij werkelijk negatieve prijzen.",
       "zero": {
         "title": "Nooit terugleveren (nul-teruglevering)",
-        "desc": "Houdt de begrenzing permanent aan, ongeacht accuniveau, teruglevering en prijs — de twee regels hierboven gelden dan niet meer. Gebruik dit als je netbeheerder teruglevering verbiedt. <strong>Overschot dat noch de accu noch een apparaat kan opnemen, gaat verloren.</strong>"
+        "desc": "Houdt de begrenzing permanent aan, ongeacht teruglevering, prijs en accu — de twee regels hierboven gelden dan niet meer. Gebruik dit als je netbeheerder teruglevering verbiedt. <strong>Overschot dat niets in huis kan opnemen, gaat verloren.</strong>"
       },
       "setupHint": "<strong>Instellen:</strong> Klik in de sectie <em>Omvormer</em> hierboven op <em>✓ Flows aanmaken / bijwerken</em> om de flows <em>Exportlimiet inschakelen</em> en <em>Exportlimiet uitschakelen</em> te genereren. De coördinator activeert deze flows automatisch — geen extra Homey-flow nodig."
     },

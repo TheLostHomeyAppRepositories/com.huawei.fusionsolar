@@ -846,6 +846,34 @@ test('_evaluateExportLimit — a low price holds the limit while the SoC drops',
   assert.strictEqual(d._exportLimitActive, true);
   assert.deepStrictEqual(d._fired, []);
 });
+test('_evaluateExportLimit — negative price works without a battery', async () => {
+  const d = makePriceExportDevice(-0.02);
+  await d._evaluateExportLimit(PRICE_CFG, { soc: null }, -500);
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_on']);
+});
+test('_evaluateExportLimit — without a battery the limit is released when the price recovers', async () => {
+  const d = makePriceExportDevice(0.18, { _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
+  await d._evaluateExportLimit(PRICE_CFG, { soc: null }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+test('_evaluateExportLimit — without a battery nothing happens on the SoC rule alone', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: null }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — the battery-full rule can be switched off on its own', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit({ ...EXPORT_CFG, export_limit_on_battery_full: false }, { soc: 99 }, -500);
+  assert.strictEqual(d._exportLimitActive, false);
+});
+test('_evaluateExportLimit — an existing config without the battery-full flag keeps working', async () => {
+  const d = makeExportDevice();
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 96 }, -500); // flag undefined → opt-out, so active
+  assert.strictEqual(d._exportLimitActive, true);
+});
 test('_evaluateExportLimit — the limit is released once the price recovers', async () => {
   const d = makePriceExportDevice(0.18, { _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000 });
   await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, -500);

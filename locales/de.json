@@ -283,23 +283,27 @@
       "title": "📤 Einspeiselimit-Koordinator",
       "subtitle": " · automatisch",
       "enable": {
-        "title": "Wechselrichter automatisch limitieren, wenn Batterie voll ist",
-        "desc": "Erreicht der Batterie-SOC den <em>Aktivierungs</em>-Schwellenwert (Standard 95%) und speist die Solaranlage ins Netz ein, löst das EMS den Wechselrichter-Flow <em>Enable export limit</em> aus. Löst <em>Disable export limit</em> aus, wenn der SOC unter den <em>Deaktivierungs</em>-Schwellenwert (Standard 90%) fällt oder die Einspeisung stoppt. Aktivieren, um Schwellenwerte anzupassen und die Einrichtungsanleitung zu sehen."
+        "title": "Einspeisung automatisch begrenzen",
+        "desc": "Das EMS löst die Flows <em>Exportbegrenzung aktivieren</em> und <em>Exportbegrenzung deaktivieren</em> des Wechselrichters selbst aus — nach den Regeln, die du unten wählst. Zum Auswählen der Regeln und für die Einrichtungshinweise aktivieren."
+      },
+      "batFull": {
+        "title": "Wenn die Hausbatterie voll ist",
+        "desc": "Nur mit Hausbatterie sinnvoll. Ohne Batterie ausgeschaltet lassen und eine der Regeln darunter verwenden."
       },
       "activateAt": "Aktivieren bei SOC ≥ (%)",
       "activateHint": "Batterie voll — Limit AN auslösen",
       "deactivateAt": "Deaktivieren bei SOC < (%)",
       "deactivateHint": "Hysterese — Limit AUS auslösen",
-      "moreTriggers": "Weitere Gründe zum Begrenzen",
+      "whenToLimit": "Wann soll der Wechselrichter begrenzt werden?",
       "negPrice": {
         "title": "Begrenzen bei negativem Strompreis",
-        "desc": "Solange das Einspeisen Geld kostet statt einbringt, wird unabhängig vom Batteriestand begrenzt. Verwendet den Preis aus dem Bereich Strompreis. Wird wieder freigegeben, sobald der Preis über der Schwelle liegt."
+        "desc": "Solange das Einspeisen Geld kostet statt einbringt, wird begrenzt — mit oder ohne Batterie. Verwendet den Preis aus dem Bereich Strompreis. Wird wieder freigegeben, sobald der Preis über der Schwelle liegt."
       },
       "priceThreshold": "Begrenzen unter Preis",
       "priceThresholdHint": "Pro kWh. 0 = nur bei echten Negativpreisen.",
       "zero": {
         "title": "Nie einspeisen (Nulleinspeisung)",
-        "desc": "Hält die Begrenzung dauerhaft, unabhängig von Ladestand, Einspeisung und Preis — die beiden Regeln darüber gelten dann nicht mehr. Sinnvoll, wenn der Netzbetreiber die Einspeisung untersagt. <strong>Überschuss, den weder Batterie noch Geräte aufnehmen können, geht verloren.</strong>"
+        "desc": "Hält die Begrenzung dauerhaft, unabhängig von Einspeisung, Preis und Batterie — die beiden Regeln darüber gelten dann nicht mehr. Sinnvoll, wenn der Netzbetreiber die Einspeisung untersagt. <strong>Überschuss, den im Haus nichts aufnehmen kann, geht verloren.</strong>"
       },
       "setupHint": "<strong>Einrichtung:</strong> Im Abschnitt <em>Wechselrichter</em> oben auf <em>✓ Flows erstellen/aktualisieren</em> klicken, um die Flows <em>Enable export limit</em> und <em>Disable export limit</em> zu erzeugen. Der Koordinator löst diese Flows automatisch aus — kein zusätzlicher Homey-Flow nötig."
     },

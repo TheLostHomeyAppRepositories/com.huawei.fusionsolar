@@ -883,5 +883,10 @@
     "en": "Export limit coordinator: two new reasons to limit — when the electricity price is negative (with a configurable threshold) and a permanent zero-export mode for grids that prohibit feed-in.",
     "de": "Export-Limit-Koordinator: zwei neue Auslöser — bei negativem Strompreis (mit einstellbarer Schwelle) und eine dauerhafte Nulleinspeisung für Netze, die das Einspeisen untersagen.",
     "nl": "Teruglevergrens: twee nieuwe redenen om te begrenzen — bij een negatieve stroomprijs (met instelbare drempel) en een permanente nul-teruglevering voor netten die teruglevering verbieden."
+  },
+  "1.2.86": {
+    "en": "Export limit coordinator: the battery-full rule is now an option of its own, so the price and zero-export rules also work in installations without a home battery.",
+    "de": "Export-Limit-Koordinator: Die Regel „Batterie voll“ ist neu eine eigene Option, damit die Preis- und Nulleinspeisungs-Regeln auch ohne Hausbatterie funktionieren.",
+    "nl": "Teruglevergrens: de regel „accu vol“ is nu een eigen optie, zodat de prijs- en nul-terugleverregels ook werken zonder thuisaccu."
   }
 }
