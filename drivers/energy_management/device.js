@@ -595,10 +595,10 @@ class EmsDevice extends Device {
     // Simple-device dispatch table — replaces four near-identical evaluator wrappers.
     // Each entry carries the device list, its state map and the flow-card / config ids.
     const simpleEval = {
-      heat_pump:    { list: heatPumps,     states: this._heatPumpStates,    start: 'ems_start_heat_pump',    stop: 'ems_stop_heat_pump',    arg: 'heat_pump_device_id',    ctrl: 'heat_pump_control' },
-      boiler:       { list: boilers,       states: this._boilerStates,      start: 'ems_start_boiler',       stop: 'ems_stop_boiler',       arg: 'boiler_device_id',       ctrl: 'boiler_control' },
-      pool:         { list: pools,         states: this._poolStates,        start: 'ems_start_pool',         stop: 'ems_stop_pool',         arg: 'pool_device_id',         ctrl: 'pool_control' },
-      dehumidifier: { list: dehumidifiers, states: this._dehumidifierStates, start: 'ems_start_dehumidifier', stop: 'ems_stop_dehumidifier', arg: 'dehumidifier_device_id', ctrl: 'dehumidifier_control' },
+      heat_pump:    { list: heatPumps,     states: this._heatPumpStates,    start: 'ems_start_heat_pump',    stop: 'ems_stop_heat_pump',    arg: 'heat_pump_device_id' },
+      boiler:       { list: boilers,       states: this._boilerStates,      start: 'ems_start_boiler',       stop: 'ems_stop_boiler',       arg: 'boiler_device_id' },
+      pool:         { list: pools,         states: this._poolStates,        start: 'ems_start_pool',         stop: 'ems_stop_pool',         arg: 'pool_device_id' },
+      dehumidifier: { list: dehumidifiers, states: this._dehumidifierStates, start: 'ems_start_dehumidifier', stop: 'ems_stop_dehumidifier', arg: 'dehumidifier_device_id' },
     };
     for (const deviceType of priorityOrder) {
       if (deviceType === 'charger') {
@@ -610,7 +610,7 @@ class EmsDevice extends Device {
       } else if (simpleEval[deviceType]) {
         const s = simpleEval[deviceType];
         const allocatedW = await this._evaluateSimpleDevices(
-          battery, effectiveGridW, s.list, s.states, s.start, s.stop, s.arg, s.ctrl, cfg,
+          battery, effectiveGridW, s.list, s.states, s.start, s.stop, s.arg, cfg,
         );
         if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
       }

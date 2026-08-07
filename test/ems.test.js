@@ -647,7 +647,7 @@ test('_evaluateSimpleDevices — a leftover class-wide control flag is ignored',
   const d = makeSimpleDevice();
   const now = Date.now();
   const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
-  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { ctrl: false, min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', { ctrl: false, min_battery_soc: 80 });
   assert.ok(d._setOnCalls.length > 0, 'das alte Klassen-Flag darf das Geraet nicht mehr blockieren');
 });
 
@@ -655,7 +655,7 @@ test('_evaluateSimpleDevices — a per-device enabled:false is left alone even w
   const d = makeSimpleDevice();
   const now = Date.now();
   const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
-  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev({ enabled: false })], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev({ enabled: false })], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.strictEqual(d._setOnCalls.length, 0); // never touched
   assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
 });
@@ -665,7 +665,7 @@ test('_evaluateSimpleDevices — battery hard-stop forces a running device off',
   const now = Date.now();
   const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
   // SoC 10 < min 80 → hard stop; battery idle (no overflow) → off despite ample surplus
-  await d._evaluateSimpleDevices({ soc: 10, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 0 }, -2000, [simpleDev()], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
 });
 
@@ -674,7 +674,7 @@ test('_evaluateSimpleDevices — battery-overflow exception keeps it on (guards 
   const now = Date.now();
   const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
   // Hard-stop SoC, but battery charging AND exporting ≥ MIN_CHARGE_W → overflow exception → stays on
-  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
@@ -686,7 +686,7 @@ test('_evaluateSimpleDevices — overflow hysteresis: a running device stays on 
   // a device that only just started, since its own draw reduces the apparent export on the
   // very next tick) but above MIN_CHARGE_W/2 (the CONTINUE threshold) — regression for the
   // reported "Pool/Entfeuchter stop within a minute of starting" bug.
-  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W / 2 + 50), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W / 2 + 50), [simpleDev()], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
 });
 test('_evaluateSimpleDevices — overflow hysteresis: a device NOT yet running needs the higher START threshold', async () => {
@@ -695,7 +695,7 @@ test('_evaluateSimpleDevices — overflow hysteresis: a device NOT yet running n
   const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
   // Export clears the old flat MIN_CHARGE_W threshold and the CONTINUE threshold, but not
   // the higher 2×MIN_CHARGE_W START threshold — must not start via the overflow exception yet.
-  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
 });
 
@@ -707,13 +707,13 @@ test('_evaluateSimpleDevices — start needs sustained surplus', async () => {
   const d1 = makeSimpleDevice();
   await d1._evaluateSimpleDevices(bat, -2000, [simpleDev()],
     new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d1._setOnCalls, [{ id: 'd1', on: false }]);
   // surplus held past startSustainMs → start
   const d2 = makeSimpleDevice();
   await d2._evaluateSimpleDevices(bat, -2000, [simpleDev()],
     new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d2._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
@@ -723,7 +723,7 @@ test('_evaluateSimpleDevices — min-run holds a fresh device on through a dip',
   // started 1 min ago (< min-run 5 min), surplus now gone → hold-time keeps it on
   await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [simpleDev()],
     new Map([['d1', { isOn: true, startedAt: now - 60_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', { min_battery_soc: 80 });
+    'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
@@ -735,13 +735,13 @@ test('_evaluateSimpleDevices — stop-grace holds, then releases when expired', 
   const d1 = makeSimpleDevice();
   await d1._evaluateSimpleDevices(bat, 0, [simpleDev({ stopGraceMs: 120_000 })],
     new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: now - 30_000, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d1._setOnCalls, [{ id: 'd1', on: true }]);
   // grace expired (130 s > 120 s) → off
   const d2 = makeSimpleDevice();
   await d2._evaluateSimpleDevices(bat, 0, [simpleDev({ stopGraceMs: 120_000 })],
     new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: now - 130_000, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d2._setOnCalls, [{ id: 'd1', on: false }]);
 });
 
@@ -827,14 +827,14 @@ test('_evaluateSimpleDevices — forecast gate blocks a start, running device co
   const dStart = makeSimpleDevice(fc);
   await dStart._evaluateSimpleDevices(bat, -2000, [simpleDev()],
     new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61000, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(dStart._setOnCalls, [{ id: 'd1', on: false }]);
 
   // Already running → gate does NOT stop it
   const dRun = makeSimpleDevice(fc);
   await dRun._evaluateSimpleDevices(bat, -2000, [simpleDev()],
     new Map([['d1', { isOn: true, startedAt: now - 600000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(dRun._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
@@ -1480,7 +1480,7 @@ test('_evaluateSimpleDevices — a new start is denied when the grid-import ceil
   const cfg = { min_battery_soc: 80, grid_import_limit_kw: 2 }; // 100 W headroom left, device wants 1000 W
   await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()],
     new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   // Surplus/timer logic alone would start it (same fixture as "start needs sustained surplus")
   // — the ceiling denies it anyway.
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
@@ -1491,7 +1491,7 @@ test('_evaluateSimpleDevices — an already-running device is left alone even wi
   const cfg = { min_battery_soc: 80, grid_import_limit_kw: 2 };
   await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [simpleDev()],
     new Map([['d1', { isOn: true, startedAt: now - 60_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]); // held on by min-run — ceiling only gates NEW starts
 });
 test('_evaluateSimpleDevices — grid_import_limit_kw unset (0) → unlimited, ceiling has no effect', async () => {
@@ -1500,7 +1500,7 @@ test('_evaluateSimpleDevices — grid_import_limit_kw unset (0) → unlimited, c
   const cfg = { min_battery_soc: 80 }; // grid_import_limit_kw unset
   await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2000, [simpleDev()],
     new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]),
-    'start', 'stop', 'tok', 'ctrl', cfg);
+    'start', 'stop', 'tok', cfg);
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]); // unaffected — no ceiling configured
 });
 
@@ -1830,9 +1830,7 @@ test('setEmsDeviceEnabled — disables a charger, persists, and restarts the tic
     _startTick() { restarted = true; },
   });
   const res = await d.setEmsDeviceEnabled('c1', false);
-  // masterLifted meldet, ob dabei der Abschnitts-Schalter mit angehoben wurde — beim
-  // Ausschalten nie.
-  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
+  assert.deepStrictEqual(res, { ok: true });
   assert.strictEqual(cfg.chargers[0].enabled, false);
   assert.strictEqual(saved, cfg);
   assert.strictEqual(restarted, true);
@@ -1841,30 +1839,20 @@ test('setEmsDeviceEnabled — re-enables a simple device', async () => {
   const cfg = { boiler_devices: [{ id: 'b1', enabled: false }] };
   const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
   const res = await d.setEmsDeviceEnabled('b1', true);
-  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
+  assert.deepStrictEqual(res, { ok: true });
   assert.strictEqual(cfg.boiler_devices[0].enabled, true);
 });
-test('setEmsDeviceEnabled — switching a device on lifts its section master', async () => {
-  // Der Abschnitts-Schalter greift VOR dem Geraete-Schalter (chargerControl.js kehrt bei
-  // charger_control === false zurueck, bevor es enabled prueft). Ein Geraet einzuschalten,
-  // waehrend sein Abschnitt aus ist, blieb daher wirkungslos.
+test('setEmsDeviceEnabled — leaves a leftover class-wide flag untouched', async () => {
+  // Die Klassen-Flags sind seit 1.2.79 abgeschafft und werden beim Start migriert. Eine
+  // noch nicht migrierte Konfiguration darf durch das Widget weder gelesen noch neu
+  // geschrieben werden — sonst entstuende das alte Flag wieder.
   const cfg = { charger_control: false, chargers: [{ id: 'c1', enabled: false }] };
   const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
 
   const res = await d.setEmsDeviceEnabled('c1', true);
-  assert.deepStrictEqual(res, { ok: true, masterLifted: true });
-  assert.strictEqual(cfg.charger_control, true, 'Abschnitts-Schalter muss mit angehoben werden');
+  assert.deepStrictEqual(res, { ok: true });
   assert.strictEqual(cfg.chargers[0].enabled, true);
-});
-
-test('setEmsDeviceEnabled — switching a device OFF never touches the section master', async () => {
-  // Ausschalten darf nie andere Geraete derselben Klasse mitreissen.
-  const cfg = { charger_control: true, chargers: [{ id: 'c1', enabled: true }] };
-  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
-
-  const res = await d.setEmsDeviceEnabled('c1', false);
-  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
-  assert.strictEqual(cfg.charger_control, true);
+  assert.strictEqual(cfg.charger_control, false, 'das alte Flag darf nicht mehr veraendert werden');
 });
 
 test('setEmsDeviceEnabled — unknown device id → not_found', async () => {
