@@ -502,13 +502,6 @@ class EmsDevice extends Device {
       electricityPriceCurrency: (cfg.price_config && cfg.price_config.currency) || 'CHF',
       offpeakEnabled: this.getCapabilityValue('offpeak_enabled') === true,
       dualTariffConfigured: this._dualTariffWindow(cfg).configured,
-      // Shared grid-import budget for price-driven charging (battery + EV chargers) —
-      // committedW reflects the last completed tick (reset/accumulated in _tickBody /
-      // chargerControl.js), so it's fresh within one TICK_MS. maxKw 0 = no limit set.
-      priceChargeBudget: {
-        committedW: this._priceChargeCommittedW || 0,
-        maxKw: Number(cfg.price_charge_max_grid_kw) || 0,
-      },
       // Whole-house grid-import ceiling (load-shedding coordinator) — committedW reflects
       // the last completed tick's actual claims (seeded from measured gridW, then added to
       // by battery force-charge, every unconditional EV-charging tier, and any heat pump /
@@ -593,10 +586,6 @@ class EmsDevice extends Device {
       this._getSimpleDevices('dehumidifier_devices', cfg),
     ]);
     this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc;
-    // Shared grid-import budget for all price-driven grid-charging this tick (Home
-    // Battery price control below, then EV chargers' P3b/P3c in chargerControl.js) —
-    // see cfg.price_charge_max_grid_kw. Reset once per tick before either runs.
-    this._priceChargeCommittedW = 0;
     // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — seeded to the ALREADY
     // measured grid import so ordinary house baseline load (fridge, lights, whatever's
     // not EMS-controlled) is accounted for before any EMS-controlled load claims more.
@@ -877,9 +866,6 @@ class EmsDevice extends Device {
 
       const decision = this._batteryPriceMode(device, soc, cfg);
       this._debugLog(`battery ${device.id}: soc=${soc ?? '—'} → ${decision.mode} (${decision.reason})`);
-      // Track committed grid-charge power every tick regardless of whether the mode
-      // just changed — chargerControl.js's P3b/P3c read this to know how much of the
-      // shared price_charge_max_grid_kw budget the battery is already using.
       if (decision.mode === 'charge') {
         const chargeW = Math.max(0, Number(device.price_charge_power_kw) || 0) * 1000;
         // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — a battery force-
@@ -901,7 +887,6 @@ class EmsDevice extends Device {
           this._debugLog(`battery ${device.id}: force-charge DENIED — grid import ceiling (${limitKw}kW) has no headroom`);
           decision.mode = decision.reserveSlots?.length ? 'hold' : 'normal';
         } else {
-          this._priceChargeCommittedW += chargeW;
           this._gridImportCommittedW = baselineW + chargeW;
         }
       }

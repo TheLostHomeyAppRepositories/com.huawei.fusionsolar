@@ -900,20 +900,6 @@
           <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('meter')" style="margin-bottom:16px;font-size:11px;padding:4px 10px" data-i18n="gridMeter.addButton">+ Add meter</button>
 
-          <!-- Shared grid-import budget for all price-driven grid-charging (EV "Solar &
-               cheapest hours" / "Solar & low tariff" chargers AND Home Battery price
-               control) — without this, both could independently decide to grid-charge in
-               the same cheap hour with no combined limit. -->
-          <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0;gap:6px">
-            <span class="ems-toggle-title" data-i18n="gridMeter.priceLimit.title">Grid import limit for price-charging</span>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <input id="ems-price-charge-max-grid" type="number" min="0" max="1000" step="0.5" value="0"
-                style="width:100px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-              <span style="font-size:12px;color:#6e6e73" data-i18n="gridMeter.kwUnlimited">kW · 0 = unlimited</span>
-            </div>
-            <span class="ems-toggle-desc" data-i18n="gridMeter.priceLimit.desc">Caps the total power ALL price-aware grid-charging may draw at once — EV chargers in "Solar &amp; cheapest hours (forecast)" / "Solar &amp; low tariff" mode, plus any Home Battery with "Price-optimised charging" enabled. Without a limit, both could independently start grid-charging in the same cheap hour with no combined cap (e.g. overloading the site's main fuse). The battery is allocated first (it runs earlier in the tick); chargers that no longer fit the remaining budget skip grid-charging that tick and fall back to solar-only.</span>
-          </div>
-
           <!-- Whole-house grid-import ceiling — a genuine load-shedding coordinator, not
                just a charging budget. Reacts to REAL measured grid import every tick and
                actively throttles Instant/Always-charge/Off-peak/Price/Low-tariff EV
@@ -7884,7 +7870,6 @@
       if (cfg.offpeak_weekend_start) document.getElementById('ems-offpeak-weekend-start').value = cfg.offpeak_weekend_start;
       if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
-      document.getElementById('ems-price-charge-max-grid').value                                = cfg.price_charge_max_grid_kw || 0;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
       emsRenderPriceConfig(cfg.price_config);
       emsRenderCars(cfg.car_devices);
@@ -8002,7 +7987,6 @@
           offpeak_weekend_end:   document.getElementById('ems-offpeak-weekend-end').value.trim() || '06:00',
         } : {}),
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
-        price_charge_max_grid_kw:     Math.max(0, parseFloat(document.getElementById('ems-price-charge-max-grid').value) || 0),
         grid_import_limit_kw:         Math.max(0, parseFloat(document.getElementById('ems-grid-import-limit').value) || 0),
         device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.id; }).filter(Boolean),
         scheduled_tasks:              emsGetSchedulerTasks(),
@@ -8374,17 +8358,6 @@
           '<div id="ems-diag-price-sources" style="font-size:11px;color:#6e6e73">' + L('loadingSources') + '</div>' +
           '</div>';
         html += card(L('priceForecastTitle'), priceRows);
-      }
-
-      // Shared grid-import budget for price-driven charging — only shown once a limit
-      // is actually configured (Grid Meter → Grid import limit for price-charging).
-      var budget = d.priceChargeBudget;
-      if (budget && budget.maxKw > 0) {
-        var usedKw = Math.round((budget.committedW / 1000) * 100) / 100;
-        var pct    = Math.min(100, Math.round((budget.committedW / (budget.maxKw * 1000)) * 100));
-        var budgetRows = row(L('usedLastTick'), usedKw + ' / ' + budget.maxKw + ' kW (' + pct + '%)') +
-          (pct >= 100 ? row(L('fullyCommitted'), L('fullyCommittedDetail'), true) : '');
-        html += card(L('priceChargeBudgetTitle'), budgetRows);
       }
 
       // Whole-house grid-import ceiling (load-shedding coordinator) — only shown once a

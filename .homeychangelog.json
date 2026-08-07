@@ -918,5 +918,10 @@
     "en": "New flow condition: check whether EMS control is active for a single charger, heat pump, boiler, pool or dehumidifier — the counterpart to the action added in 1.2.91.",
     "de": "Neue Flow-Bedingung: prüfen, ob die EMS-Steuerung für einen einzelnen Lader, Wärmepumpe, Boiler, Pool oder Entfeuchter aktiv ist — das Gegenstück zur Aktion aus 1.2.91.",
     "nl": "Nieuwe flow-voorwaarde: controleren of de EMS-regeling actief is voor één lader, warmtepomp, boiler, zwembad of ontvochtiger — de tegenhanger van de actie uit 1.2.91."
+  },
+  "1.2.93": {
+    "en": "Removed the separate grid import limit for price-charging. The whole-house grid import limit already caps the same draw, so the second budget only added a setting to get wrong.",
+    "de": "Das separate Netzbezugslimit für preisgesteuertes Laden entfällt. Das Haus-Netzbezugslimit begrenzt denselben Bezug bereits — das zweite Budget war nur eine weitere Einstellung, die man falsch setzen konnte.",
+    "nl": "De aparte netafnamegrens voor prijsgestuurd laden is verwijderd. De netafnamegrens voor het hele huis begrenst dezelfde afname al."
   }
 }

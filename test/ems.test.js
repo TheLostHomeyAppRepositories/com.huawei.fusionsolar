@@ -1324,68 +1324,8 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   assert.strictEqual(d._lastMode.mode, 'price_ev');
 });
 
-// ── chargerControl: shared grid-import budget (price_charge_max_grid_kw) ─────
-test('_evaluateEvChargers — solar_price charger skips grid-charging when the shared budget is already spent', async () => {
-  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
-  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
-  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
-  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
-  const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
-    _pvForecast: null,
-    _priceForecast: slots,
-    _priceForecastUpdatedAt: now,
-    _carStates: [car],
-    _priceChargeCommittedW: 5000, // battery already claimed the entire 5 kW budget
-  });
-  const battery = { soc: 90, powerW: 0 };
-  const cfg = { offpeak_solar_first: true, price_charge_max_grid_kw: 5 };
-  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
-  assert.strictEqual(d._getChargerState('c1').currentAmps, null); // no budget left — did not grid-charge
-  assert.notStrictEqual(d._lastMode.mode, 'price_ev');
-});
-test('_evaluateEvChargers — with two solar_price chargers, only as many as fit the shared budget grid-charge', async () => {
-  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
-  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
-  // Each wants 16A × 1ph × 230V = 3680 W; a 5 kW budget fits one but not both.
-  const c1 = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
-  const c2 = { id: 'c2', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car2', powerW: 0 };
-  const car1 = { id: 'car1', name: 'EV1', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
-  const car2 = { id: 'car2', name: 'EV2', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
-  const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
-    _pvForecast: null,
-    _priceForecast: slots,
-    _priceForecastUpdatedAt: now,
-    _carStates: [car1, car2],
-  });
-  const battery = { soc: 90, powerW: 0 };
-  const cfg = { offpeak_solar_first: true, price_charge_max_grid_kw: 5 };
-  await d._evaluateEvChargers(battery, 0, [c1, c2], cfg, null, null);
-  const chargedCount = [d._getChargerState('c1').currentAmps, d._getChargerState('c2').currentAmps].filter((a) => a === 16).length;
-  assert.strictEqual(chargedCount, 1); // exactly one fit the shared budget
-});
-test('_evaluateEvChargers — price_charge_max_grid_kw unset (0) → unlimited, no budget tracking needed', async () => {
-  const now = Date.UTC(2026, 0, 1, 20, 0, 0);
-  const slots = [{ start: now, end: now + 3600_000, price: 0.10 }];
-  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
-  const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
-  const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
-    _pvForecast: null,
-    _priceForecast: slots,
-    _priceForecastUpdatedAt: now,
-    _carStates: [car],
-    _priceChargeCommittedW: 999999, // would exceed any real cap, but the feature is off
-  });
-  const battery = { soc: 90, powerW: 0 };
-  const cfg = { offpeak_solar_first: true }; // price_charge_max_grid_kw unset
-  await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
-  assert.strictEqual(d._getChargerState('c1').currentAmps, 16); // unaffected — no cap configured
-});
-
 // ── chargerControl: whole-house grid-import ceiling (grid_import_limit_kw) ───
-// Distinct from price_charge_max_grid_kw: this is a hard main-fuse safety limit that
+// A hard main-fuse safety limit that
 // applies to EVERY unconditional-draw tier (Instant/Always/Off-peak here; Price/Low-
 // tariff too), gracefully reducing to the highest amp-ladder rung that fits rather than
 // rejecting outright. this._gridImportCommittedW is normally seeded per-tick in
@@ -1448,7 +1388,7 @@ test('_evaluateEvChargers — Price-optimised charging (P3b) skips grid-charging
     _gridImportCommittedW: 2000, // already at the ceiling — no headroom for the price budget's charger
   });
   const battery = { soc: 90, powerW: 0 };
-  const cfg = { offpeak_solar_first: true, grid_import_limit_kw: 2 }; // price_charge_max_grid_kw unset — price budget alone would allow this
+  const cfg = { offpeak_solar_first: true, grid_import_limit_kw: 2 }; // price budget alone would allow this
   await d._evaluateEvChargers(battery, 0, [charger], cfg, null, null);
   assert.strictEqual(d._getChargerState('c1').currentAmps, null); // denied by the import ceiling, not the price budget
   assert.notStrictEqual(d._lastMode.mode, 'price_ev');
@@ -1517,10 +1457,10 @@ test('_evaluateEvChargers — a second charger still gets only the real remainin
   assert.strictEqual(d._getChargerState('c2').currentAmps, null); // no headroom for a second
 });
 
-// ── chargerControl: price-charge budget claims the GRANTED power, never a stranded max ──
-test('_evaluateEvChargers — price budget is claimed for the amps actually granted, not the theoretical max', async () => {
+// ── chargerControl: the ceiling claims the GRANTED power, never a stranded max ──
+test('_evaluateEvChargers — the whole-house ceiling is claimed for the amps actually granted, not the theoretical max', async () => {
   // 5 kW house ceiling leaves room for 7 A × 3 ph (4830 W) of a 16 A charger. The price
-  // budget must be charged 4830 W — not the 11040 W max the charger asked for.
+  // ceiling must be charged 4830 W — not the 11040 W max the charger asked for.
   // Anchored on the real clock: _evaluateEvChargers reads Date.now() internally, so a
   // hardcoded past timestamp would silently route through the stale-forecast fail-safe
   // instead of the cheap-slot path this test is about.
@@ -1531,24 +1471,15 @@ test('_evaluateEvChargers — price budget is claimed for the amps actually gran
     chargeMode: 'solar_price', carId: 'car1', powerW: 0, rawPowerW: 0,
   };
   const d = makeChargerDevice({
-    _gridImportCommittedW: 0, _priceChargeCommittedW: 0,
+    _gridImportCommittedW: 0,
     _priceForecast: slots, _priceForecastUpdatedAt: now,
     _carStates: [{ id: 'car1', name: 'Car', soc: 10, target: 80, capacityKwh: 60, readyBy: '07:00' }],
   });
-  const cfg = { grid_import_limit_kw: 5, price_charge_max_grid_kw: 100, price_ev_precondition_h: 0 };
+  const cfg = { grid_import_limit_kw: 5, price_ev_precondition_h: 0 };
   const allocated = await d._evaluateEvChargers({ soc: 90, powerW: 0 }, 0, [charger], cfg, null, null);
   assert.strictEqual(d._getChargerState('c1').currentAmps, 7);
   assert.strictEqual(allocated, 7 * 3 * 230);            // 4830 W
-  assert.strictEqual(d._priceChargeCommittedW, 4830);    // was 11040 before the fix
   assert.strictEqual(d._gridImportCommittedW, 4830);
-});
-test('_priceChargeCapAmps — caps the request to the remaining price budget, and is pure', async () => {
-  const d = makeChargerDevice({ _priceChargeCommittedW: 8000 });
-  const cfg = { price_charge_max_grid_kw: 10 }; // 2000 W left → 8 A @ 1 ph (1840 W); 9 A = 2070 W too much
-  assert.strictEqual(d._priceChargeCapAmps(cfg, 32, 1), 8);
-  assert.strictEqual(d._priceChargeCommittedW, 8000); // unchanged — must not claim
-  assert.strictEqual(d._priceChargeCapAmps({}, 32, 1), 32); // no budget configured → unlimited
-  assert.strictEqual(d._priceChargeCapAmps({ price_charge_max_grid_kw: 1 }, 32, 3), 0); // nothing fits
 });
 
 // ── chargerControl: per-device "EMS controls this device" toggle ─────────────

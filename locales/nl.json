@@ -405,7 +405,6 @@
       "usedLastTick": "Gebruikt (laatste tick)",
       "fullyCommitted": "⚠ Volledig toegewezen",
       "fullyCommittedDetail": "extra prijsladen slaat deze tick over en valt terug op alleen zon",
-      "priceChargeBudgetTitle": "Netbudget voor prijsladen",
       "atLimit": "⚠ Aan de limiet",
       "atLimitDetail": "load shedding actief — laden wordt verminderd/vastgehouden om onder de huisimportlimiet te blijven",
       "gridImportCeilingTitle": "Netimportplafond (load shedding)",
@@ -839,10 +838,6 @@
       "desc": "De EMS leest hier het netvermogen om te bepalen hoeveel overschot beschikbaar is. Positief = kopen, negatief = verkopen. Meerdere meters worden opgeteld.",
       "addButton": "+ Meter toevoegen",
       "kwUnlimited": "kW · 0 = onbeperkt",
-      "priceLimit": {
-        "title": "Netimportlimiet voor prijsladen",
-        "desc": "Beperkt het totale vermogen dat AL het prijsafhankelijke laden van het net tegelijk mag opnemen — EV-laders in modus \"Zon & goedkoopste uren (prognose)\" / \"Zon & laag tarief\", plus elke Thuisbatterij met \"Prijsgeoptimaliseerd laden\" ingeschakeld. Zonder limiet zouden beide onafhankelijk van elkaar in hetzelfde goedkope uur van het net kunnen laden, zonder gecombineerd plafond (bijv. overbelasting van de hoofdzekering van de installatie). De batterij wordt als eerste toegewezen (deze draait eerder in de tick); laders die niet meer binnen het resterende budget passen, slaan het laden van het net die tick over en vallen terug op alleen zon."
-      },
       "importLimit": {
         "title": "Netimportlimiet — hele huis (load shedding)",
         "desc": "Een harde veiligheidsgrens op het TOTALE netimport (bijv. de nominale waarde van de hoofdzekering van de installatie), los van en gelaagd <em>onder</em> het bovenstaande prijsladen-budget. Elke tick gaat de EMS uit van de reeds gemeten huisimport en vermindert of houdt EV-laden (Direct / Altijd laden / Daltarief / Prijs / Laag tarief — alle niveaus die anders onvoorwaardelijk zouden opnemen), de force-charge van thuisbatterijen en elke nieuwe start van een warmtepomp / boiler / zwembad / ontvochtiger tegen, zo nodig om onder deze limiet te blijven — EV-laders bouwen de laadstroom waar mogelijk geleidelijk af, de overige apparaattypen (alleen aan/uit) krijgen de start simpelweg geweigerd als die niet meer past. Laat op 0 staan als je geen huisbrede grens nodig hebt."

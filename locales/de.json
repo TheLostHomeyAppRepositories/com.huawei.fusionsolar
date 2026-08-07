@@ -405,7 +405,6 @@
       "usedLastTick": "Genutzt (letzter Tick)",
       "fullyCommitted": "⚠ Vollständig beansprucht",
       "fullyCommittedDetail": "weiteres Preisladen überspringt diesen Tick und fällt auf reines Solarladen zurück",
-      "priceChargeBudgetTitle": "Preislade-Netzbudget",
       "atLimit": "⚠ Am Limit",
       "atLimitDetail": "Lastabwurf aktiv — Laden wird reduziert/gehalten, um unter dem Haus-Importlimit zu bleiben",
       "gridImportCeilingTitle": "Netzbezugslimit (Lastabwurf)",
@@ -839,10 +838,6 @@
       "desc": "Das EMS liest hier die Netzleistung, um den verfügbaren Überschuss zu berechnen. Positiv = Bezug, negativ = Einspeisung. Mehrere Zähler werden summiert.",
       "addButton": "+ Zähler hinzufügen",
       "kwUnlimited": "kW · 0 = unbegrenzt",
-      "priceLimit": {
-        "title": "Netzbezugslimit für preisgesteuertes Laden",
-        "desc": "Begrenzt die Gesamtleistung, die ALLE preisgesteuerten Netzladungen gleichzeitig beziehen dürfen — EV-Lader im Modus \"Solar & cheapest hours (forecast)\" / \"Solar & low tariff\", sowie jede Hausbatterie mit aktiviertem \"Price-optimised charging\". Ohne Limit könnten beide unabhängig voneinander in derselben günstigen Stunde aus dem Netz laden, ohne gemeinsame Obergrenze (z. B. Überlastung der Hauptsicherung). Die Batterie erhält pro Tick zuerst Zugriff (sie läuft früher im Tick); Lader, die nicht mehr ins verbleibende Budget passen, laden diesen Tick nur solar."
-      },
       "importLimit": {
         "title": "Netzbezugslimit — ganzes Haus (Lastabwurf)",
         "desc": "Eine harte Sicherheitsobergrenze für den GESAMTEN Netzbezug (z. B. passend zur Hauptsicherung), getrennt vom und angewendet <em>zusätzlich unter</em> dem Preislade-Budget oben. Bei jedem Tick geht das EMS vom bereits gemessenen Hausbezug aus und reduziert oder hält EV-Laden zurück (Sofortladen / Always-Charge / Off-Peak / Preis / Niedertarif — alle Stufen, die sonst unbegrenzt Strom beziehen würden), die Batterie-Zwangsladung sowie jeden neuen Start von Wärmepumpe / Boiler / Pool / Entfeuchter, um unter diesem Limit zu bleiben — EV-Lader reduzieren wo möglich schrittweise die Ladeleistung, die übrigen Gerätetypen (nur ein/aus) bekommen den Start schlicht verweigert, wenn er nicht mehr passt. Bei 0 belassen, falls kein Haus-Limit benötigt wird."

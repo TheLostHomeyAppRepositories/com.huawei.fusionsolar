@@ -405,7 +405,6 @@
       "usedLastTick": "Used (last tick)",
       "fullyCommitted": "⚠ Fully committed",
       "fullyCommittedDetail": "additional price-charging will skip this tick and fall back to solar-only",
-      "priceChargeBudgetTitle": "Price-charging grid budget",
       "atLimit": "⚠ At limit",
       "atLimitDetail": "load shedding active — charging is being reduced/held to stay under the house import limit",
       "gridImportCeilingTitle": "Grid import ceiling (load shedding)",
@@ -839,10 +838,6 @@
       "desc": "The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.",
       "addButton": "+ Add meter",
       "kwUnlimited": "kW · 0 = unlimited",
-      "priceLimit": {
-        "title": "Grid import limit for price-charging",
-        "desc": "Caps the total power ALL price-aware grid-charging may draw at once — EV chargers in \"Solar & cheapest hours (forecast)\" / \"Solar & low tariff\" mode, plus any Home Battery with \"Price-optimised charging\" enabled. Without a limit, both could independently start grid-charging in the same cheap hour with no combined cap (e.g. overloading the site's main fuse). The battery is allocated first (it runs earlier in the tick); chargers that no longer fit the remaining budget skip grid-charging that tick and fall back to solar-only."
-      },
       "importLimit": {
         "title": "Grid import limit — whole house (load shedding)",
         "desc": "A hard safety ceiling on TOTAL grid import (e.g. the site's main fuse rating), separate from and layered <em>under</em> the price-charging budget above. Every tick the EMS starts from the already-measured house import and reduces or holds back EV charging (Instant / Always-charge / Off-peak / Price / Low-tariff — all tiers that would otherwise draw unconditionally), Home Battery force-charge, and any new heat pump / boiler / pool / dehumidifier start as needed to stay under this limit — EV chargers step down gracefully where possible, the other device types (on/off only) simply have their start denied if it wouldn't fit. Leave at 0 if you don't need a whole-house cap."
