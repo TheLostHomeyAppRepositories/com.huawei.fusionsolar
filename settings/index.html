@@ -5897,20 +5897,27 @@
       var _rowSelects = [];
 
       BATTERY_FLOW_ROWS.forEach(function(rowCfg, idx) {
+        // Gleiche Struktur wie bei den Wechselrichter-Zeilen: Label oben, Bedienelemente
+        // darunter. Ein flex-wrap aus Mindestbreiten brach je nach Beschriftungslaenge und
+        // Panelbreite unterschiedlich um.
         var rowEl = document.createElement('div');
-        rowEl.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        rowEl.style.cssText = 'display:flex;flex-direction:column;gap:4px';
 
         var lbl = document.createElement('span');
         lbl.textContent = _H.__('settings.batteryFlowRows.' + rowCfg.i18nKey) || rowCfg.label;
-        lbl.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:145px';
+        lbl.style.cssText = 'color:#6e6e73;font-size:12px';
         rowEl.appendChild(lbl);
 
+        var ctrl = document.createElement('div');
+        ctrl.style.cssText = 'display:flex;align-items:center;gap:6px';
+        rowEl.appendChild(ctrl);
+
         var sel = document.createElement('select');
-        sel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+        sel.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
         var loadOpt = document.createElement('option'); loadOpt.value = ''; loadOpt.textContent = _H.__('settings.flowSetup.loadingActionCards');
         sel.appendChild(loadOpt);
         sel.addEventListener('change', function() { _updateBatPreview(); _saveBatCards(); });
-        rowEl.appendChild(sel);
+        ctrl.appendChild(sel);
         _rowSelects.push(sel);
 
         (rowCfg.valueArgs || []).forEach(function(va, ai) {
@@ -5923,7 +5930,7 @@
           valInput.style.cssText = 'width:110px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
           valInput.id = _getBatInputId(idx, ai);
           valInput.addEventListener('input', function() { _updateBatPreview(); _saveBatCards(); });
-          rowEl.appendChild(valInput);
+          ctrl.appendChild(valInput);
         });
 
         body.appendChild(rowEl);
@@ -6573,21 +6580,30 @@
       var _rowSelects = []; // parallel to INVERTER_FLOW_ROWS
 
       INVERTER_FLOW_ROWS.forEach(function(rowCfg, idx) {
+        // Label auf eigener Zeile, darunter Auswahlfeld (+ optionales Zahlenfeld). Vorher war
+        // die Zeile ein flex-wrap aus drei Mindestbreiten (130+180+90 px): sobald das Panel
+        // schmaler wurde, brach je nach Beschriftungslaenge mal das Zahlenfeld um, mal das
+        // Auswahlfeld — jede Zeile sah anders aus. Diese Struktur ist bei jeder Breite gleich.
         var rowEl = document.createElement('div');
-        rowEl.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+        rowEl.style.cssText = 'display:flex;flex-direction:column;gap:4px';
 
         var lbl = document.createElement('span');
         lbl.textContent = _H.__('settings.inverterFlowRows.' + rowCfg.i18nKey) || rowCfg.label;
-        lbl.style.cssText = 'color:#6e6e73;white-space:nowrap;font-size:12px;min-width:130px';
+        lbl.style.cssText = 'color:#6e6e73;font-size:12px';
         rowEl.appendChild(lbl);
 
+        // Auswahlfeld und Zahlenfeld teilen sich eine Zeile und sind damit oben buendig.
+        var ctrl = document.createElement('div');
+        ctrl.style.cssText = 'display:flex;align-items:center;gap:6px';
+        rowEl.appendChild(ctrl);
+
         var sel = document.createElement('select');
-        sel.style.cssText = 'flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
+        sel.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px';
         var loadOpt = document.createElement('option');
         loadOpt.value = ''; loadOpt.textContent = _H.__('settings.flowSetup.loadingActionCards');
         sel.appendChild(loadOpt);
         sel.addEventListener('change', function() { _updateInvPreview(); _saveInvCards(); });
-        rowEl.appendChild(sel);
+        ctrl.appendChild(sel);
         _rowSelects.push(sel);
 
         // Optional numeric value input (for W / % rows)
@@ -6603,7 +6619,7 @@
           valInput.addEventListener('input', function() { _updateInvPreview(); _saveInvCards(); });
           sel.dataset.valueInputId = 'inv-val-' + _idScope + '-' + idx;
           valInput.id = 'inv-val-' + _idScope + '-' + idx;
-          rowEl.appendChild(valInput);
+          ctrl.appendChild(valInput);
         }
 
         body.appendChild(rowEl);
