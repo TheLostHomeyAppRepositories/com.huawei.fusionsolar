@@ -1825,7 +1825,9 @@ test('setEmsDeviceEnabled — disables a charger, persists, and restarts the tic
     _startTick() { restarted = true; },
   });
   const res = await d.setEmsDeviceEnabled('c1', false);
-  assert.deepStrictEqual(res, { ok: true });
+  // masterLifted meldet, ob dabei der Abschnitts-Schalter mit angehoben wurde — beim
+  // Ausschalten nie.
+  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
   assert.strictEqual(cfg.chargers[0].enabled, false);
   assert.strictEqual(saved, cfg);
   assert.strictEqual(restarted, true);
@@ -1834,9 +1836,32 @@ test('setEmsDeviceEnabled — re-enables a simple device', async () => {
   const cfg = { boiler_devices: [{ id: 'b1', enabled: false }] };
   const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
   const res = await d.setEmsDeviceEnabled('b1', true);
-  assert.deepStrictEqual(res, { ok: true });
+  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
   assert.strictEqual(cfg.boiler_devices[0].enabled, true);
 });
+test('setEmsDeviceEnabled — switching a device on lifts its section master', async () => {
+  // Der Abschnitts-Schalter greift VOR dem Geraete-Schalter (chargerControl.js kehrt bei
+  // charger_control === false zurueck, bevor es enabled prueft). Ein Geraet einzuschalten,
+  // waehrend sein Abschnitt aus ist, blieb daher wirkungslos.
+  const cfg = { charger_control: false, chargers: [{ id: 'c1', enabled: false }] };
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
+
+  const res = await d.setEmsDeviceEnabled('c1', true);
+  assert.deepStrictEqual(res, { ok: true, masterLifted: true });
+  assert.strictEqual(cfg.charger_control, true, 'Abschnitts-Schalter muss mit angehoben werden');
+  assert.strictEqual(cfg.chargers[0].enabled, true);
+});
+
+test('setEmsDeviceEnabled — switching a device OFF never touches the section master', async () => {
+  // Ausschalten darf nie andere Geraete derselben Klasse mitreissen.
+  const cfg = { charger_control: true, chargers: [{ id: 'c1', enabled: true }] };
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set() {} } } });
+
+  const res = await d.setEmsDeviceEnabled('c1', false);
+  assert.deepStrictEqual(res, { ok: true, masterLifted: false });
+  assert.strictEqual(cfg.charger_control, true);
+});
+
 test('setEmsDeviceEnabled — unknown device id → not_found', async () => {
   const d = makeWidgetDevice({ _getConfig: () => ({ chargers: [] }) });
   assert.strictEqual((await d.setEmsDeviceEnabled('nope', false)).error, 'not_found');
