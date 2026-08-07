@@ -923,5 +923,10 @@
     "en": "Removed the separate grid import limit for price-charging. The whole-house grid import limit already caps the same draw, so the second budget only added a setting to get wrong.",
     "de": "Das separate Netzbezugslimit für preisgesteuertes Laden entfällt. Das Haus-Netzbezugslimit begrenzt denselben Bezug bereits — das zweite Budget war nur eine weitere Einstellung, die man falsch setzen konnte.",
     "nl": "De aparte netafnamegrens voor prijsgestuurd laden is verwijderd. De netafnamegrens voor het hele huis begrenst dezelfde afname al."
+  },
+  "1.2.94": {
+    "en": "The whole-house grid import limit hint still referred to the price-charging budget removed in 1.2.93. It now states what the limit actually measures against.",
+    "de": "Der Hilfetext zum Haus-Netzbezugslimit verwies noch auf das in 1.2.93 entfernte Preislade-Budget. Er nennt jetzt, worauf sich das Limit tatsächlich bezieht.",
+    "nl": "De hulptekst bij de netafnamegrens verwees nog naar het in 1.2.93 verwijderde prijsladen-budget. Hij vermeldt nu waar de grens werkelijk op gebaseerd is."
   }
 }

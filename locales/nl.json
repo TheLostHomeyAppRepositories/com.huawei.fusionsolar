@@ -840,7 +840,7 @@
       "kwUnlimited": "kW · 0 = onbeperkt",
       "importLimit": {
         "title": "Netimportlimiet — hele huis (load shedding)",
-        "desc": "Een harde veiligheidsgrens op het TOTALE netimport (bijv. de nominale waarde van de hoofdzekering van de installatie), los van en gelaagd <em>onder</em> het bovenstaande prijsladen-budget. Elke tick gaat de EMS uit van de reeds gemeten huisimport en vermindert of houdt EV-laden (Direct / Altijd laden / Daltarief / Prijs / Laag tarief — alle niveaus die anders onvoorwaardelijk zouden opnemen), de force-charge van thuisbatterijen en elke nieuwe start van een warmtepomp / boiler / zwembad / ontvochtiger tegen, zo nodig om onder deze limiet te blijven — EV-laders bouwen de laadstroom waar mogelijk geleidelijk af, de overige apparaattypen (alleen aan/uit) krijgen de start simpelweg geweigerd als die niet meer past. Laat op 0 staan als je geen huisbrede grens nodig hebt."
+        "desc": "Een harde veiligheidsgrens op het TOTALE netimport (bijv. de nominale waarde van de hoofdzekering). Basis is de gemeten afname van je netmeters — wat het huis na zon en accu nog uit het net trekt, niet het totale verbruik. Elke tick gaat de EMS uit van die meting en vermindert of houdt EV-laden (Direct / Altijd laden / Daltarief / Prijs / Laag tarief — alle niveaus die anders onvoorwaardelijk zouden opnemen), de force-charge van thuisbatterijen en elke nieuwe start van een warmtepomp / boiler / zwembad / ontvochtiger tegen, zo nodig om onder deze limiet te blijven — EV-laders bouwen de laadstroom waar mogelijk geleidelijk af, de overige apparaattypen (alleen aan/uit) krijgen de start simpelweg geweigerd als die niet meer past. Laat op 0 staan als je geen huisbrede grens nodig hebt."
       }
     }
   }
