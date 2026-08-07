@@ -814,6 +814,38 @@
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="inverter.desc">The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.</p>
           <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDeviceRow('inverter')" style="font-size:11px;padding:4px 10px" data-i18n="inverter.addButton">+ Add inverter</button>
+          <div class="ems-toggle-title" style="margin-top:14px" data-i18n="exportLimit.title">📤 Export Limit Coordinator</div>
+      <label class="ems-toggle-row">
+        <span class="ems-toggle-switch">
+          <input type="checkbox" id="ems-export-limit-enabled"
+            onchange="document.getElementById('ems-export-limit-rows').style.display=this.checked?'block':'none'">
+          <span class="ems-toggle-slider"></span>
+        </span>
+        <span>
+          <span class="ems-toggle-title" data-i18n="exportLimit.enable.title">Auto-limit inverter when battery is full</span>
+          <span class="ems-toggle-desc" data-i18n-html="exportLimit.enable.desc">When battery SOC reaches the <em>Activate</em> threshold (default 95%) and solar is exporting to the grid, the EMS fires the inverter <em>Enable export limit</em> flow. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> threshold (default 90%) or export stops. Enable to adjust thresholds and review setup instructions.</span>
+        </span>
+      </label>
+      <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.activateAt">Activate at SOC ≥ (%)</label>
+            <input id="ems-export-limit-trigger-soc" type="number" value="95" min="50" max="100" step="5"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.activateHint">Battery full — fire limit ON</div>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.deactivateAt">Deactivate at SOC &lt; (%)</label>
+            <input id="ems-export-limit-deactivate-soc" type="number" value="90" min="40" max="100" step="5"
+              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.deactivateHint">Hysteresis — fire limit OFF</div>
+          </div>
+        </div>
+        <div class="ems-callout">
+          <span data-i18n-html="exportLimit.setupHint"><strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed.</span>
+        </div>
+      </div>
+
         </div>
       </details>
 
@@ -1254,42 +1286,6 @@
       </details>
 
       <!-- Export Limit Coordinator -->
-      <details class="ems-section">
-        <summary><span class="ems-section-label" data-i18n="exportLimit.title">📤 Export Limit Coordinator</span><span class="ems-section-subtitle" data-i18n="exportLimit.subtitle"> · automatic</span><span class="ems-section-chevron">▼</span></summary>
-        <div class="ems-section-body">
-      <label class="ems-toggle-row">
-        <span class="ems-toggle-switch">
-          <input type="checkbox" id="ems-export-limit-enabled"
-            onchange="document.getElementById('ems-export-limit-rows').style.display=this.checked?'block':'none'">
-          <span class="ems-toggle-slider"></span>
-        </span>
-        <span>
-          <span class="ems-toggle-title" data-i18n="exportLimit.enable.title">Auto-limit inverter when battery is full</span>
-          <span class="ems-toggle-desc" data-i18n-html="exportLimit.enable.desc">When battery SOC reaches the <em>Activate</em> threshold (default 95%) and solar is exporting to the grid, the EMS fires the inverter <em>Enable export limit</em> flow. Fires <em>Disable export limit</em> when SOC drops below the <em>Deactivate</em> threshold (default 90%) or export stops. Enable to adjust thresholds and review setup instructions.</span>
-        </span>
-      </label>
-      <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-          <div style="flex:1;min-width:130px">
-            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.activateAt">Activate at SOC ≥ (%)</label>
-            <input id="ems-export-limit-trigger-soc" type="number" value="95" min="50" max="100" step="5"
-              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-            <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.activateHint">Battery full — fire limit ON</div>
-          </div>
-          <div style="flex:1;min-width:130px">
-            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="exportLimit.deactivateAt">Deactivate at SOC &lt; (%)</label>
-            <input id="ems-export-limit-deactivate-soc" type="number" value="90" min="40" max="100" step="5"
-              style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-            <div style="font-size:11px;color:#6e6e73;margin-top:3px" data-i18n="exportLimit.deactivateHint">Hysteresis — fire limit OFF</div>
-          </div>
-        </div>
-        <div class="ems-callout">
-          <span data-i18n-html="exportLimit.setupHint"><strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed.</span>
-        </div>
-      </div>
-
-        </div>
-      </details>
 
       <div class="ems-group" data-i18n="group.diagnostics">Diagnostics</div>
       <!-- EMS Diagnostics (live tick health + last decision) -->

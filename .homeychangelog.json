@@ -1,4 +1,8 @@
 {
+  "1.2.83": {
+    "en": "The export limit coordinator has moved into the Solar Inverter section. It only ever acted on the inverter, so its own section further down the page put it far away from the device it controls.",
+    "de": "Der Einspeiselimit-Koordinator ist in den Abschnitt Wechselrichter gewandert. Er wirkt ohnehin nur auf den Wechselrichter — als eigener Abschnitt weiter unten auf der Seite stand er weit entfernt von dem Gerät, das er steuert."
+  },
   "1.2.82": {
     "en": "The evaluation order is now set per device instead of per device type. The list under Device Priority shows your actual devices by name, so with two chargers or two heat pumps you can decide which of them gets the solar surplus first. Chargers that sit next to each other in the list still share the surplus between them as before; move one away from the other and they are served one after the other. Your existing order is carried over on the first start after the update, and a newly added device is placed at the end rather than being left out.",
     "de": "Die Auswertungsreihenfolge wird nun je Gerät festgelegt statt je Gerätetyp. Die Liste unter Geräte-Priorität zeigt deine tatsächlichen Geräte mit Namen — bei zwei Ladern oder zwei Wärmepumpen kannst du also entscheiden, welches davon den Solarüberschuss zuerst bekommt. Lader, die in der Liste nebeneinander stehen, teilen den Überschuss weiterhin untereinander auf; trennst du sie, werden sie nacheinander bedient. Deine bisherige Reihenfolge wird beim ersten Start nach dem Update übernommen, und ein neu hinzugefügtes Gerät landet am Ende statt zu fehlen."
