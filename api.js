@@ -1129,6 +1129,60 @@ module.exports = {
     }
   },
 
+  /**
+   * GET /ems/trigger-usage?ids=a,b — how many existing flows react to each of the given
+   * EMS trigger cards. The settings page uses this to gate options whose entire effect
+   * depends on the user having created the matching flow first.
+   *
+   * Fails OPEN (`known: false`): without the local API key the flows cannot be enumerated,
+   * and blocking every option would be worse than offering one that does nothing.
+   */
+  async getEmsTriggerUsage({ homey, query }) {
+    const ids = String((query && query.ids) || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    const counts = {};
+    for (const id of ids) counts[id] = 0;
+    if (!ids.length) return { counts, known: true };
+
+    let apiKey = '';
+    try {
+      const devices = homey.drivers.getDriver('energy_management').getDevices();
+      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
+    } catch { /* driver not yet paired */ }
+    if (!apiKey) return { counts, known: false };
+
+    const HomeyLocalApi = require('./lib/homey-local-api');
+    const api = new HomeyLocalApi({ homey, apiKey });
+    try {
+      const [flows, advFlows] = await Promise.all([
+        api.getFlows().catch(() => ({})),
+        api.getAdvancedFlows().catch(() => ({})),
+      ]);
+      // Stored card ids are either the bare id or "<uri>:<id>" depending on how the flow
+      // was created — the same two shapes getEmsFlows already has to cope with.
+      const matches = (raw, id) => typeof raw === 'string' && (raw === id || raw.endsWith(`:${id}`));
+
+      for (const f of Object.values(flows || {})) {
+        const tid = (f.trigger && f.trigger.id) || '';
+        for (const id of ids) if (matches(tid, id)) counts[id]++;
+      }
+      // Advanced flows keep their trigger inside the card graph. Count each flow once per
+      // trigger even if it holds several cards for the same one.
+      for (const f of Object.values(advFlows || {})) {
+        const seen = new Set();
+        for (const card of Object.values(f.cards || {})) {
+          if (!card) continue;
+          for (const id of ids) {
+            if (!seen.has(id) && matches(card.id, id)) { counts[id]++; seen.add(id); }
+          }
+        }
+      }
+      return { counts, known: true };
+    } catch (e) {
+      return { counts, known: false, error: e.message };
+    }
+  },
+
   /** GET /ems/scheduler/flows — flows in the _Huawei EMS folder available to the scheduler */
   async getEmsSchedulerFlows({ homey }) {
     let apiKey = '';

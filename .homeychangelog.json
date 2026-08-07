@@ -888,5 +888,10 @@
     "en": "Export limit coordinator: the battery-full rule is now an option of its own, so the price and zero-export rules also work in installations without a home battery.",
     "de": "Export-Limit-Koordinator: Die Regel „Batterie voll“ ist neu eine eigene Option, damit die Preis- und Nulleinspeisungs-Regeln auch ohne Hausbatterie funktionieren.",
     "nl": "Teruglevergrens: de regel „accu vol“ is nu een eigen optie, zodat de prijs- en nul-terugleverregels ook werken zonder thuisaccu."
+  },
+  "1.2.87": {
+    "en": "Export limit rules can no longer be switched on before their prerequisites exist: each rule now checks that the coordinator flows were created, and the battery and price rules check for a battery and a varying price tariff.",
+    "de": "Export-Limit-Regeln lassen sich nicht mehr einschalten, bevor ihre Voraussetzungen erfüllt sind: Jede Regel prüft, ob die Koordinator-Flows erstellt wurden, die Batterie- und Preisregel zusätzlich auf Hausbatterie und variablen Tarif.",
+    "nl": "Teruglevergrens-regels kunnen niet meer worden ingeschakeld voordat aan de voorwaarden is voldaan: elke regel controleert of de coordinator-flows bestaan, de accu- en prijsregel bovendien op een thuisaccu en een variabel tarief."
   }
 }

@@ -295,6 +295,9 @@
       "deactivateAt": "Deactiveren bij SOC < (%)",
       "deactivateHint": "Hysterese — limiet UIT activeren",
       "whenToLimit": "Wanneer moet de omvormer begrensd worden?",
+      "needFlows": "Maak eerst de flows „Teruglevergrens in-/uitschakelen” aan — zie de opmerking hieronder.",
+      "needBattery": "Configureer eerst een thuisaccu onder „Thuisaccu’s”.",
+      "needVariablePrice": "Vereist de prijsmodus „Prijsvoorspelling” of „Variabel” — een vast of dubbeltarief wordt nooit negatief.",
       "negPrice": {
         "title": "Begrenzen bij een negatieve stroomprijs",
         "desc": "Zolang terugleveren geld kost in plaats van oplevert, wordt er begrensd — met of zonder accu. Gebruikt de prijs uit het onderdeel Stroomprijs. Wordt weer vrijgegeven zodra de prijs boven de drempel komt."

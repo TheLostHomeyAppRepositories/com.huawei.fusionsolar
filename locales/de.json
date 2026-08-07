@@ -295,6 +295,9 @@
       "deactivateAt": "Deaktivieren bei SOC < (%)",
       "deactivateHint": "Hysterese — Limit AUS auslösen",
       "whenToLimit": "Wann soll der Wechselrichter begrenzt werden?",
+      "needFlows": "Zuerst die Flows „Exportbegrenzung aktivieren/deaktivieren“ erstellen — siehe Hinweis unten.",
+      "needBattery": "Zuerst eine Hausbatterie im Bereich „Hausbatterien“ konfigurieren.",
+      "needVariablePrice": "Benötigt den Preismodus „Preisprognose“ oder „Variabel“ — ein Fix- oder Doppeltarif wird nie negativ.",
       "negPrice": {
         "title": "Begrenzen bei negativem Strompreis",
         "desc": "Solange das Einspeisen Geld kostet statt einbringt, wird begrenzt — mit oder ohne Batterie. Verwendet den Preis aus dem Bereich Strompreis. Wird wieder freigegeben, sobald der Preis über der Schwelle liegt."

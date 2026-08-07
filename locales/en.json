@@ -295,6 +295,9 @@
       "deactivateAt": "Deactivate at SOC < (%)",
       "deactivateHint": "Hysteresis — fire limit OFF",
       "whenToLimit": "When should the inverter be limited?",
+      "needFlows": "Create the Enable / Disable export limit flows first — see the note below.",
+      "needBattery": "Configure a home battery under \"Home Batteries\" first.",
+      "needVariablePrice": "Requires the \"Price forecast\" or \"Variable\" price mode — a fixed or dual tariff never goes negative.",
       "negPrice": {
         "title": "Limit when the electricity price is negative",
         "desc": "While feeding in costs money instead of earning it, the limit is applied — with or without a battery. Uses the price from the Electricity Price section. Released again as soon as the price rises above the threshold."

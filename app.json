@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.86",
+  "version": "1.2.87",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -122,6 +122,10 @@
     "getEmsFlows": {
       "method": "GET",
       "path": "/ems/flows"
+    },
+    "getEmsTriggerUsage": {
+      "method": "GET",
+      "path": "/ems/trigger-usage"
     },
     "getEmsSchedulerFlows": {
       "method": "GET",
