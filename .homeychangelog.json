@@ -1,4 +1,8 @@
 {
+  "1.2.75": {
+    "en": "The \"Enable EMS control\" switches in App Settings showed off while the EMS was in fact controlling those devices. A never-configured setting was read as off on the settings page but as on everywhere else — the EMS only stands down on an explicit off, and the widget tiles follow the same rule. A fresh installation therefore showed every one of these switches off while everything worked normally, and the tile showed the opposite of the settings page. All five switches — chargers, heat pumps, boilers, pool, dehumidifier — now read a missing setting as on, matching what the EMS actually does.",
+    "de": "Die Schalter \"EMS-Steuerung aktivieren\" in den App-Einstellungen zeigten aus, während das EMS die betreffenden Geräte tatsächlich steuerte. Eine nie gesetzte Einstellung galt auf der Einstellungsseite als aus, überall sonst aber als an — das EMS hält sich nur bei einem ausdrücklichen Aus zurück, und die Widget-Kacheln folgen derselben Regel. Eine frische Installation zeigte daher sämtliche dieser Schalter auf aus, obwohl alles normal lief, und die Kachel zeigte das Gegenteil der Einstellungsseite. Alle fünf Schalter — Lader, Wärmepumpen, Boiler, Pool, Entfeuchter — lesen eine fehlende Einstellung nun als an, passend zu dem, was das EMS wirklich tut."
+  },
   "1.2.74": {
     "en": "Added a log line whenever a widget tile switches EMS control for a device, recording the device and whether it was found in the configuration. Diagnostic only — nothing else changes.",
     "de": "Eine Log-Zeile ergänzt, sobald eine Widget-Kachel die EMS-Steuerung eines Geräts umschaltet — mit Gerät und der Angabe, ob es in der Konfiguration gefunden wurde. Reine Diagnose, sonst ändert sich nichts."

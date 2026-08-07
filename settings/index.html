@@ -7652,14 +7652,18 @@
       document.getElementById('ems-offpeak-weekend-rows').style.display                        = wkd ? 'flex' : 'none';
       if (cfg.offpeak_weekend_start) document.getElementById('ems-offpeak-weekend-start').value = cfg.offpeak_weekend_start;
       if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
-      document.getElementById('ems-charger-control').checked                                    = cfg.charger_control === true;
+      // Fehlender Wert heisst "an": das EMS bricht nur bei ausdruecklichem false ab
+      // (chargerControl.js: `cfg.charger_control === false`), und das Widget zeigt
+      // ebenso `!== false`. Mit `=== true` stand hier "aus", waehrend das EMS das Geraet
+      // in Wahrheit steuerte — genau die Abweichung zwischen Seite und Kachel.
+      document.getElementById('ems-charger-control').checked                                    = cfg.charger_control !== false;
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
       document.getElementById('ems-price-charge-max-grid').value                                = cfg.price_charge_max_grid_kw || 0;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
-      document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control === true;
-      document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control === true;
-      document.getElementById('ems-pool-control').checked                                      = cfg.pool_control === true;
-      document.getElementById('ems-dehumidifier-control').checked                              = cfg.dehumidifier_control === true;
+      document.getElementById('ems-heatpump-control').checked                                  = cfg.heat_pump_control !== false;
+      document.getElementById('ems-boiler-control').checked                                    = cfg.boiler_control !== false;
+      document.getElementById('ems-pool-control').checked                                      = cfg.pool_control !== false;
+      document.getElementById('ems-dehumidifier-control').checked                              = cfg.dehumidifier_control !== false;
       emsRenderPriceConfig(cfg.price_config);
       emsRenderCars(cfg.car_devices);
       var _elEnabled = document.getElementById('ems-export-limit-enabled');
