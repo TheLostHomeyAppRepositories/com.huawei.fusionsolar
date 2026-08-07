@@ -1,4 +1,8 @@
 {
+  "1.2.84": {
+    "en": "Electricity Price has moved up, between Home Batteries and Solar Forecast. It belongs with the other things the EMS bases its decisions on rather than sitting far below the devices it influences.",
+    "de": "Der Abschnitt Strompreis ist nach oben gewandert, zwischen Hausbatterien und Solarprognose. Er gehört zu den Grundlagen, auf denen das EMS seine Entscheidungen trifft, statt weit unterhalb der Geräte zu stehen, die er beeinflusst."
+  },
   "1.2.83": {
     "en": "The export limit coordinator has moved into the Solar Inverter section. It only ever acted on the inverter, so its own section further down the page put it far away from the device it controls.",
     "de": "Der Einspeiselimit-Koordinator ist in den Abschnitt Wechselrichter gewandert. Er wirkt ohnehin nur auf den Wechselrichter — als eigener Abschnitt weiter unten auf der Seite stand er weit entfernt von dem Gerät, das er steuert."

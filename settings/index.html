@@ -1005,6 +1005,92 @@
       </details>
 
       <!-- Solar forecast (Solcast) -->
+      <details class="ems-section" onToggle="if(this.open) emsPriceForecastLoad()">
+        <summary><span class="ems-section-label" data-i18n="price.title">💶 Electricity Price</span><span class="ems-section-subtitle"> · <span id="ems-price-subtitle">fixed</span></span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body" style="padding-bottom:14px">
+          <div class="tab-intro" style="margin-top:0" data-i18n="price.intro">
+            The current electricity price is exposed as a device value (tile, Insights, flow token). Choose the tariff model:
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+            <div style="flex:1;min-width:160px">
+              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.tariffModel">Tariff model</label>
+              <select id="ems-price-mode" onchange="emsPriceModeChange()"
+                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+                <option value="fixed" data-i18n="price.mode.fixed">Fixed</option>
+                <option value="dual" data-i18n="price.mode.dual">Low / high tariff</option>
+                <option value="variable" data-i18n="price.mode.variable">Variable (via flow)</option>
+                <option value="forecast" data-i18n="price.mode.forecast">Price forecast (day-ahead)</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.currency">Currency</label>
+              <select id="ems-price-currency"
+                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+                <option>CHF</option><option>EUR</option><option>USD</option><option>GBP</option>
+                <option>SEK</option><option>NOK</option><option>DKK</option><option>PLN</option><option>CZK</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Fixed -->
+          <div id="ems-price-fixed-row" style="margin-bottom:8px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.pricePerKwh">Price per kWh</label>
+            <input id="ems-price-fixed" type="number" step="0.001" min="0" value="0.30"
+              style="width:140px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+          </div>
+
+          <!-- Dual -->
+          <div id="ems-price-dual-rows" style="display:none">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+              <div style="flex:1;min-width:130px">
+                <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.lowTariffPerKwh">Low tariff / kWh</label>
+                <input id="ems-price-low" type="number" step="0.001" min="0" value="0.20"
+                  style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+              </div>
+              <div style="flex:1;min-width:130px">
+                <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.highTariffPerKwh">High tariff / kWh</label>
+                <input id="ems-price-high" type="number" step="0.001" min="0" value="0.35"
+                  style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+              </div>
+            </div>
+            <div class="tab-intro" style="margin-top:0;margin-bottom:8px" data-i18n="price.dualWindowIntro">
+              High-tariff time window per weekday (HH:MM). Outside the window the low tariff applies. A day with no times = low tariff all day. A window across midnight (e.g. 22:00–06:00) is allowed.
+            </div>
+            <div id="ems-price-day-windows" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <!-- Variable -->
+          <div id="ems-price-variable-info" style="display:none">
+            <div class="ems-callout">
+              <span data-i18n-html="price.variable.setup"><strong>Setup:</strong> An external app (e.g. Tibber, EPEX spot, dynamic tariff) sets the current price via the flow action <em>"EMS: set electricity price (per kWh)"</em>. The last value set is used as the current price. <strong>Can your price source instead provide a full day-ahead hourly forecast</strong> (e.g. "Power by the Hour")? Then use <em>"Price forecast (day-ahead)"</em> below instead — no separate flow needed for the current price.</span>
+            </div>
+            <div style="margin-top:8px;font-size:12px;color:#3a3a3c;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span data-i18n="price.variable.currentValue">Current value:</span>
+              <strong id="ems-price-current-value">—</strong>
+            </div>
+          </div>
+
+          <!-- Forecast (day-ahead) -->
+          <div id="ems-price-forecast-info" style="display:none">
+            <div class="ems-callout">
+              <span data-i18n-html="price.forecast.info">The current price is read directly from the hourly forecast below — no separate "current price" flow needed. This also powers EV charging for chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em>.</span>
+            </div>
+          </div>
+
+          <!-- Price forecast preview (D10 — price-optimised EV charging). Only shown for
+               "Price forecast (day-ahead)". -->
+          <div id="ems-price-forecast-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #eee;display:none">
+            <div style="font-size:12px;font-weight:600;color:#3a3a3c;margin-bottom:4px" data-i18n="price.forecastSection.title">📈 Price forecast</div>
+            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n-html="price.forecastSection.desc">This hourly forecast is fed via the <em>"Set price forecast"</em> flow action. Works directly with <strong>Power by the Hour</strong>'s "New prices received" trigger (its <code>Prices</code> token), Tibber, or any similar day-ahead price app. Used by EV chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em> to charge during the cheapest hours before a car's deadline.</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+              <span id="ems-price-forecast-status" style="font-size:11px;color:#6e6e73" data-i18n="price.forecastSection.notLoaded">Not yet loaded</span>
+              <button class="btn-secondary" onclick="emsPriceForecastLoad()" style="padding:3px 10px;font-size:12px" data-i18n="price.forecastSection.refresh">↻ Refresh</button>
+            </div>
+            <div id="ems-price-forecast-chart" style="min-height:70px;background:#fafafa;border:1px solid #e5e5ea;border-radius:8px;padding:8px 6px 4px"></div>
+            <div id="ems-price-forecast-flowsetup"></div>
+          </div>
+        </div>
+      </details>
       <details class="ems-section" id="ems-pvforecast-section">
         <summary><span class="ems-section-label" data-i18n="pvForecast.title">🌤 Solar Forecast (Solcast)</span><span class="ems-section-subtitle"> · <span id="ems-pvforecast-subtitle">off</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
@@ -1198,92 +1284,6 @@
       </details>
 
       <!-- Electricity Price -->
-      <details class="ems-section" onToggle="if(this.open) emsPriceForecastLoad()">
-        <summary><span class="ems-section-label" data-i18n="price.title">💶 Electricity Price</span><span class="ems-section-subtitle"> · <span id="ems-price-subtitle">fixed</span></span><span class="ems-section-chevron">▼</span></summary>
-        <div class="ems-section-body" style="padding-bottom:14px">
-          <div class="tab-intro" style="margin-top:0" data-i18n="price.intro">
-            The current electricity price is exposed as a device value (tile, Insights, flow token). Choose the tariff model:
-          </div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
-            <div style="flex:1;min-width:160px">
-              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.tariffModel">Tariff model</label>
-              <select id="ems-price-mode" onchange="emsPriceModeChange()"
-                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-                <option value="fixed" data-i18n="price.mode.fixed">Fixed</option>
-                <option value="dual" data-i18n="price.mode.dual">Low / high tariff</option>
-                <option value="variable" data-i18n="price.mode.variable">Variable (via flow)</option>
-                <option value="forecast" data-i18n="price.mode.forecast">Price forecast (day-ahead)</option>
-              </select>
-            </div>
-            <div style="flex:1;min-width:120px">
-              <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.currency">Currency</label>
-              <select id="ems-price-currency"
-                style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-                <option>CHF</option><option>EUR</option><option>USD</option><option>GBP</option>
-                <option>SEK</option><option>NOK</option><option>DKK</option><option>PLN</option><option>CZK</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Fixed -->
-          <div id="ems-price-fixed-row" style="margin-bottom:8px">
-            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.pricePerKwh">Price per kWh</label>
-            <input id="ems-price-fixed" type="number" step="0.001" min="0" value="0.30"
-              style="width:140px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-          </div>
-
-          <!-- Dual -->
-          <div id="ems-price-dual-rows" style="display:none">
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-              <div style="flex:1;min-width:130px">
-                <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.lowTariffPerKwh">Low tariff / kWh</label>
-                <input id="ems-price-low" type="number" step="0.001" min="0" value="0.20"
-                  style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-              </div>
-              <div style="flex:1;min-width:130px">
-                <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.highTariffPerKwh">High tariff / kWh</label>
-                <input id="ems-price-high" type="number" step="0.001" min="0" value="0.35"
-                  style="width:100%;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
-              </div>
-            </div>
-            <div class="tab-intro" style="margin-top:0;margin-bottom:8px" data-i18n="price.dualWindowIntro">
-              High-tariff time window per weekday (HH:MM). Outside the window the low tariff applies. A day with no times = low tariff all day. A window across midnight (e.g. 22:00–06:00) is allowed.
-            </div>
-            <div id="ems-price-day-windows" style="display:flex;flex-direction:column;gap:6px"></div>
-          </div>
-
-          <!-- Variable -->
-          <div id="ems-price-variable-info" style="display:none">
-            <div class="ems-callout">
-              <span data-i18n-html="price.variable.setup"><strong>Setup:</strong> An external app (e.g. Tibber, EPEX spot, dynamic tariff) sets the current price via the flow action <em>"EMS: set electricity price (per kWh)"</em>. The last value set is used as the current price. <strong>Can your price source instead provide a full day-ahead hourly forecast</strong> (e.g. "Power by the Hour")? Then use <em>"Price forecast (day-ahead)"</em> below instead — no separate flow needed for the current price.</span>
-            </div>
-            <div style="margin-top:8px;font-size:12px;color:#3a3a3c;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span data-i18n="price.variable.currentValue">Current value:</span>
-              <strong id="ems-price-current-value">—</strong>
-            </div>
-          </div>
-
-          <!-- Forecast (day-ahead) -->
-          <div id="ems-price-forecast-info" style="display:none">
-            <div class="ems-callout">
-              <span data-i18n-html="price.forecast.info">The current price is read directly from the hourly forecast below — no separate "current price" flow needed. This also powers EV charging for chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em>.</span>
-            </div>
-          </div>
-
-          <!-- Price forecast preview (D10 — price-optimised EV charging). Only shown for
-               "Price forecast (day-ahead)". -->
-          <div id="ems-price-forecast-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #eee;display:none">
-            <div style="font-size:12px;font-weight:600;color:#3a3a3c;margin-bottom:4px" data-i18n="price.forecastSection.title">📈 Price forecast</div>
-            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n-html="price.forecastSection.desc">This hourly forecast is fed via the <em>"Set price forecast"</em> flow action. Works directly with <strong>Power by the Hour</strong>'s "New prices received" trigger (its <code>Prices</code> token), Tibber, or any similar day-ahead price app. Used by EV chargers set to <em>"Solar &amp; cheapest hours (forecast)"</em> to charge during the cheapest hours before a car's deadline.</p>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-              <span id="ems-price-forecast-status" style="font-size:11px;color:#6e6e73" data-i18n="price.forecastSection.notLoaded">Not yet loaded</span>
-              <button class="btn-secondary" onclick="emsPriceForecastLoad()" style="padding:3px 10px;font-size:12px" data-i18n="price.forecastSection.refresh">↻ Refresh</button>
-            </div>
-            <div id="ems-price-forecast-chart" style="min-height:70px;background:#fafafa;border:1px solid #e5e5ea;border-radius:8px;padding:8px 6px 4px"></div>
-            <div id="ems-price-forecast-flowsetup"></div>
-          </div>
-        </div>
-      </details>
 
       <!-- Export Limit Coordinator -->
 
