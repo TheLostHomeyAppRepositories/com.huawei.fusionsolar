@@ -686,7 +686,8 @@
           "title": "Ander venster in het weekend",
           "desc": "Stel aparte start- en eindtijden in voor EV-laden op zaterdag en zondag."
         }
-      }
+      },
+      "rowEnabled": "EMS-aansturing"
     },
     "cars": {
       "title": "🚙 Auto's",

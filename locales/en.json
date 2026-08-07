@@ -686,7 +686,8 @@
           "title": "Different window on weekends",
           "desc": "Set separate start and end times for EV charging on Saturday and Sunday."
         }
-      }
+      },
+      "rowEnabled": "EMS control"
     },
     "cars": {
       "title": "🚙 Cars",

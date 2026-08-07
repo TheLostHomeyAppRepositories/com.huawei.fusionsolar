@@ -686,7 +686,8 @@
           "title": "Anderes Fenster am Wochenende",
           "desc": "Separate Start-/Endzeiten fürs EV-Laden an Samstag und Sonntag festlegen."
         }
-      }
+      },
+      "rowEnabled": "EMS-Steuerung"
     },
     "cars": {
       "title": "🚙 Fahrzeuge",

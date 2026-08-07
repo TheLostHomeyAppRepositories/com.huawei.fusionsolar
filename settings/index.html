@@ -4336,6 +4336,23 @@
       configRow.appendChild(ampsGroup);
       configRow.appendChild(phasesGroup);
 
+      // Per-charger "EMS controls this one". Until now this flag existed only in the
+      // ems-device widget, while the settings page offered just the class-wide switch
+      // below the list — two switches with the same label, each editable in only one
+      // place, which read as "they never stay in sync". Missing means enabled, matching
+      // chargerControl.js (`enabled !== false`).
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-charger-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enChk); enGroup.appendChild(enTxt);
+      configRow.appendChild(enGroup);
+
       // Charging mode (per charger)
       var modeRow = document.createElement('div');
       modeRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px 2px';
@@ -7467,6 +7484,10 @@
         c.step_hold_s = (isFinite(stepS) && stepS > 0) ? stepS : 30;
         var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
+        // Written explicitly in both directions so the settings page and the widget always
+        // agree on this device's flag — the widget writes it the same way.
+        var enChk = entry.querySelector('.ems-charger-enabled');
+        c.enabled = enChk ? enChk.checked : true;
         if (row.dataset.capState) c.cap_state = row.dataset.capState;
         if (row.dataset.capPower) c.cap_power = row.dataset.capPower;
         var carSel = entry.querySelector('.ems-charger-car');
