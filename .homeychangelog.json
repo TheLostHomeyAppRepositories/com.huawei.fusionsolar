@@ -893,5 +893,10 @@
     "en": "Export limit rules can no longer be switched on before their prerequisites exist: each rule now checks that the coordinator flows were created, and the battery and price rules check for a battery and a varying price tariff.",
     "de": "Export-Limit-Regeln lassen sich nicht mehr einschalten, bevor ihre Voraussetzungen erfüllt sind: Jede Regel prüft, ob die Koordinator-Flows erstellt wurden, die Batterie- und Preisregel zusätzlich auf Hausbatterie und variablen Tarif.",
     "nl": "Teruglevergrens-regels kunnen niet meer worden ingeschakeld voordat aan de voorwaarden is voldaan: elke regel controleert of de coordinator-flows bestaan, de accu- en prijsregel bovendien op een thuisaccu en een variabel tarief."
+  },
+  "1.2.88": {
+    "en": "Tidied two data-source subtitles: Home Batteries now just reads \"optional\", Solar Forecast no longer repeats \"Solcast\" from its own heading.",
+    "de": "Zwei Untertitel bei den Datenquellen aufgeräumt: Hausbatterien zeigt nur noch „optional“, Solarprognose wiederholt nicht mehr „Solcast“ aus der eigenen Überschrift.",
+    "nl": "Twee ondertitels bij de gegevensbronnen opgeschoond: Thuisaccu’s toont nu alleen „optioneel”, Zonneprognose herhaalt „Solcast” niet meer uit de eigen kop."
   }
 }

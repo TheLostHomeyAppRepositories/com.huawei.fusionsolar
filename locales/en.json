@@ -651,6 +651,7 @@
     },
     "pvForecast": {
       "subtitleOff": "off",
+      "subtitleOn": "optional",
       "title": "🌤 Solar Forecast (Solcast)",
       "enableLabel": "Enable Solcast PV forecast",
       "apiKeyLabel": "API key",
@@ -750,7 +751,7 @@
     },
     "homeBatteries": {
       "title": "🔋 Home Batteries",
-      "subtitle": " · optional · protects battery SOC",
+      "subtitle": " · optional",
       "desc": "Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.",
       "addButton": "+ Add battery",
       "socZones": {

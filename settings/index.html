@@ -942,7 +942,7 @@
 
       <!-- Home Batteries -->
       <details class="ems-section">
-        <summary><span class="ems-section-label" data-i18n="homeBatteries.title">🔋 Home Batteries</span><span class="ems-section-subtitle" data-i18n="homeBatteries.subtitle"> · optional · protects battery SOC</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-section-label" data-i18n="homeBatteries.title">🔋 Home Batteries</span><span class="ems-section-subtitle" data-i18n="homeBatteries.subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="homeBatteries.desc">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
           <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -7920,7 +7920,7 @@
     function emsPvForecastToggle() {
       var on = document.getElementById('ems-pvforecast-enabled').checked;
       document.getElementById('ems-pvforecast-rows').style.display = on ? 'block' : 'none';
-      document.getElementById('ems-pvforecast-subtitle').textContent = on ? 'Solcast' : _H.__('settings.pvForecast.subtitleOff');
+      document.getElementById('ems-pvforecast-subtitle').textContent = on ? _H.__('settings.pvForecast.subtitleOn') : _H.__('settings.pvForecast.subtitleOff');
     }
 
     function emsForecastGateChange() {

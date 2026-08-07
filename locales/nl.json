@@ -651,6 +651,7 @@
     },
     "pvForecast": {
       "subtitleOff": "uit",
+      "subtitleOn": "optioneel",
       "title": "🌤 Zonprognose (Solcast)",
       "enableLabel": "Solcast PV-prognose inschakelen",
       "apiKeyLabel": "API-sleutel",
@@ -750,7 +751,7 @@
     },
     "homeBatteries": {
       "title": "🔋 Thuisbatterijen",
-      "subtitle": " · optioneel · beschermt batterij-SOC",
+      "subtitle": " · optioneel",
       "desc": "Optioneel maar aanbevolen. De EMS gebruikt de batterij-SOC om de batterij te beschermen — wanneer de SOC onder het minimum zakt, worden overschotapparaten gestopt en wordt EV-laden gedrosseld of gepauzeerd.",
       "addButton": "+ Batterij toevoegen",
       "socZones": {
