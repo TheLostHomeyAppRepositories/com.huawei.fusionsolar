@@ -934,7 +934,7 @@
     "de": "Die Einstellungsgruppe „Tarif & Automatisierung“ heißt neu „Automatisierung“ — der Strompreis-Bereich ist zuvor daraus weggezogen.",
     "nl": "De instellingengroep „Tarief & automatisering” heet nu „Automatisering” — het onderdeel Stroomprijs is er eerder uit verplaatst."
   },
-  "1.3.0": {
+  "1.2.96": {
     "en": "New controllable device class: air conditioner. Same settings, flows, priority, widget support, history and daily statistics as heat pumps, boilers, pool and dehumidifier.",
     "de": "Neue steuerbare Geräteklasse: Klimaanlage. Gleiche Einstellungen, Flows, Priorität, Widget-Unterstützung, Verlauf und Tagesstatistik wie Wärmepumpe, Boiler, Pool und Entfeuchter.",
     "nl": "Nieuwe regelbare apparaatklasse: airco. Dezelfde instellingen, flows, prioriteit, widget-ondersteuning, geschiedenis en dagstatistieken als warmtepompen, boilers, zwembad en ontvochtiger."
