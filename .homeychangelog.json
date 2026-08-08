@@ -938,5 +938,10 @@
     "en": "New controllable device class: air conditioner. Same settings, flows, priority, widget support, history and daily statistics as heat pumps, boilers, pool and dehumidifier.",
     "de": "Neue steuerbare Geräteklasse: Klimaanlage. Gleiche Einstellungen, Flows, Priorität, Widget-Unterstützung, Verlauf und Tagesstatistik wie Wärmepumpe, Boiler, Pool und Entfeuchter.",
     "nl": "Nieuwe regelbare apparaatklasse: airco. Dezelfde instellingen, flows, prioriteit, widget-ondersteuning, geschiedenis en dagstatistieken als warmtepompen, boilers, zwembad en ontvochtiger."
+  },
+  "1.2.97": {
+    "en": "The device-priority loop is now covered by tests: the surplus budget handed from one priority run to the next was the only untested half of the mechanism.",
+    "de": "Die Schleife der Geräte-Priorität ist neu durch Tests abgedeckt: Die Weitergabe des Überschuss-Budgets von einem Block zum nächsten war die einzige ungeprüfte Hälfte des Mechanismus.",
+    "nl": "De lus voor apparaatprioriteit is nu door tests gedekt: het doorgeven van het overschotbudget tussen prioriteitsblokken was de enige ongeteste helft."
   }
 }

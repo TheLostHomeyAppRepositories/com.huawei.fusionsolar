@@ -666,26 +666,11 @@ class EmsDevice extends Device {
       dehumidifier: { list: dehumidifiers, states: this._dehumidifierStates, start: 'ems_start_dehumidifier', stop: 'ems_stop_dehumidifier', arg: 'dehumidifier_device_id' },
       aircon:       { list: aircons,       states: this._airconStates,       start: 'ems_start_aircon',       stop: 'ems_stop_aircon',       arg: 'aircon_device_id' },
     };
-    // Priority is per device, not per device class. _buildPriorityRuns turns the stored
-    // order into runs of CONSECUTIVE same-kind devices, because _evaluateEvChargers shares
-    // surplus between the chargers handed to it in one call — evaluating them one at a time
-    // would silently drop that. Adjacent chargers therefore stay in one run and keep
-    // sharing; chargers the user deliberately separated are served one after the other.
-    for (const run of this._buildPriorityRuns(priorityOrder, chargers, simpleEval)) {
-      if (run.kind === 'charger') {
-        const prevChargerW = run.list.reduce((s, c) => s + c.powerW, 0);
-        const allocatedW   = await this._evaluateEvChargers(battery, effectiveGridW, run.list, cfg, pvW, houseW);
-        // Adjust only by the delta: the existing charger draw is already reflected in gridW
-        const deltaW = allocatedW - prevChargerW;
-        if (effectiveGridW !== null && deltaW !== 0) effectiveGridW += deltaW;
-      } else {
-        const s = simpleEval[run.kind];
-        const allocatedW = await this._evaluateSimpleDevices(
-          battery, effectiveGridW, run.list, s.states, s.start, s.stop, s.arg, cfg,
-        );
-        if (effectiveGridW !== null && allocatedW) effectiveGridW += allocatedW;
-      }
-    }
+    // Priority is per device, not per device class — see _runPriorityLoop in
+    // chargerControl.js, which also carries the shrinking surplus budget between runs.
+    effectiveGridW = await this._runPriorityLoop(
+      battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval,
+    );
 
     // ── Export limit coordinator ──────────────────────────────────────────────
     if (this._warmupDone) {

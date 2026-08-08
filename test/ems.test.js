@@ -2125,3 +2125,87 @@ test('_buildPriorityRuns — empty order falls back to configured order, nothing
   const ids = runs.flatMap((r) => r.list.map((x) => x.id));
   assert.deepStrictEqual(ids.sort(), ['a', 'p']);
 });
+
+// ── _runPriorityLoop (Budget-Weitergabe zwischen den Prioritätsblöcken) ──────────
+// Die Reihenfolge allein entschiede nichts, wenn jeder Block denselben Überschuss sähe.
+// Erst das Mitführen des schrumpfenden Budgets macht daraus eine Priorisierung.
+// Vorzeichen wie überall im EMS: gridW negativ = Einspeisung, Verbrauch schiebt Richtung 0.
+function makeLoopDevice(alloc = {}) {
+  const d = Object.assign({ log() {} }, chargerMixin);
+  d._seen = [];
+  const record = (kind) => async (battery, gridW, list) => {
+    const key = list.map((x) => x.id).join(',');
+    d._seen.push({ kind, key, gridW });
+    return alloc[key] || 0;
+  };
+  d._evaluateEvChargers    = record('charger');
+  d._evaluateSimpleDevices = record('simple');
+  return d;
+}
+const _loopArgs = (d, order, chargers, simple, gridW) =>
+  d._runPriorityLoop({ soc: 50 }, gridW, chargers, {}, null, null, order, simple);
+
+test('_runPriorityLoop — each run sees the surplus the earlier runs left behind', async () => {
+  const d = makeLoopDevice({ a: 2000 });
+  const left = await _loopArgs(d, ['a', 'boil'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  assert.strictEqual(d._seen[0].gridW, -5000);  // first in the order gets the full surplus
+  assert.strictEqual(d._seen[1].gridW, -3000);  // second only what is left
+  assert.strictEqual(left, -3000);
+});
+
+test('_runPriorityLoop — a charger claims only its DELTA, its running draw is already in gridW', async () => {
+  const d = makeLoopDevice({ a: 5000 });
+  await _loopArgs(d, ['a', 'boil'], [{ id: 'a', powerW: 3000 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  // 5000 granted − 3000 already drawn = 2000 newly claimed, not the full 5000
+  assert.strictEqual(d._seen[1].gridW, -3000);
+});
+
+test('_runPriorityLoop — a charger stepping DOWN gives budget back to the next run', async () => {
+  const d = makeLoopDevice({ a: 1000 });
+  await _loopArgs(d, ['a', 'boil'], [{ id: 'a', powerW: 4000 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  assert.strictEqual(d._seen[1].gridW, -8000); // 3000 W released back into the budget
+});
+
+test('_runPriorityLoop — a run that allocates nothing leaves the budget untouched', async () => {
+  const d = makeLoopDevice({});
+  const left = await _loopArgs(d, ['a', 'boil'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  assert.strictEqual(d._seen[1].gridW, -5000);
+  assert.strictEqual(left, -5000);
+});
+
+test('_runPriorityLoop — a null budget stays null and is not turned into arithmetic', async () => {
+  const d = makeLoopDevice({ a: 2000, boil: 1000 });
+  const left = await _loopArgs(d, ['a', 'boil'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), null);
+  assert.strictEqual(d._seen[0].gridW, null);
+  assert.strictEqual(d._seen[1].gridW, null); // NOT 2000 — no meter reading, no budget
+  assert.strictEqual(left, null);
+});
+
+test('_runPriorityLoop — runs are served in the stored order, not the configured order', async () => {
+  const d = makeLoopDevice({});
+  await _loopArgs(d, ['boil', 'a'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  assert.deepStrictEqual(d._seen.map((s) => s.key), ['boil', 'a']);
+});
+
+test('_runPriorityLoop — the budget shrinks across three runs in sequence', async () => {
+  const d = makeLoopDevice({ a: 1000, boil: 1500, pl: 800 });
+  const left = await _loopArgs(d, ['a', 'boil', 'pl'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }], pool: [{ id: 'pl' }] }), -5000);
+  assert.deepStrictEqual(d._seen.map((s) => s.gridW), [-5000, -4000, -2500]);
+  assert.strictEqual(left, -1700);
+});
+
+test('_runPriorityLoop — adjacent chargers share ONE budget deduction, not two', async () => {
+  const d = makeLoopDevice({ 'a,b': 3000 });
+  await _loopArgs(d, ['a', 'b', 'boil'], [{ id: 'a', powerW: 0 }, { id: 'b', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000);
+  assert.strictEqual(d._seen.length, 2);       // one charger run, one boiler run
+  assert.strictEqual(d._seen[1].gridW, -2000); // 3000 W total across both chargers
+});
+
