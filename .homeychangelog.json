@@ -963,5 +963,10 @@
     "en": "The Save button now stays visible at the bottom of the settings page instead of only appearing at its very end, so changes made in an early section are harder to lose.",
     "de": "Der Speichern-Knopf bleibt neu am unteren Rand der Einstellungsseite sichtbar, statt erst ganz am Ende zu erscheinen — so gehen Änderungen in oberen Bereichen weniger leicht verloren.",
     "nl": "De knop Opslaan blijft nu onderaan de instellingenpagina zichtbaar in plaats van pas helemaal onderaan te verschijnen, zodat wijzigingen bovenaan minder snel verloren gaan."
+  },
+  "1.2.102": {
+    "en": "Fixed: the device priority order was reset every time the settings were saved, falling back to a fixed order by device type. Your ranking now survives.",
+    "de": "Behoben: Die Geräte-Priorität wurde bei jedem Speichern der Einstellungen zurückgesetzt und fiel auf eine feste Reihenfolge nach Gerätetyp zurück. Die eingestellte Reihenfolge bleibt jetzt erhalten.",
+    "nl": "Opgelost: de apparaatprioriteit werd bij elke keer opslaan gewist en viel terug op een vaste volgorde per apparaattype. Je volgorde blijft nu behouden."
   }
 }

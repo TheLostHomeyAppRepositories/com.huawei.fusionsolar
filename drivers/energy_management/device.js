@@ -368,14 +368,32 @@ class EmsDevice extends Device {
       dehumidifier: 'dehumidifier_devices',
       aircon:       'aircon_devices',
     };
-    const classOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
-      ? cfg.device_priority_order
-      : Object.keys(LIST_FOR);
+    const stored = Array.isArray(cfg.device_priority_order) ? cfg.device_priority_order : [];
+
+    // The settings page rewrites ems_config wholesale and does not carry _priorityPerDevice
+    // back, so this runs again after every save. By then the stored order holds device ids,
+    // and expanding those as if they were class names resolves nothing — which silently wiped
+    // the user's ranking on every single save. Anything that is not one of the class names
+    // above is an id, so the order has already been migrated: set the guard, change nothing.
+    if (stored.some((k) => !LIST_FOR[k])) {
+      cfg._priorityPerDevice = true;
+      this.homey.settings.set('ems_config', cfg);
+      this.log('[EMS] device priority already per-device — guard re-set, order untouched');
+      return;
+    }
+
+    const classOrder = stored.length ? stored : Object.keys(LIST_FOR);
     const ids = [];
     for (const kind of classOrder) {
       const listKey = LIST_FOR[kind];
       if (!listKey) continue;                     // already an id, or an unknown class
       for (const d of cfg[listKey] || []) if (d.id) ids.push(d.id);
+    }
+    // Belt and braces: never replace an existing ranking with an empty one.
+    if (!ids.length && stored.length) {
+      cfg._priorityPerDevice = true;
+      this.homey.settings.set('ems_config', cfg);
+      return;
     }
     cfg.device_priority_order = ids;
     cfg._priorityPerDevice = true;
