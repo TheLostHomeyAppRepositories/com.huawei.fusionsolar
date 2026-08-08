@@ -73,6 +73,8 @@ class FusionSolarKioskApp extends App {
       ems_stop_pool:                 'pool_device_id',
       ems_start_dehumidifier:        'dehumidifier_device_id',
       ems_stop_dehumidifier:         'dehumidifier_device_id',
+      ems_start_aircon:              'aircon_device_id',
+      ems_stop_aircon:               'aircon_device_id',
       ems_battery_full:              'battery_device_id',
       ems_battery_low:               'battery_device_id',
       ems_inverter_export_limit_on:  'inverter_device_id',
@@ -343,6 +345,7 @@ class FusionSolarKioskApp extends App {
       boiler: { en: 'Boiler', de: 'Boiler', nl: 'Boiler' },
       pool: { en: 'Pool', de: 'Pool', nl: 'Zwembad' },
       dehumidifier: { en: 'Dehumidifier', de: 'Entfeuchter', nl: 'Ontvochtiger' },
+      aircon: { en: 'Air conditioner', de: 'Klimaanlage', nl: 'Airco' },
     };
     try {
       const widget = this.homey.dashboards.getWidget('ems-device');

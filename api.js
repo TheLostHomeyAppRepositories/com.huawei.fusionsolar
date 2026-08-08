@@ -2079,6 +2079,16 @@ module.exports = {
   async postEmsDehumidifierSetupFlows({ homey, body }) {
     return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_dehumidifier', stopCardId: 'ems_stop_dehumidifier', tokenName: 'dehumidifier_device_id', labelSuffix: 'Dehumidifier' });
   },
+  /** GET /ems/aircon/action-cards */
+  async getEmsAirconActionCards({ homey, query }) { return this.getEmsChargerActionCards({ homey, query }); },
+  /** GET /ems/aircon/flows */
+  async getEmsAirconFlows({ homey }) {
+    return _getEmsSimpleDeviceFlows({ homey, startCardId: 'ems_start_aircon', stopCardId: 'ems_stop_aircon', startTokenName: 'aircon_device_id' });
+  },
+  /** POST /ems/aircon/setup-flows */
+  async postEmsAirconSetupFlows({ homey, body }) {
+    return _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId: 'ems_start_aircon', stopCardId: 'ems_stop_aircon', tokenName: 'aircon_device_id', labelSuffix: 'Air conditioner' })
+  },
 
   /**
    * POST /ems/test-trigger

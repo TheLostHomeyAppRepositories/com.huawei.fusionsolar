@@ -215,6 +215,7 @@
       "labelBoiler": "Boilers",
       "labelPool": "Pool / Whirlpool",
       "labelDehumidifier": "Dehumidifier",
+      "labelAircon": "Air conditioner",
       "moveUp": "Move up",
       "moveDown": "Move down"
     },
@@ -345,6 +346,7 @@
       "solarBoiler": "Solar boiler",
       "solarPool": "Solar pool pump",
       "solarDehumidifier": "Solar dehumidifier",
+      "solarAircon": "Solar air conditioning",
       "solarMulti": "Solar (multiple devices)",
       "offpeakEv": "Off-peak EV charging",
       "lowtariffEv": "Low-tariff EV charging",
@@ -447,7 +449,8 @@
       "deviceLabel": {
         "boiler": "boiler",
         "poolPump": "pool pump",
-        "dehumidifier": "dehumidifier"
+        "dehumidifier": "dehumidifier",
+        "aircon": "air conditioner"
       }
     },
     "guard": {
@@ -488,6 +491,7 @@
       "howBoiler": "<b>How it works:</b> The EMS fires two separate triggers: \"<b>EMS: start boiler</b>\" (solar surplus available) and \"<b>EMS: stop boiler</b>\" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.",
       "howPool": "<b>How it works:</b> The EMS fires two separate triggers: \"<b>EMS: start pool</b>\" (solar surplus available) and \"<b>EMS: stop pool</b>\" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.",
       "howDehumidifier": "<b>How it works:</b> The EMS fires two separate triggers: \"<b>EMS: start dehumidifier</b>\" (solar surplus available) and \"<b>EMS: stop dehumidifier</b>\" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.",
+      "howAircon": "The EMS fires \"EMS wants to start / stop air conditioner\" with the device id. Pick the action cards that switch your air conditioner and the flows are created for you.",
       "howHeatPump": "<b>How it works:</b> The EMS fires two separate triggers: \"<b>EMS: start heat pump</b>\" (off-peak or solar surplus) and \"<b>EMS: stop heat pump</b>\" (battery priority or no surplus). Create one Flow per trigger and add the appropriate action.",
       "howCharger": "<b>How it works:</b> The EMS fires the trigger \"<b>EMS: set charger current</b>\" on the EMS device on every change. Create a Homey Flow with this trigger and add your charger action. <br><br> <b>Available tokens:</b> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase1</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase2</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase3</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">amps</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">charger_device_id</code> <br><br> <b>When amps = 0</b> → stop charging (e.g. turn off charger).",
       "chargerIdLabel": "Charger ID (for condition filter):",
@@ -736,6 +740,11 @@
       "hint": "Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
       "addButton": "+ Add dehumidifier"
     },
+    "aircon": {
+      "title": "❄️ Air Conditioner",
+      "hint": "Add your air conditioner. EMS will run it whenever sufficient solar surplus is available. Use the start and stop flows to switch it.",
+      "addButton": "+ Add air conditioner"
+    },
     "inverter": {
       "title": "☀️ Solar Inverter",
       "subtitle": " · solar production source",
@@ -825,6 +834,7 @@
       "flowBoiler": "<span style=\"font-weight:600\">Boiler — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wants to start boiler/heater\"</em> / <em>\"EMS wants to stop boiler/heater\"</em>.</span>",
       "flowPool": "<span style=\"font-weight:600\">Pool — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wants to start pool pump\"</em> / <em>\"EMS wants to stop pool pump\"</em>. On the first tick after app start no flows are fired (observation mode).</span>",
       "flowDehumidifier": "<span style=\"font-weight:600\">Dehumidifier — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wants to start dehumidifier\"</em> / <em>\"EMS wants to stop dehumidifier\"</em> — same solar-surplus logic as heat pumps/boilers/pool.</span>",
+      "flowAircon": "<span style=\"font-weight:600\">Air conditioner — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wants to start air conditioner\"</em> / <em>\"EMS wants to stop air conditioner\"</em> — same solar-surplus logic as heat pumps/boilers/pool.</span>",
       "step3Footer": "Battery and inverter also have flow triggers (force charge/discharge, max power, export limit) — set them up from the <b>Home Batteries</b> section's Flow Actions.",
       "step4Title": "4 · Set up Flow cards",
       "step4Body": "Use the <b>✓ Create / Update Flows</b> button in each device section — it automatically creates the required flows in the Homey folder <em>\"_Huawei EMS\"</em>. You can then open the Homey app, edit those flows, and link them to your devices.",

@@ -35,6 +35,7 @@ class EmsDevice extends Device {
     this._boilerStates        = new Map();
     this._poolStates          = new Map();
     this._dehumidifierStates  = new Map();
+    this._airconStates        = new Map();
     this._batteryStates   = new Map(); // deviceId → { fullFired: boolean, lowFired: boolean }
     this._warmupDone      = false;     // first tick only reads state, no flows fired
     this._tickInProgress  = false;     // prevents overlapping concurrent ticks
@@ -320,7 +321,7 @@ class EmsDevice extends Device {
       clamp(c, 'max_amps', 6, 32);
       clamp(c, 'step_hold_s', 15, 600);
     }
-    for (const key of ['heat_pump_devices', 'boiler_devices', 'pool_devices', 'dehumidifier_devices']) {
+    for (const key of ['heat_pump_devices', 'boiler_devices', 'pool_devices', 'dehumidifier_devices', 'aircon_devices']) {
       for (const d of (cfg[key] || [])) {
         clamp(d, 'startup_grace_s', 0, 900);
         clamp(d, 'min_surplus_w', 0, 1000000);
@@ -365,6 +366,7 @@ class EmsDevice extends Device {
       boiler:       'boiler_devices',
       pool:         'pool_devices',
       dehumidifier: 'dehumidifier_devices',
+      aircon:       'aircon_devices',
     };
     const classOrder = Array.isArray(cfg.device_priority_order) && cfg.device_priority_order.length
       ? cfg.device_priority_order
@@ -575,7 +577,7 @@ class EmsDevice extends Device {
       return;
     }
 
-    const [battery, gridW, pvW, chargers, heatPumps, boilers, pools, dehumidifiers] = await Promise.all([
+    const [battery, gridW, pvW, chargers, heatPumps, boilers, pools, dehumidifiers, aircons] = await Promise.all([
       this._getBattery(cfg),
       this._getGridW(cfg),
       this._getPvW(cfg),
@@ -584,6 +586,7 @@ class EmsDevice extends Device {
       this._getSimpleDevices('boiler_devices', cfg),
       this._getSimpleDevices('pool_devices', cfg),
       this._getSimpleDevices('dehumidifier_devices', cfg),
+      this._getSimpleDevices('aircon_devices', cfg),
     ]);
     this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc;
     // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — seeded to the ALREADY
@@ -610,6 +613,7 @@ class EmsDevice extends Device {
     this._trackSimpleDeviceDaily(boilers,       this._boilerStates,       TICK_MS);
     this._trackSimpleDeviceDaily(pools,         this._poolStates,         TICK_MS);
     this._trackSimpleDeviceDaily(dehumidifiers, this._dehumidifierStates, TICK_MS);
+    this._trackSimpleDeviceDaily(aircons, this._airconStates, TICK_MS);
     if (gridW !== null) {
       await this._set('measure_solar_surplus', Math.max(0, Math.round(-gridW)));
       await this._set('measure_grid_power', Math.round(gridW));
@@ -660,6 +664,7 @@ class EmsDevice extends Device {
       boiler:       { list: boilers,       states: this._boilerStates,      start: 'ems_start_boiler',       stop: 'ems_stop_boiler',       arg: 'boiler_device_id' },
       pool:         { list: pools,         states: this._poolStates,        start: 'ems_start_pool',         stop: 'ems_stop_pool',         arg: 'pool_device_id' },
       dehumidifier: { list: dehumidifiers, states: this._dehumidifierStates, start: 'ems_start_dehumidifier', stop: 'ems_stop_dehumidifier', arg: 'dehumidifier_device_id' },
+      aircon:       { list: aircons,       states: this._airconStates,       start: 'ems_start_aircon',       stop: 'ems_stop_aircon',       arg: 'aircon_device_id' },
     };
     // Priority is per device, not per device class. _buildPriorityRuns turns the stored
     // order into runs of CONSECUTIVE same-kind devices, because _evaluateEvChargers shares
@@ -693,13 +698,14 @@ class EmsDevice extends Device {
     // here. WITH chargers the charger evaluation owns the mode — but when it
     // left a passive state ('holding'/'idle') while e.g. the pool is running,
     // the running simple devices take over the display.
-    const simpleDevicesAll = [...heatPumps, ...boilers, ...pools, ...dehumidifiers];
+    const simpleDevicesAll = [...heatPumps, ...boilers, ...pools, ...dehumidifiers, ...aircons];
     const socStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
     const activeHpCount           = heatPumps.filter((d)     => this._heatPumpStates.get(d.id)?.isOn).length;
     const activeBoilerCount       = boilers.filter((d)       => this._boilerStates.get(d.id)?.isOn).length;
     const activePoolCount         = pools.filter((d)         => this._poolStates.get(d.id)?.isOn).length;
     const activeDehumidifierCount = dehumidifiers.filter((d) => this._dehumidifierStates.get(d.id)?.isOn).length;
-    const activeCount             = activeHpCount + activeBoilerCount + activePoolCount + activeDehumidifierCount;
+    const activeAirconCount       = aircons.filter((d)       => this._airconStates.get(d.id)?.isOn).length;
+    const activeCount             = activeHpCount + activeBoilerCount + activePoolCount + activeDehumidifierCount + activeAirconCount;
     // Name the mode after the single active device type. When several different
     // types run at once, use the generic 'solar_multi' label — previously this
     // fell through to 'solar_hp', which read as "Solar heat pump" even when no
@@ -709,6 +715,7 @@ class EmsDevice extends Device {
       activeBoilerCount       ? MODES.SOLAR_BOILER       : null,
       activePoolCount         ? MODES.SOLAR_POOL         : null,
       activeDehumidifierCount ? MODES.SOLAR_DEHUMIDIFIER : null,
+      activeAirconCount       ? MODES.SOLAR_AIRCON       : null,
     ].filter(Boolean);
     const simpleMode = activeTypes.length === 1 ? activeTypes[0] : MODES.SOLAR_MULTI;
     // List the names of the devices that are actually running, so the history
@@ -718,6 +725,7 @@ class EmsDevice extends Device {
     for (const d of boilers)       if (this._boilerStates.get(d.id)?.isOn)        activeNames.push(d.name);
     for (const d of pools)         if (this._poolStates.get(d.id)?.isOn)          activeNames.push(d.name);
     for (const d of dehumidifiers) if (this._dehumidifierStates.get(d.id)?.isOn) activeNames.push(d.name);
+    for (const d of aircons)       if (this._airconStates.get(d.id)?.isOn)       activeNames.push(d.name);
     const stTextActive = activeNames.length
       ? `${activeNames.join(', ')}${socStr}`
       : `${activeCount} Gerät${activeCount > 1 ? 'e' : ''} aktiv${socStr}`;

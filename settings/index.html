@@ -302,7 +302,7 @@
     .ems-list-row { display:flex; align-items:center; gap:6px; }
     #ems-charger-list, #ems-inverter-list, #ems-meter-list,
     #ems-house-list, #ems-battery-list, #ems-heatpump-list,
-    #ems-boiler-list, #ems-pool-list, #ems-dehumidifier-list { gap:8px !important; }
+    #ems-boiler-list, #ems-pool-list, #ems-dehumidifier-list, #ems-aircon-list { gap:8px !important; }
     .ems-priority-badge {
       display:inline-flex; align-items:center; justify-content:center;
       width:20px; height:20px; border-radius:50%; background:#e5e5ea;
@@ -782,6 +782,7 @@
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px" data-i18n-html="emsInfo.flowBoiler"><span style="font-weight:600">Boiler — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start boiler/heater"</em> / <em>"EMS wants to stop boiler/heater"</em>.</span></div>
               <div style="border-bottom:1px solid var(--color-border,#e8e8ed);padding-bottom:5px" data-i18n-html="emsInfo.flowPool"><span style="font-weight:600">Pool — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start pool pump"</em> / <em>"EMS wants to stop pool pump"</em>. On the first tick after app start no flows are fired (observation mode).</span></div>
               <div data-i18n-html="emsInfo.flowDehumidifier"><span style="font-weight:600">Dehumidifier — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start dehumidifier"</em> / <em>"EMS wants to stop dehumidifier"</em> — same solar-surplus logic as heat pumps/boilers/pool.</span></div>
+              <div data-i18n-html="emsInfo.flowAircon"><span style="font-weight:600">Air conditioner — Start / Stop</span><br><span style="color:var(--color-text-secondary,#6e6e73)">Triggers <em>"EMS wants to start air conditioner"</em> / <em>"EMS wants to stop air conditioner"</em> — same solar-surplus logic as heat pumps/boilers/pool.</span></div>
             </div>
             <div style="margin:8px 0 4px;font-size:11px" data-i18n-html="emsInfo.step3Footer">Battery and inverter also have flow triggers (force charge/discharge, max power, export limit) — set them up from the <b>Home Batteries</b> section's Flow Actions.</div>
           </div>
@@ -1286,6 +1287,16 @@
           <p class="ems-hint" data-i18n="dehumidifier.hint">Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-dehumidifier-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
           <button class="btn-secondary" onclick="emsAddDehumidifierRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="dehumidifier.addButton">+ Add dehumidifier</button>
+        </div>
+      </details>
+
+      <!-- Air Conditioner -->
+      <details class="ems-section">
+        <summary><span class="ems-section-label" data-i18n="aircon.title">❄️ Air Conditioner</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
+        <div class="ems-section-body">
+          <p class="ems-hint" data-i18n="aircon.hint">Add your air conditioner. EMS will run it whenever sufficient solar surplus is available. Use the start and stop flows to switch it.</p>
+          <div id="ems-aircon-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn-secondary" onclick="emsAddAirconRow()" style="margin-bottom:10px;font-size:11px;padding:4px 10px" data-i18n="aircon.addButton">+ Add air conditioner</button>
         </div>
       </details>
 
@@ -2639,6 +2650,7 @@
         ['boiler_devices',       'devicePriority.labelBoiler'],
         ['pool_devices',         'devicePriority.labelPool'],
         ['dehumidifier_devices', 'devicePriority.labelDehumidifier'],
+        ['aircon_devices', 'devicePriority.labelAircon'],
       ];
       var all = [];
       KINDS.forEach(function(k) {
@@ -4248,6 +4260,7 @@
     function emsIsBoiler()       { return false; }
     function emsIsPool()         { return false; }
     function emsIsDehumidifier() { return false; }
+    function emsIsAircon() { return false; }
 
     var EMS_FILTER = {
       charger:      emsIsCharger,
@@ -4259,6 +4272,7 @@
       boiler:       emsIsBoiler,
       pool:         emsIsPool,
       dehumidifier: emsIsDehumidifier,
+      aircon: emsIsAircon,
     };
 
     // ── Select helpers ────────────────────────────────────────────────────────
@@ -5927,6 +5941,240 @@
         'dehumidifierStartCard', 'dehumidifierStopCard', 'dehumidifier',
         'EMS: start dehumidifier', 'EMS: stop dehumidifier',
         _H.__('settings.flowSetup.howDehumidifier')
+      );
+    }
+
+    // ── Air conditioner row functions ─────────────────────────────────────────────
+
+    function emsAddAirconRow(deviceId, stored) {
+      var list  = document.getElementById('ems-aircon-list');
+      var entry = document.createElement('div');
+      entry.className = 'ems-entry';
+
+      var row = document.createElement('div');
+      row.className = 'ems-list-row';
+
+      var sel = document.createElement('select');
+      sel.className = 'ems-row-device';
+      sel.dataset.filterType = 'aircon';
+      emsFillSelect(sel, deviceId || '', null);
+
+      var surplusInput = document.createElement('input');
+      surplusInput.type = 'number';
+      surplusInput.dataset.field = 'min_surplus_w';
+      surplusInput.value = (stored && stored.min_surplus_w) || 2000;
+      surplusInput.min = 500; surplusInput.max = 10000; surplusInput.step = 500;
+      surplusInput.title = _H.__('settings.simpleRow.surplusHintTitle');
+      surplusInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var surplusLabel = document.createElement('span');
+      surplusLabel.textContent = _H.__('settings.simpleRow.surplusHint');
+      surplusLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var sustainInput = document.createElement('input');
+      sustainInput.type = 'number';
+      sustainInput.dataset.field = 'start_sustain_s';
+      sustainInput.value = (stored && stored.start_sustain_s) || 60;
+      sustainInput.min = 0; sustainInput.max = 3600; sustainInput.step = 30;
+      sustainInput.title = _H.__('settings.simpleRow.sustainHintTitle');
+      sustainInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var sustainLabel = document.createElement('span');
+      sustainLabel.textContent = _H.__('settings.simpleRow.sustainHint');
+      sustainLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var graceInput = document.createElement('input');
+      graceInput.type = 'number';
+      graceInput.dataset.field = 'stop_grace_s';
+      graceInput.value = (stored && stored.stop_grace_s) || 60;
+      graceInput.min = 0; graceInput.max = 3600; graceInput.step = 30;
+      graceInput.title = _H.__('settings.simpleRow.graceHintTitle');
+      graceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var graceLabel = document.createElement('span');
+      graceLabel.textContent = _H.__('settings.simpleRow.graceHint');
+      graceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var startupGraceInput = document.createElement('input');
+      startupGraceInput.type = 'number';
+      startupGraceInput.dataset.field = 'startup_grace_s';
+      startupGraceInput.value = (stored && stored.startup_grace_s != null) ? stored.startup_grace_s : 120;
+      startupGraceInput.min = 0; startupGraceInput.max = 900; startupGraceInput.step = 30;
+      startupGraceInput.title = _H.__('settings.simpleRow.startupGraceHintTitle');
+      startupGraceInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var startupGraceLabel = document.createElement('span');
+      startupGraceLabel.textContent = _H.__('settings.simpleRow.startupGraceHint');
+      startupGraceLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var maxRunInput = document.createElement('input');
+      maxRunInput.type = 'number';
+      maxRunInput.dataset.field = 'max_run_min';
+      maxRunInput.value = (stored && stored.max_run_min) || 0;
+      maxRunInput.min = 0; maxRunInput.max = 1440; maxRunInput.step = 10;
+      maxRunInput.title = _H.__('settings.simpleRow.maxRunHintTitle');
+      maxRunInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var maxRunLabel = document.createElement('span');
+      maxRunLabel.textContent = _H.__('settings.simpleRow.maxRunHint');
+      maxRunLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var cooldownInput = document.createElement('input');
+      cooldownInput.type = 'number';
+      cooldownInput.dataset.field = 'restart_cooldown_min';
+      cooldownInput.value = (stored && stored.restart_cooldown_min) || 5;
+      cooldownInput.min = 0; cooldownInput.max = 480; cooldownInput.step = 10;
+      cooldownInput.title = _H.__('settings.simpleRow.cooldownHintTitle');
+      cooldownInput.style.cssText = 'width:60px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+
+      var cooldownLabel = document.createElement('span');
+      cooldownLabel.textContent = _H.__('settings.simpleRow.cooldownHint');
+      cooldownLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4';
+
+      var minPowerInput = document.createElement('input');
+      minPowerInput.type = 'number';
+      minPowerInput.className = 'ems-min-power-field';
+      minPowerInput.dataset.field = 'min_power_w';
+      minPowerInput.value = (stored && stored.min_power_w) || 0;
+      minPowerInput.min = 0; minPowerInput.max = 10000; minPowerInput.step = 100;
+      minPowerInput.title = _H.__('settings.simpleRow.minPowerHintTitle');
+      minPowerInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      var minPowerLabel = document.createElement('span');
+      minPowerLabel.className = 'ems-min-power-field';
+      minPowerLabel.textContent = _H.__('settings.simpleRow.minPowerHint');
+      minPowerLabel.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;display:' + ((stored && stored.cap_power) ? '' : 'none');
+
+      // State source: how the EMS reads whether the device is actually on.
+      //   onoff — the device's on/off switch (default)
+      //   power — measured power ≥ threshold (always-on plugs; pool heater/filter)
+      //   ems   — trust the EMS's own bookkeeping, ignore the device state
+      //           (devices nudged via setpoints/hysteresis, e.g. a heat pump)
+      var stateFromPowerWrap = document.createElement('label');
+            stateFromPowerWrap.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:6px;font-size:11px;color:#3a3a3c;line-height:1.4;margin-top:2px;flex-wrap:wrap';
+      stateFromPowerWrap.style.setProperty('text-transform', 'none', 'important');
+      stateFromPowerWrap.style.setProperty('letter-spacing', 'normal', 'important');
+      var stateSrcLbl = document.createElement('span');
+      stateSrcLbl.textContent = _H.__('settings.simpleRow.stateSource');
+      stateSrcLbl.style.cssText = 'color:#6e6e73;white-space:nowrap';
+      var stateSrcSel = document.createElement('select');
+      stateSrcSel.dataset.field = 'state_source';
+      stateSrcSel.style.cssText = 'padding:5px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff';
+      stateSrcSel.style.setProperty('width', 'auto', 'important');
+      [
+        { id: 'onoff', label: _H.__('settings.simpleRow.stateSrc.onoff') },
+        { id: 'power', label: _H.__('settings.simpleRow.stateSrc.power') },
+        { id: 'ems',   label: _H.__('settings.simpleRow.stateSrc.ems') },
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.label; stateSrcSel.appendChild(opt);
+      });
+      // Back-compat: old boolean state_from_power === true → 'power'
+      stateSrcSel.value = (stored && stored.state_source) || (stored && stored.state_from_power === true ? 'power' : 'onoff');
+      var stateSrcHint = document.createElement('span');
+      stateSrcHint.style.cssText = 'flex-basis:100%;font-size:11px;color:#6e6e73;line-height:1.4';
+      var EMS_STATE_SRC_HINTS = {
+        onoff: _H.__('settings.simpleRow.stateSrcHint.onoff'),
+        power: _H.__('settings.simpleRow.stateSrcHint.power'),
+        ems:   _H.__('settings.simpleRow.stateSrcHint.ems'),
+      };
+      function _updStateHint() { stateSrcHint.textContent = EMS_STATE_SRC_HINTS[stateSrcSel.value] || ''; }
+      stateSrcSel.addEventListener('change', _updStateHint); _updStateHint();
+      stateFromPowerWrap.appendChild(stateSrcLbl);
+      stateFromPowerWrap.appendChild(stateSrcSel);
+      stateFromPowerWrap.appendChild(stateSrcHint);
+
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'ems-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = function() { entry.remove(); };
+
+      row.appendChild(sel);
+      row.appendChild(removeBtn);
+
+      var configRow = document.createElement('div');
+      configRow.className = 'ems-config-row';
+      // Basic fields — the three most users need.
+      configRow.appendChild(surplusInput);  configRow.appendChild(surplusLabel);
+      configRow.appendChild(sustainInput);  configRow.appendChild(sustainLabel);
+      configRow.appendChild(graceInput);    configRow.appendChild(graceLabel);
+      // Advanced fields — collapsed by default (full-width details inside the grid).
+      var advDetails = document.createElement('details');
+      advDetails.style.cssText = 'grid-column:1/-1;margin-top:4px';
+      var advSum = document.createElement('summary');
+      advSum.textContent = _H.__('settings.simpleRow.advancedSettings');
+      advSum.style.cssText = 'font-size:11px;color:#6e6e73;cursor:pointer;user-select:none;text-transform:none;letter-spacing:normal';
+      advDetails.appendChild(advSum);
+      var advGrid = document.createElement('div');
+      advGrid.className = 'ems-config-row';
+      advGrid.style.marginTop = '6px';
+      advGrid.appendChild(minPowerInput);     advGrid.appendChild(minPowerLabel);
+      advGrid.appendChild(startupGraceInput); advGrid.appendChild(startupGraceLabel);
+      advGrid.appendChild(maxRunInput);       advGrid.appendChild(maxRunLabel);
+      advGrid.appendChild(cooldownInput);     advGrid.appendChild(cooldownLabel);
+      advGrid.appendChild(stateFromPowerWrap);
+      advDetails.appendChild(advGrid);
+      configRow.appendChild(advDetails);
+
+      var capsInfo = document.createElement('div');
+      capsInfo.className = 'ems-caps-info';
+
+      var flowSection = document.createElement('div');
+      flowSection.className = 'ems-flow-section';
+
+      // Schalter je Geraet, gleiche Optik wie die uebrigen Schalter der Seite. Loest den
+      // bisherigen Bereichsschalter ab: der war ein zweites gespeichertes Flag, das das
+      // Geraete-Flag still ueberstimmte — dieselbe Konstruktion, die bei den Ladern zu
+      // widerspruechlichen Anzeigen gefuehrt hat. Fehlender Wert heisst an.
+      var enGroup = document.createElement('label');
+      enGroup.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;color:#6e6e73;cursor:pointer';
+      var enSwitch = document.createElement('span');
+      enSwitch.className = 'ems-toggle-switch';
+      var enChk = document.createElement('input');
+      enChk.type = 'checkbox';
+      enChk.className = 'ems-simple-enabled';
+      enChk.checked = !(stored && stored.enabled === false);
+      var enSlider = document.createElement('span');
+      enSlider.className = 'ems-toggle-slider';
+      enSwitch.appendChild(enChk); enSwitch.appendChild(enSlider);
+      var enTxt = document.createElement('span');
+      enTxt.setAttribute('data-i18n', 'evChargers.rowEnabled');
+      enTxt.textContent = _H.__('settings.evChargers.rowEnabled') || 'EMS control';
+      enGroup.appendChild(enSwitch); enGroup.appendChild(enTxt);
+      // Ohne Erklaerung sagt der Schalter nicht, was er bewirkt — der frühere Bereichsschalter
+      // hatte einen Beschreibungstext, der beim Entfernen mitging.
+      var enHint = document.createElement('div');
+      enHint.setAttribute('data-i18n', 'evChargers.rowEnabledHint');
+      enHint.style.cssText = 'font-size:10px;color:#8e8e93;line-height:1.35;margin-top:2px';
+      enHint.textContent = _H.__('settings.evChargers.rowEnabledHint') || '';
+      var enWrap = document.createElement('div');
+      enWrap.style.cssText = 'display:flex;flex-direction:column;flex:1 1 100%;grid-column:1/-1';
+      enWrap.appendChild(enGroup); enWrap.appendChild(enHint);
+      configRow.appendChild(enWrap);
+
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      list.appendChild(entry);
+
+      sel.addEventListener('change', function() {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(sel.value), null, 'aircon');
+        entry.dataset.airconStartCard = '';
+        entry.dataset.airconStopCard  = '';
+        emsRenderAirconFlows(flowSection, sel.value, entry, {});
+      });
+      entry.dataset.airconStartCard = (stored && stored.start_card) || '';
+      entry.dataset.airconStopCard  = (stored && stored.stop_card)  || '';
+      if (deviceId) {
+        _emsRenderSimpleCaps(row, emsDeviceCaps(deviceId), stored || null, 'aircon');
+        emsRenderAirconFlows(flowSection, deviceId, entry, stored);
+      }
+    }
+
+    function emsGetAircons() { return _emsGetSimpleRows('ems-aircon-list', 'airconStartCard', 'airconStopCard'); }
+
+    function emsRenderAirconFlows(container, deviceId, entry, stored) {
+      _emsRenderSimpleFlows(container, deviceId, entry, stored,
+        'airconStartCard', 'airconStopCard', 'aircon',
+        'EMS: start aircon', 'EMS: stop aircon',
+        _H.__('settings.flowSetup.howAircon')
       );
     }
 
@@ -7849,6 +8097,11 @@
       document.getElementById('ems-dehumidifier-list').innerHTML = '';
       var dehumidifierDevs = cfg.dehumidifier_devices || [];
       dehumidifierDevs.forEach(function(d) { emsAddDehumidifierRow(d.id, d); });
+      
+      // ── Air conditioner devices ─────────────────────────────────
+      document.getElementById('ems-aircon-list').innerHTML = '';
+      var airconDevs = cfg.aircon_devices || [];
+      airconDevs.forEach(function(d) { emsAddAirconRow(d.id, d); });
 
       // ── Scalar settings ───────────────────────────────────────────────────────
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
@@ -7924,6 +8177,7 @@
       var boilerDevs  = emsGetBoilers();
       var poolDevs          = emsGetPools();
       var dehumidifierDevs  = emsGetDehumidifiers();
+      var airconDevs        = emsGetAircons();
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
 
@@ -7972,6 +8226,7 @@
         boiler_devices:      boilerDevs,
         pool_devices:        poolDevs,
         dehumidifier_devices: dehumidifierDevs,
+        aircon_devices:       airconDevs,
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
         orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
@@ -8031,6 +8286,7 @@
         solar_boiler:     { label: t('solarBoiler'),             dot: '#32ade6' },
         solar_pool:       { label: t('solarPool'),       dot: '#00c7be' },
         solar_dehumidifier: { label: t('solarDehumidifier'),     dot: '#30d158' },
+        solar_aircon:       { label: t('solarAircon'),           dot: '#30d158' },
         solar_multi:      { label: t('solarMulti'), dot: '#30d158' },
         offpeak_ev:       { label: t('offpeakEv'),     dot: '#007aff' },
         lowtariff_ev:     { label: t('lowtariffEv'),   dot: '#5ac8fa' },

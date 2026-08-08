@@ -215,6 +215,7 @@
       "labelBoiler": "Boiler",
       "labelPool": "Pool / Whirlpool",
       "labelDehumidifier": "Entfeuchter",
+      "labelAircon": "Klimaanlage",
       "moveUp": "Nach oben",
       "moveDown": "Nach unten"
     },
@@ -345,6 +346,7 @@
       "solarBoiler": "Solar-Boiler",
       "solarPool": "Solar-Poolpumpe",
       "solarDehumidifier": "Solar-Entfeuchter",
+      "solarAircon": "Solar-Klimaanlage",
       "solarMulti": "Solar (mehrere Geräte)",
       "offpeakEv": "Off-Peak-EV-Laden",
       "lowtariffEv": "Niedertarif-EV-Laden",
@@ -447,7 +449,8 @@
       "deviceLabel": {
         "boiler": "Boiler",
         "poolPump": "Poolpumpen",
-        "dehumidifier": "Entfeuchter"
+        "dehumidifier": "Entfeuchter",
+        "aircon": "Klimaanlage"
       }
     },
     "guard": {
@@ -488,6 +491,7 @@
       "howBoiler": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start boiler</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop boiler</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
       "howPool": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start pool</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop pool</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
       "howDehumidifier": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start dehumidifier</b>\" (Solarüberschuss verfügbar) und \"<b>EMS: stop dehumidifier</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
+      "howAircon": "Das EMS löst „EMS möchte Klimaanlage starten/stoppen“ mit der Geräte-ID aus. Wähle die Aktionskarten, die deine Klimaanlage schalten — die Flows werden dann für dich erstellt.",
       "howHeatPump": "<b>Funktionsweise:</b> Das EMS löst zwei separate Trigger aus: \"<b>EMS: start heat pump</b>\" (Off-Peak oder Solarüberschuss) und \"<b>EMS: stop heat pump</b>\" (Batterie-Priorität oder kein Überschuss). Pro Trigger einen Flow erstellen und die passende Aktion hinzufügen.",
       "howCharger": "<b>Funktionsweise:</b> Das EMS löst bei jeder Änderung den Trigger \"<b>EMS: set charger current</b>\" auf dem EMS-Gerät aus. Einen Homey-Flow mit diesem Trigger erstellen und die Lader-Aktion hinzufügen. <br><br> <b>Verfügbare Tokens:</b> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase1</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase2</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase3</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">amps</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">charger_device_id</code> <br><br> <b>Bei amps = 0</b> → Laden stoppen (z. B. Lader ausschalten).",
       "chargerIdLabel": "Lader-ID (für Bedingungsfilter):",
@@ -736,6 +740,11 @@
       "hint": "Den Entfeuchter hinzufügen. Das EMS lässt ihn laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
       "addButton": "+ Entfeuchter hinzufügen"
     },
+    "aircon": {
+      "title": "❄️ Klimaanlage",
+      "hint": "Füge deine Klimaanlage hinzu. Das EMS lässt sie laufen, sobald genug Solarüberschuss vorhanden ist. Zum Schalten dienen die Start- und Stopp-Flows.",
+      "addButton": "+ Klimaanlage hinzufügen"
+    },
     "inverter": {
       "title": "☀️ Solar-Wechselrichter",
       "subtitle": " · Quelle für Solarproduktion",
@@ -825,6 +834,7 @@
       "flowBoiler": "<span style=\"font-weight:600\">Boiler — Start / Stopp</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start boiler/heater\"</em> / <em>\"EMS wants to stop boiler/heater\"</em>.</span>",
       "flowPool": "<span style=\"font-weight:600\">Pool — Start / Stopp</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start pool pump\"</em> / <em>\"EMS wants to stop pool pump\"</em>. Beim ersten Tick nach App-Start werden keine Flows ausgelöst (Beobachtungsmodus).</span>",
       "flowDehumidifier": "<span style=\"font-weight:600\">Entfeuchter — Start / Stopp</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start dehumidifier\"</em> / <em>\"EMS wants to stop dehumidifier\"</em> — gleiche Solarüberschuss-Logik wie Wärmepumpen/Boiler/Pool.</span>",
+      "flowAircon": "<span style=\"font-weight:600\">Klimaanlage — Start / Stopp</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Trigger <em>\"EMS wants to start dehumidifier\"</em> / <em>\"EMS wants to stop dehumidifier\"</em> — gleiche Solarüberschuss-Logik wie Wärmepumpen/Boiler/Pool.</span>",
       "step3Footer": "Batterie und Wechselrichter haben ebenfalls Flow-Trigger (Zwangsladen/-entladen, max. Leistung, Einspeiselimit) — im Abschnitt <b>Hausbatterien</b> unter Flow-Aktionen einrichten.",
       "step4Title": "4 · Flow-Karten einrichten",
       "step4Body": "Den Button <b>✓ Create / Update Flows</b> in jedem Geräteabschnitt nutzen — erstellt automatisch die benötigten Flows im Homey-Ordner <em>\"_Huawei EMS\"</em>. Danach die Homey-App öffnen, diese Flows bearbeiten und mit den Geräten verknüpfen.",

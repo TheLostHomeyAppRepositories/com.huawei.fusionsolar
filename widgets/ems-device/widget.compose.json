@@ -12,7 +12,7 @@
       "id": "device",
       "type": "autocomplete",
       "title": {
-        "en": "Device (EV charger, heat pump, boiler, pool, dehumidifier)",
+        "en": "Device (EV charger, heat pump, boiler, pool, dehumidifier, air conditioner)",
         "de": "Gerät (EV-Lader, Wärmepumpe, Boiler, Pool, Entfeuchter)",
         "nl": "Apparaat (EV-lader, warmtepomp, boiler, zwembad, ontvochtiger)",
         "fr": "Appareil (borne EV, pompe à chaleur, chauffe-eau, piscine, déshumidificateur)"

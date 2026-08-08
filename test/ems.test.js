@@ -1686,6 +1686,7 @@ function makeWidgetDevice(extra = {}) {
     _boilerStates:       new Map(),
     _poolStates:         new Map(),
     _dehumidifierStates: new Map(),
+    _airconStates: new Map(),
     _batteryStates:      new Map(),
     _carStates: [],
     homey: { clock: { getTimezone: () => 'Europe/Zurich' }, settings: { set() {} } },
@@ -1803,11 +1804,13 @@ test('_listControllables — lists chargers first, then the four simple classes'
     boiler_devices:      [{ id: 'b1' }],
     pool_devices:        [{ id: 'p1' }],
     dehumidifier_devices:[{ id: 'd1' }],
+    aircon_devices:      [{ id: 'a1' }],
   };
   assert.deepStrictEqual(d._listControllables(cfg), [
     { id: 'c1', kind: 'charger' }, { id: 'c2', kind: 'charger' },
     { id: 'h1', kind: 'heat_pump' }, { id: 'b1', kind: 'boiler' },
     { id: 'p1', kind: 'pool' }, { id: 'd1', kind: 'dehumidifier' },
+    { id: 'a1', kind: 'aircon' },
   ]);
 });
 test('_listControllables — empty config yields an empty list', () => {
@@ -2069,6 +2072,7 @@ const _prioSimple = (lists) => ({
   boiler:       { list: lists.boiler       || [] },
   pool:         { list: lists.pool         || [] },
   dehumidifier: { list: lists.dehumidifier || [] },
+  aircon: { list: lists.aircon || [] },
 });
 
 test('_buildPriorityRuns — adjacent chargers stay in ONE run so they keep sharing surplus', () => {

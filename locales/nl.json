@@ -215,6 +215,7 @@
       "labelBoiler": "Boilers",
       "labelPool": "Zwembad / Whirlpool",
       "labelDehumidifier": "Ontvochtiger",
+      "labelAircon": "Airco",
       "moveUp": "Omhoog verplaatsen",
       "moveDown": "Omlaag verplaatsen"
     },
@@ -345,6 +346,7 @@
       "solarBoiler": "Zon boiler",
       "solarPool": "Zon zwembadpomp",
       "solarDehumidifier": "Zon ontvochtiger",
+      "solarAircon": "Zonne-airco",
       "solarMulti": "Zon (meerdere apparaten)",
       "offpeakEv": "Daltarief EV-laden",
       "lowtariffEv": "Laag-tarief EV-laden",
@@ -447,7 +449,8 @@
       "deviceLabel": {
         "boiler": "boiler",
         "poolPump": "zwembadpomp",
-        "dehumidifier": "ontvochtiger"
+        "dehumidifier": "ontvochtiger",
+        "aircon": "airco"
       }
     },
     "guard": {
@@ -488,6 +491,7 @@
       "howBoiler": "<b>Hoe het werkt:</b> De EMS activeert twee aparte triggers: \"<b>EMS: start boiler</b>\" (zonneoverschot beschikbaar) en \"<b>EMS: stop boiler</b>\" (batterijprioriteit of geen overschot). Maak per trigger één Flow aan en voeg de juiste actie toe.",
       "howPool": "<b>Hoe het werkt:</b> De EMS activeert twee aparte triggers: \"<b>EMS: start zwembad</b>\" (zonneoverschot beschikbaar) en \"<b>EMS: stop zwembad</b>\" (batterijprioriteit of geen overschot). Maak per trigger één Flow aan en voeg de juiste actie toe.",
       "howDehumidifier": "<b>Hoe het werkt:</b> De EMS activeert twee aparte triggers: \"<b>EMS: start ontvochtiger</b>\" (zonneoverschot beschikbaar) en \"<b>EMS: stop ontvochtiger</b>\" (batterijprioriteit of geen overschot). Maak per trigger één Flow aan en voeg de juiste actie toe.",
+      "howAircon": "Het EMS start \"EMS wil de airco starten/stoppen\" met de apparaat-ID. Kies de actiekaarten die je airco schakelen, dan worden de flows voor je aangemaakt.",
       "howHeatPump": "<b>Hoe het werkt:</b> De EMS activeert twee aparte triggers: \"<b>EMS: start warmtepomp</b>\" (daltarief of zonneoverschot) en \"<b>EMS: stop warmtepomp</b>\" (batterijprioriteit of geen overschot). Maak per trigger één Flow aan en voeg de juiste actie toe.",
       "howCharger": "<b>Hoe het werkt:</b> De EMS activeert bij elke wijziging de trigger \"<b>EMS: laadstroom instellen</b>\" op het EMS-apparaat. Maak een Homey-flow aan met deze trigger en voeg je laderactie toe. <br><br> <b>Beschikbare tokens:</b> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase1</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase2</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">phase3</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">amps</code> <code style=\"background:#e5e5ea;padding:1px 4px;border-radius:3px\">charger_device_id</code> <br><br> <b>Wanneer amps = 0</b> → laden stoppen (bijv. lader uitschakelen).",
       "chargerIdLabel": "Lader-ID (voor conditiefilter):",
@@ -736,6 +740,11 @@
       "hint": "Voeg je ontvochtiger toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
       "addButton": "+ Ontvochtiger toevoegen"
     },
+    "aircon": {
+      "title": "❄️ Airco",
+      "hint": "Voeg je airco toe. Het EMS laat hem draaien zodra er voldoende zonneoverschot is. Gebruik de start- en stopflows om hem te schakelen.",
+      "addButton": "+ Airco toevoegen"
+    },
     "inverter": {
       "title": "☀️ Zonne-omvormer",
       "subtitle": " · bron van zonneproductie",
@@ -825,6 +834,7 @@
       "flowBoiler": "<span style=\"font-weight:600\">Boiler — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wil boiler/verwarmer starten\"</em> / <em>\"EMS wil boiler/verwarmer stoppen\"</em>.</span>",
       "flowPool": "<span style=\"font-weight:600\">Zwembad — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wil zwembadpomp starten\"</em> / <em>\"EMS wil zwembadpomp stoppen\"</em>. Bij de eerste tick na het starten van de app worden geen flows geactiveerd (observatiemodus).</span>",
       "flowDehumidifier": "<span style=\"font-weight:600\">Ontvochtiger — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wil ontvochtiger starten\"</em> / <em>\"EMS wil ontvochtiger stoppen\"</em> — zelfde zonneoverschotlogica als warmtepompen/boilers/zwembad.</span>",
+      "flowAircon": "<span style=\"font-weight:600\">Airco — Start / Stop</span><br><span style=\"color:var(--color-text-secondary,#6e6e73)\">Triggers <em>\"EMS wil airco starten\"</em> / <em>\"EMS wil airco stoppen\"</em> — zelfde zonneoverschotlogica als warmtepompen/boilers/zwembad.</span>",
       "step3Footer": "Batterij en omvormer hebben ook flow-triggers (force charge/discharge, max. vermogen, exportlimiet) — stel deze in via de Flow-acties in de sectie <b>Thuisbatterijen</b>.",
       "step4Title": "4 · Flow-kaarten instellen",
       "step4Body": "Gebruik de knop <b>✓ Flows aanmaken / bijwerken</b> in elke apparaatsectie — deze maakt automatisch de benodigde flows aan in de Homey-map <em>\"_Huawei EMS\"</em>. Open daarna de Homey-app, bewerk deze flows en koppel ze aan je apparaten.",

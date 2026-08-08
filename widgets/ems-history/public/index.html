@@ -283,7 +283,7 @@ var DICTS = (function () {
     started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt',
     modes: {
       solar_ev: 'Solar-EV-Laden', solar_hp: 'Solar-Wärmepumpe', solar_boiler: 'Solar-Boiler', solar_pool: 'Solar-Poolpumpe',
-      solar_dehumidifier: 'Solar-Entfeuchter', solar_multi: 'Solar (mehrere Geräte)',
+      solar_dehumidifier: 'Solar-Entfeuchter', solar_aircon: 'Solar-Klimaanlage', solar_multi: 'Solar (mehrere Geräte)',
       offpeak_ev: 'Off-Peak-EV-Laden', lowtariff_ev: 'Niedertarif-EV-Laden', price_ev: 'Preisoptimiertes EV-Laden',
       instant_ev: 'Sofortladen (max.)', battery_priority: 'Batterie-Priorität', holding: 'Wartet — kein Überschuss',
       idle: 'Kein EV verbunden', disabled: 'EMS deaktiviert', not_configured: 'Nicht konfiguriert', error: 'Fehler',
@@ -299,7 +299,7 @@ var DICTS = (function () {
     started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt',
     modes: {
       solar_ev: 'Zon EV-laden', solar_hp: 'Zon warmtepomp', solar_boiler: 'Zon boiler', solar_pool: 'Zon zwembadpomp',
-      solar_dehumidifier: 'Zon ontvochtiger', solar_multi: 'Zon (meerdere apparaten)',
+      solar_dehumidifier: 'Zon ontvochtiger', solar_aircon: 'Zonne-airco', solar_multi: 'Zon (meerdere apparaten)',
       offpeak_ev: 'Daltarief EV-laden', lowtariff_ev: 'Laag-tarief EV-laden', price_ev: 'Prijsgeoptimaliseerd EV-laden',
       instant_ev: 'Direct laden (max)', battery_priority: 'Batterijprioriteit', holding: 'Wachten — geen overschot',
       idle: 'Geen EV aangesloten', disabled: 'EMS uitgeschakeld', not_configured: 'Niet geconfigureerd', error: 'Fout',
@@ -315,7 +315,7 @@ var DICTS = (function () {
     started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped',
     modes: {
       solar_ev: 'Solar EV charging', solar_hp: 'Solar heat pump', solar_boiler: 'Solar boiler', solar_pool: 'Solar pool pump',
-      solar_dehumidifier: 'Solar dehumidifier', solar_multi: 'Solar (multiple devices)',
+      solar_dehumidifier: 'Solar dehumidifier', solar_aircon: 'Solar air conditioning', solar_multi: 'Solar (multiple devices)',
       offpeak_ev: 'Off-peak EV charging', lowtariff_ev: 'Low-tariff EV charging', price_ev: 'Price-optimised EV charging',
       instant_ev: 'Instant charge (max)', battery_priority: 'Battery priority', holding: 'Waiting — no surplus',
       idle: 'No EV connected', disabled: 'EMS disabled', not_configured: 'Not configured', error: 'Error',
@@ -346,7 +346,7 @@ document.getElementById('initialLoading').textContent    = T.loading;
 // ── Mode metadata ──────────────────────────────────────────────────────────
 var MODE_DOTS = {
   solar_ev: 'dot-solar-ev', solar_hp: 'dot-solar-hp', solar_boiler: 'dot-solar-boiler', solar_pool: 'dot-solar-pool',
-  solar_dehumidifier: 'dot-solar-hp', solar_multi: 'dot-solar-hp',
+  solar_dehumidifier: 'dot-solar-hp', solar_aircon: 'dot-solar-hp', solar_multi: 'dot-solar-hp',
   offpeak_ev: 'dot-offpeak-ev', lowtariff_ev: 'dot-lowtariff-ev', price_ev: 'dot-price-ev', instant_ev: 'dot-instant-ev',
   battery_priority: 'dot-battery', holding: 'dot-holding', idle: 'dot-idle', disabled: 'dot-disabled',
   not_configured: 'dot-disabled', error: 'dot-error', export_limit_on: 'dot-export-limit-on', export_limit_off: 'dot-export-limit-off',
