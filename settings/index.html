@@ -303,6 +303,17 @@
     #ems-charger-list, #ems-inverter-list, #ems-meter-list,
     #ems-house-list, #ems-battery-list, #ems-heatpump-list,
     #ems-boiler-list, #ems-pool-list, #ems-dehumidifier-list, #ems-aircon-list { gap:8px !important; }
+    /* The settings page is long — the save button used to sit only at its very end, so a
+       change made in an early section could be lost by leaving the page. The bar rides
+       along at the bottom of the viewport instead. Should an ancestor ever clip overflow
+       and sticky stop applying, it falls back to sitting at the end: where it was before. */
+    .ems-save-bar {
+      position:sticky; bottom:0; z-index:20;
+      padding:12px 0 10px;
+      background:#fff;
+      border-top:1px solid var(--color-border,#e8e8ed);
+    }
+    .ems-save-bar .btn-primary { width:100%; }
     .ems-priority-badge {
       display:inline-flex; align-items:center; justify-content:center;
       width:20px; height:20px; border-radius:50%; background:#e5e5ea;
@@ -1382,8 +1393,10 @@
         </div>
       </details>
 
-      <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
-      <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
+      <div class="ems-save-bar">
+        <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
+        <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
+      </div>
     </div>
   </div>
 

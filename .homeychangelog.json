@@ -958,5 +958,10 @@
     "en": "Internal: the settings API now looks up its Homey connection in one shared place instead of 23 copies. Behaviour is unchanged and covered by tests.",
     "de": "Intern: Die Einstellungs-API ermittelt ihre Homey-Verbindung neu an einer gemeinsamen Stelle statt in 23 Kopien. Verhalten unverändert und durch Tests abgedeckt.",
     "nl": "Intern: de instellingen-API zoekt zijn Homey-verbinding nu op één gedeelde plek op in plaats van in 23 kopieën. Gedrag ongewijzigd en door tests gedekt."
+  },
+  "1.2.101": {
+    "en": "The Save button now stays visible at the bottom of the settings page instead of only appearing at its very end, so changes made in an early section are harder to lose.",
+    "de": "Der Speichern-Knopf bleibt neu am unteren Rand der Einstellungsseite sichtbar, statt erst ganz am Ende zu erscheinen — so gehen Änderungen in oberen Bereichen weniger leicht verloren.",
+    "nl": "De knop Opslaan blijft nu onderaan de instellingenpagina zichtbaar in plaats van pas helemaal onderaan te verschijnen, zodat wijzigingen bovenaan minder snel verloren gaan."
   }
 }
