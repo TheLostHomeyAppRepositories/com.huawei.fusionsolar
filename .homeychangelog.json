@@ -943,5 +943,10 @@
     "en": "The device-priority loop is now covered by tests: the surplus budget handed from one priority run to the next was the only untested half of the mechanism.",
     "de": "Die Schleife der Geräte-Priorität ist neu durch Tests abgedeckt: Die Weitergabe des Überschuss-Budgets von einem Block zum nächsten war die einzige ungeprüfte Hälfte des Mechanismus.",
     "nl": "De lus voor apparaatprioriteit is nu door tests gedekt: het doorgeven van het overschotbudget tussen prioriteitsblokken was de enige ongeteste helft."
+  },
+  "1.2.98": {
+    "en": "Internal cleanup: the five near-identical device row builders in the settings page are now one shared builder, removing about 900 duplicated lines. No change in behaviour.",
+    "de": "Interne Aufräumung: Die fünf fast identischen Gerätezeilen-Bauer der Einstellungsseite sind neu ein gemeinsamer Bauer — rund 900 doppelte Zeilen weniger. Verhalten unverändert.",
+    "nl": "Interne opschoning: de vijf vrijwel identieke apparaatrij-bouwers in de instellingenpagina zijn nu één gedeelde bouwer, zo’n 900 dubbele regels minder. Gedrag ongewijzigd."
   }
 }
