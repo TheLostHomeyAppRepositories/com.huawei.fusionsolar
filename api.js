@@ -28,6 +28,29 @@ const {
 const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
 const { version: APP_VERSION } = require('./app.json');
 
+/**
+ * The EMS device's Homey local-API client, or null when no EMS device is paired or the
+ * paired one has no API key.
+ *
+ * Every route that talks to the local API used to inline this lookup — 24 copies. The
+ * lookup is shared; each route keeps its own "no API key" return shape, because the
+ * settings page branches on those (test/api.test.js pins all nine of them).
+ */
+function _emsApi(homey) {
+  let apiKey = '', emsDeviceId = '';
+  try {
+    const devices = homey.drivers.getDriver('energy_management').getDevices();
+    if (devices.length > 0) {
+      apiKey      = devices[0].getSetting('homey_api_key') || '';
+      emsDeviceId = devices[0].getData().id || '';
+    }
+  } catch { /* driver not yet paired */ }
+  if (!apiKey) return null;
+  const HomeyLocalApi = require('./lib/homey-local-api');
+  return { api: new HomeyLocalApi({ homey, apiKey }), apiKey, emsDeviceId };
+}
+
+
 // ─── Register sets per driver ─────────────────────────────────────────────────
 // Each entry maps a human-readable group name → register map.
 // Used by the debug settings page to do live register reads.
@@ -105,15 +128,9 @@ const MODBUS_DRIVER_IDS = Object.keys(DRIVER_REGISTER_SETS);
 // ─── API handlers ─────────────────────────────────────────────────────────────
 
 async function _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startTokenName }) {
-  let apiKey = '', emsDeviceId = '';
-  try {
-    const driver = homey.drivers.getDriver('energy_management');
-    const devs   = driver.getDevices();
-    if (devs.length > 0) { apiKey = devs[0].getSetting('homey_api_key') || ''; emsDeviceId = devs[0].getData().id || ''; }
-  } catch { }
-  if (!apiKey) return { matched: [], error: 'No API key' };
-  const HomeyLocalApi = require('./lib/homey-local-api');
-  const api = new HomeyLocalApi({ homey, apiKey });
+  const _ems = _emsApi(homey);
+  if (!_ems) return { matched: [], error: 'No API key' };
+  const { api, apiKey, emsDeviceId } = _ems;
   try {
     const flows = await api.getFlows().catch(() => ({}));
     const matched = [];
@@ -146,16 +163,10 @@ async function _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCa
   const { emsDeviceId, deviceId, deviceName, startCardId: startActId, startCardUri, stopCardId: stopActId, stopCardUri } = body || {};
   if (!emsDeviceId || !deviceId || !startActId || !startCardUri || !stopActId || !stopCardUri)
     return { error: 'Missing required fields' };
-  let apiKey = '';
-  try {
-    const driver = homey.drivers.getDriver('energy_management');
-    const devs   = driver.getDevices();
-    if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
-  } catch { }
-  if (!apiKey) return { error: 'No API key' };
-  const HomeyLocalApi = require('./lib/homey-local-api');
+  const _ems = _emsApi(homey);
+  if (!_ems) return { error: 'No API key' };
+  const { api, apiKey } = _ems;
   const APP_URI = 'homey:app:com.huawei.fusionsolar';
-  const api = new HomeyLocalApi({ homey, apiKey });
   let folderId = null;
   try {
     const folders  = await api.getFlowFolders();
@@ -893,6 +904,9 @@ module.exports = {
 
   /** GET /ems/devices — returns all Homey devices for dropdown selection */
   async getEmsDevices({ homey }) {
+      // Keeps its own lookup rather than using _emsApi: this route reports WHY the key is
+      // missing (driver present? how many devices? key set but empty?), which the shared
+      // helper deliberately does not carry — it answers only "usable client or not".
     let apiKey = '';
     let diagInfo = '';
     try {
@@ -908,9 +922,9 @@ module.exports = {
       diagInfo = `exception: ${e.message}`;
     }
     if (!apiKey) return { error: `No EMS device or API key found. Add an EMS device first. [${diagInfo}]` };
+      const HomeyLocalApi = require('./lib/homey-local-api');
+      const api  = new HomeyLocalApi({ homey, apiKey });
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api  = new HomeyLocalApi({ homey, apiKey });
     const data = await api.getDevices();
     return Object.values(data).map((d) => ({
       id:              d.id,
@@ -926,16 +940,10 @@ module.exports = {
 
   /** GET /ems/debug — returns raw REST API fields for first 5 devices (for debugging) */
   async getEmsDebug({ homey }) {
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api  = new HomeyLocalApi({ homey, apiKey });
     const data = await api.getDevices();
     return Object.values(data).slice(0, 5).map((d) => ({
       name:         d.name,
@@ -956,15 +964,9 @@ module.exports = {
   async postEmsCapabilityValue({ homey, body }) {
     const { deviceId, cap } = body || {};
     if (!deviceId || !cap) return { value: null, error: 'Missing deviceId or cap' };
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { value: null, error: 'No API key' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api    = new HomeyLocalApi({ homey, apiKey });
+    const _ems = _emsApi(homey);
+    if (!_ems) return { value: null, error: 'No API key' };
+    const { api, apiKey } = _ems;
     const device = await api.getDevice(deviceId);
     if (!device) return { value: null, error: 'Device not found' };
     // capabilitiesObj is an object keyed by capability ID containing { value, ... }
@@ -978,16 +980,10 @@ module.exports = {
 
   /** GET /ems/trigger-cards — returns all trigger cards from Homey to find the correct ID format */
   async getEmsTriggerCards({ homey }) {
-    let apiKey = '';
-    try {
-      const driver = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       const raw = await api._req('GET', '/manager/flow/flowcardtrigger');
       const all = Object.values(raw || {});
@@ -1024,16 +1020,10 @@ module.exports = {
   async getEmsDebugFlow({ homey, query }) {
     const flowId = query && query.flowId;
 
-    let apiKey = '';
-    try {
-      const driver = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       if (flowId) {
         return await api._req('GET', `/manager/flow/flow/${flowId}`);
@@ -1055,19 +1045,10 @@ module.exports = {
 
   /** GET /ems/flows — returns flows that use the ems_set_charger_current trigger */
   async getEmsFlows({ homey }) {
-    let apiKey = '', emsDeviceId = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) {
-        apiKey      = devices[0].getSetting('homey_api_key') || '';
-        emsDeviceId = devices[0].getData().id || '';
-      }
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { matched: [], all: [], emsDeviceId: '', error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], all: [], emsDeviceId: '', error: 'No API key' };
+    const { api, apiKey, emsDeviceId } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       const [flows, advFlows] = await Promise.all([
         api.getFlows().catch(() => ({})),
@@ -1144,15 +1125,10 @@ module.exports = {
     for (const id of ids) counts[id] = 0;
     if (!ids.length) return { counts, known: true };
 
-    let apiKey = '';
-    try {
-      const devices = homey.drivers.getDriver('energy_management').getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { counts, known: false };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { counts, known: false };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       const [flows, advFlows] = await Promise.all([
         api.getFlows().catch(() => ({})),
@@ -1185,14 +1161,9 @@ module.exports = {
 
   /** GET /ems/scheduler/flows — flows in the _Huawei EMS folder available to the scheduler */
   async getEmsSchedulerFlows({ homey }) {
-    let apiKey = '';
-    try {
-      const devs = homey.drivers.getDriver('energy_management').getDevices();
-      if (devs.length > 0) apiKey = devs[0].getSetting('homey_api_key') || '';
-    } catch {}
-    if (!apiKey) return { flows: [], error: 'No API key' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
+    const _ems = _emsApi(homey);
+    if (!_ems) return { flows: [], error: 'No API key' };
+    const { api, apiKey } = _ems;
     try {
       const [allFlows, folders] = await Promise.all([
         api.getFlows().catch(() => ({})),
@@ -1311,16 +1282,10 @@ module.exports = {
     const { deviceId } = query || {};
     if (!deviceId) return { error: 'Missing deviceId' };
 
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     const allDevices = await api.getDevices();
     const device      = allDevices[deviceId];
     if (!device) return { error: 'Device not found' };
@@ -1397,16 +1362,11 @@ module.exports = {
       return { error: 'Missing required fields (emsDeviceId, deviceId, triggerCardId, triggerCardUri)' };
     }
 
-    let apiKey = '';
-    try {
-      const devs = homey.drivers.getDriver('energy_management').getDevices();
-      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
-    } catch { /* ignore */ }
-    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key — configure EMS device first' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    const api = new HomeyLocalApi({ homey, apiKey });
 
     // Look up the trigger card's own arg definitions once, so we know which of its
     // args are the device picker vs. a period-style dropdown we can pre-fill.
@@ -1481,19 +1441,10 @@ module.exports = {
 
   /** GET /ems/price-forecast/flows — flows whose action targets ems_set_price_forecast (read-back) */
   async getEmsPriceForecastFlows({ homey }) {
-    let apiKey = '', emsDeviceId = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) {
-        apiKey      = devices[0].getSetting('homey_api_key') || '';
-        emsDeviceId = devices[0].getData().id || '';
-      }
-    } catch { /* ignore */ }
-    if (!apiKey) return { matched: [], error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], error: 'No API key' };
+    const { api, apiKey, emsDeviceId } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       const flows = await api.getFlows().catch(() => ({}));
       const matched = [];
@@ -1546,16 +1497,10 @@ module.exports = {
     const { deviceId } = query || {};
     if (!deviceId) return { error: 'Missing deviceId' };
 
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api    = new HomeyLocalApi({ homey, apiKey });
     const allDevices = await api.getDevices();
     const device     = allDevices[deviceId];
     if (!device) return { error: 'Device not found' };
@@ -1643,16 +1588,10 @@ module.exports = {
     const { deviceId } = query || {};
     if (!deviceId) return { error: 'Missing deviceId' };
 
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
 
     const resolveTitle = (t) => (t && typeof t === 'object') ? (t.de || t.en || Object.values(t)[0] || '') : (t || '');
 
@@ -1691,16 +1630,10 @@ module.exports = {
       return { error: 'Missing emsDeviceId, deviceId, actionCardId, or actionCardUri' };
     }
 
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { /* driver not yet paired */ }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
 
     // 1. Get or create "Huawei EMS" folder (optional — skip gracefully if API unavailable)
     let folderId = null;
@@ -1832,19 +1765,10 @@ module.exports = {
 
   /** GET /ems/heatpump/flows — flows using ems_start/stop_heat_pump triggers */
   async getEmsHeatPumpFlows({ homey }) {
-    let apiKey = '', emsDeviceId = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) {
-        apiKey      = devices[0].getSetting('homey_api_key') || '';
-        emsDeviceId = devices[0].getData().id || '';
-      }
-    } catch { }
-    if (!apiKey) return { matched: [], error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], error: 'No API key' };
+    const { api, apiKey, emsDeviceId } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
     try {
       const flows = await api.getFlows().catch(() => ({}));
       const matched = [];
@@ -1891,17 +1815,11 @@ module.exports = {
       return { error: 'Missing required fields (emsDeviceId, deviceId, startCardId, startCardUri, stopCardId, stopCardUri)' };
     }
 
-    let apiKey = '';
-    try {
-      const driver  = homey.drivers.getDriver('energy_management');
-      const devices = driver.getDevices();
-      if (devices.length > 0) apiKey = devices[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    const api = new HomeyLocalApi({ homey, apiKey });
 
     // Get or create "_Huawei EMS" folder
     let folderId = null;
@@ -1972,13 +1890,9 @@ module.exports = {
   async getEmsBatteryFlows({ homey, query }) {
     const { deviceId } = query || {};
     if (!deviceId) return { matched: [], error: 'Missing deviceId' };
-    let apiKey = '';
-    try {
-      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
-      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { matched: [], error: 'No API key — configure EMS device first' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], error: 'No API key — configure EMS device first' };
+    const { api, apiKey } = _ems;
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
     function parseAction(a) {
       const rawId = a.id || '';
@@ -1986,7 +1900,6 @@ module.exports = {
       return { cardId: rawId, cardUri: a.uri || '' };
     }
     try {
-      const api = new HomeyLocalApi({ homey, apiKey });
       const allFlows = await api.getFlows();
       let deviceName = deviceId;
       try { const d = await api.getDevices(); deviceName = d[deviceId]?.name || deviceId; } catch { }
@@ -2010,15 +1923,10 @@ module.exports = {
   async postEmsBatterySetupFlows({ homey, body }) {
     const { deviceId, flows } = body || {};
     if (!deviceId || !Array.isArray(flows) || !flows.length) return { error: 'Missing deviceId or flows array' };
-    let apiKey = '';
-    try {
-      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
-      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key — configure EMS device first' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key — configure EMS device first' };
+    const { api, apiKey } = _ems;
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    const api = new HomeyLocalApi({ homey, apiKey });
     let folderId = null;
     try {
       const folders = await api.getFlowFolders();
@@ -2141,14 +2049,9 @@ module.exports = {
   /** GET /ems/car/flows?deviceId=xxx — flows in _Huawei EMS whose first action targets this vehicle */
   async getEmsCarFlows({ homey, query }) {
     const { deviceId } = query || {};
-    let apiKey = '';
-    try {
-      const devs = homey.drivers.getDriver('energy_management').getDevices();
-      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { matched: [], error: 'No API key' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], error: 'No API key' };
+    const { api, apiKey } = _ems;
     try {
       const all = await api.getFlows();
       const matched = Object.values(all || {})
@@ -2179,14 +2082,9 @@ module.exports = {
     const flowDefs = (Array.isArray(flows) ? flows : [])
       .filter((f) => f && Number.isFinite(Number(f.pct)) && f.actionCard && f.actionUri);
     if (!carId || !deviceId || !flowDefs.length) return { error: 'Missing required fields' };
-    let apiKey = '';
-    try {
-      const devs = homey.drivers.getDriver('energy_management').getDevices();
-      if (devs.length) apiKey = devs[0].getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { error: 'No API key — configure EMS device first' };
-    const HomeyLocalApi = require('./lib/homey-local-api');
-    const api = new HomeyLocalApi({ homey, apiKey });
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key — configure EMS device first' };
+    const { api, apiKey } = _ems;
 
     // Robust numeric-argument detection per action card: prefer number/range
     // types, then an arg whose name looks like a charge target, then the sole
@@ -2288,14 +2186,10 @@ module.exports = {
     const { deviceId } = query || {};
     if (!deviceId) return { matched: [], error: 'Missing deviceId' };
 
-    let apiKey = '';
-    try {
-      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
-      if (dev) apiKey = dev.getSetting('homey_api_key') || '';
-    } catch { }
-    if (!apiKey) return { matched: [], error: 'No API key — configure EMS device first' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { matched: [], error: 'No API key — configure EMS device first' };
+    const { api, apiKey } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
 
     // Normalize full-URI action id ("homey:app:...:card_id") to short form.
@@ -2309,7 +2203,6 @@ module.exports = {
     }
 
     try {
-      const api      = new HomeyLocalApi({ homey, apiKey });
       const allFlows = await api.getFlows();
 
       // Resolve device name for name-based matching (same prefix used when creating flows)
@@ -2357,20 +2250,11 @@ module.exports = {
       return { error: 'Missing deviceId or flows array' };
     }
 
-    let apiKey = '', emsDeviceId = '', emsDeviceName = '';
-    try {
-      const [dev] = homey.drivers.getDriver('energy_management').getDevices();
-      if (dev) {
-        apiKey        = dev.getSetting('homey_api_key') || '';
-        emsDeviceId   = dev.id;
-        emsDeviceName = dev.getName();
-      }
-    } catch { }
-    if (!apiKey) return { error: 'No API key — configure EMS device first' };
+    const _ems = _emsApi(homey);
+    if (!_ems) return { error: 'No API key — configure EMS device first' };
+    const { api, apiKey, emsDeviceId } = _ems;
 
-    const HomeyLocalApi = require('./lib/homey-local-api');
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    const api = new HomeyLocalApi({ homey, apiKey });
 
     let folderId = null;
     try {
