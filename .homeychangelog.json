@@ -948,5 +948,10 @@
     "en": "Internal cleanup: the five near-identical device row builders in the settings page are now one shared builder, removing about 900 duplicated lines. No change in behaviour.",
     "de": "Interne Aufräumung: Die fünf fast identischen Gerätezeilen-Bauer der Einstellungsseite sind neu ein gemeinsamer Bauer — rund 900 doppelte Zeilen weniger. Verhalten unverändert.",
     "nl": "Interne opschoning: de vijf vrijwel identieke apparaatrij-bouwers in de instellingenpagina zijn nu één gedeelde bouwer, zo’n 900 dubbele regels minder. Gedrag ongewijzigd."
+  },
+  "1.2.99": {
+    "en": "Internal: first automated tests for the settings API, covering how every route behaves when no API key is configured. No user-visible change.",
+    "de": "Intern: erste automatische Tests für die Einstellungs-API — sie halten fest, wie sich jede Route ohne konfigurierten API-Key verhält. Keine sichtbare Änderung.",
+    "nl": "Intern: eerste geautomatiseerde tests voor de instellingen-API, die vastleggen hoe elke route zich gedraagt zonder API-sleutel. Geen zichtbare wijziging."
   }
 }
