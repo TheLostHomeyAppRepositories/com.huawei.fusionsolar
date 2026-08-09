@@ -978,5 +978,10 @@
     "en": "Layout fix: the four surplus-split fields now sit as two labelled pairs, so each percentage clearly belongs to its battery level.",
     "de": "Layout korrigiert: Die vier Felder der Überschuss-Aufteilung stehen neu als zwei beschriftete Paare, damit jeder Prozentwert klar zu seinem Ladestand gehört.",
     "nl": "Lay-out hersteld: de vier velden van de overschotverdeling staan nu als twee gelabelde paren, zodat elk percentage duidelijk bij zijn accuniveau hoort."
+  },
+  "1.2.105": {
+    "en": "The surplus split now shows a live preview: the current battery level, the share that follows from your settings, and how many watts that releases right now. It updates as you type.",
+    "de": "Die Überschuss-Aufteilung zeigt neu eine Live-Vorschau: aktueller Batteriestand, der daraus folgende Anteil und wie viele Watt damit gerade freigegeben wären — aktualisiert schon beim Tippen.",
+    "nl": "De overschotverdeling toont nu een live voorbeeld: het huidige accuniveau, het bijbehorende aandeel en hoeveel watt dat nu vrijgeeft — het werkt al tijdens het typen bij."
   }
 }

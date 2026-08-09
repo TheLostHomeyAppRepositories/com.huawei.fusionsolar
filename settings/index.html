@@ -1028,25 +1028,26 @@
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">SOC</div>
-                <input id="ems-share-soc-low" type="number" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+                <input id="ems-share-soc-low" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
               <div style="font-size:14px;color:#c7c7cc;padding-bottom:8px">&rarr;</div>
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctLow">%</div>
-                <input id="ems-share-pct-low" type="number" value="0" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+                <input id="ems-share-pct-low" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
             </div>
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">SOC</div>
-                <input id="ems-share-soc-high" type="number" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+                <input id="ems-share-soc-high" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
               <div style="font-size:14px;color:#c7c7cc;padding-bottom:8px">&rarr;</div>
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctHigh">%</div>
-                <input id="ems-share-pct-high" type="number" value="100" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+                <input id="ems-share-pct-high" type="number" oninput="emsShareRampPreview()" value="100" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
             </div>
+            <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
             <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead.</div>
 
             <span class="ems-toggle-desc" style="margin-top:8px" data-i18n-html="homeBatteries.socZones.legendDesc"><span style="color:#34c759;font-weight:600">Green</span> (above Normal SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Normal SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
@@ -2667,6 +2668,45 @@
     }
 
     // ── Device priority move buttons ──────────────────────────────────────────
+    // ── Live-Vorschau der Ueberschuss-Rampe ─────────────────────────────────────
+    // Zeigt, was die eingetragenen Werte JETZT bedeuten: aktueller Ladestand, der daraus
+    // folgende Anteil und die Watt, die damit freigegeben waeren. Rechnet den Anteil
+    // bewusst im Browser nach (gleiche Formel wie _batterySurplusShare), damit die Zahl
+    // schon beim Tippen stimmt und nicht erst nach dem Speichern.
+    var _emsShareDiag = null;
+
+    function emsShareRampPreview() {
+      var box = document.getElementById('ems-share-preview');
+      if (!box) return;
+      var num = function(id) { return parseFloat((document.getElementById(id) || {}).value) || 0; };
+      var socLo = num('ems-share-soc-low'),  socHi = num('ems-share-soc-high');
+      var pctLo = num('ems-share-pct-low'),  pctHi = num('ems-share-pct-high');
+      var d = _emsShareDiag;
+      if (!(socHi > socLo) || !d || d.soc === null || d.soc === undefined) { box.style.display = 'none'; return; }
+
+      var t     = Math.min(1, Math.max(0, (d.soc - socLo) / (socHi - socLo)));
+      var share = Math.min(100, Math.max(0, pctLo + t * (pctHi - pctLo)));
+      var txt   = _H.__('settings.homeBatteries.shareRamp.nowSoc').replace('{soc}', Math.round(d.soc))
+                + ' → ' + _H.__('settings.homeBatteries.shareRamp.nowShare').replace('{pct}', Math.round(share));
+
+      // Watt nur zeigen, wenn beide Messwerte da sind — sonst waere die Zahl geraten.
+      if (typeof d.pvW === 'number' && typeof d.houseW === 'number') {
+        var surplus = Math.max(0, d.pvW - d.houseW);
+        var freed   = Math.round(surplus * share / 100);
+        txt += ' · ' + _H.__('settings.homeBatteries.shareRamp.nowWatts')
+                         .replace('{w}', freed).replace('{surplus}', Math.round(surplus));
+      }
+      box.textContent = txt;
+      box.style.display = '';
+    }
+
+    function emsShareRampLoadDiag() {
+      _H.api('GET', '/ems/diag', null, function(err, d) {
+        _emsShareDiag = (!err && d) ? d : null;
+        emsShareRampPreview();
+      });
+    }
+
     function emsPriorityUpdateButtons() {
       var list = document.getElementById('ems-device-priority-list');
       if (!list) return;
@@ -7253,6 +7293,7 @@
       if (cfg.share_soc_high !== undefined) document.getElementById('ems-share-soc-high').value = cfg.share_soc_high;
       if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
       if (cfg.share_pct_high !== undefined) document.getElementById('ems-share-pct-high').value = cfg.share_pct_high;
+      emsShareRampLoadDiag();
       document.getElementById('ems-forecast-gate-mode').value = cfg.forecast_gate_mode || 'off';
       if (cfg.forecast_gate_kwh     !== undefined) document.getElementById('ems-forecast-gate-kwh').value  = cfg.forecast_gate_kwh;
       emsForecastGateChange();
