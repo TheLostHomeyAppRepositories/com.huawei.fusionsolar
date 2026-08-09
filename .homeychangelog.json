@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.129": {
+    "en": "The Save button on the settings page is blue again. It was rendering in the same grey as the secondary buttons beside it, so the one control you have to press looked inert.",
+    "de": "Der Speichern-Knopf auf der Einstellungsseite ist wieder blau. Er wurde im selben Grau wie die Nebenknöpfe dargestellt — ausgerechnet der eine Knopf, den man drücken muss, wirkte dadurch inaktiv.",
+    "nl": "De opslaan-knop op de instellingenpagina is weer blauw. Hij werd in hetzelfde grijs als de knoppen ernaast getoond, waardoor juist de knop die je moet indrukken inactief leek."
+  },
   "1.2.128": {
     "en": "The settings page now shows a start screen with the app logo while it loads, with a progress bar that follows the actual steps — devices, settings, done. Previously the page stood empty for several seconds after a fresh install and looked broken. The load and save status messages are translated as well; they were still English.",
     "de": "Die Einstellungsseite zeigt beim Laden neu einen Startbildschirm mit App-Logo und einem Fortschrittsbalken, der den echten Schritten folgt — Geräte, Einstellungen, fertig. Bisher stand die Seite nach einer frischen Installation mehrere Sekunden leer da und wirkte defekt. Zudem sind die Lade- und Speichermeldungen übersetzt; sie waren noch englisch.",
