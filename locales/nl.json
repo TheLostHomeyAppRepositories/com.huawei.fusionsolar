@@ -429,7 +429,8 @@
       "today": "Vandaag",
       "saveSettings": "EMS-instellingen opslaan",
       "close": "Sluiten",
-      "loadingDevices": "Apparaten laden…"
+      "loadingDevices": "Apparaten laden…",
+      "loadFailed": "Instellingen konden niet volledig worden geladen:"
     },
     "selectDevice": "— apparaat selecteren —",
     "otherDevices": "── overige apparaten ──",

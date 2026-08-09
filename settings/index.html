@@ -7249,7 +7249,17 @@
         emsShowLoadStatus('✓ ' + _emsDevices.length + ' devices loaded', '#1a7a3a');
 
         _H.api('GET', '/ems/config', null, function(err2, cfg) {
-          if (!err2 && cfg && !cfg.error) emsApplyConfig(cfg);
+          // emsApplyConfig fills the whole page in one pass. A throw halfway through used to
+          // abort it silently: every field after that point stayed empty and every renderer
+          // after it never ran, with nothing anywhere saying why. Same blind spot the tick had.
+          if (!err2 && cfg && !cfg.error) {
+            try {
+              emsApplyConfig(cfg);
+            } catch (e) {
+              emsShowSaveStatus('✗ ' + _H.__('settings.common.loadFailed') + ' ' + (e && e.message ? e.message : e), '#c0392b');
+              if (window.console && console.error) console.error(e);
+            }
+          }
         });
       });
     }

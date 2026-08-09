@@ -429,7 +429,8 @@
       "today": "Heute",
       "saveSettings": "EMS-Einstellungen speichern",
       "close": "Schliessen",
-      "loadingDevices": "Geräte werden geladen…"
+      "loadingDevices": "Geräte werden geladen…",
+      "loadFailed": "Einstellungen konnten nicht vollständig geladen werden:"
     },
     "selectDevice": "— Gerät wählen —",
     "otherDevices": "── weitere Geräte ──",

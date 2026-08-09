@@ -429,7 +429,8 @@
       "today": "Today",
       "saveSettings": "Save EMS Settings",
       "close": "Close",
-      "loadingDevices": "Loading devices…"
+      "loadingDevices": "Loading devices…",
+      "loadFailed": "Settings could not be loaded fully:"
     },
     "selectDevice": "— select device —",
     "otherDevices": "── other devices ──",

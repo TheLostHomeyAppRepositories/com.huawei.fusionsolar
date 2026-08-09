@@ -1068,5 +1068,10 @@
     "en": "When no forecast is available the Solcast section now says so — with the age of the last fetch, or the error Solcast returned — instead of simply showing nothing.",
     "de": "Liegt keine Prognose vor, sagt der Solcast-Bereich das jetzt — mit dem Alter des letzten Abrufs oder der Fehlermeldung von Solcast — statt einfach nichts anzuzeigen.",
     "nl": "Als er geen voorspelling beschikbaar is, meldt het Solcast-onderdeel dat nu — met de leeftijd van de laatste ophaalactie of de fout van Solcast — in plaats van niets te tonen."
+  },
+  "1.2.123": {
+    "en": "If the settings page fails to load fully it now says so with the reason, instead of leaving later sections silently empty.",
+    "de": "Wenn die Einstellungsseite nicht vollständig laden kann, sagt sie das jetzt mitsamt Grund — statt spätere Bereiche stillschweigend leer zu lassen.",
+    "nl": "Als de instellingenpagina niet volledig kan laden, meldt hij dat nu met de reden, in plaats van latere onderdelen stil leeg te laten."
   }
 }
