@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.142": {
+    "en": "OpenAPI device settings now have a Server dropdown with all known regional addresses; the Server URL field is still there for anything not listed. And a change to the server or the credentials now reaches every OpenAPI device of the same plant. Previously all of them shared one connection whose address came from whichever device happened to be first, so editing any of the others changed nothing at all — without saying so.",
+    "de": "Die OpenAPI-Geräteeinstellungen haben neu eine Server-Auswahl mit allen bekannten Regionaladressen; das Feld Server URL bleibt für alles, was nicht gelistet ist. Zudem wirkt eine Änderung an Server oder Zugangsdaten jetzt auf alle OpenAPI-Geräte derselben Anlage. Bisher teilten sich alle eine Verbindung, deren Adresse vom zufällig ersten Gerät stammte — eine Änderung an einem der übrigen bewirkte also gar nichts, ohne das zu melden.",
+    "nl": "De OpenAPI-apparaatinstellingen hebben nu een Server-keuzelijst met alle bekende regionale adressen; het veld Server-URL blijft voor wat er niet bij staat. Bovendien werkt een wijziging van server of inloggegevens nu door naar alle OpenAPI-apparaten van dezelfde installatie. Voorheen deelden ze één verbinding waarvan het adres van het toevallig eerste apparaat kwam."
+  },
   "1.2.141": {
     "en": "Pairing an OpenAPI device now offers the same region list as the settings page instead of a server address you have to type — inverter, battery, meter and the four iSitePower devices. \"Other\" still opens the text field for a server that is not listed.",
     "de": "Beim Hinzufügen eines OpenAPI-Geräts steht neu dieselbe Regionsauswahl zur Verfügung wie auf der Einstellungsseite, statt einer Serveradresse zum Abtippen — Wechselrichter, Batterie, Zähler und die vier iSitePower-Geräte. Über \"Andere\" öffnet sich weiterhin das Textfeld für einen nicht gelisteten Server.",

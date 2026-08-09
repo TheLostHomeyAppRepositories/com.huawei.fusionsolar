@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.141",
+  "version": "1.2.142",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -4498,6 +4498,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -4507,9 +4628,9 @@
           },
           "value": "https://eu5.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -4719,6 +4840,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -4728,9 +4970,9 @@
           },
           "value": "https://eu5.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -4928,6 +5170,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -4937,9 +5300,9 @@
           },
           "value": "https://eu5.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -5045,6 +5408,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -5054,9 +5538,9 @@
           },
           "value": "https://intl.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -5243,6 +5727,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -5252,9 +5857,9 @@
           },
           "value": "https://intl.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -5399,6 +6004,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -5408,9 +6134,9 @@
           },
           "value": "https://intl.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
@@ -5528,6 +6254,127 @@
       ],
       "settings": [
         {
+          "id": "base_url_region",
+          "type": "dropdown",
+          "label": {
+            "en": "Server",
+            "de": "Server",
+            "nl": "Server"
+          },
+          "value": "custom",
+          "values": [
+            {
+              "id": "https://eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe · eu5",
+                "de": "Europa · eu5",
+                "nl": "Europa · eu5"
+              }
+            },
+            {
+              "id": "https://intl.fusionsolar.huawei.com",
+              "label": {
+                "en": "International · intl",
+                "de": "International · intl",
+                "nl": "Internationaal · intl"
+              }
+            },
+            {
+              "id": "https://region01eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 01",
+                "de": "Europa Region 01",
+                "nl": "Europa regio 01"
+              }
+            },
+            {
+              "id": "https://region02eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 02",
+                "de": "Europa Region 02",
+                "nl": "Europa regio 02"
+              }
+            },
+            {
+              "id": "https://region03eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 03",
+                "de": "Europa Region 03",
+                "nl": "Europa regio 03"
+              }
+            },
+            {
+              "id": "https://region04eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 04",
+                "de": "Europa Region 04",
+                "nl": "Europa regio 04"
+              }
+            },
+            {
+              "id": "https://region05eu5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Europe region 05",
+                "de": "Europa Region 05",
+                "nl": "Europa regio 05"
+              }
+            },
+            {
+              "id": "https://sg5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Southeast Asia · sg5",
+                "de": "Südostasien · sg5",
+                "nl": "Zuidoost-Azië · sg5"
+              }
+            },
+            {
+              "id": "https://au5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Australia · au5",
+                "de": "Australien · au5",
+                "nl": "Australië · au5"
+              }
+            },
+            {
+              "id": "https://jp5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Japan · jp5",
+                "de": "Japan · jp5",
+                "nl": "Japan · jp5"
+              }
+            },
+            {
+              "id": "https://la5.fusionsolar.huawei.com",
+              "label": {
+                "en": "Latin America · la5",
+                "de": "Lateinamerika · la5",
+                "nl": "Latijns-Amerika · la5"
+              }
+            },
+            {
+              "id": "https://openapi.monitor.energyorb.com",
+              "label": {
+                "en": "EnergyOrb (Europe)",
+                "de": "EnergyOrb (Europa)",
+                "nl": "EnergyOrb (Europa)"
+              }
+            },
+            {
+              "id": "custom",
+              "label": {
+                "en": "Other (use Server URL below)",
+                "de": "Andere (Server URL unten verwenden)",
+                "nl": "Anders (Server-URL hieronder gebruiken)"
+              }
+            }
+          ],
+          "hint": {
+            "en": "Regional FusionSolar server. Choose \"Other\" for an address that is not listed. Applies to every OpenAPI device of the same plant.",
+            "de": "Regionaler FusionSolar-Server. Für eine nicht gelistete Adresse \"Andere\" wählen. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Regionale FusionSolar-server. Kies \"Anders\" voor een adres dat er niet bij staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
+          }
+        },
+        {
           "id": "base_url",
           "type": "text",
           "label": {
@@ -5537,9 +6384,9 @@
           },
           "value": "https://intl.fusionsolar.huawei.com",
           "hint": {
-            "en": "FusionSolar regional server URL.",
-            "de": "FusionSolar regionaler Server URL.",
-            "nl": "Regionale FusionSolar server-URL."
+            "en": "Only used when Server is set to \"Other\". Applies to every OpenAPI device of the same plant.",
+            "de": "Wird nur verwendet, wenn Server auf \"Andere\" steht. Gilt für alle OpenAPI-Geräte derselben Anlage.",
+            "nl": "Wordt alleen gebruikt als Server op \"Anders\" staat. Geldt voor alle OpenAPI-apparaten van dezelfde installatie."
           }
         },
         {
