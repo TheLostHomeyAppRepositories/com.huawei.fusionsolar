@@ -446,6 +446,42 @@
     .ems-section-state.ok   { color: #1a7a3a; }
     .ems-section-state.todo { color: #b06000; }
 
+    /* ── Live status ─────────────────────────────────────── */
+    /* The page is about configuring the EMS but said nothing about what it is doing —
+       to find that out you left for the device tile or a widget. Same mode labels and
+       colours the history uses, so the two never disagree. */
+    .ems-live {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 9px 12px;
+      margin-bottom: 12px;
+      background: #f9f9fb;
+      border: 1px solid #ececf0;
+      border-radius: 8px;
+      font-size: 11.5px;
+      color: #1d1d1f;
+    }
+    .ems-live-mode { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+    .ems-live-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ems-live-vals {
+      margin-left: auto;
+      display: flex;
+      gap: 12px;
+      color: #6e6e73;
+      font-variant-numeric: tabular-nums;
+    }
+    .ems-live-vals b { font-weight: 600; color: #1d1d1f; }
+
+    /* Sits on the save bar, which is sticky — so it is on screen whenever the
+       unsaved state is. Amber, not red: nothing is broken, something is pending. */
+    .ems-dirty {
+      font-size: 11px;
+      color: #b06000;
+      margin-bottom: 8px;
+    }
+
     /* ── "How does the EMS work?" ────────────────────────── */
     /* Read once, during setup, then never again — so it reads as a link you can open,
        not as a card competing with the sections that hold the actual settings. The
@@ -868,6 +904,10 @@
       </div>
 
       <div id="ems-load-status" style="font-size:12px;color:#6e6e73;margin-bottom:12px;display:none"></div>
+
+      <!-- Filled by emsLiveRefresh() while this tab is open; hidden when the EMS
+           device has nothing to report yet. -->
+      <div id="ems-live" class="ems-live" style="display:none"></div>
 
       <!-- EMS Info Box -->
       <details id="ems-info-box">
@@ -1480,9 +1520,10 @@
       </details>
 
       <div class="ems-save-bar">
+        <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.134</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.135</span></div>
       </div>
     </div>
   </div>
@@ -1944,6 +1985,7 @@
         btn.style.background   = isActive ? '#fff' : '';
       });
       if (name === 'ems' && _emsDevices.length === 0) emsLoadDevices();
+      if (name === 'ems') emsLiveStart(); else emsLiveStop();
       if (name !== 'ems') { emsShowSaveStatus(''); emsShowLoadStatus(''); }
       if (name === 'logs') logsStart(); else logsStop();
       if (name !== 'openapi') {
@@ -7406,6 +7448,9 @@
             // After the fields are filled, not before — the readers look at the DOM.
             // Runs even when emsApplyConfig threw, so the chips describe what did land.
             emsRefreshSetupState();
+            // The page has stopped writing to itself; from here a change is the user's.
+            _emsLoaded = true;
+            emsSetDirty(false);
             bootFinish();
           }, 80);
         });
@@ -7638,6 +7683,7 @@
           emsShowSaveStatus('✗ ' + ((result && result.error) || (err && err.message) || _H.__('settings.status.saveFailed')), '#c0392b');
         } else {
           emsShowSaveStatus('✓ ' + _H.__('settings.status.saved'), '#1a7a3a');
+          emsSetDirty(false);
         }
       });
     }
@@ -8295,6 +8341,42 @@
       box.style.display = '';
     }
 
+    // ── Unsaved changes ─────────────────────────────────────────────────────
+    // Switching tabs does not lose anything — the panels only toggle display, the values
+    // stay in the DOM. Closing the settings panel does: nothing is written until Save.
+    // So the marker on the save bar is the part that has to work (the bar is sticky, so
+    // it is on screen whenever the unsaved state is); beforeunload is a best effort on
+    // top, since whether Homey's webview delivers it is not ours to guarantee.
+    var _emsDirty  = false;
+    var _emsLoaded = false;   // until emsApplyConfig has run, changes are the page filling
+                              // itself in, not the user editing
+
+    // The read-only panels bring controls of their own — a day stepper, a car filter, a
+    // pause switch. Counting those as edits would light the marker within seconds of
+    // opening the page, and a warning that is always on is one nobody reads.
+    var EMS_READONLY_SECTIONS = ['ems-diag-section', 'ems-history-section', 'ems-sessions-section'];
+    // Buttons that act on the page rather than on the configuration.
+    var EMS_NEUTRAL_BUTTONS = ['ems-save-btn', 'ems-load-btn'];
+
+    function _emsIsNeutralTarget(el) {
+      for (var n = el; n && n !== document; n = n.parentNode) {
+        if (!n.id) continue;
+        if (EMS_READONLY_SECTIONS.indexOf(n.id) !== -1) return true;
+        if (EMS_NEUTRAL_BUTTONS.indexOf(n.id) !== -1) return true;
+        if (n.id === 'ems-setup-banner' || n.id === 'ems-info-box') return true;
+      }
+      return false;
+    }
+
+    function emsSetDirty(on) {
+      if (_emsDirty === on) return;
+      _emsDirty = on;
+      var el = document.getElementById('ems-dirty-note');
+      if (!el) return;
+      el.textContent = '● ' + _H.__('settings.status.unsaved');
+      el.style.display = on ? '' : 'none';
+    }
+
     // Anything that can change the answer happens inside the EMS tab: picking a device,
     // adding or removing a row. Deferred a tick so the DOM the readers look at is the one
     // after the handler, not before it.
@@ -8303,6 +8385,73 @@
       if (!tab) return;
       ['change', 'click'].forEach(function(ev) {
         tab.addEventListener(ev, function() { setTimeout(emsRefreshSetupState, 0); });
+      });
+      // Typing and picking are always edits. Clicks only count on buttons, because a
+      // click is also how you open a section — and adding or removing a row fires
+      // nothing else.
+      ['change', 'input'].forEach(function(ev) {
+        tab.addEventListener(ev, function(e) {
+          if (_emsLoaded && !_emsIsNeutralTarget(e.target)) emsSetDirty(true);
+        });
+      });
+      tab.addEventListener('click', function(e) {
+        if (!_emsLoaded) return;
+        var btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (btn && !_emsIsNeutralTarget(btn)) emsSetDirty(true);
+      });
+      window.addEventListener('beforeunload', function(e) {
+        if (!_emsDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+    }
+
+    // ── Live status ─────────────────────────────────────────────────────────
+    var _emsLiveTimer = null;
+
+    function emsLiveStart() {
+      emsLiveRefresh();
+      if (!_emsLiveTimer) _emsLiveTimer = setInterval(emsLiveRefresh, 10000);
+    }
+
+    function emsLiveStop() {
+      if (_emsLiveTimer) { clearInterval(_emsLiveTimer); _emsLiveTimer = null; }
+    }
+
+    function _emsWatts(v) {
+      if (typeof v !== 'number' || !isFinite(v)) return '–';
+      return Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + ' kW' : Math.round(v) + ' W';
+    }
+
+    function emsLiveRefresh() {
+      if (!_H) return;
+      _H.api('GET', '/ems/diag', null, function(err, d) {
+        var box = document.getElementById('ems-live');
+        if (!box) return;
+        // Nothing to say is better than a row of dashes: before the first tick, or with
+        // no EMS device at all, the strip stays away.
+        if (err || !d || d.error || (d.pvW === null && d.gridW === null && !d.mode)) {
+          box.style.display = 'none';
+          return;
+        }
+        var meta = _emsHistModeMeta()[d.mode] || null;
+        var vals = [];
+        vals.push('<span>' + _H.__('settings.live.pv') + ' <b>' + _emsWatts(d.pvW) + '</b></span>');
+        // Signed grid power is a puzzle every time. Name the direction instead.
+        if (typeof d.gridW === 'number') {
+          var imp = d.gridW >= 0;
+          vals.push('<span>' + _H.__(imp ? 'settings.live.import' : 'settings.live.export') +
+                    ' <b>' + _emsWatts(Math.abs(d.gridW)) + '</b></span>');
+        }
+        if (typeof d.soc === 'number') {
+          vals.push('<span>' + _H.__('settings.live.battery') + ' <b>' + Math.round(d.soc) + '%</b></span>');
+        }
+        box.innerHTML =
+          '<span class="ems-live-mode"><span class="ems-live-dot" style="background:' +
+          ((meta && meta.dot) || '#d1d1d6') + '"></span>' +
+          ((meta && meta.label) || d.modeText || _H.__('settings.live.unknown')) + '</span>' +
+          '<span class="ems-live-vals">' + vals.join('') + '</span>';
+        box.style.display = '';
       });
     }
 

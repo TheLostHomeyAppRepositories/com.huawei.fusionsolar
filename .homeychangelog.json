@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.135": {
+    "en": "The settings page now says what the EMS is doing: a strip at the top with the current mode, solar power, grid import or export and battery level, refreshed while the page is open. It also marks unsaved changes on the save bar and asks before you close the page with edits still pending.",
+    "de": "Die Einstellungsseite zeigt neu, was das EMS gerade tut: ein Streifen zuoberst mit Betriebsart, Solarleistung, Netzbezug oder Einspeisung und Batteriestand, der sich bei offener Seite aktualisiert. Zudem markiert sie ungespeicherte Änderungen im Speichern-Balken und fragt nach, bevor die Seite mit offenen Änderungen geschlossen wird.",
+    "nl": "De instellingenpagina laat nu zien wat het EMS doet: een strook bovenaan met bedrijfsmodus, zonvermogen, netafname of teruglevering en batterijniveau, die ververst zolang de pagina open is. Ook worden niet-opgeslagen wijzigingen gemarkeerd bij de opslaan-knop, met een waarschuwing voordat je de pagina sluit."
+  },
   "1.2.134": {
     "en": "The Cars section header showed \"1 devices\" instead of the car's name: a car row is keyed by the car's own id, not the Homey device's, so the name lookup missed. It now uses the name the row already carries, and a count of one is no longer written as a plural.",
     "de": "Der Abschnitt Fahrzeuge zeigte \"1 Geräte\" statt des Fahrzeugnamens: Eine Fahrzeugzeile ist über die eigene Fahrzeug-Id angelegt, nicht über die des Homey-Geräts, weshalb die Namenssuche ins Leere lief. Sie nutzt jetzt den Namen, den die Zeile ohnehin mitführt — und die Anzahl eins steht nicht mehr im Plural.",

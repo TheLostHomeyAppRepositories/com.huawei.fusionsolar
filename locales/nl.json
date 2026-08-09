@@ -458,7 +458,15 @@
       "hint": "Er is nog geen aangestuurd apparaat ingesteld — het EMS meet wel, maar stuurt niets aan.",
       "hintLink": "Apparaat toevoegen"
     },
+    "live": {
+      "pv": "PV",
+      "import": "Afname",
+      "export": "Teruglevering",
+      "battery": "Batterij",
+      "unknown": "Geen status"
+    },
     "status": {
+      "unsaved": "Niet-opgeslagen wijzigingen",
       "devicesLoaded": "{{n}} apparaten geladen",
       "failed": "Mislukt",
       "saving": "Opslaan…",

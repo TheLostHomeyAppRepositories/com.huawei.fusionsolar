@@ -458,7 +458,15 @@
       "hint": "No controlled device set up yet — the EMS measures, but controls nothing.",
       "hintLink": "Add a device"
     },
+    "live": {
+      "pv": "PV",
+      "import": "Import",
+      "export": "Export",
+      "battery": "Battery",
+      "unknown": "No status"
+    },
     "status": {
+      "unsaved": "Unsaved changes",
       "devicesLoaded": "{{n}} devices loaded",
       "failed": "Failed",
       "saving": "Saving…",

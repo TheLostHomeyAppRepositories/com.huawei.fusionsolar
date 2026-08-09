@@ -458,7 +458,15 @@
       "hint": "Es ist noch kein gesteuertes Gerät eingerichtet — das EMS misst, steuert aber nichts.",
       "hintLink": "Gerät hinzufügen"
     },
+    "live": {
+      "pv": "PV",
+      "import": "Bezug",
+      "export": "Einspeisung",
+      "battery": "Batterie",
+      "unknown": "Kein Status"
+    },
     "status": {
+      "unsaved": "Nicht gespeicherte Änderungen",
       "devicesLoaded": "{{n}} Geräte geladen",
       "failed": "Fehlgeschlagen",
       "saving": "Wird gespeichert…",
