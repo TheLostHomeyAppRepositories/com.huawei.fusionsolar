@@ -839,6 +839,7 @@
         </span>
       </label>
       <div id="ems-export-limit-rows" style="display:none;padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #e5e5ea;margin-bottom:16px">
+        <div id="ems-export-flows" style="font-size:11px;line-height:1.6;margin-bottom:10px"></div>
         <div style="font-size:11px;color:#6e6e73;font-weight:600;margin-bottom:6px" data-i18n="exportLimit.whenToLimit">When should the inverter be limited?</div>
 
         <label class="ems-toggle-row">
@@ -2969,6 +2970,24 @@
           _emsGateRule('ems-export-limit-neg-price', flowsOk && priceVaries,
             !flowsOk ? flowMsg : _H.__('settings.exportLimit.needVariablePrice'));
           _emsGateRule('ems-export-limit-zero',      flowsOk, flowMsg);
+          
+          // Name the flows that will actually run. Counts alone told the user whether the
+          // coordinator was wired up; the names tell them WHAT it will do, which is the
+          // question you actually have when switching a rule on.
+          var fx = document.getElementById('ems-export-flows');
+          if (fx) {
+            var names = usage.names || {};
+            var rows = [['ems_inverter_export_limit_on', 'exportLimit.flowsOn'],
+                        ['ems_inverter_export_limit_off', 'exportLimit.flowsOff']];
+            var html = rows.map(function (r) {
+              var list = names[r[0]] || [];
+              var val  = list.length ? list.map(_emsHistEsc).join(', ')
+                                     : '<span style="color:#c0392b">' + _H.__('settings.exportLimit.flowsNone') + '</span>';
+              return '<div><span style="color:#6e6e73">' + _H.__('settings.' + r[1]) + '</span> ' + val + '</div>';
+            }).join('');
+            // Only when the flows could be enumerated at all — otherwise it would read as "none".
+            fx.innerHTML = usage.known ? html : '';
+          }
         });
     }
 

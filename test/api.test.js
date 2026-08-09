@@ -147,6 +147,11 @@ test('getEmsTriggerUsage — reports known:false rather than an error, so the ca
   // The settings page gates the export-limit rules on this: "cannot tell" must be
   // distinguishable from "no flows exist", or it would block rules it cannot check.
   assert.strictEqual(res.known, false);
+  // names travels alongside counts so the settings page can show WHICH flows will run
+  assert.deepStrictEqual(res.names, {
+    ems_inverter_export_limit_on: [],
+    ems_inverter_export_limit_off: [],
+  });
   assert.deepStrictEqual(res.counts, {
     ems_inverter_export_limit_on: 0,
     ems_inverter_export_limit_off: 0,
@@ -155,7 +160,7 @@ test('getEmsTriggerUsage — reports known:false rather than an error, so the ca
 
 test('getEmsTriggerUsage — an empty id list needs no API key at all', async () => {
   const res = await api.getEmsTriggerUsage({ homey: fakeHomey([]), query: { ids: '' } });
-  assert.deepStrictEqual(res, { counts: {}, known: true });
+  assert.deepStrictEqual(res, { counts: {}, names: {}, known: true });
 });
 
 // A configured key must get past the guard. The call then fails at the HTTP layer (there

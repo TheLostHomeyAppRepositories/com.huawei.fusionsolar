@@ -1123,10 +1123,12 @@ module.exports = {
       .split(',').map((s) => s.trim()).filter(Boolean);
     const counts = {};
     for (const id of ids) counts[id] = 0;
-    if (!ids.length) return { counts, known: true };
+    const names = {};      // trigger id -> flow names, so the caller can show WHICH flows run
+    for (const id of ids) names[id] = [];
+    if (!ids.length) return { counts, names, known: true };
 
     const _ems = _emsApi(homey);
-    if (!_ems) return { counts, known: false };
+    if (!_ems) return { counts, names, known: false };
     const { api, apiKey } = _ems;
 
     try {
@@ -1140,7 +1142,7 @@ module.exports = {
 
       for (const f of Object.values(flows || {})) {
         const tid = (f.trigger && f.trigger.id) || '';
-        for (const id of ids) if (matches(tid, id)) counts[id]++;
+        for (const id of ids) if (matches(tid, id)) { counts[id]++; if (f.name) names[id].push(f.name); }
       }
       // Advanced flows keep their trigger inside the card graph. Count each flow once per
       // trigger even if it holds several cards for the same one.
@@ -1149,13 +1151,13 @@ module.exports = {
         for (const card of Object.values(f.cards || {})) {
           if (!card) continue;
           for (const id of ids) {
-            if (!seen.has(id) && matches(card.id, id)) { counts[id]++; seen.add(id); }
+            if (!seen.has(id) && matches(card.id, id)) { counts[id]++; seen.add(id); if (f.name) names[id].push(f.name); }
           }
         }
       }
-      return { counts, known: true };
+      return { counts, names, known: true };
     } catch (e) {
-      return { counts, known: false, error: e.message };
+      return { counts, names, known: false, error: e.message };
     }
   },
 

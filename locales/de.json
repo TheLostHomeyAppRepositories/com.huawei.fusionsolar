@@ -309,7 +309,10 @@
         "title": "Nie einspeisen (Nulleinspeisung)",
         "desc": "Hält die Begrenzung dauerhaft, unabhängig von Einspeisung, Preis und Batterie — die beiden Regeln darüber gelten dann nicht mehr. Sinnvoll, wenn der Netzbetreiber die Einspeisung untersagt. <strong>Überschuss, den im Haus nichts aufnehmen kann, geht verloren.</strong>"
       },
-      "setupHint": "<strong>Einrichtung:</strong> Im Abschnitt <em>Wechselrichter</em> oben auf <em>✓ Flows erstellen/aktualisieren</em> klicken, um die Flows <em>Enable export limit</em> und <em>Disable export limit</em> zu erzeugen. Der Koordinator löst diese Flows automatisch aus — kein zusätzlicher Homey-Flow nötig."
+      "setupHint": "<strong>Einrichtung:</strong> Im Abschnitt <em>Wechselrichter</em> oben auf <em>✓ Flows erstellen/aktualisieren</em> klicken, um die Flows <em>Enable export limit</em> und <em>Disable export limit</em> zu erzeugen. Der Koordinator löst diese Flows automatisch aus — kein zusätzlicher Homey-Flow nötig.",
+      "flowsOn": "Löst bei Begrenzung EIN aus:",
+      "flowsOff": "Löst bei Begrenzung AUS aus:",
+      "flowsNone": "noch kein Flow"
     },
     "diag": {
       "title": "🩺 EMS Diagnose",

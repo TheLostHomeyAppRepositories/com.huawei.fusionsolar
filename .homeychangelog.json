@@ -1048,5 +1048,10 @@
     "en": "Updated the in-app help: the battery section described the removed Normal/Reserve SOC zones, the device lists left out air conditioners, and the priority text still spoke of device types rather than individual devices.",
     "de": "Hilfetexte aktualisiert: Der Batterie-Abschnitt beschrieb die entfernten Zonen Normal-/Reserve-SOC, in den Gerätelisten fehlten die Klimaanlagen, und der Prioritätstext sprach noch von Gerätetypen statt von einzelnen Geräten.",
     "nl": "Helpteksten bijgewerkt: het accu-onderdeel beschreef de verwijderde Normaal-/Reserve-SOC-zones, in de apparaatlijsten ontbraken de airco’s, en de prioriteitstekst sprak nog van apparaattypes in plaats van losse apparaten."
+  },
+  "1.2.119": {
+    "en": "The export limit coordinator now names the flows it will start, for the ON and the OFF case, so you can see what a rule will actually do before switching it on.",
+    "de": "Der Export-Limit-Koordinator nennt neu die Flows, die er startet — für den Ein- und den Aus-Fall. So siehst du, was eine Regel tatsächlich bewirkt, bevor du sie einschaltest.",
+    "nl": "De teruglevergrens-coördinator noemt nu de flows die hij start, voor het aan- en het uit-geval, zodat je ziet wat een regel werkelijk doet voordat je hem inschakelt."
   }
 }

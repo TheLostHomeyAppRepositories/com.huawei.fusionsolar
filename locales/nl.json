@@ -309,7 +309,10 @@
         "title": "Nooit terugleveren (nul-teruglevering)",
         "desc": "Houdt de begrenzing permanent aan, ongeacht teruglevering, prijs en accu — de twee regels hierboven gelden dan niet meer. Gebruik dit als je netbeheerder teruglevering verbiedt. <strong>Overschot dat niets in huis kan opnemen, gaat verloren.</strong>"
       },
-      "setupHint": "<strong>Instellen:</strong> Klik in de sectie <em>Omvormer</em> hierboven op <em>✓ Flows aanmaken / bijwerken</em> om de flows <em>Exportlimiet inschakelen</em> en <em>Exportlimiet uitschakelen</em> te genereren. De coördinator activeert deze flows automatisch — geen extra Homey-flow nodig."
+      "setupHint": "<strong>Instellen:</strong> Klik in de sectie <em>Omvormer</em> hierboven op <em>✓ Flows aanmaken / bijwerken</em> om de flows <em>Exportlimiet inschakelen</em> en <em>Exportlimiet uitschakelen</em> te genereren. De coördinator activeert deze flows automatisch — geen extra Homey-flow nodig.",
+      "flowsOn": "Start bij grens AAN:",
+      "flowsOff": "Start bij grens UIT:",
+      "flowsNone": "nog geen flow"
     },
     "diag": {
       "title": "🩺 EMS-diagnose",

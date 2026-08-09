@@ -309,7 +309,10 @@
         "title": "Never feed in (zero export)",
         "desc": "Holds the limit permanently, independent of export, price and battery — the two rules above then no longer apply. Use this if your grid operator prohibits feed-in. <strong>Surplus that nothing in the house can take is lost.</strong>"
       },
-      "setupHint": "<strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed."
+      "setupHint": "<strong>Setup:</strong> In the <em>Inverter</em> section above, click <em>✓ Create / Update Flows</em> to generate the <em>Enable export limit</em> and <em>Disable export limit</em> flows. The coordinator fires those flows automatically — no additional Homey flow needed.",
+      "flowsOn": "Starts on limit ON:",
+      "flowsOff": "Starts on limit OFF:",
+      "flowsNone": "no flow yet"
     },
     "diag": {
       "title": "🩺 EMS Diagnostics",
