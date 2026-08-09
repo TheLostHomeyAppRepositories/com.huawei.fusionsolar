@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.133": {
+    "en": "Quieter settings page: section titles are in normal case instead of capitals, so only the group headings above them still shout. The \"How does the EMS work?\" box reads as a line you can open rather than a card competing with the settings, and \"Reload devices\" is sized like the maintenance action it is.",
+    "de": "Ruhigere Einstellungsseite: Abschnittstitel stehen in normaler Schreibweise statt in Versalien — nur die Gruppentitel darüber sind noch gross. Der Kasten \"Wie funktioniert das EMS?\" liest sich als aufklappbare Zeile statt als Karte, die mit den Einstellungen konkurriert, und \"Geräte neu laden\" hat die Grösse der Wartungsaktion, die es ist.",
+    "nl": "Rustigere instellingenpagina: sectietitels staan in normale schrijfwijze in plaats van hoofdletters — alleen de groepskoppen erboven zijn nog groot. Het kader \"Hoe werkt het EMS?\" leest als een uitklapbare regel in plaats van een kaart, en \"Apparaten opnieuw laden\" heeft het formaat van de onderhoudsactie die het is."
+  },
   "1.2.132": {
     "en": "With the solar forecast switched on, its section header said \"optional\" — fine as a description, wrong as a state; it now says \"active\". Electricity price, solar forecast and scheduler also use the same green dot as the device sections, so one column no longer mixes two kinds of information.",
     "de": "Bei eingeschalteter Solarprognose stand im Abschnittskopf \"optional\" — als Beschreibung in Ordnung, als Zustand falsch; jetzt steht dort \"aktiv\". Strompreis, Solarprognose und Zeitplaner nutzen zudem denselben grünen Punkt wie die Geräteabschnitte, damit eine Spalte nicht zwei Arten von Information mischt.",

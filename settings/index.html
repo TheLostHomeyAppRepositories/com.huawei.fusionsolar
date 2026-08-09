@@ -426,11 +426,9 @@
     details.ems-section > summary::-webkit-details-marker { display: none; }
     details.ems-section > summary::marker { display: none; content: ''; }
     .ems-section-label {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #6e6e73;
+      color: #1d1d1f;
     }
     /* Collapsed, a section used to say only what it is for ("· grid import source"),
        never whether it was actually set up — you had to open all eleven to find out.
@@ -447,6 +445,28 @@
     }
     .ems-section-state.ok   { color: #1a7a3a; }
     .ems-section-state.todo { color: #b06000; }
+
+    /* ── "How does the EMS work?" ────────────────────────── */
+    /* Read once, during setup, then never again — so it reads as a link you can open,
+       not as a card competing with the sections that hold the actual settings. The
+       chevron is the only control; the word "Details" next to it said the same thing. */
+    #ems-info-box { margin-bottom: 14px; }
+    #ems-info-box > summary {
+      cursor: pointer;
+      padding: 6px 2px;
+      font-size: 11.5px;
+      color: #6e6e73;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+    #ems-info-box > summary::-webkit-details-marker { display: none; }
+    #ems-info-box > summary::marker { display: none; content: ''; }
+    #ems-info-box[open] > summary { color: #1d1d1f; font-weight: 600; }
+    .ems-info-chev { margin-left: auto; font-size: 10px; color: #c7c7cc; transition: transform 0.2s; }
+    #ems-info-box[open] .ems-info-chev { transform: rotate(180deg); }
 
     /* ── First-run setup guide ───────────────────────────── */
     .ems-setup {
@@ -843,18 +863,18 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="tool-card-title" style="margin:0" data-i18n="emsInfo.title">Energy Management System</div>
         <div style="display:flex;gap:6px">
-          <button class="btn-secondary" id="ems-load-btn" onclick="emsLoadDevices()" data-i18n="emsInfo.reloadDevices">↻ Reload devices</button>
+          <button class="btn-secondary" id="ems-load-btn" style="font-size:11px;padding:4px 10px" onclick="emsLoadDevices()" data-i18n="emsInfo.reloadDevices">↻ Reload devices</button>
         </div>
       </div>
 
       <div id="ems-load-status" style="font-size:12px;color:#6e6e73;margin-bottom:12px;display:none"></div>
 
       <!-- EMS Info Box -->
-      <details id="ems-info-box" style="margin-bottom:16px;border:1px solid var(--color-border,#e0e0e0);border-radius:8px;overflow:hidden">
-        <summary style="cursor:pointer;padding:10px 14px;font-size:12px;font-weight:600;color:var(--color-text-secondary,#6e6e73);background:var(--color-bg-secondary,#f5f5f7);list-style:none;display:flex;align-items:center;gap:6px;user-select:none">
-          <span style="font-size:14px">ℹ️</span>
+      <details id="ems-info-box">
+        <summary>
+          <span style="font-size:13px">ℹ️</span>
           <span data-i18n="emsInfo.summary">How does the EMS work? — Setup &amp; Flow-based control</span>
-          <span style="margin-left:auto;font-size:10px;opacity:.6" data-i18n="emsInfo.details">▼ Details</span>
+          <span class="ems-info-chev">▾</span>
         </summary>
         <div style="padding:14px 16px;font-size:11.5px;line-height:1.7;color:var(--color-text,#1d1d1f);display:flex;flex-direction:column;gap:12px">
 
@@ -1462,7 +1482,7 @@
       <div class="ems-save-bar">
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.132</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.133</span></div>
       </div>
     </div>
   </div>
