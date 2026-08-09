@@ -1462,7 +1462,7 @@
       <div class="ems-save-bar">
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.131</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.132</span></div>
       </div>
     </div>
   </div>
@@ -2999,8 +2999,10 @@
 
     function emsSchedulerUpdateCount() {
       var n = document.querySelectorAll('.ems-scheduler-task').length;
-      var el = document.getElementById('ems-scheduler-count');
-      if (el) el.textContent = n ? n + ' ' + _H.__(n > 1 ? 'settings.scheduler.tasksPlural' : 'settings.scheduler.taskSingular') : _H.__('settings.scheduler.noTasks');
+      emsSetSectionState('ems-scheduler-count',
+        n ? n + ' ' + _H.__(n > 1 ? 'settings.scheduler.tasksPlural' : 'settings.scheduler.taskSingular')
+          : _H.__('settings.scheduler.noTasks'),
+        n > 0);
     }
 
     function emsAddSchedulerTask(task) {
@@ -3208,7 +3210,7 @@
       document.getElementById('ems-price-forecast-info').style.display = mode === 'forecast' ? '' : 'none';
       document.getElementById('ems-price-forecast-section').style.display = mode === 'forecast' ? '' : 'none';
       var sub = { fixed: _H.__('settings.price.subtitle.fixed'), dual: _H.__('settings.price.subtitle.dual'), variable: _H.__('settings.price.subtitle.variable'), forecast: _H.__('settings.price.subtitle.forecast') }[mode] || mode;
-      document.getElementById('ems-price-subtitle').textContent = sub;
+      emsSetSectionState('ems-price-subtitle', sub, true);
       if (mode === 'variable') emsPriceCurrentValueLoad();
       if (mode === 'forecast') emsPriceForecastLoad();
     }
@@ -7520,7 +7522,8 @@
     function emsPvForecastToggle() {
       var on = document.getElementById('ems-pvforecast-enabled').checked;
       document.getElementById('ems-pvforecast-rows').style.display = on ? 'block' : 'none';
-      document.getElementById('ems-pvforecast-subtitle').textContent = on ? _H.__('settings.pvForecast.subtitleOn') : _H.__('settings.pvForecast.subtitleOff');
+      emsSetSectionState('ems-pvforecast-subtitle',
+        _H.__(on ? 'settings.pvForecast.subtitleOn' : 'settings.pvForecast.subtitleOff'), on);
     }
 
     function emsForecastGateChange() {
@@ -8208,6 +8211,17 @@
         }
       });
       emsRenderSetupBanner(st);
+    }
+
+    // Used by the three headers whose state is not a device list (price mode, forecast
+    // on/off, scheduler tasks). Writes through the inner span so the ids those callers
+    // already own stay exactly where they are.
+    function emsSetSectionState(innerId, text, on) {
+      var el = document.getElementById(innerId);
+      if (!el) return;
+      el.textContent = on ? '● ' + text : text;
+      var chip = el.parentNode;
+      if (chip && chip.className !== undefined) chip.className = 'ems-section-state' + (on ? ' ok' : '');
     }
 
     function emsSetupGoto(secId) {

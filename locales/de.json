@@ -692,7 +692,7 @@
     },
     "pvForecast": {
       "subtitleOff": "aus",
-      "subtitleOn": "optional",
+      "subtitleOn": "aktiv",
       "title": "🌤 Solarprognose (Solcast)",
       "enableLabel": "Solcast-PV-Prognose aktivieren",
       "apiKeyLabel": "API-Schlüssel",

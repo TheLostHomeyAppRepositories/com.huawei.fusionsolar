@@ -692,7 +692,7 @@
     },
     "pvForecast": {
       "subtitleOff": "off",
-      "subtitleOn": "optional",
+      "subtitleOn": "active",
       "title": "🌤 Solar Forecast (Solcast)",
       "enableLabel": "Enable Solcast PV forecast",
       "apiKeyLabel": "API key",

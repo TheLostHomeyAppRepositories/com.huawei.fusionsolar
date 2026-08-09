@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.132": {
+    "en": "With the solar forecast switched on, its section header said \"optional\" — fine as a description, wrong as a state; it now says \"active\". Electricity price, solar forecast and scheduler also use the same green dot as the device sections, so one column no longer mixes two kinds of information.",
+    "de": "Bei eingeschalteter Solarprognose stand im Abschnittskopf \"optional\" — als Beschreibung in Ordnung, als Zustand falsch; jetzt steht dort \"aktiv\". Strompreis, Solarprognose und Zeitplaner nutzen zudem denselben grünen Punkt wie die Geräteabschnitte, damit eine Spalte nicht zwei Arten von Information mischt.",
+    "nl": "Met de zonneprognose ingeschakeld stond er \"optioneel\" in de sectiekop — prima als beschrijving, fout als status; er staat nu \"actief\". Stroomprijs, zonneprognose en planner gebruiken bovendien dezelfde groene stip als de apparaatsecties."
+  },
   "1.2.131": {
     "en": "The grey descriptions in the section headers are gone — with the state shown on the right they were competing for the same line and pushing headers onto two rows. They are still there as hover help on the section title, and the two that only said \"optional\" now explain what the section actually does.",
     "de": "Die grauen Beschreibungen in den Abschnittsköpfen sind weg — zusammen mit der Zustandsanzeige rechts teilten sie sich eine Zeile und drückten die Köpfe auf zwei Zeilen. Sie bleiben als Hilfe erhalten, wenn man über den Abschnittstitel fährt; die zwei, die nur \"optional\" sagten, erklären jetzt, wozu der Abschnitt dient.",

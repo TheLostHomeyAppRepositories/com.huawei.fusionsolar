@@ -692,7 +692,7 @@
     },
     "pvForecast": {
       "subtitleOff": "uit",
-      "subtitleOn": "optioneel",
+      "subtitleOn": "actief",
       "title": "🌤 Zonprognose (Solcast)",
       "enableLabel": "Solcast PV-prognose inschakelen",
       "apiKeyLabel": "API-sleutel",
