@@ -496,12 +496,25 @@ class EmsDevice extends Device {
     try {
       await this._tickBody();
       await this._flushMode(); // apply exactly one mode decision per tick
+      this._consecTickErrors = 0;
     } catch (e) {
-      this.log(`[EMS] tick error: ${e.message}`);
+      // The first stack line names file and line. For a ReferenceError that IS the
+      // diagnosis, and logging only e.message had us hunting for it.
+      const where = (e.stack || '').split('\n')[1];
+      this.log(`[EMS] tick error: ${e.message}${where ? ` — ${where.trim()}` : ''}`);
       this._tickMode = null; // drop a half-formed decision
       this._diag.tickErrors += 1;
       this._diag.lastError = e.message;
       this._diag.lastErrorAt = Date.now();
+      // Surface it. A throwing tick controls nothing, but the device kept showing its last
+      // good status, so a dead EMS looked like a working one — which is how a ReferenceError
+      // in _tickBody survived a whole release. Two in a row, so one transient API hiccup
+      // stays quiet.
+      this._consecTickErrors = (this._consecTickErrors || 0) + 1;
+      if (this._consecTickErrors >= 2) {
+        await this._setMode(MODES.ERROR, `Tick-Fehler: ${e.message}`)
+          .catch(() => { /* the mode write itself may be what is failing */ });
+      }
     } finally {
       const dt = Date.now() - t0;
       this._diag.lastTickMs = dt;

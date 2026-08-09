@@ -2263,3 +2263,23 @@ test('_batteryShareBudgetW — null when a reading is missing, so the caller kee
   assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, 2000, null), null);
   assert.strictEqual(d._batteryShareBudgetW({}, 90, 6000, 2000, -1000), null); // Rampe aus
 });
+
+// Der Preisgrund darf nicht an der Einspeisung haengen: sobald die Begrenzung greift,
+// drosselt der Wechselrichter und es wird nicht mehr eingespeist. Frueher fiel die Regel
+// deshalb nach der Haltezeit ab und taktete im Fuenf-Minuten-Rhythmus.
+test('_evaluateExportLimit — a low price holds the limit even once export has stopped', async () => {
+  const d = makePriceExportDevice(-0.02, {
+    _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000,
+  });
+  await d._evaluateExportLimit(PRICE_CFG, { soc: 40 }, 0); // gedrosselt: keine Einspeisung mehr
+  assert.strictEqual(d._exportLimitActive, true);
+  assert.deepStrictEqual(d._fired, []);
+});
+test('_evaluateExportLimit — the SoC reason still releases when export stops', async () => {
+  const d = makeExportDevice({
+    _exportLimitActive: true, _exportLimitActivatedAt: Date.now() - EXPORT_LIMIT_HOLD_MS - 1000,
+  });
+  await d._evaluateExportLimit(EXPORT_CFG, { soc: 99 }, 0); // Batterie voll, aber keine Einspeisung
+  assert.strictEqual(d._exportLimitActive, false);
+  assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});

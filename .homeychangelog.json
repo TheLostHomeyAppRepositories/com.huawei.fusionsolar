@@ -988,5 +988,10 @@
     "en": "Fixes a serious regression in 1.2.105 that stopped the EMS control loop entirely: no devices were switched and no battery or export rules ran. Please update.",
     "de": "Behebt einen schweren Fehler aus 1.2.105, der die EMS-Steuerschleife komplett angehalten hat: Es wurden keine Geräte geschaltet und keine Batterie- oder Export-Regeln ausgeführt. Bitte aktualisieren.",
     "nl": "Herstelt een ernstige fout uit 1.2.105 waardoor de EMS-regellus volledig stilviel: er werden geen apparaten geschakeld en geen accu- of teruglever-regels uitgevoerd. Werk bij."
+  },
+  "1.2.107": {
+    "en": "The EMS device now reports a failing control loop instead of keeping its last status, so a stalled EMS is visible at a glance. Also fixes the negative-price export rule releasing every five minutes and briefly feeding in again.",
+    "de": "Das EMS-Gerät meldet neu eine fehlgeschlagene Steuerschleife, statt den letzten Status weiterzuzeigen — ein stehengebliebenes EMS ist damit sofort erkennbar. Ausserdem behoben: Die Negativpreis-Regel gab die Begrenzung alle fünf Minuten frei und speiste kurz wieder ein.",
+    "nl": "Het EMS-apparaat meldt nu een vastgelopen regellus in plaats van de laatste status te blijven tonen. Ook opgelost: de negatieve-prijsregel gaf de begrenzing elke vijf minuten vrij en leverde dan even terug."
   }
 }
