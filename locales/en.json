@@ -37,6 +37,11 @@
       }
     },
     "errors": {
+      "host": {
+        "unreachable": "No route to {{host}} — is the device powered on and still on this IP address?",
+        "timeout": "{{host}} is not responding — is the device powered on and on the same network?",
+        "refused": "{{host}} refused the connection — is Modbus TCP enabled on the device, and is the port right?"
+      },
       "noAddress": "No IP address configured. Please check the device settings.",
       "fetchFailed": "Modbus read failed",
       "batteryNotDetected": "LUNA2000 battery not detected.",

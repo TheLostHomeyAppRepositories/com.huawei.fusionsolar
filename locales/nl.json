@@ -37,6 +37,11 @@
       }
     },
     "errors": {
+      "host": {
+        "unreachable": "Geen verbinding met {{host}} — staat het apparaat aan en heeft het nog dit IP-adres?",
+        "timeout": "{{host}} reageert niet — staat het apparaat aan en op hetzelfde netwerk?",
+        "refused": "{{host}} weigert de verbinding — is Modbus TCP ingeschakeld op het apparaat en klopt de poort?"
+      },
       "noAddress": "Geen IP-adres geconfigureerd. Controleer de apparaatinstellingen.",
       "fetchFailed": "Modbus-uitlezing mislukt",
       "batteryNotDetected": "LUNA2000 batterij niet gedetecteerd.",

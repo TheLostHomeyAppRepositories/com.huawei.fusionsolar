@@ -5,7 +5,7 @@ const {
   SUN2000_EMMA_DATA_REGISTERS,
   isSun2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, parseIntSafe } = require('../../lib/modbus-client');
+const { readModbusRegisters, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -212,7 +212,7 @@ class SUN2000EmmaModbusDevice extends Device {
       this.error(`Fetch error (${this._failureCount}):`, err.message);
       if (this._failureCount >= 3) {
         await this.setUnavailable(
-          `${this.homey.__('modbus.errors.fetchFailed')}: ${err.message}`,
+          unavailableMessage(this.homey, err, this.getSetting('address')),
         );
       }
     } finally {

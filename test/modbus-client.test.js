@@ -584,3 +584,44 @@ test('readRegisters — the read plan is reported once, not on every poll', asyn
   assert.strictEqual(planLines.length, 1, 'five polls must report the plan once: ' + lines.join(' | '));
   assert.ok(planLines[0].includes('2 registers in 1 request'), planLines[0]);
 });
+
+// ── unavailableMessage ───────────────────────────────────────────────────────
+// Der Text landet auf der Gerätekachel. Bisher stand dort "Modbus-Abruf fehlgeschlagen:
+// Socket error: connect EHOSTUNREACH 192.168.0.226:502" — praezise und fuer den Besitzer
+// wertlos, obwohl genau er derjenige ist, der das Geraet einschalten kann.
+const { unavailableMessage } = require('../lib/modbus-client');
+
+const homeyStub = {
+  __: (k) => ({
+    'modbus.errors.fetchFailed': 'Modbus read failed',
+    'modbus.errors.host.unreachable': 'No route to {{host}} — powered on?',
+    'modbus.errors.host.timeout': '{{host}} is not responding',
+    'modbus.errors.host.refused': '{{host}} refused the connection',
+  })[k] ?? k,
+};
+
+test('unavailableMessage — EHOSTUNREACH becomes a sentence naming the host', () => {
+  const msg = unavailableMessage(homeyStub, new Error('Socket error: connect EHOSTUNREACH 192.168.0.226:502'), '192.168.0.226');
+  assert.strictEqual(msg, 'No route to 192.168.0.226 — powered on?');
+});
+
+test('unavailableMessage — our own connect timeout is recognised', () => {
+  const msg = unavailableMessage(homeyStub, new Error('Connection to 192.168.0.226:502 timed out'), '192.168.0.226');
+  assert.strictEqual(msg, '192.168.0.226 is not responding');
+});
+
+test('unavailableMessage — ECONNREFUSED points at Modbus TCP, not at the power switch', () => {
+  const msg = unavailableMessage(homeyStub, new Error('Socket error: connect ECONNREFUSED 192.168.0.226:502'), '192.168.0.226');
+  assert.strictEqual(msg, '192.168.0.226 refused the connection');
+});
+
+test('unavailableMessage — a Modbus-level fault keeps its raw text', () => {
+  // Hier IST das Detail die Information: welches Register, welcher Ausnahmecode.
+  const msg = unavailableMessage(homeyStub, new Error('illegal data address 37200'), '192.168.0.226');
+  assert.strictEqual(msg, 'Modbus read failed: illegal data address 37200');
+});
+
+test('unavailableMessage — an unknown host still yields a sentence, not "undefined"', () => {
+  const msg = unavailableMessage(homeyStub, new Error('connect EHOSTUNREACH 10.0.0.5:502'), null);
+  assert.strictEqual(msg, 'No route to ? — powered on?');
+});

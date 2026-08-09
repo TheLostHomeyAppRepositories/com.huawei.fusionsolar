@@ -8,7 +8,7 @@ const {
   isBatteryDataValid,
   isBatteryAbsent,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe } = require('../../lib/modbus-client');
+const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -1039,7 +1039,7 @@ class LUNA2000ModbusDevice extends Device {
       this.error(`Fetch error (${this._failureCount}):`, err.message);
       if (this._failureCount >= 3) {
         await this.setUnavailable(
-          `${this.homey.__('modbus.errors.fetchFailed')}: ${err.message}`,
+          unavailableMessage(this.homey, err, this.getSetting('address')),
         );
       }
     } finally {
