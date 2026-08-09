@@ -1008,5 +1008,10 @@
     "en": "The surplus split now applies to what the PV array is producing, instead of production minus house consumption. Note that the house draws from the same production, so a high share at high house load can pull from the grid — the whole-house import limit remains the guard.",
     "de": "Die Aufteilung bezieht sich neu auf die Leistung, welche die PV-Anlage liefert, statt auf Erzeugung minus Hausverbrauch. Beachte: Der Hausverbrauch wird aus derselben Erzeugung gedeckt — ein hoher Anteil bei hoher Hauslast kann Netzbezug auslösen; das Haus-Netzbezugslimit bleibt die Sicherung.",
     "nl": "De verdeling geldt nu voor het vermogen dat de PV-installatie levert, in plaats van opwek min huisverbruik. Let op: het huis wordt uit dezelfde opwek gevoed, dus een hoog aandeel bij hoog huisverbruik kan netafname veroorzaken."
+  },
+  "1.2.111": {
+    "en": "Fixes saving the EMS settings, which failed silently since 1.2.108: the save still validated the removed Reserve and Normal SOC fields.",
+    "de": "Behebt das Speichern der EMS-Einstellungen, das seit 1.2.108 stillschweigend fehlschlug: Der Speichervorgang prüfte noch die entfernten Felder Reserve-SOC und Normal-SOC.",
+    "nl": "Herstelt het opslaan van de EMS-instellingen, dat sinds 1.2.108 stil faalde: het opslaan controleerde nog de verwijderde velden Reserve-SOC en Normaal-SOC."
   }
 }

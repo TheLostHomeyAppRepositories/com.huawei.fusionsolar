@@ -7271,16 +7271,9 @@
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
 
-      if (isNaN(_minSoc) || _minSoc < 0 || _minSoc > 100) {
-        emsShowSaveStatus('✗ Normal SOC must be 0–100', '#c0392b');
-        return;
-      }
-      if (isNaN(_minSocLow) || _minSocLow < 0 || _minSocLow > 100) {
-        emsShowSaveStatus('✗ Reserve SOC must be 0–100', '#c0392b');
-        return;
-      }
-      if (_minSocLow > 0 && _minSocLow >= _minSoc) {
-        emsShowSaveStatus('✗ Reserve SOC must be lower than Normal SOC', '#c0392b');
+      var _hardStop = parseInt(document.getElementById('ems-hard-stop-soc').value, 10);
+      if (isNaN(_hardStop) || _hardStop < 0 || _hardStop > 100) {
+        emsShowSaveStatus('✗ Hard stop SOC must be 0–100', '#c0392b');
         return;
       }
 
@@ -7312,9 +7305,7 @@
         pool_devices:        poolDevs,
         dehumidifier_devices: dehumidifierDevs,
         aircon_devices:       airconDevs,
-        min_battery_soc:      _minSoc,
-        min_battery_soc_low:  _minSocLow,
-        hard_stop_soc:        Math.max(0, parseInt(document.getElementById('ems-hard-stop-soc').value, 10) || 0),
+        hard_stop_soc:        Math.max(0, _hardStop || 0),
         share_soc_low:        Math.max(0, parseInt(document.getElementById('ems-share-soc-low').value, 10)  || 0),
         share_soc_high:       Math.max(0, parseInt(document.getElementById('ems-share-soc-high').value, 10) || 0),
         share_pct_low:        Math.max(0, parseInt(document.getElementById('ems-share-pct-low').value, 10)  || 0),
