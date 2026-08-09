@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Energy Balance</title>
 <style>
+    /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
+       pan, rubber-band scroll and long-press selection all read as the widget
+       misbehaving when the user only meant to scroll the dashboard past it. */
+    html, body {
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {

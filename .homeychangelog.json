@@ -1083,5 +1083,10 @@
     "en": "The Solcast section now always states why no chart is shown — switched off, not configured, no data yet, or the error from Solcast. Previously two of those cases showed nothing at all.",
     "de": "Der Solcast-Bereich nennt neu immer den Grund, wenn kein Diagramm erscheint — ausgeschaltet, nicht konfiguriert, noch keine Daten, oder der Fehler von Solcast. Zwei dieser Fälle zeigten vorher gar nichts.",
     "nl": "Het Solcast-onderdeel geeft nu altijd aan waarom er geen grafiek is — uitgeschakeld, niet geconfigureerd, nog geen gegevens, of de fout van Solcast. Twee van die gevallen toonden eerder niets."
+  },
+  "1.2.126": {
+    "en": "All widgets now hold still under your finger: no pinch-zoom, no panning, no rubber-band bounce and no long-press text selection, so scrolling the dashboard past a tile no longer disturbs it.",
+    "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
+    "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   }
 }

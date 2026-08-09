@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+    /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
+       pan, rubber-band scroll and long-press selection all read as the widget
+       misbehaving when the user only meant to scroll the dashboard past it. */
+    html, body {
+      touch-action: none;
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
 /* Colors come from Homey's own --homey-* variables (widget styling guide),
    which follow the dashboard's light/dark setting. The previous version keyed
    dark-mode overrides off ":root[data-theme=dark]" — that's the Artifacts
