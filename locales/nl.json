@@ -166,6 +166,17 @@
       "chargerEmma": "EV-lader — via EMMA-gateway"
     },
     "openapi": {
+      "regions": {
+        "energyorb": "EnergyOrb (Europa)",
+        "regionEu": "Europa (regio {{n}})",
+        "intl": "Internationaal",
+        "eu5": "Europa",
+        "au5": "Australië",
+        "sg5": "Zuidoost-Azië",
+        "jp5": "Japan",
+        "la5": "Latijns-Amerika",
+        "custom": "Anders (URL invoeren)…"
+      },
       "intro": "De <strong style=\"color:#3a3a3c\">Huawei FusionSolar Northbound API</strong> biedt alleen-lezen toegang tot installatiegegevens via de cloud — handig om te controleren wat de API voor jouw installatie teruggeeft. Voer je Northbound API-inloggegevens in en klik op <em>Alles ophalen</em> om de ruwe respons te bekijken. Let op: de OpenAPI is alleen-lezen; alle schrijfacties (force charge, vermogensregeling, etc.) verlopen via Modbus.",
       "credentialsTitle": "OpenAPI-inloggegevens",
       "serverUrl": "Server-URL",

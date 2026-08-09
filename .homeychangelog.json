@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.140": {
+    "en": "The OpenAPI server address is now a region dropdown instead of a field you have to type: Europe, International, the five European region servers, Asia-Pacific, Australia, Japan, Latin America and EnergyOrb. The current address stays selected, and \"Other\" brings the text field back for a server that is not listed.",
+    "de": "Die OpenAPI-Serveradresse ist neu eine Regionsauswahl statt eines Eingabefelds: Europa, International, die fünf europäischen Regionsserver, Asien-Pazifik, Australien, Japan, Lateinamerika und EnergyOrb. Die bisherige Adresse bleibt ausgewählt, und über \"Andere\" kommt das Textfeld für einen nicht gelisteten Server zurück.",
+    "nl": "Het OpenAPI-serveradres is nu een regiokeuze in plaats van een invoerveld: Europa, Internationaal, de vijf Europese regioservers, Azië-Pacific, Australië, Japan, Latijns-Amerika en EnergyOrb. Het huidige adres blijft geselecteerd, en via \"Anders\" komt het tekstveld terug voor een server die er niet bij staat."
+  },
   "1.2.138": {
     "en": "Heat pump, boiler, pool, dehumidifier and air conditioner timers now survive an app restart. They were held in memory only, so every restart reset them — a device with a 30-minute switch-off delay went back to zero each time and, across a day of updates, never actually switched off. A stored state older than ten minutes is discarded instead of applied, since by then it describes a situation that has passed.",
     "de": "Die Zeitgeber von Wärmepumpe, Boiler, Pool, Entfeuchter und Klimaanlage überstehen jetzt einen App-Neustart. Sie lagen nur im Arbeitsspeicher, jeder Neustart setzte sie also zurück — ein Gerät mit 30 Minuten Ausschaltverzögerung begann jedes Mal von vorn und schaltete über einen Tag mit mehreren Updates nie ab. Ein gespeicherter Zustand, der älter als zehn Minuten ist, wird verworfen statt angewendet, weil er dann eine vergangene Lage beschreibt.",

@@ -166,6 +166,17 @@
       "chargerEmma": "EV Charger — via EMMA gateway"
     },
     "openapi": {
+      "regions": {
+        "energyorb": "EnergyOrb (Europe)",
+        "regionEu": "Europe (region {{n}})",
+        "intl": "International",
+        "eu5": "Europe",
+        "au5": "Australia",
+        "sg5": "Southeast Asia",
+        "jp5": "Japan",
+        "la5": "Latin America",
+        "custom": "Other (enter URL)…"
+      },
       "intro": "The <strong style=\"color:#3a3a3c\">Huawei FusionSolar Northbound API</strong> provides read-only access to plant data via the cloud — useful for checking what the API returns for your installation. Enter your Northbound API credentials and click <em>Fetch All</em> to inspect the raw response. Note: the OpenAPI is read-only; all write operations (force charge, active power control, etc.) go through Modbus.",
       "credentialsTitle": "OpenAPI Credentials",
       "serverUrl": "Server URL",
