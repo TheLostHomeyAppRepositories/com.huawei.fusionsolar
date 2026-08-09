@@ -1109,6 +1109,7 @@
                      style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;resize:vertical;font-family:inherit"></textarea>
             </div>
             <span class="ems-toggle-desc" data-i18n-html="pvForecast.desc">Free <strong>Hobbyist</strong> account at <a href="https://toolkit.solcast.com.au/live-forecast" target="_blank" rel="noopener">Solcast Toolkit</a> — register your PV system with its exact details, then copy your <strong>API key</strong> (under <em>Your name → Your API key</em>) and <strong>Resource ID</strong> (click your site on the map). <strong>Multiple sites</strong> (e.g. north + south roof) — enter one per line; their forecasts are <strong>summed</strong>. New accounts get <strong>10 API calls/day</strong> (older accounts 50) and <em>each site is one call</em>, so the app spaces fetches out automatically to stay within budget (≈ 8 calls/day total whether 1 or several sites) and caches across restarts — <em>no flows needed</em>. Result appears under <em>Diagnostics → EMS Diagnostics</em>.</span>
+            <div id="ems-pv-chart" style="margin-top:10px;display:none"></div>
           </div>
         </div>
       </details>
@@ -2636,6 +2637,66 @@
     // two levels, flat beyond the upper one, and where the battery sits right now. Drawn as
     // inline SVG rather than a library — it is five shapes and has to work offline in the
     // settings iframe.
+    // The Solcast numbers are easier to judge as a shape than as four totals: bars per
+    // forecast slot over the next day and a bit, with "now" marked and the day boundary
+    // drawn in. Same inline-SVG approach as the surplus ramp, for the same reasons.
+    function emsPvForecastChart(slots) {
+      var host = document.getElementById('ems-pv-chart');
+      if (!host) return;
+      var now = Date.now();
+      var use = (slots || []).filter(function (x) { return x && x.end > now && x.start < now + 36 * 3600e3; });
+      if (use.length < 2) { host.style.display = 'none'; return; }
+
+      var W = 320, H = 110, L = 26, R = 8, T = 10, B = 18;
+      var t0 = use[0].start, t1 = use[use.length - 1].end;
+      var maxKw = Math.max.apply(null, use.map(function (x) { return x.kw || 0; })) || 1;
+      var x = function (ms) { return L + ((ms - t0) / (t1 - t0)) * (W - L - R); };
+      var y = function (kw) { return H - B - (kw / maxKw) * (H - B - T); };
+      var e = [];
+
+      e.push('<rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - B - T) +
+             '" fill="#fff" stroke="#e5e5ea"/>');
+      // peak guide, labelled — the y scale is otherwise unreadable
+      e.push('<line x1="' + L + '" y1="' + y(maxKw) + '" x2="' + (W - R) + '" y2="' + y(maxKw) + '" stroke="#f0f0f5"/>');
+      e.push('<text x="' + (L - 4) + '" y="' + (y(maxKw) + 3) + '" font-size="8" fill="#8e8e93" text-anchor="end">' +
+             (Math.round(maxKw * 10) / 10) + '</text>');
+      e.push('<text x="' + (L - 4) + '" y="' + (y(0) + 3) + '" font-size="8" fill="#8e8e93" text-anchor="end">0</text>');
+
+      use.forEach(function (sl) {
+        var x0 = x(sl.start), x1 = x(sl.end), h = Math.max(0, y(0) - y(sl.kw || 0));
+        e.push('<rect x="' + x0 + '" y="' + y(sl.kw || 0) + '" width="' + Math.max(0.6, x1 - x0 - 0.3) +
+               '" height="' + h + '" fill="#ffb300" opacity="0.85"/>');
+      });
+
+      // local midnight between the two days, so "today" and "tomorrow" are visible as such
+      var mid = new Date(); mid.setHours(24, 0, 0, 0);
+      if (mid.getTime() > t0 && mid.getTime() < t1) {
+        e.push('<line x1="' + x(mid.getTime()) + '" y1="' + T + '" x2="' + x(mid.getTime()) + '" y2="' + (H - B) +
+               '" stroke="#c7c7cc" stroke-dasharray="2 2"/>');
+      }
+      e.push('<line x1="' + x(now) + '" y1="' + T + '" x2="' + x(now) + '" y2="' + (H - B) +
+             '" stroke="#007aff" stroke-width="1"/>');
+      e.push('<text x="' + x(now) + '" y="' + (H - B + 11) + '" font-size="8" fill="#007aff" text-anchor="middle">' +
+             _H.__('settings.pvForecast.chartNow') + '</text>');
+      e.push('<text x="' + (W - R) + '" y="' + (H - B + 11) + '" font-size="8" fill="#8e8e93" text-anchor="end">kW</text>');
+
+      host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' +
+                       _H.__('settings.pvForecast.chartAlt') + '">' + e.join('') + '</svg>';
+      host.style.display = '';
+    }
+
+    function emsPvForecastChartLoad() {
+      _H.api('GET', '/ems/pv-forecast', null, function (err, d) {
+        // Only when there is something real to draw — an empty frame would suggest the
+        // forecast is zero rather than absent.
+        if (err || !d || !d.slots || !d.slots.length) {
+          var c = document.getElementById('ems-pv-chart'); if (c) c.style.display = 'none';
+          return;
+        }
+        emsPvForecastChart(d.slots);
+      });
+    }
+
     function emsShareRampChart(socLo, socHi, pctLo, pctHi, soc, share) {
       var host = document.getElementById('ems-share-chart');
       if (!host) return;
@@ -7263,6 +7324,7 @@
       if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
       if (cfg.share_pct_high !== undefined) document.getElementById('ems-share-pct-high').value = cfg.share_pct_high;
       emsShareRampLoadDiag();
+      emsPvForecastChartLoad();
       document.getElementById('ems-forecast-gate-mode').value = cfg.forecast_gate_mode || 'off';
       if (cfg.forecast_gate_kwh     !== undefined) document.getElementById('ems-forecast-gate-kwh').value  = cfg.forecast_gate_kwh;
       emsForecastGateChange();

@@ -1058,5 +1058,10 @@
     "en": "Two help texts still listed only four controllable device types: the solar forecast start gate and the whole-house grid import limit both apply to air conditioners as well.",
     "de": "Zwei Hilfetexte nannten noch vier steuerbare Gerätetypen: Die Solarprognose-Startsperre und das Haus-Netzbezugslimit gelten ebenso für Klimaanlagen.",
     "nl": "Twee helpteksten noemden nog vier regelbare apparaattypes: de zonneprognose-startblokkering en de netafnamegrens gelden ook voor airco’s."
+  },
+  "1.2.121": {
+    "en": "The Solcast section now draws the forecast: bars of expected PV output for the coming day, with the current time and the day boundary marked. Shown only when forecast data is actually there.",
+    "de": "Der Solcast-Bereich zeichnet neu die Prognose: Balken der erwarteten PV-Leistung für den kommenden Tag, mit aktueller Zeit und Tagesgrenze markiert. Erscheint nur, wenn Prognosedaten wirklich vorliegen.",
+    "nl": "Het Solcast-onderdeel tekent nu de voorspelling: staven van het verwachte PV-vermogen voor de komende dag, met de huidige tijd en de daggrens gemarkeerd. Alleen zichtbaar als er echt gegevens zijn."
   }
 }
