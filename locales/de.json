@@ -453,6 +453,7 @@
       "advised": "empfohlen",
       "required": "erforderlich",
       "goto": "Einrichten",
+      "device": "Gerät",
       "devices": "Geräte",
       "hint": "Es ist noch kein gesteuertes Gerät eingerichtet — das EMS misst, steuert aber nichts.",
       "hintLink": "Gerät hinzufügen"

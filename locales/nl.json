@@ -453,6 +453,7 @@
       "advised": "aanbevolen",
       "required": "vereist",
       "goto": "Instellen",
+      "device": "apparaat",
       "devices": "apparaten",
       "hint": "Er is nog geen aangestuurd apparaat ingesteld — het EMS meet wel, maar stuurt niets aan.",
       "hintLink": "Apparaat toevoegen"

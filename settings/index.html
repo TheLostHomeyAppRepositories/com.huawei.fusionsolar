@@ -1482,7 +1482,7 @@
       <div class="ems-save-bar">
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.133</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.134</span></div>
       </div>
     </div>
   </div>
@@ -8173,12 +8173,17 @@
 
     // The device name when there is one of it, a count otherwise. The chip is for
     // recognition at a glance, not for listing everything.
+    //
+    // Not every row is keyed by a Homey device: a car row's `id` is the car's own id and
+    // the device sits in `device_id`, which is why the cars section showed a bare count.
+    // It also carries a resolved `name`, so prefer that and fall back through both ids.
     function _emsSetupSummary(rows) {
       if (rows.length === 1) {
-        var n = _emsDeviceName(rows[0].id);
+        var r = rows[0];
+        var n = r.name || _emsDeviceName(r.device_id || r.id);
         if (n) return n.length > 24 ? n.slice(0, 23) + '…' : n;
       }
-      return rows.length + ' ' + _H.__('settings.setup.devices');
+      return rows.length + ' ' + _H.__(rows.length === 1 ? 'settings.setup.device' : 'settings.setup.devices');
     }
 
     function emsSetupState() {

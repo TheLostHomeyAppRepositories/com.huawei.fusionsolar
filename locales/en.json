@@ -453,6 +453,7 @@
       "advised": "advised",
       "required": "required",
       "goto": "Set up",
+      "device": "device",
       "devices": "devices",
       "hint": "No controlled device set up yet — the EMS measures, but controls nothing.",
       "hintLink": "Add a device"
