@@ -1073,5 +1073,10 @@
     "en": "If the settings page fails to load fully it now says so with the reason, instead of leaving later sections silently empty.",
     "de": "Wenn die Einstellungsseite nicht vollständig laden kann, sagt sie das jetzt mitsamt Grund — statt spätere Bereiche stillschweigend leer zu lassen.",
     "nl": "Als de instellingenpagina niet volledig kan laden, meldt hij dat nu met de reden, in plaats van latere onderdelen stil leeg te laten."
+  },
+  "1.2.124": {
+    "en": "The settings page now shows its build number at the bottom, so you can tell at a glance whether you are looking at the version you just installed.",
+    "de": "Die Einstellungsseite zeigt unten neu ihre Build-Nummer — so ist auf einen Blick erkennbar, ob du die gerade installierte Version vor dir hast.",
+    "nl": "De instellingenpagina toont onderaan nu zijn buildnummer, zodat je in één oogopslag ziet of je de zojuist geïnstalleerde versie voor je hebt."
   }
 }
