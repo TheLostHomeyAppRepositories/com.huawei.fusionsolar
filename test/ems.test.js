@@ -668,6 +668,34 @@ test('_evaluateSimpleDevices — a per-device enabled:false is left alone even w
   assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
 });
 
+test('_evaluateSimpleDevices — a discharging battery is not counted as solar surplus', async () => {
+  // Gemessener Fall: PV 291 W, Pool + Entfeuchter + Klima laufen, Batterie liefert 1557 W,
+  // Zaehler steht bei -46 W. Beisst nur bei Geraeten MIT Leistungs-Capability: deren
+  // eigener Verbrauch wird dem Ueberschuss zugerechnet (sonst wuerde sich ein gerade
+  // gestartetes Geraet sofort selbst abschalten), und zusammen mit dem von der Batterie
+  // flachgehaltenen Zaehler ergibt das dauerhaft "genug Ueberschuss" — bezahlt aus der
+  // Batterie. Ohne den Abzug: 46 + 1500 = 1546 >= 1000 → laeuft weiter.
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  const dev = simpleDev({ minSurplusW: 1000, stopGraceMs: 0, powerW: 1500 });
+  await d._evaluateSimpleDevices({ soc: 86, powerW: -1557 }, -46, [dev], state, 'start', 'stop', 'tok', { min_battery_soc: 50 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }],
+    'die 46 W Einspeisung stammen aus der Batterie, nicht aus der Sonne');
+});
+
+test('_evaluateSimpleDevices — a charging battery is not mistaken for a discharging one', async () => {
+  // Gegenprobe: gleiche Betraege, aber die Batterie LAEDT. Ein Abzug, der das Vorzeichen
+  // verliert (etwa ueber Math.abs), wuerde hier ein Geraet abschalten, das voll in der
+  // Sonne laeuft — und ohne diesen Test unbemerkt durchgehen.
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  const dev = simpleDev({ minSurplusW: 1000, stopGraceMs: 0, powerW: 1500 });
+  await d._evaluateSimpleDevices({ soc: 86, powerW: 1557 }, -46, [dev], state, 'start', 'stop', 'tok', { min_battery_soc: 50 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
 test('_evaluateSimpleDevices — a device adopted at startup does not get a fresh min-run window', async () => {
   // Der Zustands-Map ist nach einem App-Neustart leer. Ein bereits laufendes Geraet wurde
   // dabei mit startedAt = jetzt uebernommen — also so behandelt, als haette es gerade erst
