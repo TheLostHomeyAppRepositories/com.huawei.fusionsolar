@@ -773,6 +773,10 @@
         "orangeBudgetHint": "Extra vermogen dat apparaten uit<br>de batterij mogen opnemen in de reservezone",
         "legendDesc": "<span style=\"color:#34c759;font-weight:600\">Groen</span> (boven Normale SOC): alle apparaten draaien op volledig zonnebudget. <span style=\"color:#ff9f0a;font-weight:600\">Oranje</span> (Reserve → Normale SOC): apparaten starten in prioriteitsvolgorde als hun minimale overschot ≤ huidige export + Oranje budget. Het budget wordt gedeeld — elk gestart apparaat vermindert wat overblijft voor het volgende. <span style=\"color:#ff3b30;font-weight:600\">Rood</span> (onder Reserve-SOC): alle apparaten stoppen — de batterij laadt op volle snelheid. Zet Reserve-SOC op 0 om alleen rood en groen te gebruiken."
       },
+      "hardStop": {
+        "label": "Harde stop onder SOC",
+        "hint": "Onder dit niveau stoppen alle apparaten en laadt de accu op vol vermogen. Daarboven bepaalt de verdeling hieronder hoeveel van het overschot de apparaten krijgen."
+      },
       "shareRamp": {
         "title": "Verdeling van het overschot op accuniveau (optioneel)",
         "socLow": "Vanaf SOC (%)",

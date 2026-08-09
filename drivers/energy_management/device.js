@@ -315,7 +315,7 @@ class EmsDevice extends Device {
       warns.push(`export_limit_deactivate_soc ≥ trigger → ${c}`);
       cfg.export_limit_deactivate_soc = c;
     }
-    clamp(cfg, 'orange_budget_w', 0, 1000000);
+    clamp(cfg, 'hard_stop_soc', 0, 100);
     clamp(cfg, 'share_soc_low',  0, 100);
     clamp(cfg, 'share_soc_high', 0, 100);
     clamp(cfg, 'share_pct_low',  0, 100);
@@ -690,20 +690,14 @@ class EmsDevice extends Device {
     // Orange zone: expand effective surplus by orange budget so devices can borrow from battery charging.
     // The budget is shared across all device types via effectiveGridW — as each type allocates power,
     // effectiveGridW rises (less virtual export), naturally limiting subsequent types.
-    // Two ways to size that budget. The SOC ramp, when configured, splits the surplus
-    // between battery and devices continuously — the fuller the battery, the larger the
-    // devices' share. Without it, the old flat orange-zone budget applies unchanged.
+    // The SOC ramp splits the surplus between battery and devices: the fuller the
+    // battery, the larger the devices' share. Below the hard stop nothing runs at all
+    // (see _batteryZones), so there is no second budget model any more.
     const _shareBudgetW = this._batteryShareBudgetW(cfg, battery.soc, pvW, houseW, gridW);
     if (_shareBudgetW !== null) {
       if (_shareBudgetW > 0 && effectiveGridW !== null) effectiveGridW -= _shareBudgetW;
       this._diag.shareBudgetW = _shareBudgetW;
       this._diag.surplusShare = this._batterySurplusShare(cfg, battery.soc);
-    } else {
-      const { batReserve: _isOrangeZone } = this._batteryZones(cfg, battery);
-      const _orangeBudgetW = Number(cfg.orange_budget_w ?? 0);
-      if (_isOrangeZone && _orangeBudgetW > 0 && effectiveGridW !== null) {
-        effectiveGridW -= _orangeBudgetW;
-      }
     }
     // Simple-device dispatch table — replaces four near-identical evaluator wrappers.
     // Each entry carries the device list, its state map and the flow-card / config ids.

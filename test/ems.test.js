@@ -333,16 +333,31 @@ test('_setCapTitle — calls setCapabilityOptions again when the title actually 
 });
 
 // ── battery: _batteryZones ───────────────────────────────────────────────────
-test('_batteryZones — no low zone: below min is a hard stop', () => {
+test('_batteryZones — one threshold: the old reserve zone is gone', () => {
   const d = makeDevice();
-  const cfg = { min_battery_soc: 80 }; // min_battery_soc_low defaults to 0 → no reserve zone
+  // Was: 50 = reserve floor, 80 = normal. The hard stop was the reserve floor, and the
+  // band between them was the orange zone. That band is now covered by the surplus ramp,
+  // so the reserve floor is simply the one threshold and nothing reports "reserve".
+  const cfg = { min_battery_soc: 80, min_battery_soc_low: 50 };
   assert.deepStrictEqual(
-    d._batteryZones(cfg, { soc: 90 }),
-    { minSoc: 80, minSocLow: 0, hasLowZone: false, batLow: false, batReserve: false, batHardStop: false });
-  const low = d._batteryZones(cfg, { soc: 70 });
-  assert.strictEqual(low.batLow, true);
-  assert.strictEqual(low.batReserve, false);
+    d._batteryZones(cfg, { soc: 60 }),                    // once orange, now ordinary
+    { minSoc: 50, minSocLow: 50, hasLowZone: false, batLow: false, batReserve: false, batHardStop: false });
+  const low = d._batteryZones(cfg, { soc: 40 });
   assert.strictEqual(low.batHardStop, true);
+  assert.strictEqual(low.batLow, true);                   // chargerControl's restricted mode
+  assert.strictEqual(low.batReserve, false);              // never again
+});
+test('_batteryZones — without a reserve floor the normal minimum becomes the hard stop', () => {
+  const d = makeDevice();
+  const cfg = { min_battery_soc: 80 };                    // no min_battery_soc_low
+  assert.strictEqual(d._batteryZones(cfg, { soc: 70 }).batHardStop, true);
+  assert.strictEqual(d._batteryZones(cfg, { soc: 90 }).batHardStop, false);
+});
+test('_batteryZones — an explicit hard_stop_soc wins over the derived one', () => {
+  const d = makeDevice();
+  const cfg = { hard_stop_soc: 30, min_battery_soc: 80, min_battery_soc_low: 50 };
+  assert.strictEqual(d._batteryZones(cfg, { soc: 40 }).batHardStop, false);
+  assert.strictEqual(d._batteryZones(cfg, { soc: 20 }).batHardStop, true);
 });
 test('_batteryZones — soc null → nothing triggers', () => {
   const d = makeDevice();
@@ -350,21 +365,6 @@ test('_batteryZones — soc null → nothing triggers', () => {
   assert.strictEqual(z.batLow, false);
   assert.strictEqual(z.batReserve, false);
   assert.strictEqual(z.batHardStop, false);
-});
-test('_batteryZones — reserve (orange) zone between low and min', () => {
-  const d = makeDevice();
-  const cfg = { min_battery_soc: 80, min_battery_soc_low: 50 };
-  const reserve = d._batteryZones(cfg, { soc: 60 });
-  assert.strictEqual(reserve.batReserve, true);
-  assert.strictEqual(reserve.batHardStop, false);
-  // boundary: exactly at the low floor is still reserve (>=), not hard stop
-  assert.strictEqual(d._batteryZones(cfg, { soc: 50 }).batReserve, true);
-  // below the low floor → hard stop, no longer reserve
-  const hard = d._batteryZones(cfg, { soc: 40 });
-  assert.strictEqual(hard.batReserve, false);
-  assert.strictEqual(hard.batHardStop, true);
-  // exactly at min is not "low" at all
-  assert.strictEqual(d._batteryZones(cfg, { soc: 80 }).batLow, false);
 });
 test('_batteryZones — misconfigured low ≥ min disables the reserve zone', () => {
   const d = makeDevice();
@@ -2001,7 +2001,7 @@ test('setEmsChargeNow — a capability write failure surfaces as an error, no cr
   assert.strictEqual(res.error, 'not ready');
 });
 
-test('getEmsBatteryStatus — classifies the orange zone and surfaces the active price mode', async () => {
+test('getEmsBatteryStatus — only red and green remain, plus the active price mode', async () => {
   const cfg = { min_battery_soc: 80, min_battery_soc_low: 40, battery_devices: [{ id: 'bat1', price_charge_enabled: true }] };
   const d = makeWidgetDevice({
     _getConfig: () => cfg,
@@ -2011,7 +2011,9 @@ test('getEmsBatteryStatus — classifies the orange zone and surfaces the active
   const status = await d.getEmsBatteryStatus();
   assert.strictEqual(status.hasBattery, true);
   assert.strictEqual(status.soc, 60);
-  assert.strictEqual(status.zone, 'orange');
+  // 60 % sits above the 40 % hard stop, so it is simply green — the orange zone it used
+  // to report no longer exists; the surplus ramp covers that range continuously.
+  assert.strictEqual(status.zone, 'green');
   assert.strictEqual(status.priceEnabled, true);
   assert.strictEqual(status.priceMode, 'charge');
 });

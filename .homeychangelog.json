@@ -993,5 +993,10 @@
     "en": "The EMS device now reports a failing control loop instead of keeping its last status, so a stalled EMS is visible at a glance. Also fixes the negative-price export rule releasing every five minutes and briefly feeding in again.",
     "de": "Das EMS-Gerät meldet neu eine fehlgeschlagene Steuerschleife, statt den letzten Status weiterzuzeigen — ein stehengebliebenes EMS ist damit sofort erkennbar. Ausserdem behoben: Die Negativpreis-Regel gab die Begrenzung alle fünf Minuten frei und speiste kurz wieder ein.",
     "nl": "Het EMS-apparaat meldt nu een vastgelopen regellus in plaats van de laatste status te blijven tonen. Ook opgelost: de negatieve-prijsregel gaf de begrenzing elke vijf minuten vrij en leverde dan even terug."
+  },
+  "1.2.108": {
+    "en": "The battery SOC zones are replaced by the surplus split. Reserve SOC, Normal SOC and the Orange budget are gone; one hard-stop level remains, below which every device stops. Your existing hard-stop level is carried over unchanged.",
+    "de": "Die Batterie-SOC-Zonen sind durch die Überschuss-Aufteilung ersetzt. Reserve-SOC, Normal-SOC und Orange-Budget entfallen; es bleibt eine Hart-Stopp-Schwelle, unter der alle Geräte stoppen. Deine bisherige Schwelle wird unverändert übernommen.",
+    "nl": "De accu-SOC-zones zijn vervangen door de overschotverdeling. Reserve-SOC, Normaal-SOC en het Oranje-budget vervallen; er blijft één harde-stopdrempel over waaronder alle apparaten stoppen. Je bestaande drempel wordt ongewijzigd overgenomen."
   }
 }

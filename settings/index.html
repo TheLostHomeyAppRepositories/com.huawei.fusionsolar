@@ -989,35 +989,14 @@
             </div>
 
             <!-- Number inputs -->
-            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-              <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n-html="homeBatteries.socZones.reserveLabel">Reserve SOC <span style="font-weight:400;color:#bbb">(optional · 0 = off)</span></div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <input id="ems-min-soc-low" type="number" value="0" min="0" max="100" step="5"
-                    style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
-                    oninput="emsUpdateSocZones()">
-                  <span style="font-size:12px;color:#6e6e73">%</span>
-                </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n="homeBatteries.hardStop.label">Hard stop below SOC</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input id="ems-hard-stop-soc" type="number" value="0" min="0" max="100" step="1"
+                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff">
+                <span style="font-size:12px;color:#6e6e73">%</span>
               </div>
-              <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n-html="homeBatteries.socZones.normalLabel">Normal SOC <span style="font-weight:400;color:#bbb">(full budget above)</span></div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <input id="ems-min-soc" type="number" value="80" min="0" max="100" step="5"
-                    style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
-                    oninput="emsUpdateSocZones()">
-                  <span style="font-size:12px;color:#6e6e73">%</span>
-                </div>
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n="homeBatteries.socZones.orangeBudgetLabel">Orange Budget</div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <input id="ems-orange-budget-w" type="number" value="0" min="0" max="11500" step="100"
-                    style="width:82px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff"
-                    oninput="emsUpdateSocZones()">
-                  <span style="font-size:12px;color:#6e6e73">W</span>
-                </div>
-                <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic" data-i18n-html="homeBatteries.socZones.orangeBudgetHint">Extra power devices may draw from<br>the battery while in the reserve zone</div>
-              </div>
+              <div style="font-size:11px;color:#6e6e73;margin-top:4px;line-height:1.5" data-i18n="homeBatteries.hardStop.hint">Below this level every device stops and the battery charges at full power. Above it, the split below decides how much of the surplus the devices get.</div>
             </div>
 
             <!-- SOC ramp: replaces the flat Orange budget with a continuous split of the
@@ -1050,7 +1029,6 @@
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
             <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead.</div>
 
-            <span class="ems-toggle-desc" style="margin-top:8px" data-i18n-html="homeBatteries.socZones.legendDesc"><span style="color:#34c759;font-weight:600">Green</span> (above Normal SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Normal SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
           </div>
 
           <!-- Solar-forecast start gate -->
@@ -3898,53 +3876,12 @@
     }
     // ── End Car flows ────────────────────────────────────────────────────────────
 
-    function emsUpdateSocZones() {
-      var elMin = document.getElementById('ems-min-soc');
-      var elLow = document.getElementById('ems-min-soc-low');
-      var minSoc    = Math.min(100, Math.max(0, parseInt(elMin.value) || 0));
-      var minSocLow = Math.min(100, Math.max(0, parseInt(elLow.value) || 0));
-
-      // Enforce reserve < min: clamp and write back so the bar always stays consistent
-      if (minSocLow > 0 && minSocLow >= minSoc) {
-        minSocLow = Math.max(0, minSoc - 5);
-        elLow.value = minSocLow;
-      }
-      // Keep browser spinner from allowing invalid values
-      elLow.max = minSoc > 0 ? minSoc - 1 : 0;
-      elMin.min = minSocLow > 0 ? minSocLow + 1 : 0;
-
-      var hasReserve = minSocLow > 0 && minSocLow < minSoc;
-
-      var segStop    = document.getElementById('soc-seg-stop');
-      var segThr     = document.getElementById('soc-seg-thr');
-      var markerLow  = document.getElementById('soc-marker-low');
-      var markerMin  = document.getElementById('soc-marker-min');
-      var chipThr    = document.getElementById('soc-chip-thr');
-
-      if (hasReserve) {
-        segStop.style.width = minSocLow + '%';
-        segThr.style.width  = (minSoc - minSocLow) + '%';
-        markerLow.style.display = 'block';
-        markerLow.style.left    = minSocLow + '%';
-        document.getElementById('soc-label-low').textContent = minSocLow + '%';
-        if (chipThr) {
-          chipThr.style.display = 'flex';
-          var budgetW = parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0;
-          var chipLabel = document.getElementById('soc-chip-thr-label');
-          if (chipLabel) chipLabel.textContent = _H.__('settings.homeBatteries.socZones.chipThrLabel') + ' · ' + budgetW + ' W';
-        }
-      } else {
-        segStop.style.width = minSoc + '%';
-        segThr.style.width  = '0%';
-        markerLow.style.display = 'none';
-        if (chipThr) chipThr.style.display = 'none';
-      }
-
-      if (markerMin) {
-        markerMin.style.left = minSoc + '%';
-        document.getElementById('soc-label-min').textContent = minSoc + '%';
-      }
-    }
+    // The three-zone bar and its chips belonged to the Reserve/Normal/Orange model, which
+    // the surplus ramp replaced. The inputs it read are gone; the markup for the bar is
+    // still here and now shows a static two-colour hint. Kept as a no-op rather than
+    // deleted so the call sites do not have to be hunted down in one pass — removing the
+    // bar markup itself is the tidy-up that belongs with the legend rewrite.
+    function emsUpdateSocZones() { /* no zones left to draw */ }
 
     // ── Capability detection ──────────────────────────────────────────────────
 
@@ -7286,9 +7223,7 @@
       airconDevs.forEach(function(d) { emsAddAirconRow(d.id, d); });
 
       // ── Scalar settings ───────────────────────────────────────────────────────
-      if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
-      if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
-      if (cfg.orange_budget_w       !== undefined) document.getElementById('ems-orange-budget-w').value = cfg.orange_budget_w;
+      if (cfg.hard_stop_soc !== undefined) document.getElementById('ems-hard-stop-soc').value = cfg.hard_stop_soc;
       if (cfg.share_soc_low  !== undefined) document.getElementById('ems-share-soc-low').value  = cfg.share_soc_low;
       if (cfg.share_soc_high !== undefined) document.getElementById('ems-share-soc-high').value = cfg.share_soc_high;
       if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
@@ -7368,21 +7303,16 @@
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
 
-      var _minSoc = parseInt(document.getElementById('ems-min-soc').value, 10);
       if (isNaN(_minSoc) || _minSoc < 0 || _minSoc > 100) {
         emsShowSaveStatus('✗ Normal SOC must be 0–100', '#c0392b');
-        document.getElementById('ems-min-soc').focus();
         return;
       }
-      var _minSocLow = parseInt(document.getElementById('ems-min-soc-low').value, 10) || 0;
       if (isNaN(_minSocLow) || _minSocLow < 0 || _minSocLow > 100) {
         emsShowSaveStatus('✗ Reserve SOC must be 0–100', '#c0392b');
-        document.getElementById('ems-min-soc-low').focus();
         return;
       }
       if (_minSocLow > 0 && _minSocLow >= _minSoc) {
         emsShowSaveStatus('✗ Reserve SOC must be lower than Normal SOC', '#c0392b');
-        document.getElementById('ems-min-soc-low').focus();
         return;
       }
 
@@ -7416,7 +7346,7 @@
         aircon_devices:       airconDevs,
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
-        orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
+        hard_stop_soc:        Math.max(0, parseInt(document.getElementById('ems-hard-stop-soc').value, 10) || 0),
         share_soc_low:        Math.max(0, parseInt(document.getElementById('ems-share-soc-low').value, 10)  || 0),
         share_soc_high:       Math.max(0, parseInt(document.getElementById('ems-share-soc-high').value, 10) || 0),
         share_pct_low:        Math.max(0, parseInt(document.getElementById('ems-share-pct-low').value, 10)  || 0),

@@ -773,6 +773,10 @@
         "orangeBudgetHint": "Zusätzliche Leistung, die Geräte in der<br>Reserve-Zone aus der Batterie beziehen dürfen",
         "legendDesc": "<span style=\"color:#34c759;font-weight:600\">Grün</span> (über Normal-SOC): alle Geräte laufen mit vollem Solarbudget. <span style=\"color:#ff9f0a;font-weight:600\">Orange</span> (Reserve → Normal-SOC): Geräte starten in Prioritätsreihenfolge, sofern ihr Mindestüberschuss ≤ aktuelle Einspeisung + Orange-Budget ist. Das Budget wird geteilt — jedes gestartete Gerät reduziert, was für das nächste übrig bleibt. <span style=\"color:#ff3b30;font-weight:600\">Rot</span> (unter Reserve-SOC): alle Geräte stoppen — die Batterie lädt mit voller Leistung. Reserve-SOC auf 0 setzen, um nur Rot und Grün zu nutzen."
       },
+      "hardStop": {
+        "label": "Hart-Stopp unter SOC",
+        "hint": "Unter diesem Ladestand stoppen alle Geräte und die Batterie lädt mit voller Leistung. Darüber entscheidet die Aufteilung unten, wie viel des Überschusses die Geräte erhalten."
+      },
       "shareRamp": {
         "title": "Aufteilung des Überschusses nach Ladestand (optional)",
         "socLow": "Ab SOC (%)",
