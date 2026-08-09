@@ -1063,5 +1063,10 @@
     "en": "The Solcast section now draws the forecast: bars of expected PV output for the coming day, with the current time and the day boundary marked. Shown only when forecast data is actually there.",
     "de": "Der Solcast-Bereich zeichnet neu die Prognose: Balken der erwarteten PV-Leistung für den kommenden Tag, mit aktueller Zeit und Tagesgrenze markiert. Erscheint nur, wenn Prognosedaten wirklich vorliegen.",
     "nl": "Het Solcast-onderdeel tekent nu de voorspelling: staven van het verwachte PV-vermogen voor de komende dag, met de huidige tijd en de daggrens gemarkeerd. Alleen zichtbaar als er echt gegevens zijn."
+  },
+  "1.2.122": {
+    "en": "When no forecast is available the Solcast section now says so — with the age of the last fetch, or the error Solcast returned — instead of simply showing nothing.",
+    "de": "Liegt keine Prognose vor, sagt der Solcast-Bereich das jetzt — mit dem Alter des letzten Abrufs oder der Fehlermeldung von Solcast — statt einfach nichts anzuzeigen.",
+    "nl": "Als er geen voorspelling beschikbaar is, meldt het Solcast-onderdeel dat nu — met de leeftijd van de laatste ophaalactie of de fout van Solcast — in plaats van niets te tonen."
   }
 }

@@ -666,7 +666,9 @@
       "resourceIdPlaceholder": "One per line (or comma-separated) — e.g.\nabcd-1234-ef56-7890\n9876-5432-dcba-0fed",
       "desc": "Free <strong>Hobbyist</strong> account at <a href=\"https://toolkit.solcast.com.au/live-forecast\" target=\"_blank\" rel=\"noopener\">Solcast Toolkit</a> — register your PV system with its exact details, then copy your <strong>API key</strong> (under <em>Your name → Your API key</em>) and <strong>Resource ID</strong> (click your site on the map). <strong>Multiple sites</strong> (e.g. north + south roof) — enter one per line; their forecasts are <strong>summed</strong>. New accounts get <strong>10 API calls/day</strong> (older accounts 50) and <em>each site is one call</em>, so the app spaces fetches out automatically to stay within budget (≈ 8 calls/day total whether 1 or several sites) and caches across restarts — <em>no flows needed</em>. Result appears under <em>Diagnostics → EMS Diagnostics</em>.",
       "chartNow": "now",
-      "chartAlt": "Forecast PV output over the coming day"
+      "chartAlt": "Forecast PV output over the coming day",
+      "chartNoData": "No forecast data yet",
+      "chartAge": "last fetched {min} min ago"
     },
     "evChargers": {
       "title": "🚗 EV Chargers",
