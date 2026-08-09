@@ -282,7 +282,7 @@
     },
     "exportLimit": {
       "title": "📤 Exportlimiet-coördinator",
-      "subtitle": " · automatisch",
+      "subtitle": "automatisch",
       "enable": {
         "title": "Teruglevering automatisch begrenzen",
         "desc": "Het EMS start de flows <em>Teruglevergrens inschakelen</em> en <em>Teruglevergrens uitschakelen</em> van de omvormer zelf, op basis van de regels die je hieronder kiest. Schakel in om de regels te kiezen en de installatie-instructies te bekijken."
@@ -316,12 +316,12 @@
     },
     "diag": {
       "title": "🩺 EMS-diagnose",
-      "subtitle": " · live tick-status",
+      "subtitle": "live tick-status",
       "autoRefresh": "Ververst automatisch elke 3 s zolang geopend"
     },
     "history": {
       "title": "📋 EMS-geschiedenis",
-      "subtitle": " · recente gebeurtenissen",
+      "subtitle": "recente gebeurtenissen",
       "copy": "⧉ Kopiëren",
       "yesterday": "Gisteren",
       "noEventsFor": "Geen gebeurtenissen voor",
@@ -372,7 +372,7 @@
     },
     "chargeSessions": {
       "title": "🔌 Laadsessies",
-      "subtitle": " · energie & kosten per laadbeurt",
+      "subtitle": "energie & kosten per laadbeurt",
       "hint": "Eén item per \"instekken → uitstekken\"-periode, ongeacht de laadmodus",
       "noneYet": "Nog geen afgeronde laadsessies.",
       "charger": "Lader",
@@ -709,7 +709,7 @@
     },
     "evChargers": {
       "title": "🚗 EV-laders",
-      "subtitle": " · zonneoverschot & tarief",
+      "subtitle": "zonneoverschot & tarief",
       "addButton": "+ Lader toevoegen",
       "compare": {
         "summary": "Welke \"Laadmodus\" moet ik kiezen?",
@@ -754,12 +754,12 @@
     },
     "cars": {
       "title": "🚙 Auto's",
-      "subtitle": " · elektrisch of hybride",
+      "subtitle": "elektrisch of hybride",
       "intro": "Voeg één of meer voertuigen toe. Per auto worden het huidige laadniveau (uitgelezen van het geselecteerde apparaat) en de streefwaarde (ingesteld via flow) weergegeven als eigen apparaatwaarden (tegel, Insights, flow-tokens). Gebruik de <em>Flow instellen</em> van elke auto om de streefwaarde op het voertuig toe te passen.",
       "addButton": "+ Auto toevoegen"
     },
     "simpleDevice": {
-      "subtitle": " · bij zonneoverschot",
+      "subtitle": "bij zonneoverschot",
       "enableControl": {
         "title": "EMS-besturing inschakelen"
       }
@@ -791,19 +791,19 @@
     },
     "inverter": {
       "title": "☀️ Zonne-omvormer",
-      "subtitle": " · bron van zonneproductie",
+      "subtitle": "bron van zonneproductie",
       "desc": "De EMS leest de zonneproductie (W) van dit apparaat om het beschikbare overschot te berekenen. Meerdere omvormers worden opgeteld.",
       "addButton": "+ Omvormer toevoegen"
     },
     "houseMeter": {
       "title": "🏠 Huisverbruiksmeter",
-      "subtitle": " · optioneel",
+      "subtitle": "Optioneel. Toont het huisverbruik op de apparaattegel. Zonder deze meter wordt de huisbelasting afgeleid van zon, net en batterij.",
       "desc": "Optioneel. Wordt gebruikt om het huisverbruik op de apparaattegel te tonen. Indien weggelaten wordt de huisbelasting afgeleid van de metingen van zon, net en batterij.",
       "addButton": "+ Huismeter toevoegen"
     },
     "homeBatteries": {
       "title": "🔋 Thuisbatterijen",
-      "subtitle": " · optioneel",
+      "subtitle": "Optioneel maar aanbevolen. Levert de batterij-SOC voor batterijbescherming: onder het minimum stopt het EMS overschotapparaten en remt het laden af.",
       "desc": "Optioneel maar aanbevolen. De EMS gebruikt de batterij-SOC om de batterij te beschermen — wanneer de SOC onder het minimum zakt, worden overschotapparaten gestopt en wordt EV-laden gedrosseld of gepauzeerd.",
       "addButton": "+ Batterij toevoegen",
       "socZones": {
@@ -903,7 +903,7 @@
     },
     "gridMeter": {
       "title": "⚡ Netmeter",
-      "subtitle": " · bron van net-import/export",
+      "subtitle": "bron van net-import/export",
       "desc": "De EMS leest hier het netvermogen om te bepalen hoeveel overschot beschikbaar is. Positief = kopen, negatief = verkopen. Meerdere meters worden opgeteld.",
       "addButton": "+ Meter toevoegen",
       "kwUnlimited": "kW · 0 = onbeperkt",

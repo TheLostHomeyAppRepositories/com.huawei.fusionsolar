@@ -282,7 +282,7 @@
     },
     "exportLimit": {
       "title": "📤 Einspeiselimit-Koordinator",
-      "subtitle": " · automatisch",
+      "subtitle": "automatisch",
       "enable": {
         "title": "Einspeisung automatisch begrenzen",
         "desc": "Das EMS löst die Flows <em>Exportbegrenzung aktivieren</em> und <em>Exportbegrenzung deaktivieren</em> des Wechselrichters selbst aus — nach den Regeln, die du unten wählst. Zum Auswählen der Regeln und für die Einrichtungshinweise aktivieren."
@@ -316,12 +316,12 @@
     },
     "diag": {
       "title": "🩺 EMS Diagnose",
-      "subtitle": " · Live-Tick-Status",
+      "subtitle": "Live-Tick-Status",
       "autoRefresh": "Aktualisiert sich alle 3 s automatisch, solange geöffnet"
     },
     "history": {
       "title": "📋 EMS-Verlauf",
-      "subtitle": " · letzte Ereignisse",
+      "subtitle": "letzte Ereignisse",
       "copy": "⧉ Kopieren",
       "yesterday": "Gestern",
       "noEventsFor": "Keine Ereignisse für",
@@ -372,7 +372,7 @@
     },
     "chargeSessions": {
       "title": "🔌 Lade-Sessions",
-      "subtitle": " · Energie & Kosten pro Ladevorgang",
+      "subtitle": "Energie & Kosten pro Ladevorgang",
       "hint": "Ein Eintrag pro \"Einstecken → Ausstecken\"-Zeitraum, unabhängig vom Lademodus",
       "noneYet": "Noch keine abgeschlossenen Lade-Sessions.",
       "charger": "Lader",
@@ -709,7 +709,7 @@
     },
     "evChargers": {
       "title": "🚗 EV-Lader",
-      "subtitle": " · Solarüberschuss & Tarif",
+      "subtitle": "Solarüberschuss & Tarif",
       "addButton": "+ Lader hinzufügen",
       "compare": {
         "summary": "Welchen \"Lademodus\" soll ich wählen?",
@@ -754,12 +754,12 @@
     },
     "cars": {
       "title": "🚙 Fahrzeuge",
-      "subtitle": " · elektrisch oder hybrid",
+      "subtitle": "elektrisch oder hybrid",
       "intro": "Ein oder mehrere Fahrzeuge hinzufügen. Pro Fahrzeug werden der aktuelle Ladestand (vom gewählten Gerät gelesen) und der Zielladestand (per Flow gesetzt) als eigene Gerätewerte bereitgestellt (Kachel, Insights, Flow-Tokens). Nutze das <em>Flow-Setup</em> jedes Fahrzeugs, um den Zielladestand ans Fahrzeug zu übermitteln.",
       "addButton": "+ Fahrzeug hinzufügen"
     },
     "simpleDevice": {
-      "subtitle": " · bei Solarüberschuss",
+      "subtitle": "bei Solarüberschuss",
       "enableControl": {
         "title": "EMS-Steuerung aktivieren"
       }
@@ -791,19 +791,19 @@
     },
     "inverter": {
       "title": "☀️ Solar-Wechselrichter",
-      "subtitle": " · Quelle für Solarproduktion",
+      "subtitle": "Quelle für Solarproduktion",
       "desc": "Das EMS liest hier die Solarproduktion (W), um den verfügbaren Überschuss zu berechnen. Mehrere Wechselrichter werden summiert.",
       "addButton": "+ Wechselrichter hinzufügen"
     },
     "houseMeter": {
       "title": "🏠 Hausverbrauchszähler",
-      "subtitle": " · optional",
+      "subtitle": "Optional. Zeigt den Hausverbrauch auf der Gerätekachel. Ohne diesen Zähler wird die Hauslast aus Solar-, Netz- und Batteriewerten abgeleitet.",
       "desc": "Optional. Zeigt den Hausverbrauch auf der Gerätekachel an. Falls nicht angegeben, wird die Hauslast aus Solar-, Netz- und Batteriewerten abgeleitet.",
       "addButton": "+ Hauszähler hinzufügen"
     },
     "homeBatteries": {
       "title": "🔋 Hausbatterien",
-      "subtitle": " · optional",
+      "subtitle": "Optional, aber empfohlen. Liefert den Batterie-SOC für den Batterieschutz: Fällt er unter das Minimum, stoppt das EMS Überschussgeräte und drosselt das Laden.",
       "desc": "Optional, aber empfohlen. Das EMS nutzt den Batterie-SOC zum Batterieschutz — fällt der SOC unter das Minimum, werden Überschussgeräte gestoppt und das EV-Laden gedrosselt oder pausiert.",
       "addButton": "+ Batterie hinzufügen",
       "socZones": {
@@ -903,7 +903,7 @@
     },
     "gridMeter": {
       "title": "⚡ Netzzähler",
-      "subtitle": " · Quelle für Netzbezug / -einspeisung",
+      "subtitle": "Quelle für Netzbezug / -einspeisung",
       "desc": "Das EMS liest hier die Netzleistung, um den verfügbaren Überschuss zu berechnen. Positiv = Bezug, negativ = Einspeisung. Mehrere Zähler werden summiert.",
       "addButton": "+ Zähler hinzufügen",
       "kwUnlimited": "kW · 0 = unbegrenzt",

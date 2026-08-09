@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.131": {
+    "en": "The grey descriptions in the section headers are gone — with the state shown on the right they were competing for the same line and pushing headers onto two rows. They are still there as hover help on the section title, and the two that only said \"optional\" now explain what the section actually does.",
+    "de": "Die grauen Beschreibungen in den Abschnittsköpfen sind weg — zusammen mit der Zustandsanzeige rechts teilten sie sich eine Zeile und drückten die Köpfe auf zwei Zeilen. Sie bleiben als Hilfe erhalten, wenn man über den Abschnittstitel fährt; die zwei, die nur \"optional\" sagten, erklären jetzt, wozu der Abschnitt dient.",
+    "nl": "De grijze beschrijvingen in de sectiekoppen zijn weg — samen met de status rechts deelden ze één regel en werden koppen tweeregelig. Ze blijven beschikbaar als hulp bij het zweven over de sectietitel; de twee die alleen \"optioneel\" zeiden leggen nu uit waar de sectie voor is."
+  },
   "1.2.130": {
     "en": "The settings page now shows which sections are actually set up: each collapsed section carries the configured device instead of only a description, so you no longer have to open all eleven to find out. A fresh install gets a short setup guide that jumps to the next open step and disappears once it is done.",
     "de": "Die Einstellungsseite zeigt neu, welche Abschnitte tatsächlich eingerichtet sind: Jeder zugeklappte Abschnitt trägt das konfigurierte Gerät statt nur einer Beschreibung — man muss nicht mehr alle elf öffnen, um das herauszufinden. Eine frische Installation erhält eine kurze Einrichtungshilfe, die zum nächsten offenen Schritt springt und verschwindet, sobald er erledigt ist.",

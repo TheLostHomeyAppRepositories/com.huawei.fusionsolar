@@ -282,7 +282,7 @@
     },
     "exportLimit": {
       "title": "📤 Export Limit Coordinator",
-      "subtitle": " · automatic",
+      "subtitle": "automatic",
       "enable": {
         "title": "Limit inverter feed-in automatically",
         "desc": "The EMS fires the inverter's <em>Enable export limit</em> and <em>Disable export limit</em> flows on its own, based on the rules you pick below. Enable to choose the rules and review the setup instructions."
@@ -316,12 +316,12 @@
     },
     "diag": {
       "title": "🩺 EMS Diagnostics",
-      "subtitle": " · live tick health",
+      "subtitle": "live tick health",
       "autoRefresh": "Auto-refreshes every 3 s while open"
     },
     "history": {
       "title": "📋 EMS History",
-      "subtitle": " · recent events",
+      "subtitle": "recent events",
       "copy": "⧉ Copy",
       "yesterday": "Yesterday",
       "noEventsFor": "No events for",
@@ -372,7 +372,7 @@
     },
     "chargeSessions": {
       "title": "🔌 Charge Sessions",
-      "subtitle": " · energy & cost per charge",
+      "subtitle": "energy & cost per charge",
       "hint": "One entry per \"plug in → unplug\" period, any charging mode",
       "noneYet": "No completed charge sessions yet.",
       "charger": "Charger",
@@ -709,7 +709,7 @@
     },
     "evChargers": {
       "title": "🚗 EV Chargers",
-      "subtitle": " · solar surplus & tariff",
+      "subtitle": "solar surplus & tariff",
       "addButton": "+ Add charger",
       "compare": {
         "summary": "Which \"Charging mode\" should I pick?",
@@ -754,12 +754,12 @@
     },
     "cars": {
       "title": "🚙 Cars",
-      "subtitle": " · electric or hybrid",
+      "subtitle": "electric or hybrid",
       "intro": "Add one or more vehicles. Per car, the current charge level (read from the selected device) and the target charge (set via flow) are exposed as their own device values (tile, Insights, flow tokens). Use each car's <em>Flow setup</em> to apply the target charge to the vehicle.",
       "addButton": "+ Add car"
     },
     "simpleDevice": {
-      "subtitle": " · on solar surplus",
+      "subtitle": "on solar surplus",
       "enableControl": {
         "title": "Enable EMS control"
       }
@@ -791,19 +791,19 @@
     },
     "inverter": {
       "title": "☀️ Solar Inverter",
-      "subtitle": " · solar production source",
+      "subtitle": "solar production source",
       "desc": "The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.",
       "addButton": "+ Add inverter"
     },
     "houseMeter": {
       "title": "🏠 House Consumption Meter",
-      "subtitle": " · optional",
+      "subtitle": "Optional. Shows house consumption on the device tile. Without it, house load is derived from solar, grid and battery readings.",
       "desc": "Optional. Used to show house consumption in the device tile. If omitted, house load is derived from solar, grid, and battery readings.",
       "addButton": "+ Add house meter"
     },
     "homeBatteries": {
       "title": "🔋 Home Batteries",
-      "subtitle": " · optional",
+      "subtitle": "Optional but recommended. Supplies the battery SOC used for battery protection: below the minimum the EMS stops surplus devices and throttles charging.",
       "desc": "Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.",
       "addButton": "+ Add battery",
       "socZones": {
@@ -903,7 +903,7 @@
     },
     "gridMeter": {
       "title": "⚡ Grid Meter",
-      "subtitle": " · grid import / export source",
+      "subtitle": "grid import / export source",
       "desc": "The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.",
       "addButton": "+ Add meter",
       "kwUnlimited": "kW · 0 = unlimited",
