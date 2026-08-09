@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.130": {
+    "en": "The settings page now shows which sections are actually set up: each collapsed section carries the configured device instead of only a description, so you no longer have to open all eleven to find out. A fresh install gets a short setup guide that jumps to the next open step and disappears once it is done.",
+    "de": "Die Einstellungsseite zeigt neu, welche Abschnitte tatsächlich eingerichtet sind: Jeder zugeklappte Abschnitt trägt das konfigurierte Gerät statt nur einer Beschreibung — man muss nicht mehr alle elf öffnen, um das herauszufinden. Eine frische Installation erhält eine kurze Einrichtungshilfe, die zum nächsten offenen Schritt springt und verschwindet, sobald er erledigt ist.",
+    "nl": "De instellingenpagina laat nu zien welke secties daadwerkelijk zijn ingesteld: elke ingeklapte sectie toont het geconfigureerde apparaat in plaats van alleen een beschrijving. Een verse installatie krijgt een korte installatiehulp die naar de volgende open stap springt en verdwijnt zodra die klaar is."
+  },
   "1.2.129": {
     "en": "The Save button on the settings page is blue again. It was rendering in the same grey as the secondary buttons beside it, so the one control you have to press looked inert.",
     "de": "Der Speichern-Knopf auf der Einstellungsseite ist wieder blau. Er wurde im selben Grau wie die Nebenknöpfe dargestellt — ausgerechnet der eine Knopf, den man drücken muss, wirkte dadurch inaktiv.",

@@ -444,6 +444,19 @@
       "settings": "Loading settings…",
       "almost": "Almost done…"
     },
+    "setup": {
+      "title": "Setup",
+      "desc": "Two things and the EMS starts working. Everything else is optional.",
+      "progress": "{{done}} of {{total}}",
+      "stepSource": "Measurement source: inverter or grid meter",
+      "stepControl": "At least one controlled device",
+      "advised": "advised",
+      "required": "required",
+      "goto": "Set up",
+      "devices": "devices",
+      "hint": "No controlled device set up yet — the EMS measures, but controls nothing.",
+      "hintLink": "Add a device"
+    },
     "status": {
       "devicesLoaded": "{{n}} devices loaded",
       "failed": "Failed",

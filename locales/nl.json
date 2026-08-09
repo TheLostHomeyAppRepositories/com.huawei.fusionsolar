@@ -444,6 +444,19 @@
       "settings": "Instellingen laden…",
       "almost": "Bijna klaar…"
     },
+    "setup": {
+      "title": "Instellen",
+      "desc": "Twee dingen en het EMS werkt. Al het andere is optioneel.",
+      "progress": "{{done}} van {{total}}",
+      "stepSource": "Meetbron: omvormer of netmeter",
+      "stepControl": "Minstens één aangestuurd apparaat",
+      "advised": "aanbevolen",
+      "required": "vereist",
+      "goto": "Instellen",
+      "devices": "apparaten",
+      "hint": "Er is nog geen aangestuurd apparaat ingesteld — het EMS meet wel, maar stuurt niets aan.",
+      "hintLink": "Apparaat toevoegen"
+    },
     "status": {
       "devicesLoaded": "{{n}} apparaten geladen",
       "failed": "Mislukt",

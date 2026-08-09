@@ -444,6 +444,19 @@
       "settings": "Einstellungen werden geladen…",
       "almost": "Fast fertig…"
     },
+    "setup": {
+      "title": "Einrichtung",
+      "desc": "Zwei Angaben, dann arbeitet das EMS. Alles Weitere ist optional.",
+      "progress": "{{done}} von {{total}}",
+      "stepSource": "Messquelle: Wechselrichter oder Netzzähler",
+      "stepControl": "Mindestens ein gesteuertes Gerät",
+      "advised": "empfohlen",
+      "required": "erforderlich",
+      "goto": "Einrichten",
+      "devices": "Geräte",
+      "hint": "Es ist noch kein gesteuertes Gerät eingerichtet — das EMS misst, steuert aber nichts.",
+      "hintLink": "Gerät hinzufügen"
+    },
     "status": {
       "devicesLoaded": "{{n}} Geräte geladen",
       "failed": "Fehlgeschlagen",

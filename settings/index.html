@@ -432,6 +432,46 @@
       letter-spacing: 0.5px;
       color: #6e6e73;
     }
+    /* Collapsed, a section used to say only what it is for ("· grid import source"),
+       never whether it was actually set up — you had to open all eleven to find out.
+       The chip carries the state instead: green with the configured device, amber when
+       a hard requirement is still missing, empty when optional and untouched. */
+    .ems-section-state {
+      margin-left: auto;
+      font-size: 11px;
+      color: #8e8e93;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 46%;
+    }
+    .ems-section-state.ok   { color: #1a7a3a; }
+    .ems-section-state.todo { color: #b06000; }
+
+    /* ── First-run setup guide ───────────────────────────── */
+    .ems-setup {
+      border: 1px solid #cfe3fb;
+      background: #f2f8ff;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 6px 2px 14px;
+    }
+    .ems-setup-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+    .ems-setup-title { font-size: 13px; font-weight: 600; color: #1d1d1f; }
+    .ems-setup-count { font-size: 11px; color: #6e6e73; margin-left: auto; }
+    .ems-setup-desc { font-size: 11px; color: #6e6e73; line-height: 1.5; margin-bottom: 8px; }
+    .ems-setup-step { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
+    .ems-setup-step .mark { width: 13px; text-align: center; }
+    .ems-setup-step.done { color: #6e6e73; }
+    .ems-setup-step .opt { font-size: 10px; color: #8e8e93; }
+    .ems-setup-actions { margin-top: 10px; }
+    .ems-setup-hint {
+      font-size: 11px; color: #6e6e73; line-height: 1.5;
+      padding: 8px 12px; margin: 6px 2px 12px;
+      background: #f9f9fb; border: 1px solid #ececf0; border-radius: 8px;
+    }
+    .ems-setup-link { color: #0071e3; cursor: pointer; text-decoration: none; }
+    .ems-setup-link:hover { text-decoration: underline; }
     .ems-section-subtitle {
       font-size: 10px;
       font-weight: 400;
@@ -465,7 +505,7 @@
       line-height: 1.5;
     }
     .ems-section-chevron {
-      margin-left: auto;
+      margin-left: 8px;
       font-size: 10px;
       color: #c7c7cc;
       transition: transform 0.2s;
@@ -890,8 +930,11 @@
       </details>
 
       <!-- Inverter -->
+      <!-- First-run guide. emsRenderSetupBanner() fills and hides it; a configured
+           install never sees it. -->
+      <div id="ems-setup-banner" style="display:none"></div>
       <div class="ems-group" data-i18n="group.dataSources">Data sources</div>
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-inverter">
         <summary><span class="ems-section-label" data-i18n="inverter.title">☀️ Solar Inverter</span><span class="ems-section-subtitle" data-i18n="inverter.subtitle"> · solar production source</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="inverter.desc">The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.</p>
@@ -977,7 +1020,7 @@
       </details>
 
       <!-- Power Meter (P1) -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-gridmeter">
         <summary><span class="ems-section-label" data-i18n="gridMeter.title">⚡ Grid Meter</span><span class="ems-section-subtitle" data-i18n="gridMeter.subtitle"> · grid import / export source</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="gridMeter.desc">The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.</p>
@@ -1001,7 +1044,7 @@
       </details>
 
       <!-- House Consumption Meter -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-housemeter">
         <summary><span class="ems-section-label" data-i18n="houseMeter.title">🏠 House Consumption Meter</span><span class="ems-section-subtitle" data-i18n="houseMeter.subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="houseMeter.desc">Optional. Used to show house consumption in the device tile. If omitted, house load is derived from solar, grid, and battery readings.</p>
@@ -1011,7 +1054,7 @@
       </details>
 
       <!-- Home Batteries -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-batteries">
         <summary><span class="ems-section-label" data-i18n="homeBatteries.title">🔋 Home Batteries</span><span class="ems-section-subtitle" data-i18n="homeBatteries.subtitle"> · optional</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n="homeBatteries.desc">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
@@ -1187,7 +1230,7 @@
 
       <!-- EV Chargers -->
       <div class="ems-group" data-i18n="group.controlledDevices">Controlled devices</div>
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-chargers">
         <summary><span class="ems-section-label" data-i18n="evChargers.title">🚗 EV Chargers</span><span class="ems-section-subtitle" data-i18n="evChargers.subtitle"> · solar surplus &amp; tariff</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <details class="ems-callout" style="font-size:11px;line-height:1.6;margin-bottom:10px">
@@ -1280,7 +1323,7 @@
       </details>
 
       <!-- Cars -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-cars">
         <summary><span class="ems-section-label" data-i18n="cars.title">🚙 Cars</span><span class="ems-section-subtitle" data-i18n="cars.subtitle"> · electric or hybrid</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
           <div class="tab-intro" style="margin-top:0" data-i18n-html="cars.intro">
@@ -1292,7 +1335,7 @@
       </details>
 
       <!-- Heat Pumps -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-heatpumps">
         <summary><span class="ems-section-label" data-i18n="heatPumps.title">♨️ Heat Pumps</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="heatPumps.hint">Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).</p>
@@ -1302,7 +1345,7 @@
       </details>
 
       <!-- Boilers / Immersion Heaters -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-boilers">
         <summary><span class="ems-section-label" data-i18n="boilers.title">🚿 Boilers / Immersion Heaters</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="boilers.hint">Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.</p>
@@ -1312,7 +1355,7 @@
       </details>
 
       <!-- Pool / Whirlpool -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-pool">
         <summary><span class="ems-section-label" data-i18n="pool.title">💧 Pool / Whirlpool</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="pool.hint">Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
@@ -1322,7 +1365,7 @@
       </details>
 
       <!-- Dehumidifier -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-dehumidifier">
         <summary><span class="ems-section-label" data-i18n="dehumidifier.title">💨 Dehumidifier</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="dehumidifier.hint">Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
@@ -1332,7 +1375,7 @@
       </details>
 
       <!-- Air Conditioner -->
-      <details class="ems-section">
+      <details class="ems-section" id="ems-sec-aircon">
         <summary><span class="ems-section-label" data-i18n="aircon.title">❄️ Air Conditioner</span><span class="ems-section-subtitle" data-i18n="simpleDevice.subtitle"> · on solar surplus</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="aircon.hint">Add your air conditioner. EMS will run it whenever sufficient solar surplus is available. Use the start and stop flows to switch it.</p>
@@ -1426,7 +1469,7 @@
       <div class="ems-save-bar">
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.129</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.130</span></div>
       </div>
     </div>
   </div>
@@ -7345,6 +7388,9 @@
                 if (window.console && console.error) console.error(e);
               }
             }
+            // After the fields are filled, not before — the readers look at the DOM.
+            // Runs even when emsApplyConfig threw, so the chips describe what did land.
+            emsRefreshSetupState();
             bootFinish();
           }, 80);
         });
@@ -8071,6 +8117,163 @@
       });
     }
 
+    // ── Setup state ─────────────────────────────────────────────────────────
+    // What "configured" means is answered by the same DOM readers emsSave() opens with,
+    // so a chip can never claim something is set up that wouldn't actually be saved — and
+    // it turns green the moment a row is added, before saving, which is what people
+    // expect. Keeping a second notion of "configured" anywhere would be the same trap the
+    // cloned row builders were.
+    //
+    // `need` groups sections into requirements: a requirement is met as soon as ANY of its
+    // sections holds a row, which is how "inverter OR grid meter" falls out for free.
+    var EMS_SETUP_SECTIONS = [
+      { key: 'inverter',      sec: 'ems-sec-inverter',     need: 'source',  read: function() { return emsGetInverterDevices(); } },
+      { key: 'gridMeter',     sec: 'ems-sec-gridmeter',    need: 'source',  read: function() { return emsGetMeterDevices(); } },
+      { key: 'houseMeter',    sec: 'ems-sec-housemeter',   need: null,      read: function() { return emsGetHouseDevices(); } },
+      { key: 'homeBatteries', sec: 'ems-sec-batteries',    need: null,      read: function() { return emsGetBatteryDevices(); } },
+      { key: 'evChargers',    sec: 'ems-sec-chargers',     need: 'control', read: function() { return emsGetChargers(); } },
+      { key: 'cars',          sec: 'ems-sec-cars',         need: null,      read: function() { return emsGetCars(); } },
+      { key: 'heatPumps',     sec: 'ems-sec-heatpumps',    need: 'control', read: function() { return emsGetHeatPumps(); } },
+      { key: 'boilers',       sec: 'ems-sec-boilers',      need: 'control', read: function() { return emsGetBoilers(); } },
+      { key: 'pool',          sec: 'ems-sec-pool',         need: 'control', read: function() { return emsGetPools(); } },
+      { key: 'dehumidifier',  sec: 'ems-sec-dehumidifier', need: 'control', read: function() { return emsGetDehumidifiers(); } },
+      { key: 'aircon',        sec: 'ems-sec-aircon',       need: 'control', read: function() { return emsGetAircons(); } },
+    ];
+
+    // Two requirements, in the order a fresh install needs them. `source` is hard: without
+    // a reading the EMS cannot compute surplus at all, and emsSave() already refuses to
+    // save without it. `control` is advice, not law — an install used only for monitoring
+    // is legitimate, and a banner that can never be satisfied is worse than one that
+    // stands down early, so the soft requirement degrades to a single grey line.
+    var EMS_SETUP_NEEDS = [
+      { id: 'source',  required: true,  label: 'setup.stepSource',  goto: 'ems-sec-inverter' },
+      { id: 'control', required: false, label: 'setup.stepControl', goto: 'ems-sec-chargers' },
+    ];
+
+    function _emsDeviceName(id) {
+      for (var i = 0; i < _emsDevices.length; i++) if (_emsDevices[i].id === id) return _emsDevices[i].name;
+      return null;
+    }
+
+    // The device name when there is one of it, a count otherwise. The chip is for
+    // recognition at a glance, not for listing everything.
+    function _emsSetupSummary(rows) {
+      if (rows.length === 1) {
+        var n = _emsDeviceName(rows[0].id);
+        if (n) return n.length > 24 ? n.slice(0, 23) + '…' : n;
+      }
+      return rows.length + ' ' + _H.__('settings.setup.devices');
+    }
+
+    function emsSetupState() {
+      var per = {}, met = {};
+      EMS_SETUP_SECTIONS.forEach(function(sec) {
+        var rows = [];
+        // A reader can throw while the page is still half-built (a list not rendered yet).
+        // A broken chip must never take the rest of the page down with it.
+        try { rows = sec.read() || []; } catch (_) { rows = []; }
+        per[sec.key] = rows;
+        if (sec.need && rows.length) met[sec.need] = true;
+      });
+      return { per: per, met: met };
+    }
+
+    // Injected rather than written into eleven summaries by hand: one place to change, and
+    // it cannot drift away from EMS_SETUP_SECTIONS. Every section gets the element even
+    // when it shows nothing — it carries the auto margin that right-aligns the chevron.
+    function emsInitSetupChips() {
+      document.querySelectorAll('details.ems-section > summary').forEach(function(sum) {
+        if (sum.querySelector('.ems-section-state')) return;
+        var span = document.createElement('span');
+        span.className = 'ems-section-state';
+        var secId = sum.parentNode.id;
+        for (var i = 0; i < EMS_SETUP_SECTIONS.length; i++) {
+          if (EMS_SETUP_SECTIONS[i].sec === secId) { span.id = 'ems-state-' + EMS_SETUP_SECTIONS[i].key; break; }
+        }
+        var chev = sum.querySelector('.ems-section-chevron');
+        if (chev) sum.insertBefore(span, chev); else sum.appendChild(span);
+      });
+    }
+
+    function emsRefreshSetupState() {
+      if (!_H) return;
+      var st = emsSetupState();
+      EMS_SETUP_SECTIONS.forEach(function(sec) {
+        var el = document.getElementById('ems-state-' + sec.key);
+        if (!el) return;
+        var rows = st.per[sec.key];
+        if (rows.length) {
+          el.className   = 'ems-section-state ok';
+          el.textContent = '● ' + _emsSetupSummary(rows);
+        } else if (sec.need === 'source' && !st.met.source) {
+          // Amber on both source sections while neither is set — either one satisfies it.
+          el.className   = 'ems-section-state todo';
+          el.textContent = '● ' + _H.__('settings.setup.required');
+        } else {
+          el.className   = 'ems-section-state';
+          el.textContent = '';
+        }
+      });
+      emsRenderSetupBanner(st);
+    }
+
+    function emsSetupGoto(secId) {
+      var el = document.getElementById(secId);
+      if (!el) return;
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function emsRenderSetupBanner(st) {
+      var box = document.getElementById('ems-setup-banner');
+      if (!box) return;
+      var openNeeds = EMS_SETUP_NEEDS.filter(function(n) { return !st.met[n.id]; });
+      if (!openNeeds.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+      // Hard requirement satisfied → stand down to one quiet line about the soft one.
+      if (st.met.source) {
+        box.className = '';
+        box.innerHTML = '<div class="ems-setup-hint">' + _H.__('settings.setup.hint') +
+          ' <a class="ems-setup-link" onclick="emsSetupGoto(\'ems-sec-chargers\')">' +
+          _H.__('settings.setup.hintLink') + '</a></div>';
+        box.style.display = '';
+        return;
+      }
+
+      var done  = EMS_SETUP_NEEDS.length - openNeeds.length;
+      var steps = EMS_SETUP_NEEDS.map(function(n) {
+        var ok = !!st.met[n.id];
+        return '<div class="ems-setup-step' + (ok ? ' done' : '') + '">' +
+               '<span class="mark">' + (ok ? '✓' : '○') + '</span>' +
+               '<span>' + _H.__('settings.' + n.label) + '</span>' +
+               (n.required ? '' : '<span class="opt">· ' + _H.__('settings.setup.advised') + '</span>') +
+               '</div>';
+      }).join('');
+
+      box.className = 'ems-setup';
+      box.innerHTML =
+        '<div class="ems-setup-head"><span class="ems-setup-title">' + _H.__('settings.setup.title') + '</span>' +
+        '<span class="ems-setup-count">' +
+        _H.__('settings.setup.progress').replace('{{done}}', done).replace('{{total}}', EMS_SETUP_NEEDS.length) +
+        '</span></div>' +
+        '<div class="ems-setup-desc">' + _H.__('settings.setup.desc') + '</div>' +
+        steps +
+        '<div class="ems-setup-actions"><button class="btn-primary" onclick="emsSetupGoto(\'' +
+        openNeeds[0].goto + '\')">' + _H.__('settings.setup.goto') + '</button></div>';
+      box.style.display = '';
+    }
+
+    // Anything that can change the answer happens inside the EMS tab: picking a device,
+    // adding or removing a row. Deferred a tick so the DOM the readers look at is the one
+    // after the handler, not before it.
+    function emsWatchSetupState() {
+      var tab = document.getElementById('tab-ems');
+      if (!tab) return;
+      ['change', 'click'].forEach(function(ev) {
+        tab.addEventListener(ev, function() { setTimeout(emsRefreshSetupState, 0); });
+      });
+    }
+
     // ── Boot splash ────────────────────────────────────────────────────────
     // Covers the page until the two boot requests have landed and the fields are
     // filled. The percentages are milestones, not a timer: on a fresh deploy the
@@ -8118,6 +8321,8 @@
     function onHomeyReady(H) {
       _H = H;
       emsApplyI18n();
+      emsInitSetupChips();
+      emsWatchSetupState();
       bootStep(18, 'boot.starting', 'Starting…');
       showTab('ems'); // EMS is the default tab
       _H.ready();
