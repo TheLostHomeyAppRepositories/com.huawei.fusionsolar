@@ -2238,32 +2238,31 @@ test('_batterySurplusShare — null when unconfigured or the SoC is unknown', ()
   assert.strictEqual(d._batterySurplusShare({ ...RAMP, share_soc_high: 80 }, 90), null);
 });
 
-test('_batteryShareBudgetW — the share applies to PV minus house load, not to raw PV', () => {
+test('_batteryShareBudgetW — the share applies to the PV output, not to what is left of it', () => {
   const d = makeRampDevice();
-  // 6000 PV − 2000 Haus = 4000 Überschuss; bei 95 % dürfen die Geräte alles davon.
-  // Gemessen wird nur 1000 W Einspeisung, weil die Batterie 3000 W aufnimmt — genau die
-  // 3000 W sind das Budget, das sich ein Gerät stattdessen holen darf.
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 6000, 2000, -1000), 3000);
+  // 6000 W Erzeugung, bei 95 % duerfen die Geraete 100 % davon. Gemessen wird 1000 W
+  // Einspeisung — die restlichen 5000 W stecken in Hauslast und Batterie und sind genau
+  // das Budget, das sich ein Geraet stattdessen holen darf.
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 6000, -1000), 5000);
 });
-test('_batteryShareBudgetW — a low SoC leaves the surplus to the battery', () => {
+test('_batteryShareBudgetW — a low SoC leaves most of the production to the battery', () => {
   const d = makeRampDevice();
-  // 20 % von 4000 = 800 W, davon sind 1000 W bereits Einspeisung → nichts zu leihen
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, 2000, -1000), 0);
+  // 20 % von 6000 = 1200 W, davon sind 1000 W bereits Einspeisung → 200 W zusaetzlich
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, -1000), 200);
 });
 test('_batteryShareBudgetW — never negative, so it can only ever add budget', () => {
   const d = makeRampDevice();
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, 2000, -4000), 0);
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, -4000), 0);
 });
-test('_batteryShareBudgetW — no surplus at all yields no budget', () => {
+test('_batteryShareBudgetW — no production yields no budget', () => {
   const d = makeRampDevice();
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 1000, 2000, 500), 0); // Haus > PV
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 0, 500), 0);
 });
-test('_batteryShareBudgetW — null when a reading is missing, so the caller keeps the old path', () => {
+test('_batteryShareBudgetW — null when a reading is missing, so nothing is guessed', () => {
   const d = makeRampDevice();
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, null, 2000, -1000), null);
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, null, -1000), null);
-  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, 2000, null), null);
-  assert.strictEqual(d._batteryShareBudgetW({}, 90, 6000, 2000, -1000), null); // Rampe aus
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, null, -1000), null);
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, null), null);
+  assert.strictEqual(d._batteryShareBudgetW({}, 90, 6000, -1000), null); // Rampe aus
 });
 
 // Der Preisgrund darf nicht an der Einspeisung haengen: sobald die Begrenzung greift,

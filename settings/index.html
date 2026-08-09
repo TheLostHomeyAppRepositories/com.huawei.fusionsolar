@@ -989,7 +989,7 @@
               </div>
             </div>
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
-            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead.</div>
+            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. The house is served from the same production, so a high share at high house load can draw from the grid.</div>
 
           </div>
 
@@ -2629,12 +2629,12 @@
       var txt   = _H.__('settings.homeBatteries.shareRamp.nowSoc').replace('{soc}', Math.round(d.soc))
                 + ' → ' + _H.__('settings.homeBatteries.shareRamp.nowShare').replace('{pct}', Math.round(share));
 
-      // Watt nur zeigen, wenn beide Messwerte da sind — sonst waere die Zahl geraten.
-      if (typeof d.pvW === 'number' && typeof d.houseW === 'number') {
-        var surplus = Math.max(0, d.pvW - d.houseW);
-        var freed   = Math.round(surplus * share / 100);
+      // Watt nur zeigen, wenn die Erzeugung bekannt ist — sonst waere die Zahl geraten.
+      if (typeof d.pvW === 'number') {
+        var produced = Math.max(0, d.pvW);
+        var freed    = Math.round(produced * share / 100);
         txt += ' · ' + _H.__('settings.homeBatteries.shareRamp.nowWatts')
-                         .replace('{w}', freed).replace('{surplus}', Math.round(surplus));
+                         .replace('{w}', freed).replace('{surplus}', Math.round(produced));
       }
       box.textContent = txt;
       box.style.display = '';

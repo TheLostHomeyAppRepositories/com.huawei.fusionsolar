@@ -783,9 +783,9 @@
         "socHigh": "Bis SOC (%)",
         "pctLow": "Geräte erhalten (%)",
         "pctHigh": "Geräte erhalten (%)",
-        "hint": "Teilt den Solarüberschuss (Erzeugung minus Hausverbrauch) zwischen Batterie und Geräten auf: je voller die Batterie, desto grösser der Anteil der Geräte, gleichmässig steigend zwischen den beiden Ladeständen. Obere SOC-Grenze auf 0 lassen, um stattdessen bei den drei Zonen oben zu bleiben.",
+        "hint": "Teilt die Leistung, die die PV-Anlage gerade liefert, zwischen Batterie und Geräten auf: je voller die Batterie, desto grösser der Anteil der Geräte, gleichmässig steigend zwischen den beiden Ladeständen. Der Hausverbrauch wird aus derselben Erzeugung gedeckt — ein hoher Anteil bei hoher Hauslast kann deshalb Netzbezug auslösen.",
         "nowSoc": "Batterie aktuell {soc}%",
-        "nowShare": "Geräte erhalten {pct}% des Überschusses",
+        "nowShare": "Geräte erhalten {pct}% der Erzeugung",
         "nowWatts": "{w} W von {surplus} W"
       },
       "forecastGate": {

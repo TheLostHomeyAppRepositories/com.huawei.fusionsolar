@@ -783,9 +783,9 @@
         "socHigh": "Tot SOC (%)",
         "pctLow": "apparaten krijgen (%)",
         "pctHigh": "apparaten krijgen (%)",
-        "hint": "Verdeelt het zonneoverschot (opwek min huisverbruik) tussen accu en apparaten: hoe voller de accu, hoe groter het aandeel van de apparaten, gelijkmatig oplopend tussen beide niveaus. Laat de bovenste SOC op 0 staan om de drie zones hierboven te behouden.",
+        "hint": "Verdeelt het vermogen dat de PV-installatie op dit moment levert tussen accu en apparaten: hoe voller de accu, hoe groter het aandeel van de apparaten, gelijkmatig oplopend tussen beide niveaus. Het huis wordt uit dezelfde opwek gevoed, dus een hoog aandeel bij hoog huisverbruik kan netafname veroorzaken.",
         "nowSoc": "Accu nu {soc}%",
-        "nowShare": "apparaten krijgen {pct}% van het overschot",
+        "nowShare": "apparaten krijgen {pct}% van de opwek",
         "nowWatts": "{w} W van {surplus} W"
       },
       "forecastGate": {

@@ -783,9 +783,9 @@
         "socHigh": "Up to SOC (%)",
         "pctLow": "devices get (%)",
         "pctHigh": "devices get (%)",
-        "hint": "Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead.",
+        "hint": "Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. The house is served from the same production, so a high share at high house load can draw from the grid.",
         "nowSoc": "Battery now {soc}%",
-        "nowShare": "devices get {pct}% of the surplus",
+        "nowShare": "devices get {pct}% of the production",
         "nowWatts": "{w} W of {surplus} W"
       },
       "forecastGate": {

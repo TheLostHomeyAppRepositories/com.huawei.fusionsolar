@@ -693,7 +693,7 @@ class EmsDevice extends Device {
     // The SOC ramp splits the surplus between battery and devices: the fuller the
     // battery, the larger the devices' share. Below the hard stop nothing runs at all
     // (see _batteryZones), so there is no second budget model any more.
-    const _shareBudgetW = this._batteryShareBudgetW(cfg, battery.soc, pvW, houseW, gridW);
+    const _shareBudgetW = this._batteryShareBudgetW(cfg, battery.soc, pvW, gridW);
     if (_shareBudgetW !== null) {
       if (_shareBudgetW > 0 && effectiveGridW !== null) effectiveGridW -= _shareBudgetW;
       this._diag.shareBudgetW = _shareBudgetW;
