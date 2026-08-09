@@ -291,6 +291,7 @@ var DICTS = (function () {
     today: 'Heute', yesterday: 'Gestern', noEventsFor: 'Keine Ereignisse für',
     appUpdated: 'App aktualisiert', appStarted: 'App gestartet',
     emsStarted: 'EMS gestartet', emsStopped: 'EMS gestoppt',
+    batFull: 'Batterie voll', batLow: 'Batterie tief', batCharge: 'Zwangsladung', batDischarge: 'Zwangsentladung', batHold: 'Hält', batNormal: 'Normalbetrieb',
     started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt',
     modes: {
       solar_ev: 'Solar-EV-Laden', solar_hp: 'Solar-Wärmepumpe', solar_boiler: 'Solar-Boiler', solar_pool: 'Solar-Poolpumpe',
@@ -307,6 +308,7 @@ var DICTS = (function () {
     today: 'Vandaag', yesterday: 'Gisteren', noEventsFor: 'Geen gebeurtenissen voor',
     appUpdated: 'App bijgewerkt', appStarted: 'App gestart',
     emsStarted: 'EMS gestart', emsStopped: 'EMS gestopt',
+    batFull: 'Accu vol', batLow: 'Accu laag', batCharge: 'Geforceerd laden', batDischarge: 'Geforceerd ontladen', batHold: 'Houdt vast', batNormal: 'Normale modus',
     started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt',
     modes: {
       solar_ev: 'Zon EV-laden', solar_hp: 'Zon warmtepomp', solar_boiler: 'Zon boiler', solar_pool: 'Zon zwembadpomp',
@@ -323,6 +325,7 @@ var DICTS = (function () {
     today: 'Today', yesterday: 'Yesterday', noEventsFor: 'No events for',
     appUpdated: 'App updated', appStarted: 'App started',
     emsStarted: 'EMS started', emsStopped: 'EMS stopped',
+    batFull: 'Battery full', batLow: 'Battery low', batCharge: 'Forced charge', batDischarge: 'Forced discharge', batHold: 'Holding', batNormal: 'Normal mode',
     started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped',
     modes: {
       solar_ev: 'Solar EV charging', solar_hp: 'Solar heat pump', solar_boiler: 'Solar boiler', solar_pool: 'Solar pool pump',
@@ -438,6 +441,14 @@ function eventInfo(ev) {
     };
   }
   if (ev.type === 'device') {
+    // Battery events share the device category but are not starts or stops — without
+    // this they all fell through to isStart=false and read as "EMS stopped".
+    var BAT = { battery_full: T.batFull, battery_low: T.batLow, battery_charge: T.batCharge,
+                battery_discharge: T.batDischarge, battery_hold: T.batHold, battery_normal: T.batNormal };
+    if (BAT[ev.event]) {
+      return { cls: '', dot: ev.event === 'battery_low' ? 'dot-dev-stop' : 'dot-dev-start',
+               label: BAT[ev.event], detail: ev.label || '' };
+    }
     var isStart = ev.event === 'start';
     var devName = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
     return {

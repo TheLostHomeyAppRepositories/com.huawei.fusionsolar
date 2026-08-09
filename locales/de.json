@@ -333,7 +333,13 @@
         "emsStarted": "EMS gestartet",
         "emsStopped": "EMS gestoppt",
         "manualOn": "ausserhalb des EMS eingeschaltet — belassen",
-        "manualOff": "ausserhalb des EMS ausgeschaltet — Status übernommen"
+        "manualOff": "ausserhalb des EMS ausgeschaltet — Status übernommen",
+        "batteryFull": "Batterie voll",
+        "batteryLow": "Batterie tief",
+        "batteryCharge": "Zwangsladung",
+        "batteryDischarge": "Zwangsentladung",
+        "batteryHold": "Hält",
+        "batteryNormal": "Normalbetrieb"
       },
       "chargerEvent": {
         "started": "gestartet",

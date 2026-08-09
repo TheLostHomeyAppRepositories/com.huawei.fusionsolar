@@ -333,7 +333,13 @@
         "emsStarted": "EMS gestart",
         "emsStopped": "EMS gestopt",
         "manualOn": "buiten de EMS om ingeschakeld — met rust gelaten",
-        "manualOff": "buiten de EMS om uitgeschakeld — status overgenomen"
+        "manualOff": "buiten de EMS om uitgeschakeld — status overgenomen",
+        "batteryFull": "Accu vol",
+        "batteryLow": "Accu laag",
+        "batteryCharge": "Geforceerd laden",
+        "batteryDischarge": "Geforceerd ontladen",
+        "batteryHold": "Houdt vast",
+        "batteryNormal": "Normale modus"
       },
       "chargerEvent": {
         "started": "gestart",

@@ -852,6 +852,7 @@ class EmsDevice extends Device {
         st.fullFired = true;
         st.lowFired  = false;
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% ≥ ${fullSoc}% → ems_battery_full`);
+        this._addHistoryEvent(HIST.DEVICE, 'battery_full', `${Math.round(soc)}% ≥ ${fullSoc}%`, device.id);
         this._postNotification(`EMS: Batterie voll — ${Math.round(soc)}%`);
         await this.homey.flow
           .getTriggerCard('ems_battery_full')
@@ -865,6 +866,7 @@ class EmsDevice extends Device {
         st.lowFired  = true;
         st.fullFired = false;
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% < ${minSoc}% → ems_battery_low`);
+        this._addHistoryEvent(HIST.DEVICE, 'battery_low', `${Math.round(soc)}% < ${minSoc}%`, device.id);
         this._postNotification(`EMS: Batterie niedrig — ${Math.round(soc)}%`);
         await this.homey.flow
           .getTriggerCard('ems_battery_low')
@@ -929,6 +931,8 @@ class EmsDevice extends Device {
       const cardId = TRIGGER_BY_MODE[decision.mode];
       st.priceMode = decision.mode;
       this.log(`[EMS] battery ${device.id}: price mode → ${decision.mode} (${decision.reason})`);
+      // The reason is what makes this readable later: "charge" alone does not say why.
+      this._addHistoryEvent(HIST.DEVICE, `battery_${decision.mode}`, decision.reason, device.id);
       await this.homey.flow
         .getTriggerCard(cardId)
         .trigger({ battery_device_id: device.id }, { battery_device_id: device.id })

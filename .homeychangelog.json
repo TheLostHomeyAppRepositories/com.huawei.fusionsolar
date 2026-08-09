@@ -1088,5 +1088,10 @@
     "en": "All widgets now hold still under your finger: no pinch-zoom, no panning, no rubber-band bounce and no long-press text selection, so scrolling the dashboard past a tile no longer disturbs it.",
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
+  },
+  "1.2.127": {
+    "en": "Battery decisions now appear in the EMS history: full, low, forced charge, forced discharge, hold and normal mode — each with the reason. Previously they went only to the log, so a forced charge overnight left no visible trace.",
+    "de": "Batterie-Entscheidungen erscheinen neu im EMS-Verlauf: voll, tief, Zwangsladung, Zwangsentladung, Halten und Normalbetrieb — jeweils mit Begründung. Bisher standen sie nur im Log, eine Zwangsladung über Nacht hinterliess also keine sichtbare Spur.",
+    "nl": "Accubeslissingen verschijnen nu in de EMS-geschiedenis: vol, laag, geforceerd laden, geforceerd ontladen, vasthouden en normale modus — elk met de reden."
   }
 }
