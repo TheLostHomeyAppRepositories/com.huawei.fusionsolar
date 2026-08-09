@@ -668,6 +668,71 @@ test('_evaluateSimpleDevices — a per-device enabled:false is left alone even w
   assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
 });
 
+// ── simpleDevices: state persistence across restarts ─────────────────────────
+// Ein Geraet mit Fake-Settings und den fuenf leeren Zustandstabellen.
+function makeStateDevice(stored = undefined) {
+  const store = { value: stored };
+  const dev = {
+    log() {},
+    homey: { settings: { get: () => store.value, set: (_k, v) => { store.value = v; } } },
+    _heatPumpStates: new Map(), _boilerStates: new Map(), _poolStates: new Map(),
+    _dehumidifierStates: new Map(), _airconStates: new Map(),
+  };
+  Object.assign(dev, simpleDevicesMixin);
+  dev._store = store;
+  return dev;
+}
+
+test('_saveSimpleStates / _restoreSimpleStates — timers survive a restart', async () => {
+  // Der Kern: startedAt und surplusBadSince sind absolute Zeitstempel. Gehen sie beim
+  // Neustart verloren, beginnt jede Stopp-Karenz von vorn — ein Geraet mit 30 Minuten
+  // Karenz schaltet dann ueber einen Tag mit vielen Deployments nie ab.
+  const t0 = Date.now() - 400_000;
+  const a = makeStateDevice();
+  a._poolStates.set('p1', { isOn: true, startedAt: t0, surplusOkSince: null, surplusBadSince: t0 + 60_000, powerDropStoppedAt: null, lastDiagKey: 'grace' });
+  a._saveSimpleStates();
+
+  const b = makeStateDevice(a._store.value);
+  b._restoreSimpleStates();
+  const st = b._poolStates.get('p1');
+  assert.strictEqual(st.isOn, true);
+  assert.strictEqual(st.startedAt, t0);
+  assert.strictEqual(st.surplusBadSince, t0 + 60_000);
+  assert.ok(!('lastDiagKey' in st), 'reines Log-Feld gehoert nicht in den gespeicherten Zustand');
+});
+
+test('_restoreSimpleStates — a stale snapshot is discarded, not applied', async () => {
+  // Nach Stunden beschreiben die Timer eine Welt, die es nicht mehr gibt. Dann lieber
+  // gar nichts wiederherstellen: die Uebernahme aus dem echten Geraetezustand greift.
+  const old = { savedAt: Date.now() - 60 * 60_000, maps: { pool: { p1: { isOn: true, startedAt: 1 } } } };
+  const d = makeStateDevice(old);
+  d._restoreSimpleStates();
+  assert.strictEqual(d._poolStates.size, 0);
+});
+
+test('_restoreSimpleStates — a timestamp from the future is dropped', async () => {
+  // Uhrensprung: ein in der Zukunft liegender Zeitstempel laesst einen Timer nie ablaufen.
+  const snap = { savedAt: Date.now() - 1000, maps: { pool: { p1: { isOn: true, startedAt: Date.now() + 3600_000 } } } };
+  const d = makeStateDevice(snap);
+  d._restoreSimpleStates();
+  assert.strictEqual(d._poolStates.get('p1').startedAt, null);
+  assert.strictEqual(d._poolStates.get('p1').isOn, true);
+});
+
+test('_saveSimpleStates — an unchanged state writes nothing', async () => {
+  // Der Tick laeuft alle 15 s; ohne diesen Vergleich waere das ein Settings-Schreibvorgang
+  // pro Tick, dauerhaft, fuer unveraenderte Daten.
+  const d = makeStateDevice();
+  d._poolStates.set('p1', { isOn: true, startedAt: 1, surplusBadSince: null });
+  d._saveSimpleStates();
+  const first = d._store.value;
+  d._saveSimpleStates();
+  assert.strictEqual(d._store.value, first, 'zweiter Aufruf ohne Aenderung darf nicht schreiben');
+  d._poolStates.get('p1').isOn = false;
+  d._saveSimpleStates();
+  assert.notStrictEqual(d._store.value, first);
+});
+
 test('_evaluateSimpleDevices — a discharging battery is not counted as solar surplus', async () => {
   // Gemessener Fall: PV 291 W, Pool + Entfeuchter + Klima laufen, Batterie liefert 1557 W,
   // Zaehler steht bei -46 W. Beisst nur bei Geraeten MIT Leistungs-Capability: deren

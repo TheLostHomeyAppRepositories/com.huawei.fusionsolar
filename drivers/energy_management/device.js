@@ -36,6 +36,10 @@ class EmsDevice extends Device {
     this._poolStates          = new Map();
     this._dehumidifierStates  = new Map();
     this._airconStates        = new Map();
+    // Timers in those maps only mean something if they survive a restart — otherwise a
+    // deploy silently re-arms every stop-grace and min-run window. Restored before the
+    // first tick so the adoption path in _evaluateSimpleDevices sees them already filled.
+    this._restoreSimpleStates();
     this._batteryStates   = new Map(); // deviceId → { fullFired: boolean, lowFired: boolean }
     this._warmupDone      = false;     // first tick only reads state, no flows fired
     this._tickInProgress  = false;     // prevents overlapping concurrent ticks
@@ -712,6 +716,8 @@ class EmsDevice extends Device {
     effectiveGridW = await this._runPriorityLoop(
       battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval,
     );
+    // Right after the only place that mutates the maps, and a no-op when nothing moved.
+    this._saveSimpleStates();
 
     // ── Export limit coordinator ──────────────────────────────────────────────
     if (this._warmupDone) {
