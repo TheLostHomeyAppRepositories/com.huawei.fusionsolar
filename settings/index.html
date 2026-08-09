@@ -948,7 +948,7 @@
 
           <!-- Battery SOC zones — combined visual -->
           <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
-            <span class="ems-toggle-title" style="margin-bottom:12px" data-i18n="homeBatteries.socZones.title">Battery SOC Zones</span>
+            <span class="ems-toggle-title" style="margin-bottom:12px" data-i18n="homeBatteries.socZones.title">Battery: surplus split</span>
 
             <!-- Number inputs -->
 
@@ -979,6 +979,7 @@
                 <input id="ems-share-pct-high" type="number" oninput="emsShareRampPreview()" value="100" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
             </div>
+            <div id="ems-share-chart" style="margin-top:10px;display:none"></div>
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
             <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. Below the lower level every device stops and the battery charges at full power. The house is served from the same production, so a high share at high house load can draw from the grid.</div>
 
@@ -2613,7 +2614,11 @@
       var socLo = num('ems-share-soc-low'),  socHi = num('ems-share-soc-high');
       var pctLo = num('ems-share-pct-low'),  pctHi = num('ems-share-pct-high');
       var d = _emsShareDiag;
-      if (!(socHi > socLo) || !d || d.soc === null || d.soc === undefined) { box.style.display = 'none'; return; }
+      if (!(socHi > socLo) || !d || d.soc === null || d.soc === undefined) {
+    box.style.display = 'none';
+    var _c = document.getElementById('ems-share-chart'); if (_c) _c.style.display = 'none';
+    return;
+  }
 
       var t     = Math.min(1, Math.max(0, (d.soc - socLo) / (socHi - socLo)));
       var share = Math.min(100, Math.max(0, pctLo + t * (pctHi - pctLo)));
@@ -2629,6 +2634,65 @@
       }
       box.textContent = txt;
       box.style.display = '';
+      emsShareRampChart(socLo, socHi, pctLo, pctHi, d.soc, share);
+    }
+
+    // A picture of the four numbers: the stop zone on the left, the ramp rising between the
+    // two levels, flat beyond the upper one, and where the battery sits right now. Drawn as
+    // inline SVG rather than a library — it is five shapes and has to work offline in the
+    // settings iframe.
+    function emsShareRampChart(socLo, socHi, pctLo, pctHi, soc, share) {
+      var host = document.getElementById('ems-share-chart');
+      if (!host) return;
+      var W = 320, H = 116, L = 30, R = 10, T = 10, B = 20;
+      var x = function (p) { return L + (p / 100) * (W - L - R); };
+      var y = function (p) { return H - B - (p / 100) * (H - B - T); };
+      var e = [];
+
+      // plot frame
+      e.push('<rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - B - T) +
+             '" fill="#fff" stroke="#e5e5ea"/>');
+      // horizontal guides at 50 % and 100 %
+      [0, 50, 100].forEach(function (p) {
+        e.push('<line x1="' + L + '" y1="' + y(p) + '" x2="' + (W - R) + '" y2="' + y(p) +
+               '" stroke="#f0f0f5"/>');
+        e.push('<text x="' + (L - 5) + '" y="' + (y(p) + 3) + '" font-size="8" fill="#8e8e93" text-anchor="end">' +
+               p + '</text>');
+      });
+      // stop zone
+      if (socLo > 0) {
+        e.push('<rect x="' + L + '" y="' + T + '" width="' + (x(socLo) - L) + '" height="' + (H - B - T) +
+               '" fill="#ff3b30" opacity="0.07"/>');
+        e.push('<text x="' + ((L + x(socLo)) / 2) + '" y="' + (T + 14) +
+               '" font-size="8" fill="#ff3b30" text-anchor="middle">' + socLo + '%</text>');
+      }
+      // the ramp: vertical step at the stop edge, then the slope, then flat
+      e.push('<polyline points="' + [
+        x(socLo) + ',' + y(0), x(socLo) + ',' + y(pctLo),
+        x(socHi) + ',' + y(pctHi), x(100) + ',' + y(pctHi),
+      ].join(' ') + '" fill="none" stroke="#34c759" stroke-width="2" stroke-linejoin="round"/>');
+      // the two configured points
+      [[socLo, pctLo], [socHi, pctHi]].forEach(function (pt) {
+        e.push('<circle cx="' + x(pt[0]) + '" cy="' + y(pt[1]) + '" r="2.5" fill="#34c759"/>');
+      });
+      // where the battery is now
+      if (typeof soc === 'number') {
+        var inStop = soc < socLo;
+        var cy = inStop ? y(0) : y(share);
+        e.push('<line x1="' + x(soc) + '" y1="' + T + '" x2="' + x(soc) + '" y2="' + (H - B) +
+               '" stroke="#007aff" stroke-width="1" stroke-dasharray="2 2"/>');
+        e.push('<circle cx="' + x(soc) + '" cy="' + cy + '" r="3.5" fill="#007aff"/>');
+        e.push('<text x="' + x(soc) + '" y="' + (H - B + 12) + '" font-size="8" fill="#007aff" text-anchor="middle">' +
+               Math.round(soc) + '%</text>');
+      }
+      // axis ends
+      e.push('<text x="' + L + '" y="' + (H - B + 12) + '" font-size="8" fill="#8e8e93">0</text>');
+      e.push('<text x="' + (W - R) + '" y="' + (H - B + 12) + '" font-size="8" fill="#8e8e93" text-anchor="end">100</text>');
+
+      host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" ' +
+                       'aria-label="' + _H.__('settings.homeBatteries.shareRamp.chartAlt') + '">' +
+                       e.join('') + '</svg>';
+      host.style.display = '';
     }
 
     function emsShareRampLoadDiag() {

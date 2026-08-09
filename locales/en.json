@@ -763,7 +763,7 @@
       "desc": "Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.",
       "addButton": "+ Add battery",
       "socZones": {
-        "title": "Battery SOC Zones",
+        "title": "Battery: surplus split",
         "chipStop": "Hard stop",
         "chipNormal": "Normal · full budget",
         "chipThrLabel": "Orange Budget",
@@ -782,7 +782,8 @@
         "hint": "Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. Below the lower level every device stops and the battery charges at full power. The house is served from the same production, so a high share at high house load can draw from the grid.",
         "nowSoc": "Battery now {soc}%",
         "nowShare": "devices get {pct}% of the production",
-        "nowWatts": "{w} W of {surplus} W"
+        "nowWatts": "{w} W of {surplus} W",
+        "chartAlt": "Share of PV production released to devices, by battery level"
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",

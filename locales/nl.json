@@ -763,7 +763,7 @@
       "desc": "Optioneel maar aanbevolen. De EMS gebruikt de batterij-SOC om de batterij te beschermen — wanneer de SOC onder het minimum zakt, worden overschotapparaten gestopt en wordt EV-laden gedrosseld of gepauzeerd.",
       "addButton": "+ Batterij toevoegen",
       "socZones": {
-        "title": "Batterij-SOC-zones",
+        "title": "Accu: verdeling van het overschot",
         "chipStop": "Harde stop",
         "chipNormal": "Normaal · volledig budget",
         "chipThrLabel": "Oranje budget",
@@ -782,7 +782,8 @@
         "hint": "Verdeelt het vermogen dat de PV-installatie levert tussen accu en apparaten: hoe voller de accu, hoe groter het aandeel van de apparaten, gelijkmatig oplopend tussen beide niveaus. Onder het onderste niveau stoppen alle apparaten en laadt de accu op vol vermogen. Het huis wordt uit dezelfde opwek gevoed, dus een hoog aandeel bij hoog huisverbruik kan netafname veroorzaken.",
         "nowSoc": "Accu nu {soc}%",
         "nowShare": "apparaten krijgen {pct}% van de opwek",
-        "nowWatts": "{w} W van {surplus} W"
+        "nowWatts": "{w} W van {surplus} W",
+        "chartAlt": "Aandeel van de PV-opwek voor de apparaten, per accuniveau"
       },
       "forecastGate": {
         "title": "🌤 Zonprognose-startpoort",

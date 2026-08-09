@@ -763,7 +763,7 @@
       "desc": "Optional, aber empfohlen. Das EMS nutzt den Batterie-SOC zum Batterieschutz — fällt der SOC unter das Minimum, werden Überschussgeräte gestoppt und das EV-Laden gedrosselt oder pausiert.",
       "addButton": "+ Batterie hinzufügen",
       "socZones": {
-        "title": "Batterie-SOC-Zonen",
+        "title": "Batterie: Aufteilung des Überschusses",
         "chipStop": "Hart-Stopp",
         "chipNormal": "Normal · volles Budget",
         "chipThrLabel": "Orange-Budget",
@@ -782,7 +782,8 @@
         "hint": "Teilt die Leistung, welche die PV-Anlage gerade liefert, zwischen Batterie und Geräten auf: je voller die Batterie, desto grösser der Anteil der Geräte, gleichmässig steigend zwischen den beiden Ladeständen. Unter dem unteren Ladestand stoppen alle Geräte und die Batterie lädt mit voller Leistung. Der Hausverbrauch wird aus derselben Erzeugung gedeckt — ein hoher Anteil bei hoher Hauslast kann deshalb Netzbezug auslösen.",
         "nowSoc": "Batterie aktuell {soc}%",
         "nowShare": "Geräte erhalten {pct}% der Erzeugung",
-        "nowWatts": "{w} W von {surplus} W"
+        "nowWatts": "{w} W von {surplus} W",
+        "chartAlt": "Anteil der PV-Erzeugung für die Geräte, nach Ladestand"
       },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",

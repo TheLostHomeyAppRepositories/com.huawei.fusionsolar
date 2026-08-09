@@ -1018,5 +1018,10 @@
     "en": "The separate hard-stop level is gone. The lower SOC of the surplus split now doubles as the stop threshold: below it every device stops and the battery charges at full power. One setting fewer, same protection.",
     "de": "Die separate Hart-Stopp-Schwelle entfällt. Der untere Ladestand der Überschuss-Aufteilung ist neu zugleich die Stopp-Schwelle: darunter stoppen alle Geräte und die Batterie lädt mit voller Leistung. Eine Einstellung weniger, gleicher Schutz.",
     "nl": "De aparte harde-stopdrempel vervalt. Het onderste accuniveau van de overschotverdeling is nu tevens de stopdrempel: daaronder stoppen alle apparaten en laadt de accu op vol vermogen. Eén instelling minder, dezelfde bescherming."
+  },
+  "1.2.113": {
+    "en": "The surplus split now draws itself: a small chart shows the stop zone, the rising share between your two battery levels, and where the battery sits right now. It redraws as you type.",
+    "de": "Die Überschuss-Aufteilung zeichnet sich neu selbst: Eine kleine Grafik zeigt die Stopp-Zone, den steigenden Anteil zwischen deinen beiden Ladeständen und wo die Batterie gerade steht — sie zeichnet sich schon beim Tippen neu.",
+    "nl": "De overschotverdeling tekent zichzelf: een kleine grafiek toont de stopzone, het oplopende aandeel tussen je twee accuniveaus en waar de accu nu staat — hij tekent al tijdens het typen opnieuw."
   }
 }
