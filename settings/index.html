@@ -950,44 +950,6 @@
           <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:0">
             <span class="ems-toggle-title" style="margin-bottom:12px" data-i18n="homeBatteries.socZones.title">Battery SOC Zones</span>
 
-            <!-- Zone bar -->
-            <div style="position:relative;margin-bottom:42px">
-              <div style="display:flex;height:18px;border-radius:9px;overflow:hidden">
-                <div id="soc-seg-stop"   style="height:100%;background:#ff3b30;transition:width .2s;width:80%"></div>
-                <div id="soc-seg-thr"    style="height:100%;background:#ff9f0a;transition:width .2s;width:0%"></div>
-                <div id="soc-seg-normal" style="height:100%;background:#34c759;flex:1;min-width:6px"></div>
-              </div>
-              <!-- Reserve marker -->
-              <div id="soc-marker-low" style="display:none;position:absolute;top:-3px;left:0;transform:translateX(-50%);pointer-events:none">
-                <div style="width:3px;height:24px;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.25);margin:0 auto"></div>
-                <div style="text-align:center;margin-top:5px">
-                  <div style="font-size:9px;font-weight:700;color:#ff9f0a;white-space:nowrap;letter-spacing:.3px">RESERVE</div>
-                  <div style="font-size:10px;font-weight:600;color:#6e6e73;white-space:nowrap" id="soc-label-low">50%</div>
-                </div>
-              </div>
-              <!-- Min SOC marker -->
-              <div id="soc-marker-min" style="position:absolute;top:-3px;left:80%;transform:translateX(-50%);pointer-events:none">
-                <div style="width:3px;height:24px;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.25);margin:0 auto"></div>
-                <div style="text-align:center;margin-top:5px">
-                  <div style="font-size:9px;font-weight:700;color:#34c759;white-space:nowrap;letter-spacing:.3px">NORMAL ≥</div>
-                  <div style="font-size:10px;font-weight:600;color:#6e6e73;white-space:nowrap" id="soc-label-min">80%</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Zone legend chips -->
-            <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#fff5f5;border:1px solid #ffd0cc;border-radius:20px;padding:2px 8px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#ff3b30;flex-shrink:0"></span><span data-i18n="homeBatteries.socZones.chipStop">Hard stop</span>
-              </span>
-              <span id="soc-chip-thr" style="display:none;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#fff8ef;border:1px solid #ffdfa8;border-radius:20px;padding:2px 8px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#ff9f0a;flex-shrink:0"></span><span id="soc-chip-thr-label">Reserve · 1380 W</span>
-              </span>
-              <span style="display:flex;align-items:center;gap:4px;font-size:10px;color:#6e6e73;background:#f2fff6;border:1px solid #b6f0c6;border-radius:20px;padding:2px 8px">
-                <span style="width:7px;height:7px;border-radius:50%;background:#34c759;flex-shrink:0"></span><span data-i18n="homeBatteries.socZones.chipNormal">Normal · full budget</span>
-              </span>
-            </div>
-
             <!-- Number inputs -->
             <div>
               <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n="homeBatteries.hardStop.label">Hard stop below SOC</div>
@@ -7223,7 +7185,13 @@
       airconDevs.forEach(function(d) { emsAddAirconRow(d.id, d); });
 
       // ── Scalar settings ───────────────────────────────────────────────────────
-      if (cfg.hard_stop_soc !== undefined) document.getElementById('ems-hard-stop-soc').value = cfg.hard_stop_soc;
+      // Show the level that is actually in force. hard_stop_soc is derived from the old
+      // settings until it is saved once, so a plain "if defined" left the field at 0 while
+      // the EMS was still stopping at 85 — and saving that 0 would have quietly removed the
+      // battery protection. Same fallback order as _batteryZones.
+      document.getElementById('ems-hard-stop-soc').value =
+        (cfg.hard_stop_soc !== undefined && cfg.hard_stop_soc !== null) ? cfg.hard_stop_soc
+        : (Number(cfg.min_battery_soc_low || 0) > 0 ? cfg.min_battery_soc_low : (cfg.min_battery_soc || 0));
       if (cfg.share_soc_low  !== undefined) document.getElementById('ems-share-soc-low').value  = cfg.share_soc_low;
       if (cfg.share_soc_high !== undefined) document.getElementById('ems-share-soc-high').value = cfg.share_soc_high;
       if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
