@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.136": {
+    "en": "After an app restart, every device that happened to be running was granted five minutes of unconditional runtime — it was adopted as if it had just been started, so the minimum-run protection kicked in and surplus was ignored until it expired. Adopted devices are now judged on surplus from the first tick.",
+    "de": "Nach einem App-Neustart erhielt jedes gerade laufende Gerät fünf Minuten bedingungslose Laufzeit — es wurde übernommen, als wäre es soeben gestartet worden, wodurch der Mindestlaufzeit-Schutz griff und der Überschuss bis zu dessen Ablauf ignoriert wurde. Übernommene Geräte werden jetzt ab dem ersten Tick am Überschuss gemessen.",
+    "nl": "Na een herstart van de app kreeg elk draaiend apparaat vijf minuten onvoorwaardelijke looptijd — het werd overgenomen alsof het net was gestart, waardoor de minimale-looptijdbescherming aansloeg en het overschot tot die tijd werd genegeerd. Overgenomen apparaten worden nu vanaf de eerste tick op overschot beoordeeld."
+  },
   "1.2.135": {
     "en": "The settings page now says what the EMS is doing: a strip at the top with the current mode, solar power, grid import or export and battery level, refreshed while the page is open. It also marks unsaved changes on the save bar and asks before you close the page with edits still pending.",
     "de": "Die Einstellungsseite zeigt neu, was das EMS gerade tut: ein Streifen zuoberst mit Betriebsart, Solarleistung, Netzbezug oder Einspeisung und Batteriestand, der sich bei offener Seite aktualisiert. Zudem markiert sie ungespeicherte Änderungen im Speichern-Balken und fragt nach, bevor die Seite mit offenen Änderungen geschlossen wird.",

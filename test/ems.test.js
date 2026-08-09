@@ -668,6 +668,22 @@ test('_evaluateSimpleDevices — a per-device enabled:false is left alone even w
   assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
 });
 
+test('_evaluateSimpleDevices — a device adopted at startup does not get a fresh min-run window', async () => {
+  // Der Zustands-Map ist nach einem App-Neustart leer. Ein bereits laufendes Geraet wurde
+  // dabei mit startedAt = jetzt uebernommen — also so behandelt, als haette es gerade erst
+  // gestartet, was ihm 5 Minuten bedingungsloses Weiterlaufen schenkte, unabhaengig vom
+  // Ueberschuss. Sichtbar als drei Geraete mit "hold-time active" eine halbe Sekunde nach
+  // "[EMS] initialized". Uebernommen heisst nicht gestartet: die Min-Laufzeit schuetzt vor
+  // Takten durch einen EIGENEN Startbefehl, den es hier nie gab.
+  const d = makeSimpleDevice();
+  const state = new Map();   // leer, wie direkt nach dem Neustart
+  // actualOn: true → wird als laufend uebernommen. gridW = +500 (Bezug) → kein Ueberschuss.
+  const dev = simpleDev({ actualOn: true, stateSource: 'onoff', stopGraceMs: 0 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 500, [dev], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }],
+    'ohne Ueberschuss und ohne Stopp-Karenz muss ein uebernommenes Geraet sofort aus');
+});
+
 test('_evaluateSimpleDevices — battery hard-stop forces a running device off', async () => {
   const d = makeSimpleDevice();
   const now = Date.now();
