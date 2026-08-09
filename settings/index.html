@@ -1019,6 +1019,36 @@
                 <div style="font-size:9px;color:#bbb;margin-top:4px;line-height:1.5;font-style:italic" data-i18n-html="homeBatteries.socZones.orangeBudgetHint">Extra power devices may draw from<br>the battery while in the reserve zone</div>
               </div>
             </div>
+
+            <!-- SOC ramp: replaces the flat Orange budget with a continuous split of the
+                 surplus between battery and devices. Opt-in — leaving the upper SOC at 0
+                 keeps the three-zone behaviour above untouched. -->
+            <div style="border-top:1px solid #e5e5ea;margin:14px 0 10px"></div>
+            <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:6px" data-i18n="homeBatteries.shareRamp.title">Surplus split by battery level (optional)</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">From SOC (%)</div>
+                <input id="ems-share-soc-low" type="number" value="0" min="0" max="100" step="1"
+                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctLow">…devices get (%)</div>
+                <input id="ems-share-pct-low" type="number" value="0" min="0" max="100" step="5"
+                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">Up to SOC (%)</div>
+                <input id="ems-share-soc-high" type="number" value="0" min="0" max="100" step="1"
+                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctHigh">…devices get (%)</div>
+                <input id="ems-share-pct-high" type="number" value="100" min="0" max="100" step="5"
+                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
+              </div>
+            </div>
+            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead.</div>
+
             <span class="ems-toggle-desc" style="margin-top:8px" data-i18n-html="homeBatteries.socZones.legendDesc"><span style="color:#34c759;font-weight:600">Green</span> (above Normal SOC): all devices run on full solar budget. <span style="color:#ff9f0a;font-weight:600">Orange</span> (Reserve → Normal SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style="color:#ff3b30;font-weight:600">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green.</span>
           </div>
 
@@ -7219,6 +7249,10 @@
       if (cfg.min_battery_soc       !== undefined) document.getElementById('ems-min-soc').value           = cfg.min_battery_soc;
       if (cfg.min_battery_soc_low   !== undefined) document.getElementById('ems-min-soc-low').value       = cfg.min_battery_soc_low;
       if (cfg.orange_budget_w       !== undefined) document.getElementById('ems-orange-budget-w').value = cfg.orange_budget_w;
+      if (cfg.share_soc_low  !== undefined) document.getElementById('ems-share-soc-low').value  = cfg.share_soc_low;
+      if (cfg.share_soc_high !== undefined) document.getElementById('ems-share-soc-high').value = cfg.share_soc_high;
+      if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
+      if (cfg.share_pct_high !== undefined) document.getElementById('ems-share-pct-high').value = cfg.share_pct_high;
       document.getElementById('ems-forecast-gate-mode').value = cfg.forecast_gate_mode || 'off';
       if (cfg.forecast_gate_kwh     !== undefined) document.getElementById('ems-forecast-gate-kwh').value  = cfg.forecast_gate_kwh;
       emsForecastGateChange();
@@ -7342,6 +7376,10 @@
         min_battery_soc:      _minSoc,
         min_battery_soc_low:  _minSocLow,
         orange_budget_w:      Math.max(0, parseInt(document.getElementById('ems-orange-budget-w').value, 10) || 0),
+        share_soc_low:        Math.max(0, parseInt(document.getElementById('ems-share-soc-low').value, 10)  || 0),
+        share_soc_high:       Math.max(0, parseInt(document.getElementById('ems-share-soc-high').value, 10) || 0),
+        share_pct_low:        Math.max(0, parseInt(document.getElementById('ems-share-pct-low').value, 10)  || 0),
+        share_pct_high:       Math.max(0, parseInt(document.getElementById('ems-share-pct-high').value, 10) || 0),
         forecast_gate_mode:   document.getElementById('ems-forecast-gate-mode').value,
         forecast_gate_kwh:    Math.max(0, parseFloat(document.getElementById('ems-forecast-gate-kwh').value) || 0),
         offpeak_enabled:         false, // controlled via device capability toggle, not settings

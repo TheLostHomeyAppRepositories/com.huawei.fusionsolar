@@ -968,5 +968,10 @@
     "en": "Fixed: the device priority order was reset every time the settings were saved, falling back to a fixed order by device type. Your ranking now survives.",
     "de": "Behoben: Die Geräte-Priorität wurde bei jedem Speichern der Einstellungen zurückgesetzt und fiel auf eine feste Reihenfolge nach Gerätetyp zurück. Die eingestellte Reihenfolge bleibt jetzt erhalten.",
     "nl": "Opgelost: de apparaatprioriteit werd bij elke keer opslaan gewist en viel terug op een vaste volgorde per apparaattype. Je volgorde blijft nu behouden."
+  },
+  "1.2.103": {
+    "en": "New optional battery setting: split the solar surplus between battery and devices depending on the battery level. The fuller the battery, the larger the share the devices may use — rising evenly between two levels you choose, instead of the fixed Orange budget.",
+    "de": "Neue optionale Batterie-Einstellung: Der Solarüberschuss wird je nach Ladestand zwischen Batterie und Geräten aufgeteilt. Je voller die Batterie, desto grösser der Anteil der Geräte — gleichmässig steigend zwischen zwei wählbaren Ladeständen, statt des festen Orange-Budgets.",
+    "nl": "Nieuwe optionele accu-instelling: het zonneoverschot wordt afhankelijk van het accuniveau verdeeld tussen accu en apparaten. Hoe voller de accu, hoe groter het aandeel voor de apparaten — gelijkmatig oplopend tussen twee zelfgekozen niveaus, in plaats van het vaste Oranje-budget."
   }
 }

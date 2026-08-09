@@ -773,6 +773,14 @@
         "orangeBudgetHint": "Extra vermogen dat apparaten uit<br>de batterij mogen opnemen in de reservezone",
         "legendDesc": "<span style=\"color:#34c759;font-weight:600\">Groen</span> (boven Normale SOC): alle apparaten draaien op volledig zonnebudget. <span style=\"color:#ff9f0a;font-weight:600\">Oranje</span> (Reserve → Normale SOC): apparaten starten in prioriteitsvolgorde als hun minimale overschot ≤ huidige export + Oranje budget. Het budget wordt gedeeld — elk gestart apparaat vermindert wat overblijft voor het volgende. <span style=\"color:#ff3b30;font-weight:600\">Rood</span> (onder Reserve-SOC): alle apparaten stoppen — de batterij laadt op volle snelheid. Zet Reserve-SOC op 0 om alleen rood en groen te gebruiken."
       },
+      "shareRamp": {
+        "title": "Verdeling van het overschot op accuniveau (optioneel)",
+        "socLow": "Vanaf SOC (%)",
+        "socHigh": "Tot SOC (%)",
+        "pctLow": "…apparaten krijgen (%)",
+        "pctHigh": "…apparaten krijgen (%)",
+        "hint": "Verdeelt het zonneoverschot (opwek min huisverbruik) tussen accu en apparaten: hoe voller de accu, hoe groter het aandeel van de apparaten, gelijkmatig oplopend tussen beide niveaus. Laat de bovenste SOC op 0 staan om de drie zones hierboven te behouden."
+      },
       "forecastGate": {
         "title": "🌤 Zonprognose-startpoort",
         "desc": "Houd op een dag met slechte prognose het <em>starten</em> van apparaten (warmtepomp / boiler / zwembad / ontvochtiger) tegen om de batterij te beschermen die je vanavond nodig hebt. Draaiende apparaten voltooien normaal; EV-laden wordt niet beïnvloed. Vereist een ingeschakelde Solcast-prognose — valt terug op normaal als de prognose ontbreekt of verouderd is.",

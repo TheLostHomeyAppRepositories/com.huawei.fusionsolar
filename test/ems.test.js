@@ -2209,3 +2209,57 @@ test('_runPriorityLoop — adjacent chargers share ONE budget deduction, not two
   assert.strictEqual(d._seen[1].gridW, -2000); // 3000 W total across both chargers
 });
 
+
+// ── Batterie-SOC-Rampe: prozentualer Anteil am Solarüberschuss ───────────────
+// Ersetzt das feste Orange-Budget: je voller die Batterie, desto mehr des Überschusses
+// dürfen die Geräte beanspruchen, der Rest lädt weiter. Nicht konfiguriert → null, damit
+// die Aufrufer beim alten Zonenverhalten bleiben.
+const RAMP = { share_soc_low: 80, share_soc_high: 95, share_pct_low: 20, share_pct_high: 100 };
+function makeRampDevice() { return Object.assign({ log() {} }, batteryMixin); }
+
+test('_batterySurplusShare — ramps linearly between the two SoC points', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batterySurplusShare(RAMP, 80), 0.2);
+  assert.strictEqual(d._batterySurplusShare(RAMP, 95), 1);
+  assert.ok(Math.abs(d._batterySurplusShare(RAMP, 87.5) - 0.6) < 1e-9); // Mitte
+});
+test('_batterySurplusShare — clamped at both ends, never extrapolated', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batterySurplusShare(RAMP, 10), 0.2);   // weit unter der Untergrenze
+  assert.strictEqual(d._batterySurplusShare(RAMP, 100), 1);    // über der Obergrenze
+});
+test('_batterySurplusShare — null when unconfigured or the SoC is unknown', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batterySurplusShare({}, 90), null);
+  assert.strictEqual(d._batterySurplusShare(RAMP, null), null);
+  // Obergrenze nicht über der Untergrenze → unbrauchbar, kein Durchrutschen auf 0
+  assert.strictEqual(d._batterySurplusShare({ ...RAMP, share_soc_high: 80 }, 90), null);
+});
+
+test('_batteryShareBudgetW — the share applies to PV minus house load, not to raw PV', () => {
+  const d = makeRampDevice();
+  // 6000 PV − 2000 Haus = 4000 Überschuss; bei 95 % dürfen die Geräte alles davon.
+  // Gemessen wird nur 1000 W Einspeisung, weil die Batterie 3000 W aufnimmt — genau die
+  // 3000 W sind das Budget, das sich ein Gerät stattdessen holen darf.
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 6000, 2000, -1000), 3000);
+});
+test('_batteryShareBudgetW — a low SoC leaves the surplus to the battery', () => {
+  const d = makeRampDevice();
+  // 20 % von 4000 = 800 W, davon sind 1000 W bereits Einspeisung → nichts zu leihen
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, 2000, -1000), 0);
+});
+test('_batteryShareBudgetW — never negative, so it can only ever add budget', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 80, 6000, 2000, -4000), 0);
+});
+test('_batteryShareBudgetW — no surplus at all yields no budget', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 95, 1000, 2000, 500), 0); // Haus > PV
+});
+test('_batteryShareBudgetW — null when a reading is missing, so the caller keeps the old path', () => {
+  const d = makeRampDevice();
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, null, 2000, -1000), null);
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, null, -1000), null);
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 90, 6000, 2000, null), null);
+  assert.strictEqual(d._batteryShareBudgetW({}, 90, 6000, 2000, -1000), null); // Rampe aus
+});

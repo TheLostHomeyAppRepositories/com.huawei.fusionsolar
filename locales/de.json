@@ -773,6 +773,14 @@
         "orangeBudgetHint": "Zusätzliche Leistung, die Geräte in der<br>Reserve-Zone aus der Batterie beziehen dürfen",
         "legendDesc": "<span style=\"color:#34c759;font-weight:600\">Grün</span> (über Normal-SOC): alle Geräte laufen mit vollem Solarbudget. <span style=\"color:#ff9f0a;font-weight:600\">Orange</span> (Reserve → Normal-SOC): Geräte starten in Prioritätsreihenfolge, sofern ihr Mindestüberschuss ≤ aktuelle Einspeisung + Orange-Budget ist. Das Budget wird geteilt — jedes gestartete Gerät reduziert, was für das nächste übrig bleibt. <span style=\"color:#ff3b30;font-weight:600\">Rot</span> (unter Reserve-SOC): alle Geräte stoppen — die Batterie lädt mit voller Leistung. Reserve-SOC auf 0 setzen, um nur Rot und Grün zu nutzen."
       },
+      "shareRamp": {
+        "title": "Aufteilung des Überschusses nach Ladestand (optional)",
+        "socLow": "Ab SOC (%)",
+        "socHigh": "Bis SOC (%)",
+        "pctLow": "…Geräte erhalten (%)",
+        "pctHigh": "…Geräte erhalten (%)",
+        "hint": "Teilt den Solarüberschuss (Erzeugung minus Hausverbrauch) zwischen Batterie und Geräten auf: je voller die Batterie, desto grösser der Anteil der Geräte, gleichmässig steigend zwischen den beiden Ladeständen. Obere SOC-Grenze auf 0 lassen, um stattdessen bei den drei Zonen oben zu bleiben."
+      },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",
         "desc": "An einem Tag mit schlechter Prognose werden <em>Starts</em> von Geräten (Wärmepumpe / Boiler / Pool / Entfeuchter) zurückgehalten, um die Batterie für die Nacht zu schonen. Laufende Geräte beenden normal; EV-Laden ist nicht betroffen. Benötigt eine aktivierte Solcast-Prognose — fällt bei fehlender/veralteter Prognose auf Normalbetrieb zurück.",
