@@ -1033,5 +1033,10 @@
     "en": "Clearer surplus split: both rows now read as the same statement, the stop level says what happens below it, and the chart labels its axes and its stop zone. The explanatory text keeps only what the picture cannot show.",
     "de": "Klarere Überschuss-Aufteilung: Beide Zeilen lesen sich neu als dieselbe Aussage, die Stopp-Schwelle sagt, was darunter passiert, und die Grafik beschriftet ihre Achsen und die Stopp-Zone. Der Erklärtext behält nur, was das Bild nicht zeigen kann.",
     "nl": "Duidelijkere overschotverdeling: beide regels lezen nu als dezelfde uitspraak, de stopdrempel vertelt wat eronder gebeurt, en de grafiek benoemt haar assen en stopzone. De uitleg houdt alleen wat de afbeelding niet kan tonen."
+  },
+  "1.2.116": {
+    "en": "The battery widget follows the new model: one editable stop level instead of Reserve and Normal, and no reserve zone in the status line.",
+    "de": "Das Batterie-Widget folgt dem neuen Modell: eine einstellbare Stopp-Schwelle statt Reserve und Normal, und keine Reserve-Zone mehr in der Statuszeile.",
+    "nl": "De accu-widget volgt het nieuwe model: één instelbare stopdrempel in plaats van Reserve en Normaal, en geen reservezone meer in de statusregel."
   }
 }

@@ -75,13 +75,8 @@
 
       <div class="zones-row">
         <div class="zone-field">
-          <label id="reserveLabel">—</label>
-          <input type="number" id="reserveInput" min="0" max="100" step="1">
-          <span class="pct">%</span>
-        </div>
-        <div class="zone-field">
-          <label id="normalLabel">—</label>
-          <input type="number" id="normalInput" min="0" max="100" step="1">
+          <label id="stopLabel">—</label>
+          <input type="number" id="stopInput" min="0" max="100" step="1">
           <span class="pct">%</span>
         </div>
       </div>
@@ -102,20 +97,20 @@ function onHomeyReady(Homey) {
   var DICTS = (function () {
     var de = {
       title: 'Batterienutzung', noBattery: 'Keine Batterie konfiguriert', unreachable: 'EMS-Gerät nicht erreichbar',
-      reserve: 'Reserve', normal: 'Normal', kwhOf: 'von',
-      zoneGreen: 'Volles Budget', zoneOrange: 'Reserve-Zone', zoneRed: 'Geschützt — lädt Batterie',
+      stop: 'Stopp unter', kwhOf: 'von',
+      zoneGreen: 'Solar frei', zoneRed: 'Geschützt — lädt Batterie',
       priceCharge: 'Preisgeladen', priceHold: 'Entladen gesperrt (Preis)', priceIdle: 'Preisladen aktiviert', writeFailed: 'Änderung fehlgeschlagen',
     };
     var nl = {
       title: 'Batterijgebruik', noBattery: 'Geen batterij geconfigureerd', unreachable: 'EMS-apparaat niet bereikbaar',
-      reserve: 'Reserve', normal: 'Normaal', kwhOf: 'van',
-      zoneGreen: 'Volledig budget', zoneOrange: 'Reservezone', zoneRed: 'Beschermd — batterij laadt',
+      stop: 'Stop onder', kwhOf: 'van',
+      zoneGreen: 'Zon vrij', zoneRed: 'Beschermd — batterij laadt',
       priceCharge: 'Prijsladen actief', priceHold: 'Ontladen geblokkeerd (prijs)', priceIdle: 'Prijsladen ingeschakeld', writeFailed: 'Wijziging mislukt',
     };
     var en = {
       title: 'Battery Usage', noBattery: 'No battery configured', unreachable: 'EMS device unreachable',
-      reserve: 'Reserve', normal: 'Normal', kwhOf: 'of',
-      zoneGreen: 'Full budget', zoneOrange: 'Reserve zone', zoneRed: 'Protected — battery charging',
+      stop: 'Stop below', kwhOf: 'of',
+      zoneGreen: 'Solar free', zoneRed: 'Protected — battery charging',
       priceCharge: 'Price-charging', priceHold: 'Discharge held (price)', priceIdle: 'Price-charging enabled', writeFailed: 'Change failed',
     };
     return { de: de, nl: nl, en: en };
@@ -132,8 +127,7 @@ function onHomeyReady(Homey) {
     T = dictFor(code);
     // These three are set once at startup, so refresh them on a language change.
     titleEl.textContent      = T.title;
-    reserveLabel.textContent = T.reserve;
-    normalLabel.textContent  = T.normal;
+    stopLabel.textContent  = T.stop;
     return true;
   }
 
@@ -146,16 +140,13 @@ function onHomeyReady(Homey) {
   var barFill = document.getElementById('barFill');
   var markerReserve = document.getElementById('markerReserve');
   var markerNormal  = document.getElementById('markerNormal');
-  var reserveLabel  = document.getElementById('reserveLabel');
-  var reserveInput  = document.getElementById('reserveInput');
-  var normalLabel   = document.getElementById('normalLabel');
-  var normalInput   = document.getElementById('normalInput');
+  var stopLabel   = document.getElementById('stopLabel');
+  var stopInput   = document.getElementById('stopInput');
   var statusDot  = document.getElementById('statusDot');
   var statusText = document.getElementById('statusText');
 
   titleEl.textContent      = T.title;
-  reserveLabel.textContent = T.reserve;
-  normalLabel.textContent  = T.normal;
+  stopLabel.textContent  = T.stop;
 
   function showNoData(msg) {
     content.style.display = 'none';
@@ -189,22 +180,18 @@ function onHomeyReady(Homey) {
   function bindInputs() {
     if (bound) return;
     bound = true;
-    var commitNormal = function () {
-      var v = parseInt(normalInput.value, 10);
+    var commitStop = function () {
+      var v = parseInt(stopInput.value, 10);
       if (!isFinite(v)) return;
-      var prev = lastStatus ? lastStatus.normalSoc : null;
-      writeZones({ normalSoc: v }, function () { if (prev != null) normalInput.value = prev; });
+      var prev = lastStatus ? lastStatus.stopSoc : null;
+      writeZones({ stopSoc: v }, function () { if (prev != null) stopInput.value = prev; });
     };
     var commitReserve = function () {
-      var v = parseInt(reserveInput.value, 10);
       if (!isFinite(v)) return;
       var prev = lastStatus ? lastStatus.reserveSoc : null;
-      writeZones({ reserveSoc: v }, function () { reserveInput.value = prev != null ? prev : ''; });
     };
-    normalInput.addEventListener('change', commitNormal);
-    normalInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitNormal(); normalInput.blur(); } });
-    reserveInput.addEventListener('change', commitReserve);
-    reserveInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitReserve(); reserveInput.blur(); } });
+    stopInput.addEventListener('change', commitStop);
+    stopInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { commitStop(); stopInput.blur(); } });
   }
 
   function render(s) {
@@ -226,7 +213,7 @@ function onHomeyReady(Homey) {
       ? s.energyKwh.toFixed(1) + ' ' + T.kwhOf + ' ' + s.capacityKwh.toFixed(1) + ' kWh'
       : '';
 
-    markerNormal.style.left = s.normalSoc + '%';
+    markerNormal.style.left = s.stopSoc + '%';
     if (s.reserveSoc != null) {
       markerReserve.style.left = s.reserveSoc + '%';
       markerReserve.style.display = '';
@@ -234,11 +221,10 @@ function onHomeyReady(Homey) {
       markerReserve.style.display = 'none';
     }
 
-    if (document.activeElement !== normalInput)  normalInput.value  = s.normalSoc;
-    if (document.activeElement !== reserveInput) reserveInput.value = s.reserveSoc != null ? s.reserveSoc : '';
+    if (document.activeElement !== stopInput)  stopInput.value  = s.stopSoc;
     bindInputs();
 
-    var dotClass = 'idle', text = s.zone === 'red' ? T.zoneRed : s.zone === 'orange' ? T.zoneOrange : T.zoneGreen;
+    var dotClass = 'idle', text = s.zone === 'red' ? T.zoneRed : T.zoneGreen;
     if (s.priceEnabled) {
       if (s.priceMode === 'charge') { dotClass = 'charge'; text = T.priceCharge; }
       else if (s.priceMode === 'hold') { dotClass = 'hold'; text = T.priceHold; }

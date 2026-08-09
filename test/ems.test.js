@@ -2057,15 +2057,22 @@ test('getEmsBatteryStatus — no capacity configured → capacityKwh/energyKwh s
   assert.strictEqual(status.energyKwh, null);
 });
 
-test('setEmsBatteryZones — clamps values to 0..100 and persists', async () => {
+test('setEmsBatteryZones — writes the one threshold, clamped to 0..100', () => {
   const cfg = {};
   let saved = null;
   const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: (k, v) => { saved = v; } } } });
-  const res = await d.setEmsBatteryZones({ normalSoc: 150, reserveSoc: -10 });
-  assert.deepStrictEqual(res, { ok: true });
-  assert.strictEqual(cfg.min_battery_soc, 100);
-  assert.strictEqual(cfg.min_battery_soc_low, 0);
-  assert.strictEqual(saved, cfg);
+  return d.setEmsBatteryZones({ stopSoc: 150 }).then(function (res) {
+    assert.deepStrictEqual(res, { ok: true });
+    assert.strictEqual(cfg.share_soc_low, 100);
+    assert.strictEqual(saved, cfg);
+  });
+});
+test('setEmsBatteryZones — an older widget sending normalSoc lands on the same setting', () => {
+  const cfg = {};
+  const d = makeWidgetDevice({ _getConfig: () => cfg, homey: { settings: { set: () => {} } } });
+  return d.setEmsBatteryZones({ normalSoc: 40 }).then(function () {
+    assert.strictEqual(cfg.share_soc_low, 40);
+  });
 });
 
 // ── _buildPriorityRuns (Geräte-Priorität) ────────────────────────────────────
