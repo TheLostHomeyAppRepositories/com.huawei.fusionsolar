@@ -1013,5 +1013,10 @@
     "en": "Fixes saving the EMS settings, which failed silently since 1.2.108: the save still validated the removed Reserve and Normal SOC fields.",
     "de": "Behebt das Speichern der EMS-Einstellungen, das seit 1.2.108 stillschweigend fehlschlug: Der Speichervorgang prüfte noch die entfernten Felder Reserve-SOC und Normal-SOC.",
     "nl": "Herstelt het opslaan van de EMS-instellingen, dat sinds 1.2.108 stil faalde: het opslaan controleerde nog de verwijderde velden Reserve-SOC en Normaal-SOC."
+  },
+  "1.2.112": {
+    "en": "The separate hard-stop level is gone. The lower SOC of the surplus split now doubles as the stop threshold: below it every device stops and the battery charges at full power. One setting fewer, same protection.",
+    "de": "Die separate Hart-Stopp-Schwelle entfällt. Der untere Ladestand der Überschuss-Aufteilung ist neu zugleich die Stopp-Schwelle: darunter stoppen alle Geräte und die Batterie lädt mit voller Leistung. Eine Einstellung weniger, gleicher Schutz.",
+    "nl": "De aparte harde-stopdrempel vervalt. Het onderste accuniveau van de overschotverdeling is nu tevens de stopdrempel: daaronder stoppen alle apparaten en laadt de accu op vol vermogen. Eén instelling minder, dezelfde bescherming."
   }
 }

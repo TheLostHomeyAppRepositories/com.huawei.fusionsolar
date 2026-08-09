@@ -951,15 +951,6 @@
             <span class="ems-toggle-title" style="margin-bottom:12px" data-i18n="homeBatteries.socZones.title">Battery SOC Zones</span>
 
             <!-- Number inputs -->
-            <div>
-              <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:5px" data-i18n="homeBatteries.hardStop.label">Hard stop below SOC</div>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input id="ems-hard-stop-soc" type="number" value="0" min="0" max="100" step="1"
-                  style="width:72px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;font-weight:600;background:#fff">
-                <span style="font-size:12px;color:#6e6e73">%</span>
-              </div>
-              <div style="font-size:11px;color:#6e6e73;margin-top:4px;line-height:1.5" data-i18n="homeBatteries.hardStop.hint">Below this level every device stops and the battery charges at full power. Above it, the split below decides how much of the surplus the devices get.</div>
-            </div>
 
             <!-- SOC ramp: replaces the flat Orange budget with a continuous split of the
                  surplus between battery and devices. Opt-in — leaving the upper SOC at 0
@@ -968,7 +959,7 @@
             <div style="font-size:11px;font-weight:600;color:#6e6e73;margin-bottom:6px" data-i18n="homeBatteries.shareRamp.title">Surplus split by battery level (optional)</div>
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
-                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">SOC</div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">Stop below SOC (%)</div>
                 <input id="ems-share-soc-low" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
               <div style="font-size:14px;color:#c7c7cc;padding-bottom:8px">&rarr;</div>
@@ -989,7 +980,7 @@
               </div>
             </div>
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
-            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. The house is served from the same production, so a high share at high house load can draw from the grid.</div>
+            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. Below the lower level every device stops and the battery charges at full power. The house is served from the same production, so a high share at high house load can draw from the grid.</div>
 
           </div>
 
@@ -7184,14 +7175,6 @@
       var airconDevs = cfg.aircon_devices || [];
       airconDevs.forEach(function(d) { emsAddAirconRow(d.id, d); });
 
-      // ── Scalar settings ───────────────────────────────────────────────────────
-      // Show the level that is actually in force. hard_stop_soc is derived from the old
-      // settings until it is saved once, so a plain "if defined" left the field at 0 while
-      // the EMS was still stopping at 85 — and saving that 0 would have quietly removed the
-      // battery protection. Same fallback order as _batteryZones.
-      document.getElementById('ems-hard-stop-soc').value =
-        (cfg.hard_stop_soc !== undefined && cfg.hard_stop_soc !== null) ? cfg.hard_stop_soc
-        : (Number(cfg.min_battery_soc_low || 0) > 0 ? cfg.min_battery_soc_low : (cfg.min_battery_soc || 0));
       if (cfg.share_soc_low  !== undefined) document.getElementById('ems-share-soc-low').value  = cfg.share_soc_low;
       if (cfg.share_soc_high !== undefined) document.getElementById('ems-share-soc-high').value = cfg.share_soc_high;
       if (cfg.share_pct_low  !== undefined) document.getElementById('ems-share-pct-low').value  = cfg.share_pct_low;
@@ -7271,11 +7254,6 @@
 
       if (!invDevs.length && !meterDevs.length) { emsShowSaveStatus('✗ Add at least one inverter or meter.',  '#c0392b'); return; }
 
-      var _hardStop = parseInt(document.getElementById('ems-hard-stop-soc').value, 10);
-      if (isNaN(_hardStop) || _hardStop < 0 || _hardStop > 100) {
-        emsShowSaveStatus('✗ Hard stop SOC must be 0–100', '#c0392b');
-        return;
-      }
 
       var _timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
       function _validateTime(id, label) {
@@ -7305,7 +7283,6 @@
         pool_devices:        poolDevs,
         dehumidifier_devices: dehumidifierDevs,
         aircon_devices:       airconDevs,
-        hard_stop_soc:        Math.max(0, _hardStop || 0),
         share_soc_low:        Math.max(0, parseInt(document.getElementById('ems-share-soc-low').value, 10)  || 0),
         share_soc_high:       Math.max(0, parseInt(document.getElementById('ems-share-soc-high').value, 10) || 0),
         share_pct_low:        Math.max(0, parseInt(document.getElementById('ems-share-pct-low').value, 10)  || 0),

@@ -315,7 +315,6 @@ class EmsDevice extends Device {
       warns.push(`export_limit_deactivate_soc ≥ trigger → ${c}`);
       cfg.export_limit_deactivate_soc = c;
     }
-    clamp(cfg, 'hard_stop_soc', 0, 100);
     clamp(cfg, 'share_soc_low',  0, 100);
     clamp(cfg, 'share_soc_high', 0, 100);
     clamp(cfg, 'share_pct_low',  0, 100);

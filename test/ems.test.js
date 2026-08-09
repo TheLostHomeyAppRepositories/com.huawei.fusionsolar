@@ -353,11 +353,19 @@ test('_batteryZones — without a reserve floor the normal minimum becomes the h
   assert.strictEqual(d._batteryZones(cfg, { soc: 70 }).batHardStop, true);
   assert.strictEqual(d._batteryZones(cfg, { soc: 90 }).batHardStop, false);
 });
-test('_batteryZones — an explicit hard_stop_soc wins over the derived one', () => {
+test('_batteryZones — with a ramp configured, its lower SoC point is the hard stop', () => {
   const d = makeDevice();
-  const cfg = { hard_stop_soc: 30, min_battery_soc: 80, min_battery_soc_low: 50 };
-  assert.strictEqual(d._batteryZones(cfg, { soc: 40 }).batHardStop, false);
-  assert.strictEqual(d._batteryZones(cfg, { soc: 20 }).batHardStop, true);
+  const cfg = { share_soc_low: 85, share_soc_high: 100, min_battery_soc: 80, min_battery_soc_low: 50 };
+  assert.strictEqual(d._batteryZones(cfg, { soc: 90 }).batHardStop, false);
+  assert.strictEqual(d._batteryZones(cfg, { soc: 84 }).batHardStop, true);   // the old 50 no longer applies
+  assert.strictEqual(d._batteryZones(cfg, { soc: 84 }).batLow, true);
+});
+test('_batteryZones — an incomplete ramp falls back to the old settings', () => {
+  const d = makeDevice();
+  // upper not above lower → not a ramp, so the old derivation still defines the stop
+  const cfg = { share_soc_low: 85, share_soc_high: 0, min_battery_soc: 80, min_battery_soc_low: 50 };
+  assert.strictEqual(d._batteryZones(cfg, { soc: 60 }).batHardStop, false);  // 60 >= 50
+  assert.strictEqual(d._batteryZones(cfg, { soc: 40 }).batHardStop, true);
 });
 test('_batteryZones — soc null → nothing triggers', () => {
   const d = makeDevice();
