@@ -669,7 +669,9 @@
       "chartNow": "nu",
       "chartAlt": "Voorspeld PV-vermogen voor de komende dag",
       "chartNoData": "Nog geen voorspellingsgegevens",
-      "chartAge": "laatst opgehaald {min} min geleden"
+      "chartAge": "laatst opgehaald {min} min geleden",
+      "chartOff": "Voorspelling staat uit in de opgeslagen instellingen",
+      "chartUnconfigured": "Nog geen API-sleutel of locatie-ID opgeslagen"
     },
     "evChargers": {
       "title": "🚗 EV-laders",

@@ -669,7 +669,9 @@
       "chartNow": "now",
       "chartAlt": "Forecast PV output over the coming day",
       "chartNoData": "No forecast data yet",
-      "chartAge": "last fetched {min} min ago"
+      "chartAge": "last fetched {min} min ago",
+      "chartOff": "Forecast is switched off in the saved settings",
+      "chartUnconfigured": "No API key or site ID saved yet"
     },
     "evChargers": {
       "title": "🚗 EV Chargers",

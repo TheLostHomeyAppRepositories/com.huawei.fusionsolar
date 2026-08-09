@@ -669,7 +669,9 @@
       "chartNow": "jetzt",
       "chartAlt": "Prognostizierte PV-Leistung für den kommenden Tag",
       "chartNoData": "Noch keine Prognosedaten",
-      "chartAge": "zuletzt abgerufen vor {min} min"
+      "chartAge": "zuletzt abgerufen vor {min} min",
+      "chartOff": "Prognose ist in den gespeicherten Einstellungen ausgeschaltet",
+      "chartUnconfigured": "Noch kein API-Schlüssel oder keine Standort-ID gespeichert"
     },
     "evChargers": {
       "title": "🚗 EV-Lader",

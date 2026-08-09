@@ -1355,7 +1355,7 @@
       <div class="ems-save-bar">
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.124</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.125</span></div>
       </div>
     </div>
   </div>
@@ -2696,9 +2696,14 @@
         // Hiding the chart when there is nothing to draw left no way to tell "no forecast"
         // from "no chart built" — say which it is. The route already carries the age and
         // the error, so this is the answer we have, just shown.
-        if (d && d.enabled === false) { host.style.display = 'none'; return; }
-        var msg = (d && d.error) ? d.error : _H.__('settings.pvForecast.chartNoData');
-        if (d && typeof d.ageMin === 'number') {
+        // Every branch now says something. Staying silent when the forecast is off was
+    // meant as restraint; it cost several rounds of guessing whether the chart was
+    // missing, broken, or simply not switched on.
+    var why = (d && d.enabled === false) ? _H.__('settings.pvForecast.chartOff')
+            : (d && d.configured === false) ? _H.__('settings.pvForecast.chartUnconfigured')
+            : null;
+        var msg = why || ((d && d.error) ? d.error : _H.__('settings.pvForecast.chartNoData'));
+        if (!why && d && typeof d.ageMin === 'number') {
           msg += ' · ' + _H.__('settings.pvForecast.chartAge').replace('{min}', d.ageMin);
         }
         host.innerHTML = '<div style="font-size:11px;color:#8e8e93;padding:8px 10px;background:#f7f7fa;border-radius:6px">' + _emsHistEsc(msg) + '</div>';

@@ -1078,5 +1078,10 @@
     "en": "The settings page now shows its build number at the bottom, so you can tell at a glance whether you are looking at the version you just installed.",
     "de": "Die Einstellungsseite zeigt unten neu ihre Build-Nummer — so ist auf einen Blick erkennbar, ob du die gerade installierte Version vor dir hast.",
     "nl": "De instellingenpagina toont onderaan nu zijn buildnummer, zodat je in één oogopslag ziet of je de zojuist geïnstalleerde versie voor je hebt."
+  },
+  "1.2.125": {
+    "en": "The Solcast section now always states why no chart is shown — switched off, not configured, no data yet, or the error from Solcast. Previously two of those cases showed nothing at all.",
+    "de": "Der Solcast-Bereich nennt neu immer den Grund, wenn kein Diagramm erscheint — ausgeschaltet, nicht konfiguriert, noch keine Daten, oder der Fehler von Solcast. Zwei dieser Fälle zeigten vorher gar nichts.",
+    "nl": "Het Solcast-onderdeel geeft nu altijd aan waarom er geen grafiek is — uitgeschakeld, niet geconfigureerd, nog geen gegevens, of de fout van Solcast. Twee van die gevallen toonden eerder niets."
   }
 }
