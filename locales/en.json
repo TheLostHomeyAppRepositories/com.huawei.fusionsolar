@@ -438,6 +438,21 @@
       "loadingDevices": "Loading devices…",
       "loadFailed": "Settings could not be loaded fully:"
     },
+    "boot": {
+      "starting": "Starting…",
+      "retry": "App is starting up — retrying…",
+      "settings": "Loading settings…",
+      "almost": "Almost done…"
+    },
+    "status": {
+      "devicesLoaded": "{{n}} devices loaded",
+      "failed": "Failed",
+      "saving": "Saving…",
+      "saved": "Settings saved — EMS restarts automatically",
+      "saveFailed": "Save failed",
+      "needSource": "Add at least one inverter or meter.",
+      "badTime": "{{label}} must be HH:MM (e.g. 22:00)"
+    },
     "selectDevice": "— select device —",
     "otherDevices": "── other devices ──",
     "caps": {

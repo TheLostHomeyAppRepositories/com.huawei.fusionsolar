@@ -438,6 +438,21 @@
       "loadingDevices": "Apparaten laden…",
       "loadFailed": "Instellingen konden niet volledig worden geladen:"
     },
+    "boot": {
+      "starting": "Starten…",
+      "retry": "App start op — opnieuw proberen…",
+      "settings": "Instellingen laden…",
+      "almost": "Bijna klaar…"
+    },
+    "status": {
+      "devicesLoaded": "{{n}} apparaten geladen",
+      "failed": "Mislukt",
+      "saving": "Opslaan…",
+      "saved": "Instellingen opgeslagen — het EMS start automatisch opnieuw",
+      "saveFailed": "Opslaan mislukt",
+      "needSource": "Voeg minstens één omvormer of meter toe.",
+      "badTime": "{{label}} moet HH:MM zijn (bijv. 22:00)"
+    },
     "selectDevice": "— apparaat selecteren —",
     "otherDevices": "── overige apparaten ──",
     "caps": {

@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.128": {
+    "en": "The settings page now shows a start screen with the app logo while it loads, with a progress bar that follows the actual steps — devices, settings, done. Previously the page stood empty for several seconds after a fresh install and looked broken. The load and save status messages are translated as well; they were still English.",
+    "de": "Die Einstellungsseite zeigt beim Laden neu einen Startbildschirm mit App-Logo und einem Fortschrittsbalken, der den echten Schritten folgt — Geräte, Einstellungen, fertig. Bisher stand die Seite nach einer frischen Installation mehrere Sekunden leer da und wirkte defekt. Zudem sind die Lade- und Speichermeldungen übersetzt; sie waren noch englisch.",
+    "nl": "De instellingenpagina toont tijdens het laden nu een startscherm met het app-logo en een voortgangsbalk die de echte stappen volgt — apparaten, instellingen, klaar. Voorheen bleef de pagina na een verse installatie enkele seconden leeg. Ook zijn de laad- en opslagmeldingen vertaald; die waren nog Engels."
+  },
   "1.2.127": {
     "en": "Battery decisions now appear in the EMS history: full, low, forced charge, forced discharge, hold and normal mode — each with the reason. Previously they went only to the log, so a forced charge overnight left no visible trace.",
     "de": "Batterie-Entscheidungen erscheinen neu im EMS-Verlauf: voll, tief, Zwangsladung, Zwangsentladung, Halten und Normalbetrieb — jeweils mit Begründung. Bisher standen sie nur im Log, eine Zwangsladung über Nacht hinterliess also keine sichtbare Spur.",

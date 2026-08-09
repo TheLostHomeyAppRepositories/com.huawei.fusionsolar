@@ -438,6 +438,21 @@
       "loadingDevices": "Geräte werden geladen…",
       "loadFailed": "Einstellungen konnten nicht vollständig geladen werden:"
     },
+    "boot": {
+      "starting": "Wird gestartet…",
+      "retry": "App startet — neuer Versuch…",
+      "settings": "Einstellungen werden geladen…",
+      "almost": "Fast fertig…"
+    },
+    "status": {
+      "devicesLoaded": "{{n}} Geräte geladen",
+      "failed": "Fehlgeschlagen",
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert — das EMS startet automatisch neu",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "needSource": "Mindestens einen Wechselrichter oder Zähler hinzufügen.",
+      "badTime": "{{label}} muss HH:MM sein (z. B. 22:00)"
+    },
     "selectDevice": "— Gerät wählen —",
     "otherDevices": "── weitere Geräte ──",
     "caps": {
