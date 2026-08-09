@@ -1043,5 +1043,10 @@
     "en": "Charge sessions now split solar from grid: each entry shows the solar share and the kWh actually bought, and the cost covers only the imported part. Solar you charge with was never bought, so a sunny session now correctly shows no cost. The CSV export gains both columns.",
     "de": "Ladesessions trennen neu Solar und Netzbezug: Jeder Eintrag zeigt den Solaranteil und die tatsächlich bezogenen kWh, und die Kosten umfassen nur den importierten Teil. Solarstrom wurde nie gekauft — eine sonnige Ladung weist deshalb korrekt keine Kosten mehr aus. Der CSV-Export erhält beide Spalten.",
     "nl": "Laadsessies splitsen nu zon en netafname: elke regel toont het zonaandeel en de werkelijk ingekochte kWh, en de kosten betreffen alleen het geïmporteerde deel. Zonnestroom is nooit gekocht, dus een zonnige sessie toont nu terecht geen kosten. De CSV-export krijgt beide kolommen."
+  },
+  "1.2.118": {
+    "en": "Updated the in-app help: the battery section described the removed Normal/Reserve SOC zones, the device lists left out air conditioners, and the priority text still spoke of device types rather than individual devices.",
+    "de": "Hilfetexte aktualisiert: Der Batterie-Abschnitt beschrieb die entfernten Zonen Normal-/Reserve-SOC, in den Gerätelisten fehlten die Klimaanlagen, und der Prioritätstext sprach noch von Gerätetypen statt von einzelnen Geräten.",
+    "nl": "Helpteksten bijgewerkt: het accu-onderdeel beschreef de verwijderde Normaal-/Reserve-SOC-zones, in de apparaatlijsten ontbraken de airco’s, en de prioriteitstekst sprak nog van apparaattypes in plaats van losse apparaten."
   }
 }
