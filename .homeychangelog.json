@@ -1028,5 +1028,10 @@
     "en": "Tidies the battery section: the heading was printed twice, with a leftover divider and gap where the old zone bar used to be.",
     "de": "Batterie-Bereich aufgeräumt: Die Überschrift stand doppelt da, mit übriggebliebenem Trenner und Lücke an der Stelle des alten Zonenbalkens.",
     "nl": "Accu-onderdeel opgeschoond: de kop stond er dubbel, met een overgebleven scheidingslijn en gat waar de oude zonebalk stond."
+  },
+  "1.2.115": {
+    "en": "Clearer surplus split: both rows now read as the same statement, the stop level says what happens below it, and the chart labels its axes and its stop zone. The explanatory text keeps only what the picture cannot show.",
+    "de": "Klarere Überschuss-Aufteilung: Beide Zeilen lesen sich neu als dieselbe Aussage, die Stopp-Schwelle sagt, was darunter passiert, und die Grafik beschriftet ihre Achsen und die Stopp-Zone. Der Erklärtext behält nur, was das Bild nicht zeigen kann.",
+    "nl": "Duidelijkere overschotverdeling: beide regels lezen nu als dezelfde uitspraak, de stopdrempel vertelt wat eronder gebeurt, en de grafiek benoemt haar assen en stopzone. De uitleg houdt alleen wat de afbeelding niet kan tonen."
   }
 }

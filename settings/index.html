@@ -952,29 +952,30 @@
 
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
-                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">Stop below SOC (%)</div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socLow">From SOC (%)</div>
                 <input id="ems-share-soc-low" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
               <div style="font-size:14px;color:#c7c7cc;padding-bottom:8px">&rarr;</div>
               <div>
-                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctLow">%</div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctLow">devices get (%)</div>
                 <input id="ems-share-pct-low" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
             </div>
+            <div style="font-size:11px;color:#ff3b30;margin:-4px 0 10px" data-i18n="homeBatteries.shareRamp.stopNote">below that: every device off, battery charges at full power</div>
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
-                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">SOC</div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">From SOC (%)</div>
                 <input id="ems-share-soc-high" type="number" oninput="emsShareRampPreview()" value="0" min="0" max="100" step="1" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
               <div style="font-size:14px;color:#c7c7cc;padding-bottom:8px">&rarr;</div>
               <div>
-                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctHigh">%</div>
+                <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.pctHigh">devices get (%)</div>
                 <input id="ems-share-pct-high" type="number" oninput="emsShareRampPreview()" value="100" min="0" max="100" step="5" style="width:64px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:13px;background:#fff">
               </div>
             </div>
             <div id="ems-share-chart" style="margin-top:10px;display:none"></div>
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
-            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. Below the lower level every device stops and the battery charges at full power. The house is served from the same production, so a high share at high house load can draw from the grid.</div>
+            <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">The house is served from the same production, so a high share at high house load can draw from the grid.</div>
 
           </div>
 
@@ -2637,7 +2638,7 @@
     function emsShareRampChart(socLo, socHi, pctLo, pctHi, soc, share) {
       var host = document.getElementById('ems-share-chart');
       if (!host) return;
-      var W = 320, H = 116, L = 30, R = 10, T = 10, B = 20;
+      var W = 320, H = 128, L = 30, R = 10, T = 18, B = 30;
       var x = function (p) { return L + (p / 100) * (W - L - R); };
       var y = function (p) { return H - B - (p / 100) * (H - B - T); };
       var e = [];
@@ -2657,7 +2658,8 @@
         e.push('<rect x="' + L + '" y="' + T + '" width="' + (x(socLo) - L) + '" height="' + (H - B - T) +
                '" fill="#ff3b30" opacity="0.07"/>');
         e.push('<text x="' + ((L + x(socLo)) / 2) + '" y="' + (T + 14) +
-               '" font-size="8" fill="#ff3b30" text-anchor="middle">' + socLo + '%</text>');
+               '" font-size="8" fill="#ff3b30" text-anchor="middle">' +
+               _H.__('settings.homeBatteries.shareRamp.stopZone') + '</text>');
       }
       // the ramp: vertical step at the stop edge, then the slope, then flat
       e.push('<polyline points="' + [
@@ -2681,6 +2683,11 @@
       // axis ends
       e.push('<text x="' + L + '" y="' + (H - B + 12) + '" font-size="8" fill="#8e8e93">0</text>');
       e.push('<text x="' + (W - R) + '" y="' + (H - B + 12) + '" font-size="8" fill="#8e8e93" text-anchor="end">100</text>');
+      // Without these the reader has two 0–100 scales and no way to tell which is which.
+      e.push('<text x="' + ((L + W - R) / 2) + '" y="' + (H - 1) + '" font-size="8" fill="#6e6e73" text-anchor="middle">' +
+             _H.__('settings.homeBatteries.shareRamp.axisSoc') + '</text>');
+      e.push('<text x="' + L + '" y="' + (T - 2) + '" font-size="8" fill="#6e6e73">' +
+             _H.__('settings.homeBatteries.shareRamp.axisShare') + '</text>');
 
       host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" ' +
                        'aria-label="' + _H.__('settings.homeBatteries.shareRamp.chartAlt') + '">' +

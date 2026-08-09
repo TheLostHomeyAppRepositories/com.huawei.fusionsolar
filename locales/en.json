@@ -774,15 +774,19 @@
         "legendDesc": "<span style=\"color:#34c759;font-weight:600\">Green</span> (above Normal SOC): all devices run on full solar budget. <span style=\"color:#ff9f0a;font-weight:600\">Orange</span> (Reserve → Normal SOC): devices start in priority order if their minimum surplus ≤ current export + Orange Budget. The budget is shared — each started device reduces what remains for the next. <span style=\"color:#ff3b30;font-weight:600\">Red</span> (below Reserve SOC): all devices stop — battery charges at full speed. Set Reserve SOC to 0 to use only red and green."
       },
       "shareRamp": {
-        "socLow": "Stop below SOC (%)",
-        "socHigh": "Up to SOC (%)",
+        "socLow": "From SOC (%)",
+        "socHigh": "From SOC (%)",
         "pctLow": "devices get (%)",
         "pctHigh": "devices get (%)",
-        "hint": "Splits the power the PV array is producing between battery and devices: the fuller the battery, the larger the devices’ share, rising evenly between the two levels. Below the lower level every device stops and the battery charges at full power. The house is served from the same production, so a high share at high house load can draw from the grid.",
+        "hint": "The house is served from the same production, so a high share at high house load can draw from the grid.",
         "nowSoc": "Battery now {soc}%",
         "nowShare": "devices get {pct}% of the production",
         "nowWatts": "{w} W of {surplus} W",
-        "chartAlt": "Share of PV production released to devices, by battery level"
+        "chartAlt": "Share of PV production released to devices, by battery level",
+        "stopNote": "below that: every device off, battery charges at full power",
+        "stopZone": "all off",
+        "axisSoc": "battery level %",
+        "axisShare": "share %"
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",
