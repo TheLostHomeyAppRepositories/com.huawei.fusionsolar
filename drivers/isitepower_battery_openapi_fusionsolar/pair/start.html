@@ -93,6 +93,7 @@
 
     <div class="field">
       <label id="label-url">Server URL</label>
+      <select id="base-url-select"></select>
       <input type="text" id="base-url" value="https://eu5.fusionsolar.huawei.com" />
       <p class="hint" id="hint-url"></p>
     </div>
@@ -143,7 +144,12 @@
         title:          'FusionSolar OpenAPI',
         subtitle:       'Sign in with your FusionSolar Northbound API credentials.',
         labelUrl:       'Server URL',
-        hintUrl:        'Regional server. EU default: eu5.fusionsolar.huawei.com',
+        hintUrl:        'Pick your regional server, or "Other" to type a URL.',
+        regions: {
+          eu5: 'Europe', intl: 'International', regionEu: 'Europe (region {{n}})',
+          sg5: 'Southeast Asia', au5: 'Australia', jp5: 'Japan', la5: 'Latin America',
+          energyorb: 'EnergyOrb (Europe)', custom: 'Other (enter URL)…',
+        },
         labelUsername:  'Username',
         labelPassword:  'System Code',
         hintPassword:   'The system code (API password) from your FusionSolar account.',
@@ -163,7 +169,12 @@
         title:          'FusionSolar OpenAPI',
         subtitle:       'Melde dich mit deinen FusionSolar Northbound API-Zugangsdaten an.',
         labelUrl:       'Server URL',
-        hintUrl:        'Regionaler Server. EU Standard: eu5.fusionsolar.huawei.com',
+        hintUrl:        'Wähle deinen regionalen Server oder "Andere", um eine URL einzugeben.',
+        regions: {
+          eu5: 'Europa', intl: 'International', regionEu: 'Europa (Region {{n}})',
+          sg5: 'Südostasien', au5: 'Australien', jp5: 'Japan', la5: 'Lateinamerika',
+          energyorb: 'EnergyOrb (Europa)', custom: 'Andere (URL eingeben)…',
+        },
         labelUsername:  'Benutzername',
         labelPassword:  'System Code',
         hintPassword:   'Der System Code (API-Passwort) aus deinem FusionSolar-Konto.',
@@ -189,6 +200,57 @@
     document.getElementById('subtitle').textContent      = t.subtitle;
     document.getElementById('label-url').textContent     = t.labelUrl;
     document.getElementById('hint-url').textContent      = t.hintUrl;
+
+    // Region picker. The text field stays the single source of truth: the login handler
+    // below reads #base-url exactly as before and never learns this exists. The dropdown
+    // only writes into it, and hides it while a listed server is selected. "Other" keeps
+    // an unlisted region reachable — the failure mode a dropdown normally introduces.
+    // Same list as the OpenAPI tab in app settings, filtered by DNS against Huawei's
+    // documented domains; energyorb is listed ahead of going live and does not resolve yet.
+    const HW = (sub) => 'https://' + sub + '.fusionsolar.huawei.com';
+    const OA_SERVERS = [
+      { url: HW('eu5'),         key: 'eu5',      tag: 'eu5' },
+      { url: HW('intl'),        key: 'intl',     tag: 'intl' },
+      { url: HW('region01eu5'), key: 'regionEu', tag: 'region01eu5', n: '01' },
+      { url: HW('region02eu5'), key: 'regionEu', tag: 'region02eu5', n: '02' },
+      { url: HW('region03eu5'), key: 'regionEu', tag: 'region03eu5', n: '03' },
+      { url: HW('region04eu5'), key: 'regionEu', tag: 'region04eu5', n: '04' },
+      { url: HW('region05eu5'), key: 'regionEu', tag: 'region05eu5', n: '05' },
+      { url: HW('sg5'),         key: 'sg5',      tag: 'sg5' },
+      { url: HW('au5'),         key: 'au5',      tag: 'au5' },
+      { url: HW('jp5'),         key: 'jp5',      tag: 'jp5' },
+      { url: HW('la5'),         key: 'la5',      tag: 'la5' },
+      { url: 'https://openapi.monitor.energyorb.com', key: 'energyorb', tag: 'energyorb' },
+    ];
+    const OA_CUSTOM = '__custom__';
+
+    (function buildServerSelect() {
+      const sel = document.getElementById('base-url-select');
+      const inp = document.getElementById('base-url');
+      if (!sel || !inp) return;
+      const label = (s) => (s.n ? t.regions[s.key].replace('{{n}}', s.n) : t.regions[s.key]);
+      OA_SERVERS.forEach((s) => {
+        const o = document.createElement('option');
+        o.value = s.url;
+        o.textContent = label(s) + ' · ' + s.tag;
+        sel.appendChild(o);
+      });
+      const custom = document.createElement('option');
+      custom.value = OA_CUSTOM;
+      custom.textContent = t.regions.custom;
+      sel.appendChild(custom);
+
+      sel.addEventListener('change', () => {
+        if (sel.value === OA_CUSTOM) { inp.style.display = ''; inp.focus(); return; }
+        inp.value = sel.value;
+        inp.style.display = 'none';
+      });
+
+      const url   = inp.value.trim().replace(/\/$/, '');
+      const known = OA_SERVERS.some((s) => s.url === url);
+      sel.value = known ? url : OA_CUSTOM;
+      inp.style.display = known ? 'none' : '';
+    })();
     document.getElementById('label-username').textContent = t.labelUsername;
     document.getElementById('label-password').textContent = t.labelPassword;
     document.getElementById('hint-password').textContent  = t.hintPassword;

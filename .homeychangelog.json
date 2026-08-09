@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.141": {
+    "en": "Pairing an OpenAPI device now offers the same region list as the settings page instead of a server address you have to type — inverter, battery, meter and the four iSitePower devices. \"Other\" still opens the text field for a server that is not listed.",
+    "de": "Beim Hinzufügen eines OpenAPI-Geräts steht neu dieselbe Regionsauswahl zur Verfügung wie auf der Einstellungsseite, statt einer Serveradresse zum Abtippen — Wechselrichter, Batterie, Zähler und die vier iSitePower-Geräte. Über \"Andere\" öffnet sich weiterhin das Textfeld für einen nicht gelisteten Server.",
+    "nl": "Bij het toevoegen van een OpenAPI-apparaat is nu dezelfde regiokeuze beschikbaar als op de instellingenpagina, in plaats van een serveradres dat je moet typen — omvormer, batterij, meter en de vier iSitePower-apparaten. Via \"Anders\" opent nog steeds het tekstveld."
+  },
   "1.2.140": {
     "en": "The OpenAPI server address is now a region dropdown instead of a field you have to type: Europe, International, the five European region servers, Asia-Pacific, Australia, Japan, Latin America and EnergyOrb. The current address stays selected, and \"Other\" brings the text field back for a server that is not listed.",
     "de": "Die OpenAPI-Serveradresse ist neu eine Regionsauswahl statt eines Eingabefelds: Europa, International, die fünf europäischen Regionsserver, Asien-Pazifik, Australien, Japan, Lateinamerika und EnergyOrb. Die bisherige Adresse bleibt ausgewählt, und über \"Andere\" kommt das Textfeld für einen nicht gelisteten Server zurück.",
