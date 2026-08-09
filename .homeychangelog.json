@@ -1023,5 +1023,10 @@
     "en": "The surplus split now draws itself: a small chart shows the stop zone, the rising share between your two battery levels, and where the battery sits right now. It redraws as you type.",
     "de": "Die Überschuss-Aufteilung zeichnet sich neu selbst: Eine kleine Grafik zeigt die Stopp-Zone, den steigenden Anteil zwischen deinen beiden Ladeständen und wo die Batterie gerade steht — sie zeichnet sich schon beim Tippen neu.",
     "nl": "De overschotverdeling tekent zichzelf: een kleine grafiek toont de stopzone, het oplopende aandeel tussen je twee accuniveaus en waar de accu nu staat — hij tekent al tijdens het typen opnieuw."
+  },
+  "1.2.114": {
+    "en": "Tidies the battery section: the heading was printed twice, with a leftover divider and gap where the old zone bar used to be.",
+    "de": "Batterie-Bereich aufgeräumt: Die Überschrift stand doppelt da, mit übriggebliebenem Trenner und Lücke an der Stelle des alten Zonenbalkens.",
+    "nl": "Accu-onderdeel opgeschoond: de kop stond er dubbel, met een overgebleven scheidingslijn en gat waar de oude zonebalk stond."
   }
 }
