@@ -777,8 +777,8 @@
         "title": "Aufteilung des Überschusses nach Ladestand (optional)",
         "socLow": "Ab SOC (%)",
         "socHigh": "Bis SOC (%)",
-        "pctLow": "…Geräte erhalten (%)",
-        "pctHigh": "…Geräte erhalten (%)",
+        "pctLow": "Geräte erhalten (%)",
+        "pctHigh": "Geräte erhalten (%)",
         "hint": "Teilt den Solarüberschuss (Erzeugung minus Hausverbrauch) zwischen Batterie und Geräten auf: je voller die Batterie, desto grösser der Anteil der Geräte, gleichmässig steigend zwischen den beiden Ladeständen. Obere SOC-Grenze auf 0 lassen, um stattdessen bei den drei Zonen oben zu bleiben."
       },
       "forecastGate": {

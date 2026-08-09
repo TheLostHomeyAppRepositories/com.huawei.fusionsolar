@@ -777,8 +777,8 @@
         "title": "Verdeling van het overschot op accuniveau (optioneel)",
         "socLow": "Vanaf SOC (%)",
         "socHigh": "Tot SOC (%)",
-        "pctLow": "…apparaten krijgen (%)",
-        "pctHigh": "…apparaten krijgen (%)",
+        "pctLow": "apparaten krijgen (%)",
+        "pctHigh": "apparaten krijgen (%)",
         "hint": "Verdeelt het zonneoverschot (opwek min huisverbruik) tussen accu en apparaten: hoe voller de accu, hoe groter het aandeel van de apparaten, gelijkmatig oplopend tussen beide niveaus. Laat de bovenste SOC op 0 staan om de drie zones hierboven te behouden."
       },
       "forecastGate": {

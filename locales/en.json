@@ -777,8 +777,8 @@
         "title": "Surplus split by battery level (optional)",
         "socLow": "From SOC (%)",
         "socHigh": "Up to SOC (%)",
-        "pctLow": "…devices get (%)",
-        "pctHigh": "…devices get (%)",
+        "pctLow": "devices get (%)",
+        "pctHigh": "devices get (%)",
         "hint": "Splits the solar surplus (production minus house consumption) between battery and devices: the fuller the battery, the larger the devices' share, rising evenly between the two levels. Leave the upper SOC at 0 to keep the three zones above instead."
       },
       "forecastGate": {

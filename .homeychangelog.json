@@ -973,5 +973,10 @@
     "en": "New optional battery setting: split the solar surplus between battery and devices depending on the battery level. The fuller the battery, the larger the share the devices may use — rising evenly between two levels you choose, instead of the fixed Orange budget.",
     "de": "Neue optionale Batterie-Einstellung: Der Solarüberschuss wird je nach Ladestand zwischen Batterie und Geräten aufgeteilt. Je voller die Batterie, desto grösser der Anteil der Geräte — gleichmässig steigend zwischen zwei wählbaren Ladeständen, statt des festen Orange-Budgets.",
     "nl": "Nieuwe optionele accu-instelling: het zonneoverschot wordt afhankelijk van het accuniveau verdeeld tussen accu en apparaten. Hoe voller de accu, hoe groter het aandeel voor de apparaten — gelijkmatig oplopend tussen twee zelfgekozen niveaus, in plaats van het vaste Oranje-budget."
+  },
+  "1.2.104": {
+    "en": "Layout fix: the four surplus-split fields now sit as two labelled pairs, so each percentage clearly belongs to its battery level.",
+    "de": "Layout korrigiert: Die vier Felder der Überschuss-Aufteilung stehen neu als zwei beschriftete Paare, damit jeder Prozentwert klar zu seinem Ladestand gehört.",
+    "nl": "Lay-out hersteld: de vier velden van de overschotverdeling staan nu als twee gelabelde paren, zodat elk percentage duidelijk bij zijn accuniveau hoort."
   }
 }
