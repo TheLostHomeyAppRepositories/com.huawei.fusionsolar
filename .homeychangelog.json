@@ -983,5 +983,10 @@
     "en": "The surplus split now shows a live preview: the current battery level, the share that follows from your settings, and how many watts that releases right now. It updates as you type.",
     "de": "Die Überschuss-Aufteilung zeigt neu eine Live-Vorschau: aktueller Batteriestand, der daraus folgende Anteil und wie viele Watt damit gerade freigegeben wären — aktualisiert schon beim Tippen.",
     "nl": "De overschotverdeling toont nu een live voorbeeld: het huidige accuniveau, het bijbehorende aandeel en hoeveel watt dat nu vrijgeeft — het werkt al tijdens het typen bij."
+  },
+  "1.2.106": {
+    "en": "Fixes a serious regression in 1.2.105 that stopped the EMS control loop entirely: no devices were switched and no battery or export rules ran. Please update.",
+    "de": "Behebt einen schweren Fehler aus 1.2.105, der die EMS-Steuerschleife komplett angehalten hat: Es wurden keine Geräte geschaltet und keine Batterie- oder Export-Regeln ausgeführt. Bitte aktualisieren.",
+    "nl": "Herstelt een ernstige fout uit 1.2.105 waardoor de EMS-regellus volledig stilviel: er werden geen apparaten geschakeld en geen accu- of teruglever-regels uitgevoerd. Werk bij."
   }
 }

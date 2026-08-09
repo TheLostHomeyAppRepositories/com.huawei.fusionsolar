@@ -610,7 +610,7 @@ class EmsDevice extends Device {
       this._getSimpleDevices('dehumidifier_devices', cfg),
       this._getSimpleDevices('aircon_devices', cfg),
     ]);
-    this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc; this._diag.houseW = houseW;
+    this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc;
     // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — seeded to the ALREADY
     // measured grid import so ordinary house baseline load (fridge, lights, whatever's
     // not EMS-controlled) is accounted for before any EMS-controlled load claims more.
@@ -647,6 +647,9 @@ class EmsDevice extends Device {
       houseW = await this._getHouseW(cfg, gridW, pvW, battery, chargers);
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
+    // Recorded here, not next to gridW/pvW/soc above: houseW is declared further down,
+    // so assigning it earlier hit the temporal dead zone and threw on every tick.
+    this._diag.houseW = houseW;
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
     if (this._warmupDone) await this._checkBatteryPriceControl(cfg, battery);
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
