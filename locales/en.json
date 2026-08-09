@@ -793,7 +793,7 @@
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",
-        "desc": "On a poor-forecast day, hold off <em>starting</em> devices (heat pump / boiler / pool / dehumidifier) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.",
+        "desc": "On a poor-forecast day, hold off <em>starting</em> devices (heat pump / boiler / pool / dehumidifier / air conditioner) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.",
         "optOff": "Off",
         "optManual": "Manual threshold (kWh)",
         "optAdaptive": "Adaptive (battery deficit)",
@@ -868,7 +868,7 @@
       "kwUnlimited": "kW · 0 = unlimited",
       "importLimit": {
         "title": "Grid import limit — whole house (load shedding)",
-        "desc": "A hard safety ceiling on TOTAL grid import (e.g. the site's main fuse rating). It works from the measured import at your grid meters — what the house still draws after solar and battery, not total consumption. Every tick the EMS starts from that reading and reduces or holds back EV charging (Instant / Always-charge / Off-peak / Price / Low-tariff — all tiers that would otherwise draw unconditionally), Home Battery force-charge, and any new heat pump / boiler / pool / dehumidifier start as needed to stay under this limit — EV chargers step down gracefully where possible, the other device types (on/off only) simply have their start denied if it wouldn't fit. Leave at 0 if you don't need a whole-house cap."
+        "desc": "A hard safety ceiling on TOTAL grid import (e.g. the site's main fuse rating). It works from the measured import at your grid meters — what the house still draws after solar and battery, not total consumption. Every tick the EMS starts from that reading and reduces or holds back EV charging (Instant / Always-charge / Off-peak / Price / Low-tariff — all tiers that would otherwise draw unconditionally), Home Battery force-charge, and any new heat pump / boiler / pool / dehumidifier / air conditioner start as needed to stay under this limit — EV chargers step down gracefully where possible, the other device types (on/off only) simply have their start denied if it wouldn't fit. Leave at 0 if you don't need a whole-house cap."
       }
     },
     "sessions": {

@@ -793,7 +793,7 @@
       },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",
-        "desc": "An einem Tag mit schlechter Prognose werden <em>Starts</em> von Geräten (Wärmepumpe / Boiler / Pool / Entfeuchter) zurückgehalten, um die Batterie für die Nacht zu schonen. Laufende Geräte beenden normal; EV-Laden ist nicht betroffen. Benötigt eine aktivierte Solcast-Prognose — fällt bei fehlender/veralteter Prognose auf Normalbetrieb zurück.",
+        "desc": "An einem Tag mit schlechter Prognose werden <em>Starts</em> von Geräten (Wärmepumpe / Boiler / Pool / Entfeuchter / Klimaanlage) zurückgehalten, um die Batterie für die Nacht zu schonen. Laufende Geräte beenden normal; EV-Laden ist nicht betroffen. Benötigt eine aktivierte Solcast-Prognose — fällt bei fehlender/veralteter Prognose auf Normalbetrieb zurück.",
         "optOff": "Aus",
         "optManual": "Manueller Schwellenwert (kWh)",
         "optAdaptive": "Adaptiv (Batterie-Defizit)",
@@ -868,7 +868,7 @@
       "kwUnlimited": "kW · 0 = unbegrenzt",
       "importLimit": {
         "title": "Netzbezugslimit — ganzes Haus (Lastabwurf)",
-        "desc": "Eine harte Sicherheitsobergrenze für den GESAMTEN Netzbezug (z. B. passend zur Hauptsicherung). Grundlage ist der gemessene Bezug deiner Netzzähler — also was das Haus nach Solar und Batterie noch aus dem Netz zieht, nicht der Gesamtverbrauch. Bei jedem Tick geht das EMS von diesem Messwert aus und reduziert oder hält EV-Laden zurück (Sofortladen / Always-Charge / Off-Peak / Preis / Niedertarif — alle Stufen, die sonst unbegrenzt Strom beziehen würden), die Batterie-Zwangsladung sowie jeden neuen Start von Wärmepumpe / Boiler / Pool / Entfeuchter, um unter diesem Limit zu bleiben — EV-Lader reduzieren wo möglich schrittweise die Ladeleistung, die übrigen Gerätetypen (nur ein/aus) bekommen den Start schlicht verweigert, wenn er nicht mehr passt. Bei 0 belassen, falls kein Haus-Limit benötigt wird."
+        "desc": "Eine harte Sicherheitsobergrenze für den GESAMTEN Netzbezug (z. B. passend zur Hauptsicherung). Grundlage ist der gemessene Bezug deiner Netzzähler — also was das Haus nach Solar und Batterie noch aus dem Netz zieht, nicht der Gesamtverbrauch. Bei jedem Tick geht das EMS von diesem Messwert aus und reduziert oder hält EV-Laden zurück (Sofortladen / Always-Charge / Off-Peak / Preis / Niedertarif — alle Stufen, die sonst unbegrenzt Strom beziehen würden), die Batterie-Zwangsladung sowie jeden neuen Start von Wärmepumpe / Boiler / Pool / Entfeuchter / Klimaanlage, um unter diesem Limit zu bleiben — EV-Lader reduzieren wo möglich schrittweise die Ladeleistung, die übrigen Gerätetypen (nur ein/aus) bekommen den Start schlicht verweigert, wenn er nicht mehr passt. Bei 0 belassen, falls kein Haus-Limit benötigt wird."
       }
     },
     "sessions": {

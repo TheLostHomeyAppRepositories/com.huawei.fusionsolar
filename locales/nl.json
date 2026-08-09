@@ -793,7 +793,7 @@
       },
       "forecastGate": {
         "title": "🌤 Zonprognose-startpoort",
-        "desc": "Houd op een dag met slechte prognose het <em>starten</em> van apparaten (warmtepomp / boiler / zwembad / ontvochtiger) tegen om de batterij te beschermen die je vanavond nodig hebt. Draaiende apparaten voltooien normaal; EV-laden wordt niet beïnvloed. Vereist een ingeschakelde Solcast-prognose — valt terug op normaal als de prognose ontbreekt of verouderd is.",
+        "desc": "Houd op een dag met slechte prognose het <em>starten</em> van apparaten (warmtepomp / boiler / zwembad / ontvochtiger / airco) tegen om de batterij te beschermen die je vanavond nodig hebt. Draaiende apparaten voltooien normaal; EV-laden wordt niet beïnvloed. Vereist een ingeschakelde Solcast-prognose — valt terug op normaal als de prognose ontbreekt of verouderd is.",
         "optOff": "Uit",
         "optManual": "Handmatige drempel (kWh)",
         "optAdaptive": "Adaptief (batterijtekort)",
@@ -868,7 +868,7 @@
       "kwUnlimited": "kW · 0 = onbeperkt",
       "importLimit": {
         "title": "Netimportlimiet — hele huis (load shedding)",
-        "desc": "Een harde veiligheidsgrens op het TOTALE netimport (bijv. de nominale waarde van de hoofdzekering). Basis is de gemeten afname van je netmeters — wat het huis na zon en accu nog uit het net trekt, niet het totale verbruik. Elke tick gaat de EMS uit van die meting en vermindert of houdt EV-laden (Direct / Altijd laden / Daltarief / Prijs / Laag tarief — alle niveaus die anders onvoorwaardelijk zouden opnemen), de force-charge van thuisbatterijen en elke nieuwe start van een warmtepomp / boiler / zwembad / ontvochtiger tegen, zo nodig om onder deze limiet te blijven — EV-laders bouwen de laadstroom waar mogelijk geleidelijk af, de overige apparaattypen (alleen aan/uit) krijgen de start simpelweg geweigerd als die niet meer past. Laat op 0 staan als je geen huisbrede grens nodig hebt."
+        "desc": "Een harde veiligheidsgrens op het TOTALE netimport (bijv. de nominale waarde van de hoofdzekering). Basis is de gemeten afname van je netmeters — wat het huis na zon en accu nog uit het net trekt, niet het totale verbruik. Elke tick gaat de EMS uit van die meting en vermindert of houdt EV-laden (Direct / Altijd laden / Daltarief / Prijs / Laag tarief — alle niveaus die anders onvoorwaardelijk zouden opnemen), de force-charge van thuisbatterijen en elke nieuwe start van een warmtepomp / boiler / zwembad / ontvochtiger / airco tegen, zo nodig om onder deze limiet te blijven — EV-laders bouwen de laadstroom waar mogelijk geleidelijk af, de overige apparaattypen (alleen aan/uit) krijgen de start simpelweg geweigerd als die niet meer past. Laat op 0 staan als je geen huisbrede grens nodig hebt."
       }
     },
     "sessions": {

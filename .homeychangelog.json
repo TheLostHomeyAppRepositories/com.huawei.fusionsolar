@@ -1053,5 +1053,10 @@
     "en": "The export limit coordinator now names the flows it will start, for the ON and the OFF case, so you can see what a rule will actually do before switching it on.",
     "de": "Der Export-Limit-Koordinator nennt neu die Flows, die er startet — für den Ein- und den Aus-Fall. So siehst du, was eine Regel tatsächlich bewirkt, bevor du sie einschaltest.",
     "nl": "De teruglevergrens-coördinator noemt nu de flows die hij start, voor het aan- en het uit-geval, zodat je ziet wat een regel werkelijk doet voordat je hem inschakelt."
+  },
+  "1.2.120": {
+    "en": "Two help texts still listed only four controllable device types: the solar forecast start gate and the whole-house grid import limit both apply to air conditioners as well.",
+    "de": "Zwei Hilfetexte nannten noch vier steuerbare Gerätetypen: Die Solarprognose-Startsperre und das Haus-Netzbezugslimit gelten ebenso für Klimaanlagen.",
+    "nl": "Twee helpteksten noemden nog vier regelbare apparaattypes: de zonneprognose-startblokkering en de netafnamegrens gelden ook voor airco’s."
   }
 }
