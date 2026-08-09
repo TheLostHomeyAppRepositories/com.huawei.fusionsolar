@@ -1038,5 +1038,10 @@
     "en": "The battery widget follows the new model: one editable stop level instead of Reserve and Normal, and no reserve zone in the status line.",
     "de": "Das Batterie-Widget folgt dem neuen Modell: eine einstellbare Stopp-Schwelle statt Reserve und Normal, und keine Reserve-Zone mehr in der Statuszeile.",
     "nl": "De accu-widget volgt het nieuwe model: één instelbare stopdrempel in plaats van Reserve en Normaal, en geen reservezone meer in de statusregel."
+  },
+  "1.2.117": {
+    "en": "Charge sessions now split solar from grid: each entry shows the solar share and the kWh actually bought, and the cost covers only the imported part. Solar you charge with was never bought, so a sunny session now correctly shows no cost. The CSV export gains both columns.",
+    "de": "Ladesessions trennen neu Solar und Netzbezug: Jeder Eintrag zeigt den Solaranteil und die tatsächlich bezogenen kWh, und die Kosten umfassen nur den importierten Teil. Solarstrom wurde nie gekauft — eine sonnige Ladung weist deshalb korrekt keine Kosten mehr aus. Der CSV-Export erhält beide Spalten.",
+    "nl": "Laadsessies splitsen nu zon en netafname: elke regel toont het zonaandeel en de werkelijk ingekochte kWh, en de kosten betreffen alleen het geïmporteerde deel. Zonnestroom is nooit gekocht, dus een zonnige sessie toont nu terecht geen kosten. De CSV-export krijgt beide kolommen."
   }
 }

@@ -1591,11 +1591,11 @@ test('_trackChargeSession — accumulates energy over ticks and finalizes on dis
   const dtMs = 15_000; // one 15 s tick
 
   // 4 ticks at 7.36 kW for 15 s each → 4 * 7.36 * (15/3600) kWh
-  for (let i = 0; i < 4; i++) d._trackChargeSession(charger, cfg, dtMs);
+  for (let i = 0; i < 4; i++) d._trackChargeSession(charger, cfg, dtMs, 99999);
   assert.strictEqual(d._chargeSessions.length, 0); // still connected — no session finalized yet
 
   const disconnected = { id: 'c1', connected: false, powerW: 0 };
-  d._trackChargeSession(disconnected, cfg, dtMs);
+  d._trackChargeSession(disconnected, cfg, dtMs, 99999);
 
   assert.strictEqual(d._chargeSessions.length, 1);
   const s = d._chargeSessions[0];
@@ -1614,8 +1614,8 @@ test('_trackChargeSession — bills the MEASURED draw, not the amps×phases esti
   const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
   seedState(d, 'c1', { currentAmps: 16, currentPhases: 3 }); // commanded 11040 W
   const charger = { id: 'c1', connected: true, rawPowerW: 4000, powerW: 16 * 3 * 230 };
-  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000); // 1 h
-  d._trackChargeSession({ ...charger, connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000);
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 99999); // 1 h
+  d._trackChargeSession({ ...charger, connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 99999);
   const s = d.getEmsChargeSessions()[0];
   assert.strictEqual(s.energyKwh, 4);      // 4000 W for 1 h — was 11.04 kWh before the fix
   assert.strictEqual(s.cost, 1.2);         // 4 kWh × 0.30 — was 3.31 CHF
@@ -1626,16 +1626,16 @@ test('_trackChargeSession — falls back to the estimate when the charger report
   const d = makeChargerDevice();
   const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
   const charger = { id: 'c1', connected: true, rawPowerW: null, powerW: 2000 };
-  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000); // 1 h
-  d._trackChargeSession({ ...charger, connected: false, powerW: 0 }, cfg, 15_000);
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 99999); // 1 h
+  d._trackChargeSession({ ...charger, connected: false, powerW: 0 }, cfg, 15_000, 99999);
   assert.strictEqual(d.getEmsChargeSessions()[0].energyKwh, 2);
 });
 test('_trackChargeSession — negligible-energy sessions are not logged', () => {
   const d = makeChargerDevice({ _chargeSessions: [] });
   const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
   // One tick at low power — well under the 0.05 kWh logging floor.
-  d._trackChargeSession({ id: 'c1', connected: true, powerW: 100 }, cfg, 15_000);
-  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000);
+  d._trackChargeSession({ id: 'c1', connected: true, powerW: 100 }, cfg, 15_000, 99999);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000, 99999);
   assert.strictEqual(d._chargeSessions.length, 0);
 });
 test('_trackChargeSession — pauses within one plug-in period stay a single session', () => {
@@ -1643,10 +1643,10 @@ test('_trackChargeSession — pauses within one plug-in period stay a single ses
   const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
   const on  = { id: 'c1', connected: true, powerW: 7360 };
   const off = { id: 'c1', connected: true, powerW: 0 }; // still plugged in, just not drawing (e.g. no surplus)
-  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000);
-  for (let i = 0; i < 10; i++) d._trackChargeSession(off, cfg, 15_000); // paused — still connected
-  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000); // resumes
-  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000); // unplugged
+  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000, 99999);
+  for (let i = 0; i < 10; i++) d._trackChargeSession(off, cfg, 15_000, 99999); // paused — still connected
+  for (let i = 0; i < 10; i++) d._trackChargeSession(on, cfg, 15_000, 99999); // resumes
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000, 99999); // unplugged
   assert.strictEqual(d._chargeSessions.length, 1); // one session, not three
   assert.ok(d._chargeSessions[0].energyKwh > 0);
 });
@@ -1655,16 +1655,16 @@ test('_trackChargeSession — carName resolved via _carForCharger when known', (
   const d = makeChargerDevice({ _chargeSessions: [], _carStates: [car] });
   const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30 } };
   const charger = { id: 'c1', connected: true, powerW: 7360, carId: 'car1' };
-  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000);
-  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0, carId: 'car1' }, cfg, 15_000);
+  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000, 99999);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0, carId: 'car1' }, cfg, 15_000, 99999);
   assert.strictEqual(d._chargeSessions[0].carName, 'Tesla');
 });
 test('_trackChargeSession — no price configured (mode variable, unset) → energy logged, cost null', () => {
   const d = makeChargerDevice({ _chargeSessions: [], _variablePrice: null });
   const cfg = { price_config: { mode: 'variable' } }; // no value ever pushed → _getCurrentPrice returns null
   const charger = { id: 'c1', connected: true, powerW: 7360 };
-  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000);
-  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000);
+  for (let i = 0; i < 5; i++) d._trackChargeSession(charger, cfg, 15_000, 99999);
+  d._trackChargeSession({ id: 'c1', connected: false, powerW: 0 }, cfg, 15_000, 99999);
   assert.strictEqual(d._chargeSessions.length, 1);
   assert.ok(d._chargeSessions[0].energyKwh > 0);
   assert.strictEqual(d._chargeSessions[0].cost, null);
@@ -2298,4 +2298,45 @@ test('_evaluateExportLimit — the SoC reason still releases when export stops',
   await d._evaluateExportLimit(EXPORT_CFG, { soc: 99 }, 0); // Batterie voll, aber keine Einspeisung
   assert.strictEqual(d._exportLimitActive, false);
   assert.deepStrictEqual(d._fired, ['ems_inverter_export_limit_off']);
+});
+
+// ── Ladesessions: Aufteilung PV / Netzbezug ─────────────────────────────────
+// Der Lader gilt als Grenzlast: Was das Haus gerade importiert, wird zuerst ihm
+// zugeschrieben, hoechstens bis zu seinem eigenen Bezug. Nur dieser Teil kostet.
+test('_trackChargeSession — pure solar charging costs nothing and is 100 % PV', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: 4000, powerW: 4000 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, -2000); // exporting
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, -2000);
+  const s = d._chargeSessions[0];
+  assert.strictEqual(s.gridKwh, 0);
+  assert.strictEqual(s.pvShare, 100);
+  assert.strictEqual(s.cost, null);       // nothing was bought
+});
+test('_trackChargeSession — import beyond the charger draw is not charged to the car', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: 2000, powerW: 2000 };
+  // House imports 5 kW while the charger draws 2 kW: at most its own 2 kW are its doing.
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 5000);
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 5000);
+  const s = d._chargeSessions[0];
+  assert.strictEqual(s.energyKwh, 2);
+  assert.strictEqual(s.gridKwh, 2);       // capped at its own draw, not the 5 kW import
+  assert.strictEqual(s.pvShare, 0);
+  assert.strictEqual(s.cost, 0.6);        // 2 kWh x 0.30
+});
+test('_trackChargeSession — a half-covered session splits and bills only the grid part', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: 4000, powerW: 4000 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 2000); // half imported
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 2000);
+  const s = d._chargeSessions[0];
+  assert.strictEqual(s.energyKwh, 4);
+  assert.strictEqual(s.gridKwh, 2);
+  assert.strictEqual(s.pvKwh, 2);
+  assert.strictEqual(s.pvShare, 50);
+  assert.strictEqual(s.cost, 0.6);        // only the 2 kWh from the grid
 });

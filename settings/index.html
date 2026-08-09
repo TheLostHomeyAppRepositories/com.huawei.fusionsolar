@@ -7584,10 +7584,17 @@
         var durMin = Math.max(0, Math.round((s.endedAt - s.startedAt) / 60000));
         var durTxt = durMin >= 60 ? (Math.floor(durMin / 60) + 'h ' + (durMin % 60) + 'm') : (durMin + 'm');
         var costTxt = s.cost != null ? (' · ' + s.cost.toFixed(2) + ' ' + _emsHistEsc(s.currency) + ' (Ø ' + s.avgPrice.toFixed(3) + '/kWh)') : '';
+        // Solar vs. bought. Older sessions predate the split and carry no pvShare — showing
+        // nothing beats showing a made-up 0 %.
+        var splitTxt = (s.pvShare != null && s.gridKwh != null)
+          ? ' · <span style="color:#34c759">' + s.pvShare + '% ' + _H.__('settings.sessions.solar') + '</span>'
+            + (s.gridKwh > 0 ? ' · <span style="color:#6e6e73">' + s.gridKwh.toFixed(2) + ' kWh '
+                + _H.__('settings.sessions.fromGrid') + '</span>' : '')
+          : '';
         return '<div style="padding:6px 0;border-bottom:1px solid #f0f0f5">' +
           '<div style="font-size:12px;font-weight:600;color:#1d1d1f">' + title + '</div>' +
           '<div style="font-size:11px;color:#6e6e73">' + fmtDt(s.startedAt) + ' – ' + fmtDt(s.endedAt) + ' · ' + durTxt + '</div>' +
-          '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + s.energyKwh.toFixed(2) + ' kWh' + costTxt + '</div>' +
+          '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + s.energyKwh.toFixed(2) + ' kWh' + splitTxt + costTxt + '</div>' +
           '</div>';
       }).join('');
     }
@@ -7600,7 +7607,8 @@
       var sessions = filterKey ? _emsSessionsData.filter(function(s) { return _emsSessionKey(s) === filterKey; }) : _emsSessionsData;
       if (!sessions.length) { alert(_H.__('settings.chargeSessions.nothingToExport')); return; }
       var csvEsc = function(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? ('"' + v.replace(/"/g, '""') + '"') : v; };
-      var header = ['Car/Charger', 'Started', 'Ended', 'Duration (min)', 'Energy (kWh)', 'Cost', 'Currency', 'Avg price/kWh'];
+      var header = ['Car/Charger', 'Started', 'Ended', 'Duration (min)', 'Energy (kWh)',
+              'Solar (kWh)', 'Grid (kWh)', 'Cost', 'Currency', 'Avg price/kWh'];
       var lines = [header.map(csvEsc).join(',')];
       sessions.forEach(function(s) {
         var durMin = Math.max(0, Math.round((s.endedAt - s.startedAt) / 60000));
@@ -7610,6 +7618,8 @@
           new Date(s.endedAt).toISOString(),
           durMin,
           s.energyKwh.toFixed(3),
+          s.pvKwh   != null ? s.pvKwh.toFixed(3)   : '',
+          s.gridKwh != null ? s.gridKwh.toFixed(3) : '',
           s.cost != null ? s.cost.toFixed(2) : '',
           s.cost != null ? s.currency : '',
           s.avgPrice != null ? s.avgPrice.toFixed(4) : '',

@@ -640,7 +640,7 @@ class EmsDevice extends Device {
     // Charge-session energy/cost tracking — every configured charger, every tick,
     // independent of charge mode (see lib/ems/chargeSessions.js). TICK_MS as dt is an
     // approximation (ticks aren't perfectly regular), close enough for energy totals.
-    for (const c of chargers) this._trackChargeSession(c, cfg, TICK_MS);
+    for (const c of chargers) this._trackChargeSession(c, cfg, TICK_MS, gridW);
     // Daily energy/runtime tracking for the ems-device widget's "today" stat —
     // see lib/ems/widget.js. Cheap (in-memory, no I/O) so it's fine every tick.
     this._trackSimpleDeviceDaily(heatPumps,     this._heatPumpStates,     TICK_MS);
