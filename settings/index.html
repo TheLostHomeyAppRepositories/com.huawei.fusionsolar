@@ -1525,7 +1525,7 @@
         <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.145</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.146</span></div>
       </div>
     </div>
   </div>
@@ -8004,6 +8004,10 @@
         row(L('errors'), d.tickErrors || 0, (d.tickErrors || 0) > 0) +
         row(L('lastTick'), num(d.lastTickMs, ' ms')) +
         row(L('avgTick'), num(d.avgTickMs, ' ms')) +
+        // The peak and the skip count, next to the average that hides both. Skipped ticks
+        // are flagged from the first one: it means a cycle of the control loop was lost.
+        row(L('maxTick'), num(d.maxTickMs, ' ms')) +
+        row(L('skipped'), d.tickSkipped || 0, (d.tickSkipped || 0) > 0) +
         row(L('lastError'), d.lastError ? (_emsHistEsc(d.lastError) + ' @ ' + t(d.lastErrorAt)) : L('none'), !!d.lastError);
 
       var decision = row(L('mode'), _emsHistEsc(d.mode || '—')) +

@@ -56,6 +56,10 @@ class EmsDevice extends Device {
     // Diagnostics (B7 tick-health + E3 decision snapshot) — read via getEmsDiag().
     this._diag = {
       tickCount: 0, tickErrors: 0, lastTickMs: 0, avgTickMs: 0,
+      // maxTickMs and tickSkipped exist because the average hides exactly what matters:
+      // an EMA over 0.8/0.2 barely moves for one 12-second tick, yet that tick already
+      // cost the loop a cycle. The peak and the skip count say it outright.
+      maxTickMs: 0, tickSkipped: 0,
       lastError: null, lastErrorAt: null,
       gridW: null, pvW: null, soc: null, mode: null, modeText: null, decidedAt: null,
     };
@@ -493,7 +497,13 @@ class EmsDevice extends Device {
   }
 
   async _tick() {
-    if (this._tickInProgress) return;
+    if (this._tickInProgress) {
+      // A skipped tick used to return here without a trace — no counter, no log. That is
+      // the one event worth catching: the previous tick is still running, so this cycle
+      // simply did not happen, and the control loop stopped keeping time without saying so.
+      this._noteTickSkip(TICK_MS);
+      return;
+    }
     this._tickInProgress = true;
     const t0 = Date.now();
     try {
@@ -522,7 +532,10 @@ class EmsDevice extends Device {
       const dt = Date.now() - t0;
       this._diag.lastTickMs = dt;
       this._diag.avgTickMs  = this._diag.avgTickMs ? Math.round(this._diag.avgTickMs * 0.8 + dt * 0.2) : dt;
+      if (dt > this._diag.maxTickMs) this._diag.maxTickMs = dt;
       this._diag.tickCount += 1;
+      // A completed tick means the loop caught up; only unbroken runs of skips count.
+      this._consecSkips = 0;
       this._tickInProgress = false;
       this._warmupDone = true;
       this._tickCount += 1;

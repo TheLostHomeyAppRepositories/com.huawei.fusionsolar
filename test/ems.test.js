@@ -17,6 +17,7 @@ const simpleDevicesMixin = require('../lib/ems/simpleDevices');
 const exportLimitMixin = require('../lib/ems/exportLimit');
 const chargeSessionsMixin = require('../lib/ems/chargeSessions');
 const widgetMixin         = require('../lib/ems/widget');
+const historyMixin        = require('../lib/ems/history');
 const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
@@ -2461,4 +2462,45 @@ test('_trackChargeSession — a half-covered session splits and bills only the g
   assert.strictEqual(s.pvKwh, 2);
   assert.strictEqual(s.pvShare, 50);
   assert.strictEqual(s.cost, 0.6);        // only the 2 kWh from the grid
+});
+
+// ── history: tick-overrun accounting ─────────────────────────────────────────
+// Ein uebersprungener Tick verschwand spurlos: der Waechter kehrte zurueck und nichts
+// zaehlte ihn. Genau das versteckt der gleitende Mittelwert — ein einzelner 12-Sekunden-
+// Tick bewegt eine EMA mit 0.8/0.2 kaum, kostet die Regelschleife aber einen Durchlauf.
+function makeSkipDevice() {
+  const d = {
+    log() {},
+    _notified: [],
+    _diag: { tickSkipped: 0, avgTickMs: 400, maxTickMs: 9000 },
+    getSetting: () => true,          // Zeitleisten-Meldungen aktiviert
+    homey: { notifications: { createNotification: () => Promise.resolve() } },
+  };
+  Object.assign(d, historyMixin);
+  d._postNotification = function (msg) { this._notified.push(msg); };
+  return d;
+}
+
+test('_noteTickSkip — counts every skip, warns only on the second in a row', () => {
+  const d = makeSkipDevice();
+  assert.strictEqual(d._noteTickSkip(15000), false);
+  assert.strictEqual(d._diag.tickSkipped, 1);
+  assert.deepStrictEqual(d._notified, [], 'ein einzelner Aussetzer ist ein langsamer Tick, kein Alarm');
+
+  assert.strictEqual(d._noteTickSkip(15000), true);
+  assert.strictEqual(d._diag.tickSkipped, 2);
+  assert.strictEqual(d._notified.length, 1);
+  assert.match(d._notified[0], /9000 ms/, 'die Meldung nennt den laengsten Tick, nicht den Mittelwert');
+});
+
+test('_noteTickSkip — the warning is throttled to once an hour', () => {
+  const d = makeSkipDevice();
+  const t0 = Date.now();
+  d._noteTickSkip(15000, t0);
+  d._noteTickSkip(15000, t0);                    // meldet
+  d._consecSkips = 1;                            // naechster Aussetzer waere wieder der zweite
+  assert.strictEqual(d._noteTickSkip(15000, t0 + 59 * 60_000), false, 'innerhalb der Stunde still');
+  d._consecSkips = 1;
+  assert.strictEqual(d._noteTickSkip(15000, t0 + 61 * 60_000), true, 'danach wieder');
+  assert.strictEqual(d._diag.tickSkipped, 4, 'gezaehlt wird jeder Aussetzer, auch der stille');
 });

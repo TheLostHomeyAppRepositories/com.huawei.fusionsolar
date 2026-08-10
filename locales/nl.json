@@ -397,6 +397,8 @@
       "nothingToExport": "Geen sessies om te exporteren voor deze selectie."
     },
     "diagLabels": {
+      "maxTick": "Langste tick",
+      "skipped": "Overgeslagen",
       "ticks": "Ticks",
       "errors": "Fouten",
       "lastTick": "Laatste tick",
