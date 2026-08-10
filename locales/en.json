@@ -333,7 +333,7 @@
     "diag": {
       "tick": {
         "title": "Control loop interval",
-        "desc": "How often the EMS reads its meters and decides. Shorter reacts sooner but reads the inverter, meter and battery correspondingly more often; longer eases the load, and the battery floor and grid-import ceiling take longer to bite. Electricity price, car state of charge and solar forecast are unaffected — those refresh every 60 seconds regardless of the interval. Leave at 15 seconds unless the diagnostics below give you a reason."
+        "desc": "How often the EMS reads its meters and decides. Shorter reacts sooner but reads the inverter, meter and battery correspondingly more often; longer eases the load, and the battery floor and grid-import ceiling take longer to bite. Electricity price, car state of charge and solar forecast do not depend on the interval — each follows its own rhythm, the Solcast fetch for instance at most every 3 hours. Leave at 15 seconds unless the diagnostics below give you a reason."
       },
       "title": "🩺 EMS Diagnostics",
       "subtitle": "live tick health",

@@ -333,7 +333,7 @@
     "diag": {
       "tick": {
         "title": "Takt der Regelschleife",
-        "desc": "Wie oft das EMS seine Zähler liest und entscheidet. Kürzer reagiert früher, liest Wechselrichter, Zähler und Batterie aber entsprechend häufiger aus; länger entlastet, dafür greifen Batterie-Untergrenze und Netzbezugs-Obergrenze später. Strompreis, Fahrzeug-Ladestand und Solarprognose sind davon nicht betroffen — die werden unabhängig vom Takt alle 60 Sekunden aufgefrischt. Bei 15 Sekunden belassen, solange die Diagnose darunter keinen Anlass gibt."
+        "desc": "Wie oft das EMS seine Zähler liest und entscheidet. Kürzer reagiert früher, liest Wechselrichter, Zähler und Batterie aber entsprechend häufiger aus; länger entlastet, dafür greifen Batterie-Untergrenze und Netzbezugs-Obergrenze später. Strompreis, Fahrzeug-Ladestand und Solarprognose hängen nicht am Takt — sie folgen ihrem eigenen Rhythmus, die Solcast-Abfrage etwa höchstens alle 3 Stunden. Bei 15 Sekunden belassen, solange die Diagnose darunter keinen Anlass gibt."
       },
       "title": "🩺 EMS Diagnose",
       "subtitle": "Live-Tick-Status",

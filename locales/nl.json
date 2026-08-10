@@ -333,7 +333,7 @@
     "diag": {
       "tick": {
         "title": "Interval van de regelkring",
-        "desc": "Hoe vaak het EMS zijn meters uitleest en beslist. Korter reageert sneller maar leest omvormer, meter en batterij navenant vaker uit; langer ontlast, waardoor de batterijondergrens en de netafnamelimiet later ingrijpen. Stroomprijs, laadtoestand van het voertuig en zonneprognose staan hier los van — die verversen elke 60 seconden, ongeacht het interval. Laat op 15 seconden staan tenzij de diagnose hieronder aanleiding geeft."
+        "desc": "Hoe vaak het EMS zijn meters uitleest en beslist. Korter reageert sneller maar leest omvormer, meter en batterij navenant vaker uit; langer ontlast, waardoor de batterijondergrens en de netafnamelimiet later ingrijpen. Stroomprijs, laadtoestand van het voertuig en zonneprognose hangen niet aan het interval — elk volgt zijn eigen ritme, de Solcast-opvraging bijvoorbeeld hooguit elke 3 uur. Laat op 15 seconden staan tenzij de diagnose hieronder aanleiding geeft."
       },
       "title": "🩺 EMS-diagnose",
       "subtitle": "live tick-status",
