@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.149": {
+    "en": "The control loop interval slider now sits above the tick figures rather than below them, so you set the interval first and read the measurements underneath it.",
+    "de": "Der Schieber für den Takt der Regelschleife steht neu über den Tick-Zahlen statt darunter — erst der Takt, darunter die dazu gemessenen Werte.",
+    "nl": "De schuifregelaar voor het interval van de regelkring staat nu boven de tickcijfers in plaats van eronder."
+  },
   "1.2.148": {
     "en": "The control loop interval can now be set between 10 and 60 seconds — a slider in EMS Diagnostics, right below the tick figures that would give you a reason to change it. The default stays 15 seconds, and the diagnostics show the interval in effect so those figures can be read against it. Also: the source flows listed under Price forecast no longer flicker — that list is fixed configuration and was being re-fetched every 3 seconds; press Refresh after changing your flows.",
     "de": "Der Takt der Regelschleife lässt sich neu zwischen 10 und 60 Sekunden einstellen — ein Schieber in der EMS-Diagnose, direkt unter den Tick-Zahlen, die einen Anlass zum Ändern geben würden. Standard bleiben 15 Sekunden, und die Diagnose zeigt den wirksamen Takt, damit sich jene Zahlen darauf beziehen lassen. Ausserdem: Die unter Preisprognose aufgeführten Quell-Flows flackern nicht mehr — diese Liste ist feste Konfiguration und wurde alle 3 Sekunden neu geholt; nach Änderungen an den Flows auf Aktualisieren drücken.",

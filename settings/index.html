@@ -1475,16 +1475,13 @@
             <span style="font-size:11px;color:#6e6e73" data-i18n="diag.autoRefresh">Auto-refreshes every 3 s while open</span>
             <button class="btn-secondary" onclick="_emsDiagSourcesHtml = null; emsDiagLoad();" style="padding:3px 10px;font-size:12px" data-i18n="common.refresh">↻ Refresh</button>
           </div>
-          <div id="ems-diag-body">
-            <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0" data-i18n="common.openToLoad">Open to load…</div>
-          </div>
-
-          <!-- The tick interval lives here, under the numbers that justify changing it:
-               average, longest and skipped ticks are exactly the evidence you would read
-               before touching it. Same placement rule the grid-import ceiling follows —
-               a global behaviour value goes with its subject, not into a generic
-               "advanced" bucket. -->
-          <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-top:14px;margin-bottom:0;gap:6px">
+          <!-- The control comes before its readout: the figures below are the effect of
+               this setting, so reading them makes sense once you know the interval they
+               were measured at. Placement rule is the one the grid-import ceiling already
+               follows — a global behaviour value goes with its subject, not into a
+               generic "advanced" bucket. Note the readout shows the SAVED interval, so
+               it and the slider differ until you press Save. -->
+          <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-top:2px;margin-bottom:14px;gap:6px">
             <span class="ems-toggle-title" data-i18n="diag.tick.title">Control loop interval</span>
             <div style="display:flex;align-items:center;gap:10px">
               <input id="ems-tick-interval" type="range" min="10" max="60" step="5" value="15"
@@ -1493,6 +1490,12 @@
             </div>
             <span class="ems-toggle-desc" data-i18n="diag.tick.desc">How often the EMS reads its meters and decides. Shorter reacts sooner but queries your car's app more often; longer eases the load, and the battery floor and grid-import ceiling take correspondingly longer to bite. Leave at 15 seconds unless the diagnostics above give you a reason.</span>
           </div>
+
+          <div id="ems-diag-body">
+            <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0" data-i18n="common.openToLoad">Open to load…</div>
+          </div>
+
+
         </div>
       </details>
       <!-- EMS History -->
@@ -1540,7 +1543,7 @@
         <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.148</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.149</span></div>
       </div>
     </div>
   </div>
