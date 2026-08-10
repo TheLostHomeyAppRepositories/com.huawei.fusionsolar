@@ -331,6 +331,10 @@
       "flowsNone": "noch kein Flow"
     },
     "diag": {
+      "tick": {
+        "title": "Takt der Regelschleife",
+        "desc": "Wie oft das EMS seine Zähler liest und entscheidet. Kürzer reagiert früher, fragt aber die App deines Fahrzeugs häufiger ab; länger entlastet, dafür greifen Batterie-Untergrenze und Netzbezugs-Obergrenze entsprechend später. Bei 15 Sekunden belassen, solange die Diagnose oben keinen Anlass gibt."
+      },
       "title": "🩺 EMS Diagnose",
       "subtitle": "Live-Tick-Status",
       "autoRefresh": "Aktualisiert sich alle 3 s automatisch, solange geöffnet"
@@ -397,6 +401,7 @@
       "nothingToExport": "Keine Sessions für diese Auswahl zum Exportieren."
     },
     "diagLabels": {
+      "tickInterval": "Takt",
       "maxTick": "Längster Tick",
       "skipped": "Übersprungen",
       "ticks": "Ticks",

@@ -331,6 +331,10 @@
       "flowsNone": "no flow yet"
     },
     "diag": {
+      "tick": {
+        "title": "Control loop interval",
+        "desc": "How often the EMS reads its meters and decides. Shorter reacts sooner but queries your car's app more often; longer eases the load, and the battery floor and grid-import ceiling take correspondingly longer to bite. Leave at 15 seconds unless the diagnostics above give you a reason."
+      },
       "title": "🩺 EMS Diagnostics",
       "subtitle": "live tick health",
       "autoRefresh": "Auto-refreshes every 3 s while open"
@@ -397,6 +401,7 @@
       "nothingToExport": "No sessions to export for this selection."
     },
     "diagLabels": {
+      "tickInterval": "Interval",
       "maxTick": "Longest tick",
       "skipped": "Skipped",
       "ticks": "Ticks",

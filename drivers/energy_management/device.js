@@ -4,7 +4,7 @@ const { Device }    = require('homey');
 const HomeyLocalApi = require('../../lib/homey-local-api');
 
 const {
-  TICK_MS, GRID_SENSOR_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
+  TICK_MS, TICK_MIN_S, TICK_MAX_S, GRID_SENSOR_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
   AMPS_LADDER, MODES, HIST,
 } = require('../../lib/ems/constants');
 
@@ -306,6 +306,7 @@ class EmsDevice extends Device {
       const c = Math.min(hi, Math.max(lo, n));
       if (c !== n) { warns.push(`${key} ${n}→${c}`); obj[key] = c; }
     };
+    clamp(cfg, 'tick_interval_s', TICK_MIN_S, TICK_MAX_S);
     clamp(cfg, 'min_battery_soc', 0, 100);
     clamp(cfg, 'min_battery_soc_low', 0, 100);
     if (Number(cfg.min_battery_soc_low) > 0 && Number(cfg.min_battery_soc_low) >= Number(cfg.min_battery_soc)) {
@@ -478,13 +479,26 @@ class EmsDevice extends Device {
 
   // ─── Tick ─────────────────────────────────────────────────────────────────
 
+  /**
+   * The control-loop interval in ms. Configurable since 1.2.148; TICK_MS is only the
+   * default now. Clamped here as well as in _validateConfig, because this is the value
+   * the timer actually runs on and a bad one would be felt, not just stored.
+   */
+  _tickMs(cfg = null) {
+    const raw = Number((cfg || this._getConfig()).tick_interval_s);
+    if (!Number.isFinite(raw) || raw <= 0) return TICK_MS;
+    return Math.min(TICK_MAX_S, Math.max(TICK_MIN_S, Math.round(raw))) * 1000;
+  }
+
   _startTick() {
     this._stopTick();
     this._warmupDone           = false;
     this._loggedNoMeterDevices = false;
+    const tickMs = this._tickMs();
+    if (tickMs !== TICK_MS) this.log(`[EMS] tick interval ${tickMs / 1000}s (default ${TICK_MS / 1000}s)`);
     this._tickTimer = this.homey.setInterval(
       () => this._tick().catch((e) => this.log(`[EMS] tick: ${e.message}`)),
-      TICK_MS,
+      tickMs,
     );
     this._tick().catch((e) => this.log(`[EMS] init tick: ${e.message}`));
   }
@@ -498,7 +512,7 @@ class EmsDevice extends Device {
       // A skipped tick used to return here without a trace — no counter, no log. That is
       // the one event worth catching: the previous tick is still running, so this cycle
       // simply did not happen, and the control loop stopped keeping time without saying so.
-      this._noteTickSkip(TICK_MS);
+      this._noteTickSkip(this._tickMs());
       return;
     }
     this._tickInProgress = true;
@@ -551,6 +565,7 @@ class EmsDevice extends Device {
     const mode = (cfg.price_config && cfg.price_config.mode) || 'fixed';
     return {
       ...this._diag,
+      tickMs: this._tickMs(cfg),
       pv: this._pvForecastSummary(), price: this._priceForecastSummary(), mem: this._memUsage(),
       electricityPrice: this._getCurrentPrice(cfg), electricityPriceSource: mode,
       electricityPriceCurrency: (cfg.price_config && cfg.price_config.currency) || 'CHF',

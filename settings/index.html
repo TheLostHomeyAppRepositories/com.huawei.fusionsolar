@@ -1473,10 +1473,25 @@
         <div class="ems-section-body" style="padding-bottom:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <span style="font-size:11px;color:#6e6e73" data-i18n="diag.autoRefresh">Auto-refreshes every 3 s while open</span>
-            <button class="btn-secondary" onclick="emsDiagLoad()" style="padding:3px 10px;font-size:12px" data-i18n="common.refresh">↻ Refresh</button>
+            <button class="btn-secondary" onclick="_emsDiagSourcesHtml = null; emsDiagLoad();" style="padding:3px 10px;font-size:12px" data-i18n="common.refresh">↻ Refresh</button>
           </div>
           <div id="ems-diag-body">
             <div style="color:#bbb;font-size:12px;text-align:center;padding:16px 0" data-i18n="common.openToLoad">Open to load…</div>
+          </div>
+
+          <!-- The tick interval lives here, under the numbers that justify changing it:
+               average, longest and skipped ticks are exactly the evidence you would read
+               before touching it. Same placement rule the grid-import ceiling follows —
+               a global behaviour value goes with its subject, not into a generic
+               "advanced" bucket. -->
+          <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-top:14px;margin-bottom:0;gap:6px">
+            <span class="ems-toggle-title" data-i18n="diag.tick.title">Control loop interval</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input id="ems-tick-interval" type="range" min="10" max="60" step="5" value="15"
+                oninput="emsTickPreview()" style="flex:1;accent-color:#0071e3">
+              <span id="ems-tick-value" style="font-size:13px;font-weight:600;min-width:52px;text-align:right;font-variant-numeric:tabular-nums">15 s</span>
+            </div>
+            <span class="ems-toggle-desc" data-i18n="diag.tick.desc">How often the EMS reads its meters and decides. Shorter reacts sooner but queries your car's app more often; longer eases the load, and the battery floor and grid-import ceiling take correspondingly longer to bite. Leave at 15 seconds unless the diagnostics above give you a reason.</span>
           </div>
         </div>
       </details>
@@ -1525,7 +1540,7 @@
         <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.147</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.148</span></div>
       </div>
     </div>
   </div>
@@ -7559,6 +7574,8 @@
       if (cfg.offpeak_weekend_end)   document.getElementById('ems-offpeak-weekend-end').value   = cfg.offpeak_weekend_end;
       document.getElementById('ems-offpeak-solar-first').checked                               = cfg.offpeak_solar_first !== false;
       document.getElementById('ems-grid-import-limit').value                                    = cfg.grid_import_limit_kw || 0;
+      document.getElementById('ems-tick-interval').value                                         = cfg.tick_interval_s || 15;
+      emsTickPreview();
       emsRenderPriceConfig(cfg.price_config);
       emsRenderCars(cfg.car_devices);
       var _elEnabled = document.getElementById('ems-export-limit-enabled');
@@ -7663,6 +7680,7 @@
         } : {}),
         offpeak_solar_first:          document.getElementById('ems-offpeak-solar-first').checked,
         grid_import_limit_kw:         Math.max(0, parseFloat(document.getElementById('ems-grid-import-limit').value) || 0),
+        tick_interval_s:              Math.min(60, Math.max(10, parseInt(document.getElementById('ems-tick-interval').value, 10) || 15)),
         device_priority_order:        Array.from(document.querySelectorAll('#ems-device-priority-list .ems-priority-order-item')).map(function(el) { return el.dataset.id; }).filter(Boolean),
         scheduled_tasks:              emsGetSchedulerTasks(),
         price_config:                 emsGetPriceConfig(),
@@ -7942,6 +7960,8 @@
 
     // ── EMS Diagnostics (GET /ems/diag) ──────────────────────────────────────
     var _emsDiagTimer = null;
+    // Rendered HTML of the source-flow list, or null when it still has to be fetched.
+    var _emsDiagSourcesHtml = null;
     function emsDiagToggle(el) {
       if (el.open) {
         emsDiagLoad();
@@ -7949,6 +7969,14 @@
       } else if (_emsDiagTimer) {
         clearInterval(_emsDiagTimer); _emsDiagTimer = null;
       }
+    }
+
+    // Live label next to the slider. Its own function so emsApplyConfig can call it
+    // after loading a stored value, instead of duplicating the formatting.
+    function emsTickPreview() {
+      var el = document.getElementById('ems-tick-interval');
+      var out = document.getElementById('ems-tick-value');
+      if (el && out) out.textContent = el.value + ' s';
     }
 
     function emsDiagLoad() {
@@ -7963,23 +7991,23 @@
         body.innerHTML = _emsDiagRender(d);
         // Price forecast "source flows" — a second, independent call (flow lookup is
         // slower than the plain diag payload) so the main panel isn't held up by it.
-        if (d.price && d.price.configured) {
+        if (d.price && d.price.configured && _emsDiagSourcesHtml === null) {
           _H.api('GET', '/ems/price-forecast/flows', null, function(err2, res2) {
             var el = document.getElementById('ems-diag-price-sources');
             if (!el) return; // panel was closed/reloaded before this resolved
             if (err2 || !res2 || res2.error) {
+              // Not cached: a failed lookup should be retried on the next open, not frozen.
               el.textContent = '⚠ ' + ((res2 && res2.error) || (err2 && err2.message) || _H.__('settings.flowSetup.loadFailed'));
               return;
             }
             var matched = res2.matched || [];
-            if (!matched.length) {
-              el.textContent = _H.__('settings.diagLabels.noSourceFlows');
-              return;
-            }
-            el.innerHTML = matched.map(function(f) {
-              var ok = f.hasPricesArg && !f.actionMissing;
-              return '<div>' + (ok ? '✓' : '⚠') + ' ' + _emsHistEsc(f.name) + '</div>';
-            }).join('');
+            _emsDiagSourcesHtml = matched.length
+              ? matched.map(function(f) {
+                var ok = f.hasPricesArg && !f.actionMissing;
+                return '<div>' + (ok ? '✓' : '⚠') + ' ' + _emsHistEsc(f.name) + '</div>';
+              }).join('')
+              : _emsHistEsc(_H.__('settings.diagLabels.noSourceFlows'));
+            el.innerHTML = _emsDiagSourcesHtml;
           });
         }
       });
@@ -8000,7 +8028,8 @@
       var t   = function(ts) { return ts ? _emsHistFmt(ts) : '—'; };
 
       var L = function(k) { return _H.__('settings.diagLabels.' + k); };
-      var health = row(L('ticks'), d.tickCount == null ? '—' : d.tickCount) +
+      var health = row(L('tickInterval'), d.tickMs == null ? '—' : (d.tickMs / 1000) + ' s') +
+        row(L('ticks'), d.tickCount == null ? '—' : d.tickCount) +
         row(L('errors'), d.tickErrors || 0, (d.tickErrors || 0) > 0) +
         row(L('lastTick'), num(d.lastTickMs, ' ms')) +
         row(L('avgTick'), num(d.avgTickMs, ' ms')) +
@@ -8052,7 +8081,8 @@
           (price.stale ? row(L('staleWarn'), L('priceStaleDetail'), true) : '');
         priceRows += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f0f0f0">' +
           '<div style="font-size:10px;color:#8e8e93;margin-bottom:3px">' + L('sourceFlows') + '</div>' +
-          '<div id="ems-diag-price-sources" style="font-size:11px;color:#6e6e73">' + L('loadingSources') + '</div>' +
+          '<div id="ems-diag-price-sources" style="font-size:11px;color:#6e6e73">' +
+            (_emsDiagSourcesHtml === null ? L('loadingSources') : _emsDiagSourcesHtml) + '</div>' +
           '</div>';
         html += card(L('priceForecastTitle'), priceRows);
       }

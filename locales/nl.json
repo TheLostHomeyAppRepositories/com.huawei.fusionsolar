@@ -331,6 +331,10 @@
       "flowsNone": "nog geen flow"
     },
     "diag": {
+      "tick": {
+        "title": "Interval van de regelkring",
+        "desc": "Hoe vaak het EMS zijn meters uitleest en beslist. Korter reageert sneller maar bevraagt de app van je voertuig vaker; langer ontlast, waardoor de batterijondergrens en de netafnamelimiet navenant later ingrijpen. Laat op 15 seconden staan tenzij de diagnose hierboven aanleiding geeft."
+      },
       "title": "🩺 EMS-diagnose",
       "subtitle": "live tick-status",
       "autoRefresh": "Ververst automatisch elke 3 s zolang geopend"
@@ -397,6 +401,7 @@
       "nothingToExport": "Geen sessies om te exporteren voor deze selectie."
     },
     "diagLabels": {
+      "tickInterval": "Interval",
       "maxTick": "Langste tick",
       "skipped": "Overgeslagen",
       "ticks": "Ticks",
