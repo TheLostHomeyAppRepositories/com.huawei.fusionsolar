@@ -2349,10 +2349,23 @@ test('_batterySurplusShare — ramps linearly between the two SoC points', () =>
   assert.strictEqual(d._batterySurplusShare(RAMP, 95), 1);
   assert.ok(Math.abs(d._batterySurplusShare(RAMP, 87.5) - 0.6) < 1e-9); // Mitte
 });
-test('_batterySurplusShare — clamped at both ends, never extrapolated', () => {
+test('_batterySurplusShare — nothing below the lower point, clamped above the upper one', () => {
+  // Bis 1.2.145 wurde nach unten auf pctLo geklemmt: bei SoC 28 und Untergrenze 50 kam
+  // 20 % heraus. Diese Untergrenze IST aber der Hart-Stopp — _batteryZones leitet ihn
+  // daraus ab — also sind dort ohnehin alle Geraete aus. Die Einstellungsseite las den
+  // Wert zurueck und behauptete "Geraete erhalten 20 % der Erzeugung", direkt unter einer
+  // Grafik, die "alles aus" zeichnete. Die Grafik hatte recht.
   const d = makeRampDevice();
-  assert.strictEqual(d._batterySurplusShare(RAMP, 10), 0.2);   // weit unter der Untergrenze
+  assert.strictEqual(d._batterySurplusShare(RAMP, 10), 0);     // weit unter der Untergrenze
+  assert.strictEqual(d._batterySurplusShare(RAMP, 79.9), 0);   // knapp darunter
+  assert.strictEqual(d._batterySurplusShare(RAMP, 80), 0.2);   // exakt auf der Untergrenze
   assert.strictEqual(d._batterySurplusShare(RAMP, 100), 1);    // über der Obergrenze
+});
+test('_batteryShareBudgetW — below the lower point no budget is handed out at all', () => {
+  // Sonst weitet ein Budget den effektiven Ueberschuss fuer alles, was der Hart-Stopp
+  // nicht erfasst — waehrend die Batterie eigentlich Vorrang haben soll.
+  const d = makeRampDevice();
+  assert.strictEqual(d._batteryShareBudgetW(RAMP, 28, 1592, -100), 0);
 });
 test('_batterySurplusShare — null when unconfigured or the SoC is unknown', () => {
   const d = makeRampDevice();

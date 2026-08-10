@@ -1525,7 +1525,7 @@
         <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
-        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.144</span></div>
+        <div style="font-size:10px;color:#c7c7cc;text-align:center;margin-top:6px">Build <span id="ems-build">1.2.145</span></div>
       </div>
     </div>
   </div>
@@ -2788,8 +2788,12 @@
     return;
   }
 
+      // Below the lower point the devices get nothing — that point is the hard stop, and
+      // the chart drawn underneath says so. This line used to clamp to pctLo instead and
+      // claimed a share at a SoC where everything is switched off. Kept identical to
+      // _batterySurplusShare in lib/ems/battery.js, which is what actually decides.
       var t     = Math.min(1, Math.max(0, (d.soc - socLo) / (socHi - socLo)));
-      var share = Math.min(100, Math.max(0, pctLo + t * (pctHi - pctLo)));
+      var share = d.soc < socLo ? 0 : Math.min(100, Math.max(0, pctLo + t * (pctHi - pctLo)));
       var txt   = _H.__('settings.homeBatteries.shareRamp.nowSoc').replace('{soc}', Math.round(d.soc))
                 + ' → ' + _H.__('settings.homeBatteries.shareRamp.nowShare').replace('{pct}', Math.round(share));
 
