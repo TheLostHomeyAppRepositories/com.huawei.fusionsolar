@@ -4,7 +4,8 @@ const { Device }    = require('homey');
 const HomeyLocalApi = require('../../lib/homey-local-api');
 
 const {
-  TICK_MS, GRID_SENSOR_HOLD_TICKS, AMPS_LADDER, MODES, HIST,
+  TICK_MS, GRID_SENSOR_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
+  AMPS_LADDER, MODES, HIST,
 } = require('../../lib/ems/constants');
 
 // EMS behaviour is split into lib/ems/* mixins to keep this orchestrator readable.
@@ -22,10 +23,6 @@ const pvForecastMixin     = require('../../lib/ems/pvForecast');
 const priceForecastMixin  = require('../../lib/ems/priceForecast');
 const chargeSessionsMixin = require('../../lib/ems/chargeSessions');
 const widgetMixin         = require('../../lib/ems/widget');
-
-// Price + car SOC change slowly — refresh every Nth tick (~60 s) rather than every
-// 15 s tick, to cut settings reads and per-car HTTP calls (see _tickBody).
-const SLOW_TICK_EVERY = 4;
 
 class EmsDevice extends Device {
 
@@ -539,7 +536,11 @@ class EmsDevice extends Device {
       this._tickInProgress = false;
       this._warmupDone = true;
       this._tickCount += 1;
-      if (this._tickCount % 20 === 0) this._saveHistory(); // save every ~5 min
+      // By elapsed time: at 20 ticks this was ~5 min only as long as a tick was 15 s.
+      if (!this._lastHistorySaveAt || (Date.now() - this._lastHistorySaveAt) >= HISTORY_SAVE_MS) {
+        this._lastHistorySaveAt = Date.now();
+        this._saveHistory();
+      }
     }
   }
 
@@ -591,11 +592,26 @@ class EmsDevice extends Device {
     const hasKey  = !!this.getSetting('homey_api_key');
     this._devCache = new Map(); // fresh device snapshot per tick (see _cap)
 
-    // Price + car SOC change slowly, so refresh them on a slower cadence (~60 s)
-    // instead of every 15 s tick — cuts settings reads and per-car HTTP calls. Runs
-    // on the warm-up tick too so values populate immediately. A variable price set via
-    // the ems_set_electricity_price flow still updates instantly (handled in onInit).
-    if (!this._warmupDone || this._tickCount % SLOW_TICK_EVERY === 0) {
+    // How much time has actually passed since the previous tick — measured, not assumed.
+    // The two differ even at a fixed interval: the timer drifts, a tick itself takes
+    // ~200 ms, and a skipped tick doubles the gap outright. Runtime and energy totals
+    // were booked as a flat TICK_MS regardless, so they counted short whenever the loop
+    // ran late. Zero on the very first tick: no interval has been observed yet, and
+    // guessing one would invent runtime that never happened.
+    const nowMs = Date.now();
+    const dtMs  = this._lastTickAt ? Math.min(nowMs - this._lastTickAt, TICK_MAX_DT_MS) : 0;
+    this._lastTickAt = nowMs;
+
+    // Price + car SOC change slowly, so refresh them on a slower cadence (~60 s) instead
+    // of every tick — cuts settings reads and per-car HTTP calls. By elapsed time, not
+    // every Nth tick: tied to a tick count, a faster interval would quietly multiply the
+    // requests to the car APIs. Runs on the warm-up tick too so values populate
+    // immediately. A variable price set via the ems_set_electricity_price flow still
+    // updates instantly (handled in onInit).
+    const slowDue = !this._warmupDone || !this._lastSlowRefreshAt
+      || (nowMs - this._lastSlowRefreshAt) >= SLOW_REFRESH_MS;
+    if (slowDue) {
+      this._lastSlowRefreshAt = nowMs;
       await this._applyPriceCurrencyUnit(cfg);
       await this._updatePriceCapability(cfg);
       await this._updateCarCapabilities(cfg);
@@ -655,16 +671,16 @@ class EmsDevice extends Device {
     // and restart every tick — see chargerControl.js _gridImportClaimAmps.
     this._gridImportCommittedW = Math.max(0, gridW || 0);
     // Charge-session energy/cost tracking — every configured charger, every tick,
-    // independent of charge mode (see lib/ems/chargeSessions.js). TICK_MS as dt is an
-    // approximation (ticks aren't perfectly regular), close enough for energy totals.
-    for (const c of chargers) this._trackChargeSession(c, cfg, TICK_MS, gridW);
+    // independent of charge mode (see lib/ems/chargeSessions.js). dtMs is the measured
+    // gap to the previous tick, so a late or skipped tick books the time it really took.
+    for (const c of chargers) this._trackChargeSession(c, cfg, dtMs, gridW);
     // Daily energy/runtime tracking for the ems-device widget's "today" stat —
     // see lib/ems/widget.js. Cheap (in-memory, no I/O) so it's fine every tick.
-    this._trackSimpleDeviceDaily(heatPumps,     this._heatPumpStates,     TICK_MS);
-    this._trackSimpleDeviceDaily(boilers,       this._boilerStates,       TICK_MS);
-    this._trackSimpleDeviceDaily(pools,         this._poolStates,         TICK_MS);
-    this._trackSimpleDeviceDaily(dehumidifiers, this._dehumidifierStates, TICK_MS);
-    this._trackSimpleDeviceDaily(aircons, this._airconStates, TICK_MS);
+    this._trackSimpleDeviceDaily(heatPumps,     this._heatPumpStates,     dtMs);
+    this._trackSimpleDeviceDaily(boilers,       this._boilerStates,       dtMs);
+    this._trackSimpleDeviceDaily(pools,         this._poolStates,         dtMs);
+    this._trackSimpleDeviceDaily(dehumidifiers, this._dehumidifierStates, dtMs);
+    this._trackSimpleDeviceDaily(aircons, this._airconStates, dtMs);
     if (gridW !== null) {
       await this._set('measure_solar_surplus', Math.max(0, Math.round(-gridW)));
       await this._set('measure_grid_power', Math.round(gridW));
@@ -684,7 +700,7 @@ class EmsDevice extends Device {
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 
     // ── Sensor failure guard ──────────────────────────────────────────────────
-    // _getGridW returns null after GRID_SENSOR_HOLD_TICKS consecutive failures.
+    // _getGridW returns null once the sensor has been silent for GRID_SENSOR_HOLD_MS.
     // Hold all device control and report error; PV/battery display is still updated above.
     if (gridW === null) {
       // Distinguish "no grid meter configured" (setup incomplete) from a genuine
@@ -693,7 +709,7 @@ class EmsDevice extends Device {
       if (!(cfg.meter_devices || []).length) {
         await this._setMode(MODES.NOT_CONFIGURED, 'Kein Netzzähler konfiguriert');
       } else {
-        const failSecs = this._gridSensorFail * Math.round(TICK_MS / 1000);
+        const failSecs = Math.round((Date.now() - (this._gridSensorFailSince || Date.now())) / 1000);
         await this._setMode(MODES.ERROR, `Netzstrom-Sensor: ${failSecs}s kein Signal — EMS wartet`);
       }
       return;
@@ -1057,9 +1073,14 @@ class EmsDevice extends Device {
     }));
     const valid = vals.filter((v) => v !== null);
     if (!valid.length) {
+      // How long the sensor has been silent, not how many ticks were missed. The window
+      // this guards is a safety one — the EMS keeps controlling on the last known grid
+      // value inside it — so it has to mean the same minute regardless of tick length.
       this._gridSensorFail += 1;
-      if (this._gridSensorFail <= GRID_SENSOR_HOLD_TICKS && this._lastValidGridW !== null) {
-        this.log(`[EMS] _getGridW: sensor fail #${this._gridSensorFail}/${GRID_SENSOR_HOLD_TICKS}, using cached ${this._lastValidGridW}W`);
+      if (!this._gridSensorFailSince) this._gridSensorFailSince = Date.now();
+      const failedMs = Date.now() - this._gridSensorFailSince;
+      if (failedMs < GRID_SENSOR_HOLD_MS && this._lastValidGridW !== null) {
+        this.log(`[EMS] _getGridW: sensor fail #${this._gridSensorFail} (${Math.round(failedMs / 1000)}s/${GRID_SENSOR_HOLD_MS / 1000}s), using cached ${this._lastValidGridW}W`);
         return this._lastValidGridW; // stale but safe for a short window
       }
       this.log('[EMS] _getGridW: persistent failure, all reads returned null');
@@ -1068,6 +1089,7 @@ class EmsDevice extends Device {
     const result         = valid.reduce((a, b) => a + b, 0);
     this._lastValidGridW = result;
     this._gridSensorFail = 0;
+    this._gridSensorFailSince = null;
     return result;
   }
 

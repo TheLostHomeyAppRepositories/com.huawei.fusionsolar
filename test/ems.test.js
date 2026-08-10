@@ -2504,3 +2504,31 @@ test('_noteTickSkip — the warning is throttled to once an hour', () => {
   assert.strictEqual(d._noteTickSkip(15000, t0 + 61 * 60_000), true, 'danach wieder');
   assert.strictEqual(d._diag.tickSkipped, 4, 'gezaehlt wird jeder Aussetzer, auch der stille');
 });
+
+// ── dtMs = 0 auf dem allerersten Tick ────────────────────────────────────────
+// Seit die verstrichene Zeit gemessen statt angenommen wird, ist sie auf dem ersten Tick
+// null — es wurde noch kein Intervall beobachtet. Beide Verbraucher muessen das
+// aushalten, ohne etwas zu buchen; eine Division durch dt gaebe hier Unendlich.
+test('_trackSimpleDeviceDaily — a zero dt books no runtime and no energy', () => {
+  const d = {};
+  Object.assign(d, widgetMixin);
+  d._localDateStr = () => '20260810';   // nach dem Mixin: sonst gewinnt dessen Variante
+  const states = new Map([['x1', { isOn: true }]]);
+  d._trackSimpleDeviceDaily([{ id: 'x1', powerW: 2000 }], states, 0);
+  const rec = d._simpleDeviceDaily('x1');
+  assert.strictEqual(rec.runtimeMs, 0);
+  assert.strictEqual(rec.kwh, 0);
+});
+
+test('_trackSimpleDeviceDaily — a measured gap books exactly that gap', () => {
+  // Gegenprobe: ein uebersprungener Tick liefert 30 s statt 15 s, und genau die muessen
+  // ankommen. Vorher wurde stur TICK_MS gebucht, also die Haelfte.
+  const d = {};
+  Object.assign(d, widgetMixin);
+  d._localDateStr = () => '20260810';   // nach dem Mixin: sonst gewinnt dessen Variante
+  const states = new Map([['x1', { isOn: true }]]);
+  d._trackSimpleDeviceDaily([{ id: 'x1', powerW: 2000 }], states, 30_000);
+  const rec = d._simpleDeviceDaily('x1');
+  assert.strictEqual(rec.runtimeMs, 30_000);
+  assert.strictEqual(rec.kwh, 0.02);   // 2000 W x 30 s = 16.67 Wh, gerundet auf 2 Stellen
+});
