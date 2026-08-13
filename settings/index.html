@@ -471,8 +471,20 @@
       gap: 12px;
       color: #6e6e73;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;   /* the three readings move as one block, never mid-group */
     }
     .ems-live-vals b { font-weight: 600; color: #1d1d1f; }
+    /* Below this width the mode label and the three readings cannot share a line — and
+       where exactly they stop fitting depends on the values themselves: "Bezug 20 W"
+       fits, the longer "Einspeisung 48 W" does not. The strip therefore changed height
+       every few seconds as the house switched between drawing and feeding in. Committing
+       to two rows here makes the height fixed in both layouts instead of landing on the
+       tipping point. tabular-nums already keeps digits from shifting; it cannot help
+       when the words themselves change length. */
+    @media (max-width: 620px) {
+      .ems-live      { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .ems-live-vals { margin-left: 0; }
+    }
 
     /* Sits on the save bar, which is sticky — so it is on screen whenever the
        unsaved state is. Amber, not red: nothing is broken, something is pending. */
