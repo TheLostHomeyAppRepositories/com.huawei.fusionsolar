@@ -7263,6 +7263,9 @@
           (stored && stored.price_charge_power_kw != null) ? stored.price_charge_power_kw : 3, 'kW', { min: '0', max: '50', step: '0.5' }));
         priceFields.appendChild(_priceField(_H.__('settings.homeBatteries.priceField.reserveHours'), 'ems-battery-price-reserve', 'number',
           (stored && stored.price_discharge_reserve_hours != null) ? stored.price_discharge_reserve_hours : 4, 'h', { min: '0', max: '24', step: '1' }));
+        // 0 = off, so existing installs keep charging exactly as they did before.
+        priceFields.appendChild(_priceField(_H.__('settings.homeBatteries.priceField.solarMax'), 'ems-battery-price-solarmax', 'number',
+          (stored && stored.price_solar_forecast_max_kwh != null) ? stored.price_solar_forecast_max_kwh : 0, 'kWh', { min: '0', max: '500', step: '1' }));
         entry.appendChild(priceFields);
 
         var priceHint = document.createElement('div');
@@ -7412,9 +7415,11 @@
         var priceTarget  = entry.querySelector('.ems-battery-price-target');
         var pricePower   = entry.querySelector('.ems-battery-price-power');
         var priceReserve = entry.querySelector('.ems-battery-price-reserve');
+        var priceSolarMax = entry.querySelector('.ems-battery-price-solarmax');
         d.price_target_soc            = priceTarget  ? Math.max(0, Math.min(100, parseInt(priceTarget.value, 10) || 90)) : 90;
         d.price_charge_power_kw       = pricePower   ? Math.max(0, parseFloat(pricePower.value) || 0) : 3;
         d.price_discharge_reserve_hours = priceReserve ? Math.max(0, parseInt(priceReserve.value, 10) || 0) : 4;
+        d.price_solar_forecast_max_kwh  = priceSolarMax ? Math.max(0, parseFloat(priceSolarMax.value) || 0) : 0;
         if (entry.dataset.batCards) { try { d.bat_cards = JSON.parse(entry.dataset.batCards); } catch(_) {} }
         result.push(d);
       });

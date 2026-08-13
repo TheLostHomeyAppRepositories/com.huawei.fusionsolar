@@ -1419,6 +1419,64 @@ test('_batteryPriceMode — reserve disabled (0 hours) and target met → normal
   assert.strictEqual(r.mode, 'normal');
 });
 
+// ── priceForecast: _batteryPriceMode solar gate (price_solar_forecast_max_kwh) ──
+// Shared scenario: 04:00, and the current hour is the cheapest in the window — so
+// WITHOUT the gate the battery grid-charges right now. Every test below varies only
+// the forecast/limit, which makes "did the gate act?" the single moving part.
+const SOLAR_GATE_NOW = Date.UTC(2026, 0, 1, 4, 0, 0);
+const SOLAR_GATE_BD  = {
+  price_charge_enabled: true, price_target_soc: 90, price_charge_power_kw: 5, capacity_kwh: 10,
+  price_discharge_reserve_hours: 0, // isolates the charge decision from the reserve
+};
+function makeSolarGateDevice(pvKwh, pvFetchedAt = SOLAR_GATE_NOW) {
+  const now = SOLAR_GATE_NOW;
+  return makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _priceForecast: [
+      { start: now,            end: now + 3600_000, price: 0.05 }, // cheapest → would charge
+      { start: now + 3600_000, end: now + 7200_000, price: 0.30 },
+    ],
+    _priceForecastUpdatedAt: now,
+    _pvForecast: pvKwh === null ? null : [{ end: now + 8 * 3600_000, kw: pvKwh, h: 1 }],
+    _pvForecastFetchedAt: pvFetchedAt,
+  });
+}
+test('_batteryPriceMode — solar gate off (0) leaves grid charging exactly as before', () => {
+  const r = makeSolarGateDevice(30)._batteryPriceMode({ ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 0 }, 40, {}, SOLAR_GATE_NOW);
+  assert.strictEqual(r.mode, 'charge');
+  assert.strictEqual(r.solarKwh, undefined); // gate not configured → no numbers reported
+});
+test('_batteryPriceMode — forecast at/above the limit blocks grid charging entirely', () => {
+  const r = makeSolarGateDevice(30)._batteryPriceMode({ ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 15 }, 40, {}, SOLAR_GATE_NOW);
+  assert.notStrictEqual(r.mode, 'charge');
+  assert.deepStrictEqual(r.chargeSlots, []); // and nothing is planned for later either
+  assert.strictEqual(r.solarKwh, 30);
+  assert.strictEqual(r.solarLimitKwh, 15);
+});
+test('_batteryPriceMode — forecast below the limit still charges', () => {
+  const r = makeSolarGateDevice(8)._batteryPriceMode({ ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 15 }, 40, {}, SOLAR_GATE_NOW);
+  assert.strictEqual(r.mode, 'charge');
+  assert.strictEqual(r.solarKwh, 8);
+});
+test('_batteryPriceMode — stale PV forecast leaves the gate open (a dead Solcast must not stop cheap charging)', () => {
+  const d = makeSolarGateDevice(30, SOLAR_GATE_NOW - 25 * 3600_000); // > PV_FORECAST_STALE_MS
+  const r = d._batteryPriceMode({ ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 15 }, 40, {}, SOLAR_GATE_NOW);
+  assert.strictEqual(r.mode, 'charge');
+  assert.strictEqual(r.solarKwh, null); // "unknown", not "0 kWh of sun"
+});
+test('_batteryPriceMode — blocked reason names both numbers, so the history entry explains itself', () => {
+  const r = makeSolarGateDevice(30)._batteryPriceMode({ ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 15 }, 40, {}, SOLAR_GATE_NOW);
+  assert.match(r.reason, /30\.0 kWh/);
+  assert.match(r.reason, /15 kWh/);
+});
+test('_batteryPriceMode — solar gate blocks charging without disabling the discharge reserve', () => {
+  const bd = { ...SOLAR_GATE_BD, price_solar_forecast_max_kwh: 15, price_discharge_reserve_hours: 1 };
+  const r  = makeSolarGateDevice(30)._batteryPriceMode(bd, 40, {}, SOLAR_GATE_NOW);
+  assert.strictEqual(r.mode, 'hold');              // still reserving the 0.30 hour later
+  assert.strictEqual(r.reserveSlots.length, 1);
+  assert.match(r.reason, /grid charging paused/);  // and still says why it isn't charging
+});
+
 // ── chargerControl: global offpeak_enabled toggle must not hijack explicit price modes ──
 test('_evaluateEvChargers — global offpeak_enabled toggle does not override solar_price chargeMode', async () => {
   const now = Date.UTC(2026, 0, 1, 20, 0, 0);

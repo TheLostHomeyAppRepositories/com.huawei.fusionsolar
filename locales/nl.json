@@ -881,9 +881,10 @@
       "priceField": {
         "targetSoc": "Streefwaarde SOC",
         "chargePower": "Laadvermogen",
-        "reserveHours": "Reserve-piekuren"
+        "reserveHours": "Reserve-piekuren",
+        "solarMax": "Uit bij zon ≥"
       },
-      "priceHint": "Laadt van het net op de goedkoopste uren (24 u vooruit kijkend — geen vaste deadline, kan dus wachten op een écht goedkoper uur) om de streefwaarde SOC te bereiken. Buiten de gereserveerde duurste uren wordt ontladen ingehouden zodat de batterij capaciteit heeft wanneer het er het meest toe doet. Koppel dit hieronder in Flow instellen: \"Force Charge\" (laden), \"Max Discharge Power\" ingesteld op ~0 (reserveren/vasthouden), en \"Normal Mode\" (standaard).",
+      "priceHint": "Laadt van het net op de goedkoopste uren (24 u vooruit kijkend — geen vaste deadline, kan dus wachten op een écht goedkoper uur) om de streefwaarde SOC te bereiken. Buiten de gereserveerde duurste uren wordt ontladen ingehouden zodat de batterij capaciteit heeft wanneer het er het meest toe doet. \"Uit bij zon ≥\" onderdrukt het laden van het net volledig zodra de Solcast-verwachting voor de komende 24 u zoveel kWh bereikt — zo wordt de batterij niet 's nachts vol gekocht vóór een zonnige dag. 0 schakelt de controle uit; zonder actuele verwachting wordt geladen zoals voorheen. Koppel dit hieronder in Flow instellen: \"Force Charge\" (laden), \"Max Discharge Power\" ingesteld op ~0 (reserveren/vasthouden), en \"Normal Mode\" (standaard).",
       "refreshPlan": "↻ Plan vernieuwen",
       "plan": {
         "none": "geen",

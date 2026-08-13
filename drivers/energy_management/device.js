@@ -1004,6 +1004,9 @@ class EmsDevice extends Device {
       return {
         id: d.id, soc, mode: decision.mode, reason: decision.reason,
         chargeSlots: decision.chargeSlots || [], reserveSlots: decision.reserveSlots || [],
+        // null unless the solar gate is configured — lets the UI show "34.2 / 15 kWh"
+        // without recomputing the forecast sum itself.
+        solarKwh: decision.solarKwh ?? null, solarLimitKwh: decision.solarLimitKwh ?? null,
       };
     });
   }

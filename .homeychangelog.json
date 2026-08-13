@@ -1089,6 +1089,11 @@
     "de": "Alle Widgets halten neu unter dem Finger still: kein Zoomen, kein Verschieben, kein Nachwippen und keine Textauswahl beim langen Drücken — am Dashboard vorbeizuscrollen stört eine Kachel nicht mehr.",
     "nl": "Alle widgets blijven nu stil onder je vinger: geen pinch-zoom, geen verschuiven, geen doorveren en geen tekstselectie bij lang indrukken."
   },
+  "1.2.152": {
+    "en": "Price-controlled home batteries can now skip grid charging on sunny days. A new field per battery, \"Skip if solar ≥\", suppresses cheap-hour grid charging whenever the Solcast forecast for the next 24 hours reaches that many kWh — so the battery is no longer bought full at 3 a.m. before a day the sun would have filled it for free. 0 keeps the previous behaviour, and without a fresh forecast it charges as before.",
+    "de": "Preisgesteuerte Hausbatterien können das Netzladen an sonnigen Tagen neu überspringen. Ein neues Feld pro Batterie, \"Aus ab Sonne ≥\", unterdrückt das Laden in den günstigen Stunden, sobald die Solcast-Prognose für die nächsten 24 Stunden so viele kWh erreicht — die Batterie wird also nicht mehr um 3 Uhr vollgekauft, bevor die Sonne sie tagsüber gratis gefüllt hätte. 0 behält das bisherige Verhalten, und ohne aktuelle Prognose wird geladen wie zuvor.",
+    "nl": "Prijsgestuurde thuisaccu's kunnen het laden van het net nu overslaan op zonnige dagen. Een nieuw veld per accu, \"Uit bij zon ≥\", onderdrukt het laden in de goedkope uren zodra de Solcast-verwachting voor de komende 24 uur zoveel kWh bereikt. 0 behoudt het oude gedrag."
+  },
   "1.2.151": {
     "en": "Second correction to the same explanation: it said the solar forecast refreshes every 60 seconds. It does not — the Solcast fetch is throttled to at most once every 3 hours per site, and what happens every 60 seconds is only a recalculation from the cached data. The text now names the actual rhythms instead of one number for all three.",
     "de": "Zweite Korrektur am selben Erklärtext: Dort stand, die Solarprognose werde alle 60 Sekunden aufgefrischt. Das stimmt nicht — die Solcast-Abfrage ist auf höchstens alle 3 Stunden pro Standort gedrosselt, und alle 60 Sekunden läuft nur eine Neuberechnung aus den zwischengespeicherten Daten. Der Text nennt jetzt die tatsächlichen Rhythmen statt einer Zahl für alle drei.",
