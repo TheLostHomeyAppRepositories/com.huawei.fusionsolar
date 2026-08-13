@@ -2851,20 +2851,45 @@
         .filter(function (x) { return x && x.end > now && x.start < now + 36 * 3600e3; });
       if (use.length < 2) { host.style.display = 'none'; return false; }
 
-      var W = 320, H = 110, L = 26, R = 8, T = 10, B = 18;
+      var W = 320, H = 110, L = 30, R = 8, T = 18, B = 18;
       var t0 = use[0].start, t1 = use[use.length - 1].end;
       var maxKw = Math.max.apply(null, use.map(function (x) { return x.kw || 0; })) || 1;
       var x = function (ms) { return L + ((ms - t0) / (t1 - t0)) * (W - L - R); };
       var y = function (kw) { return H - B - (kw / maxKw) * (H - B - T); };
-      var e = [];
+      var e = [], dayLines = [], axisLabels = [];
 
       e.push('<rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - B - T) +
              '" fill="#fff" stroke="#e5e5ea"/>');
-      // peak guide, labelled — the y scale is otherwise unreadable
+      // peak guide, labelled — the y scale is otherwise unreadable. The unit sits above
+      // the numbers it belongs to; at the bottom right it read as a time-axis caption.
       e.push('<line x1="' + L + '" y1="' + y(maxKw) + '" x2="' + (W - R) + '" y2="' + y(maxKw) + '" stroke="#f0f0f5"/>');
+      e.push('<text x="' + (L - 4) + '" y="' + (T - 6) + '" font-size="7" fill="#8e8e93" text-anchor="end">kW</text>');
       e.push('<text x="' + (L - 4) + '" y="' + (y(maxKw) + 3) + '" font-size="8" fill="#8e8e93" text-anchor="end">' +
              (Math.round(maxKw * 10) / 10) + '</text>');
       e.push('<text x="' + (L - 4) + '" y="' + (y(0) + 3) + '" font-size="8" fill="#8e8e93" text-anchor="end">0</text>');
+
+      // Time grid every 6 h on local boundaries, so the curve can be read as a clock
+      // instead of "a hump somewhere". Advancing with setHours rather than adding
+      // 6·3600e3 keeps the marks on real local times across a DST change. Midnights are
+      // dashed and full height — a 36 h window can hold two, and only the first was ever
+      // drawn, which made the second day look like a straggler of the first.
+      var tick = new Date(t0);
+      tick.setMinutes(0, 0, 0);
+      for (var g = 0; g < 24 && (tick.getTime() < t0 || tick.getHours() % 6 !== 0); g++) {
+        tick.setHours(tick.getHours() + 1);
+      }
+      for (var g2 = 0; g2 < 12 && tick.getTime() < t1; g2++) {
+        var tx   = x(tick.getTime());
+        var line = '<line x1="' + tx + '" y1="' + T + '" x2="' + tx + '" y2="' + (H - B) + '" stroke="';
+        if (tick.getHours() === 0) dayLines.push(line + '#c7c7cc" stroke-dasharray="2 2"/>');
+        else                       e.push(line + '#f0f0f5"/>');
+        // Drop a label that would land on top of the "now" marker — same baseline.
+        if (Math.abs(tx - x(now)) >= 14) {
+          axisLabels.push('<text x="' + tx + '" y="' + (H - B + 11) + '" font-size="8" fill="#8e8e93" text-anchor="middle">' +
+                          ('0' + tick.getHours()).slice(-2) + '</text>');
+        }
+        tick.setHours(tick.getHours() + 6);
+      }
 
       use.forEach(function (sl) {
         var x0 = x(sl.start), x1 = x(sl.end), h = Math.max(0, y(0) - y(sl.kw || 0));
@@ -2872,17 +2897,15 @@
                '" height="' + h + '" fill="#ffb300" opacity="0.85"/>');
       });
 
-      // local midnight between the two days, so "today" and "tomorrow" are visible as such
-      var mid = new Date(); mid.setHours(24, 0, 0, 0);
-      if (mid.getTime() > t0 && mid.getTime() < t1) {
-        e.push('<line x1="' + x(mid.getTime()) + '" y1="' + T + '" x2="' + x(mid.getTime()) + '" y2="' + (H - B) +
-               '" stroke="#c7c7cc" stroke-dasharray="2 2"/>');
-      }
+      // Day boundaries go on top of the bars: a midnight hidden under the curve is
+      // invisible exactly in the cases where it carries the most information.
+      dayLines.forEach(function (s) { e.push(s); });
+
       e.push('<line x1="' + x(now) + '" y1="' + T + '" x2="' + x(now) + '" y2="' + (H - B) +
              '" stroke="#007aff" stroke-width="1"/>');
       e.push('<text x="' + x(now) + '" y="' + (H - B + 11) + '" font-size="8" fill="#007aff" text-anchor="middle">' +
              _H.__('settings.pvForecast.chartNow') + '</text>');
-      e.push('<text x="' + (W - R) + '" y="' + (H - B + 11) + '" font-size="8" fill="#8e8e93" text-anchor="end">kW</text>');
+      axisLabels.forEach(function (s) { e.push(s); });
 
       host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' +
                        _H.__('settings.pvForecast.chartAlt') + '">' + e.join('') + '</svg>';
