@@ -2838,8 +2838,18 @@
       var host = document.getElementById('ems-pv-chart');
       if (!host) return;
       var now = Date.now();
-      var use = (slots || []).filter(function (x) { return x && x.end > now && x.start < now + 36 * 3600e3; });
-      if (use.length < 2) { host.style.display = 'none'; return; }
+      // A Solcast slot is { end, kw, h } — it carries the period LENGTH, never a start.
+      // Deriving it here is what makes the window filter work at all: the filter used to
+      // read x.start directly, and `undefined < <timestamp>` is false for every slot, so
+      // the list came out empty and the chart hid itself on every install that had a
+      // forecast. Returns false when there is nothing drawable, so the caller can say why
+      // instead of leaving a blank gap.
+      var use = (slots || [])
+        .map(function (x) {
+          return x ? { start: x.end - (x.h || 0.5) * 3600e3, end: x.end, kw: x.kw || 0 } : null;
+        })
+        .filter(function (x) { return x && x.end > now && x.start < now + 36 * 3600e3; });
+      if (use.length < 2) { host.style.display = 'none'; return false; }
 
       var W = 320, H = 110, L = 26, R = 8, T = 10, B = 18;
       var t0 = use[0].start, t1 = use[use.length - 1].end;
@@ -2877,6 +2887,7 @@
       host.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' +
                        _H.__('settings.pvForecast.chartAlt') + '">' + e.join('') + '</svg>';
       host.style.display = '';
+      return true;
     }
 
     function emsPvForecastChartLoad() {
@@ -2884,7 +2895,10 @@
         var host = document.getElementById('ems-pv-chart');
         if (!host) return;
         var slots = (d && d.slots) || [];
-        if (!err && slots.length) { emsPvForecastChart(slots); return; }
+        // Only bail out when the chart actually drew something — a forecast that exists
+        // but has nothing left inside the window must fall through to the message below,
+        // not leave an empty space where a chart should be.
+        if (!err && slots.length && emsPvForecastChart(slots)) return;
 
         // Hiding the chart when there is nothing to draw left no way to tell "no forecast"
         // from "no chart built" — say which it is. The route already carries the age and
@@ -7236,11 +7250,13 @@
 
         var priceFields = document.createElement('div');
         priceFields.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px 14px;padding:4px 0 2px 22px;max-width:460px';
-        function _priceField(labelText, className, type, value, unit, extraAttrs) {
+        function _priceField(labelText, className, type, value, unit, extraAttrs, hintText) {
           var group = document.createElement('div');
           var lbl = document.createElement('label');
           lbl.textContent = labelText;
-          lbl.style.cssText = 'display:block;font-size:10px;color:#6e6e73;margin-bottom:3px;white-space:nowrap';
+          // No white-space:nowrap — a label that says what the field does is longer than
+          // one word and must be allowed to wrap inside its grid cell.
+          lbl.style.cssText = 'display:block;font-size:10px;color:#6e6e73;line-height:1.3;margin-bottom:3px';
           var row = document.createElement('div');
           row.style.cssText = 'display:flex;align-items:center;gap:5px';
           var inp = document.createElement('input');
@@ -7255,6 +7271,14 @@
             row.appendChild(u);
           }
           group.appendChild(lbl); group.appendChild(row);
+          if (hintText) {
+            var h = document.createElement('div');
+            h.textContent = hintText;
+            // #6e6e73, not the #bbb of the big paragraph below: this line has to actually
+            // be read — it is what stops a "0" being taken for "always off".
+            h.style.cssText = 'font-size:10px;color:#6e6e73;line-height:1.35;margin-top:3px';
+            group.appendChild(h);
+          }
           return group;
         }
         priceFields.appendChild(_priceField(_H.__('settings.homeBatteries.priceField.targetSoc'), 'ems-battery-price-target', 'number',
@@ -7263,9 +7287,11 @@
           (stored && stored.price_charge_power_kw != null) ? stored.price_charge_power_kw : 3, 'kW', { min: '0', max: '50', step: '0.5' }));
         priceFields.appendChild(_priceField(_H.__('settings.homeBatteries.priceField.reserveHours'), 'ems-battery-price-reserve', 'number',
           (stored && stored.price_discharge_reserve_hours != null) ? stored.price_discharge_reserve_hours : 4, 'h', { min: '0', max: '24', step: '1' }));
-        // 0 = off, so existing installs keep charging exactly as they did before.
+        // 0 = off, so existing installs keep charging exactly as they did before. That
+        // reading is not self-evident from a field showing "0", hence the own hint.
         priceFields.appendChild(_priceField(_H.__('settings.homeBatteries.priceField.solarMax'), 'ems-battery-price-solarmax', 'number',
-          (stored && stored.price_solar_forecast_max_kwh != null) ? stored.price_solar_forecast_max_kwh : 0, 'kWh', { min: '0', max: '500', step: '1' }));
+          (stored && stored.price_solar_forecast_max_kwh != null) ? stored.price_solar_forecast_max_kwh : 0, 'kWh', { min: '0', max: '500', step: '1' },
+          _H.__('settings.homeBatteries.priceField.solarMaxHint')));
         entry.appendChild(priceFields);
 
         var priceHint = document.createElement('div');

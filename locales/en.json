@@ -882,9 +882,10 @@
         "targetSoc": "Target SOC",
         "chargePower": "Charge power",
         "reserveHours": "Reserve peak hours",
-        "solarMax": "Skip if solar ≥"
+        "solarMax": "No grid charging above forecast",
+        "solarMaxHint": "0 = off. Above this forecast for the next 24 h, grid charging is skipped."
       },
-      "priceHint": "Charges from the grid in the cheapest hours (looking ahead 24h — no fixed deadline, so it can wait for a genuinely cheaper hour) to reach Target SOC. Outside the reserved priciest hours, discharge is held back so the battery has capacity when it matters most. \"Skip if solar ≥\" suppresses grid charging entirely whenever the Solcast forecast for the next 24h reaches that many kWh — so the battery isn't bought full at night before a sunny day. 0 turns the check off; without a fresh forecast it charges as usual. Wire this up below in Flow setup: \"Force Charge\" (charging), \"Max Discharge Power\" set to ~0 (reserve/hold), and \"Normal Mode\" (default).",
+      "priceHint": "Charges from the grid in the cheapest hours (looking ahead 24h — no fixed deadline, so it can wait for a genuinely cheaper hour) to reach Target SOC. Outside the reserved priciest hours, discharge is held back so the battery has capacity when it matters most. Wire this up below in Flow setup: \"Force Charge\" (charging), \"Max Discharge Power\" set to ~0 (reserve/hold), and \"Normal Mode\" (default).",
       "refreshPlan": "↻ Refresh plan",
       "plan": {
         "none": "none",

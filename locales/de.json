@@ -882,9 +882,10 @@
         "targetSoc": "Ziel-SOC",
         "chargePower": "Ladeleistung",
         "reserveHours": "Spitzenzeit-Reserve",
-        "solarMax": "Aus ab Sonne ≥"
+        "solarMax": "Netzladen aus ab Sonnenprognose",
+        "solarMaxHint": "0 = aus. Ab diesem Prognosewert für die nächsten 24 h wird nicht mehr aus dem Netz geladen."
       },
-      "priceHint": "Lädt aus dem Netz in den günstigsten Stunden (24h-Vorschau — keine feste Deadline, kann also auf eine wirklich günstigere Stunde warten), um den Ziel-SOC zu erreichen. Ausserhalb der reservierten teuersten Stunden wird die Entladung zurückgehalten, damit die Batterie Kapazität hat, wenn es darauf ankommt. \"Aus ab Sonne ≥\" unterdrückt das Netzladen ganz, sobald die Solcast-Prognose für die nächsten 24h so viele kWh erreicht — damit die Batterie vor einem sonnigen Tag nicht nachts teuer vollgekauft wird. 0 schaltet die Prüfung ab; ohne aktuelle Prognose wird wie bisher geladen. Unten im Flow-Setup verdrahten: \"Force Charge\" (Laden), \"Max Discharge Power\" auf ~0 (Reserve/Halten), und \"Normal Mode\" (Standard).",
+      "priceHint": "Lädt aus dem Netz in den günstigsten Stunden (24h-Vorschau — keine feste Deadline, kann also auf eine wirklich günstigere Stunde warten), um den Ziel-SOC zu erreichen. Ausserhalb der reservierten teuersten Stunden wird die Entladung zurückgehalten, damit die Batterie Kapazität hat, wenn es darauf ankommt. Unten im Flow-Setup verdrahten: \"Force Charge\" (Laden), \"Max Discharge Power\" auf ~0 (Reserve/Halten), und \"Normal Mode\" (Standard).",
       "refreshPlan": "↻ Plan aktualisieren",
       "plan": {
         "none": "keine",
