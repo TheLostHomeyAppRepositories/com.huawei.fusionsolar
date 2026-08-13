@@ -896,7 +896,12 @@
 
   <!-- ── Tab: EMS ── -->
   <div id="tab-ems">
-    <div class="tool-card" style="max-width:580px;margin:0 auto">
+    <!-- Capped, but not at 580px: on a tablet the settings dialog is ~830px wide, so a
+         quarter of it sat empty on both sides while every other tab ran full width. 820
+         uses that space and matches the debug modal's 860. Still capped, because these
+         rows are label-left / control-right — stretched across a desktop they read worse,
+         not better. -->
+    <div class="tool-card" style="max-width:820px;margin:0 auto">
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="tool-card-title" style="margin:0" data-i18n="emsInfo.title">Energy Management System</div>
