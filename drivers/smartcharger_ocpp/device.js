@@ -273,7 +273,7 @@ class SmartChargerOcppDevice extends Device {
     // reboot, not on Homey app restart — this catches the restart case).
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
-    setTimeout(() => {
+    this.homey.setTimeout(() => {
       if (this._txnId && !this._autoStartBlocked) return; // live session — leave alone
       const initAmps = autoStart ? defaultAmps : BLOCK_AMPS;
       try {
@@ -375,11 +375,11 @@ class SmartChargerOcppDevice extends Device {
       this._offlineWatchdog = null;
     }
     if (this._pendingTxProfileTimer) {
-      clearTimeout(this._pendingTxProfileTimer);
+      this.homey.clearTimeout(this._pendingTxProfileTimer);
       this._pendingTxProfileTimer = null;
     }
     if (this._pendingStartNotificationTimeout) {
-      clearTimeout(this._pendingStartNotificationTimeout);
+      this.homey.clearTimeout(this._pendingStartNotificationTimeout);
       this._pendingStartNotificationTimeout = null;
     }
   }
@@ -409,7 +409,7 @@ class SmartChargerOcppDevice extends Device {
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const bootAmps    = autoStart ? defaultAmps : BLOCK_AMPS;
-    setTimeout(() => {
+    this.homey.setTimeout(() => {
       try {
         OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), bootAmps, this._getPhases());
         this.log(`[OCPP] Boot profile applied: ${bootAmps}A`);
@@ -459,7 +459,7 @@ class SmartChargerOcppDevice extends Device {
       await this.setStoreValue('connectionStart', null).catch(() => {});
       await this._resetSessionTileSensors();
       // Deferred 4 s: let pending StopTransaction settle before reporting unplug
-      setTimeout(async () => {
+      this.homey.setTimeout(async () => {
         if (this._txnId) return;
         await this._handleUnpluggedWithoutCharging(connStart);
       }, 4000);
@@ -496,7 +496,7 @@ class SmartChargerOcppDevice extends Device {
       const autoStart = this.getSetting('auto_start_charging') !== false;
       if (autoStart) {
         this.log('[OCPP] Auto-start ON — proactively sending RemoteStartTransaction');
-        setTimeout(() => {
+        this.homey.setTimeout(() => {
           if (this._txnId && !this._autoStartBlocked) {
             this.log('[OCPP] Session already active — skipping proactive RemoteStart');
             return;
@@ -595,7 +595,7 @@ class SmartChargerOcppDevice extends Device {
               const v = this._startVerify;
               this._startVerify = null;
               if (this._pendingStartNotificationTimeout) {
-                clearTimeout(this._pendingStartNotificationTimeout);
+                this.homey.clearTimeout(this._pendingStartNotificationTimeout);
                 this._pendingStartNotificationTimeout = null;
               }
               this.log(`[OCPP] Power flowing (${powerW}W) — announcing verified ${v.isMaskedResume ? 'resume' : 'start'}`);
@@ -717,8 +717,8 @@ class SmartChargerOcppDevice extends Device {
       const startedTxId = txnId;
       this._startVerify = { txId: startedTxId, isMaskedResume, activeAmps };
 
-      if (this._pendingStartNotificationTimeout) clearTimeout(this._pendingStartNotificationTimeout);
-      this._pendingStartNotificationTimeout = setTimeout(async () => {
+      if (this._pendingStartNotificationTimeout) this.homey.clearTimeout(this._pendingStartNotificationTimeout);
+      this._pendingStartNotificationTimeout = this.homey.setTimeout(async () => {
         this._pendingStartNotificationTimeout = null;
         if (!this._startVerify || this._startVerify.txId !== startedTxId) return;
         if (this._txnId !== startedTxId) return;
@@ -752,18 +752,18 @@ class SmartChargerOcppDevice extends Device {
       this._lowPowerSince = null;
       this._startVerify   = null;
       if (this._pendingStartNotificationTimeout) {
-        clearTimeout(this._pendingStartNotificationTimeout);
+        this.homey.clearTimeout(this._pendingStartNotificationTimeout);
         this._pendingStartNotificationTimeout = null;
       }
       if (this._pendingTxProfileTimer) {
-        clearTimeout(this._pendingTxProfileTimer);
+        this.homey.clearTimeout(this._pendingTxProfileTimer);
         this._pendingTxProfileTimer = null;
       }
       await this.setStoreValue('activeSession', null).catch(() => {});
       await this._set('evcharger_charging', false);
       await this._updateSessionStatus('connected');
 
-      setTimeout(() => {
+      this.homey.setTimeout(() => {
         try {
           OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
           this.log(`[OCPP] Masked pause: ${BLOCK_AMPS}A hold applied for paused gap`);
@@ -781,11 +781,11 @@ class SmartChargerOcppDevice extends Device {
       this.log(`[OCPP] Quick abort (${durationMs}ms, reason=Other) — retrying at ${retryAmps}A in 3s`);
 
       if (this._pendingStartNotificationTimeout) {
-        clearTimeout(this._pendingStartNotificationTimeout);
+        this.homey.clearTimeout(this._pendingStartNotificationTimeout);
         this._pendingStartNotificationTimeout = null;
       }
       if (this._pendingTxProfileTimer) {
-        clearTimeout(this._pendingTxProfileTimer);
+        this.homey.clearTimeout(this._pendingTxProfileTimer);
         this._pendingTxProfileTimer = null;
       }
       this._startVerify = null;
@@ -797,7 +797,7 @@ class SmartChargerOcppDevice extends Device {
       await this._set('evcharger_charging_state', 'connected');
 
       const stationId = this.getSetting('station_id');
-      setTimeout(() => {
+      this.homey.setTimeout(() => {
         try {
           this._manualStartRequested = true;
           this.sessionPhaseOverride = retryPhases;
@@ -840,11 +840,11 @@ class SmartChargerOcppDevice extends Device {
     this.isPaused = false;
     this.sessionOwner = null;
     if (this._pendingStartNotificationTimeout) {
-      clearTimeout(this._pendingStartNotificationTimeout);
+      this.homey.clearTimeout(this._pendingStartNotificationTimeout);
       this._pendingStartNotificationTimeout = null;
     }
     if (this._pendingTxProfileTimer) {
-      clearTimeout(this._pendingTxProfileTimer);
+      this.homey.clearTimeout(this._pendingTxProfileTimer);
       this._pendingTxProfileTimer = null;
     }
     await this.setStoreValue('activeSession', null).catch(() => {});
@@ -865,7 +865,7 @@ class SmartChargerOcppDevice extends Device {
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const restoreAmps = autoStart ? defaultAmps : BLOCK_AMPS;
-    setTimeout(() => {
+    this.homey.setTimeout(() => {
       try { OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), restoreAmps, this._getPhases()); } catch (e) { /* ignore */ }
     }, 2000);
 
@@ -975,10 +975,10 @@ class SmartChargerOcppDevice extends Device {
     this._updateChargingProfile().catch(() => {});
 
     // Safety-net: re-apply TxProfile 3 s after RemoteStart
-    if (this._pendingTxProfileTimer) clearTimeout(this._pendingTxProfileTimer);
+    if (this._pendingTxProfileTimer) this.homey.clearTimeout(this._pendingTxProfileTimer);
     const safetyAmps   = targetAmps;
     const safetyPhases = this._getPhases();
-    this._pendingTxProfileTimer = setTimeout(() => {
+    this._pendingTxProfileTimer = this.homey.setTimeout(() => {
       this._pendingTxProfileTimer = null;
       if (!this._txnId || this._autoStartBlocked) return;
       server.setTxProfileAsync(stationId, this._txnId, safetyAmps, safetyPhases)
@@ -1238,7 +1238,7 @@ class SmartChargerOcppDevice extends Device {
 
     // Cancel any pending safety-net TxProfile — an explicit limit always wins
     if (this._pendingTxProfileTimer) {
-      clearTimeout(this._pendingTxProfileTimer);
+      this.homey.clearTimeout(this._pendingTxProfileTimer);
       this._pendingTxProfileTimer = null;
       this.log('[OCPP] Cancelled pending safety-net TxProfile — explicit limit takes precedence');
     }
