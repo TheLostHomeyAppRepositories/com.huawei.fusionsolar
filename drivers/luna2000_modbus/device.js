@@ -10,6 +10,7 @@ const {
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 const { logPollOk } = require('../../lib/poll-log');
+const modbusPolling = require('../../lib/modbus-polling');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -866,39 +867,10 @@ class LUNA2000ModbusDevice extends Device {
 
   // ─── Polling ───────────────────────────────────────────────────────────────
 
-  _intervalMs() {
-    let s = parseInt(this.getSetting('poll_interval'), 10);
-    if (!Number.isFinite(s) || s < MIN_INTERVAL_S) s = DEFAULT_INTERVAL_S;
-    return s * 1000;
-  }
-
-  async _startPolling() {
-    this._timer = this.homey.setInterval(() => {
-      this._fetchAndUpdate().catch((err) => {
-        this.error('Poll failed:', err.message);
-      });
-    }, this._intervalMs());
-    this._watchdogTimer = this.homey.setInterval(() => {
-      if (this._fetchInProgress) {
-        const staleSec = Math.round((Date.now() - this._lastPollStart) / 1000);
-        if (staleSec > 120) {
-          this.error('Watchdog: _fetchInProgress stuck for ' + staleSec + 's — resetting');
-          this._fetchInProgress = false;
-        }
-      }
-    }, 60_000);
-  }
-
-  async _stopPolling() {
-    if (this._timer) {
-      this.homey.clearInterval(this._timer);
-      this._timer = null;
-    }
-    if (this._watchdogTimer) {
-      this.homey.clearInterval(this._watchdogTimer);
-      this._watchdogTimer = null;
-    }
-  }
+  // Poll timing for the shared mixin (lib/modbus-polling). Declared per driver, not
+  // in the mixin, because the interval genuinely differs between device families.
+  get pollDefaultS() { return DEFAULT_INTERVAL_S; }
+  get pollMinS()     { return MIN_INTERVAL_S; }
 
   // ─── Data fetch ────────────────────────────────────────────────────────────
 
@@ -1207,17 +1179,8 @@ class LUNA2000ModbusDevice extends Device {
     }).catch((e) => this.log('Timeline notification failed:', e.message));
   }
 
-  async _set(capability, value) {
-    if (value === null || value === undefined) return;
-    if (!this.hasCapability(capability)) return;
-    if (this.getCapabilityValue(capability) === value) return;
-    try {
-      await this.setCapabilityValue(capability, value);
-    } catch (err) {
-      this.log(`_set(${capability}, ${value}) failed:`, err.message);
-    }
-  }
-
 }
+
+Object.assign(LUNA2000ModbusDevice.prototype, modbusPolling);
 
 module.exports = LUNA2000ModbusDevice;
