@@ -6,6 +6,7 @@ const {
   isSdonglaADataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
+const { logPollOk } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -153,7 +154,7 @@ class SdonglaAModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
-      this.log('Poll OK: Solar=' + Math.round(data.totalInputPower ?? 0) + 'W Grid=' + Math.round(data.gridPower ?? 0) + 'W');
+      logPollOk(this, 'Poll OK: Solar=' + Math.round(data.totalInputPower ?? 0) + 'W Grid=' + Math.round(data.gridPower ?? 0) + 'W');
 
     } catch (err) {
       this._failureCount += 1;

@@ -2,6 +2,7 @@
 
 const { Device } = require('homey');
 const { DEV_TYPE_SOLAR_GROUP, DEV_TYPE_POWER_CONVERTER, calculate } = require('../../lib/isitepower-utils');
+const { logPollOk } = require('../../lib/poll-log');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -48,7 +49,7 @@ class ISitePowerSolarDevice extends Device {
     }
 
     if (!this.getAvailable()) await this.setAvailable();
-    this.log('Poll OK: PV=' + Math.round(v.solarW) + 'W');
+    logPollOk(this, 'Poll OK: PV=' + Math.round(v.solarW) + 'W');
   }
 
   async _ensureCapabilities() {

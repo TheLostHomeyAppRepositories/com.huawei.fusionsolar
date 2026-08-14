@@ -2,6 +2,7 @@
 
 const { Device } = require('homey');
 const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
+const { logPollOk } = require('../../lib/poll-log');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -81,7 +82,7 @@ class ISitePowerGridDevice extends Device {
     }
 
     if (!this.getAvailable()) await this.setAvailable();
-    this.log('Poll OK: Grid=' + Math.round(gridW) + 'W (raw=' + Math.round(rawGridW) + 'W)');
+    logPollOk(this, 'Poll OK: Grid=' + Math.round(gridW) + 'W (raw=' + Math.round(rawGridW) + 'W)');
   }
 
   async _accumulate(importW) {

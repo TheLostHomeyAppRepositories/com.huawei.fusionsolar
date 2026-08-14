@@ -9,6 +9,7 @@ const {
   statusLabel,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
+const { logPollOk } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -682,7 +683,7 @@ class SUN2000ModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
-      this.log('Poll OK: PV=' + Math.round(newPower) + 'W');
+      logPollOk(this, 'Poll OK: PV=' + Math.round(newPower) + 'W');
 
     } catch (err) {
       this._failureCount += 1;

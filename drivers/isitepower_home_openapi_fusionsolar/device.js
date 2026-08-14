@@ -2,6 +2,7 @@
 
 const { Device } = require('homey');
 const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, calculate } = require('../../lib/isitepower-utils');
+const { logPollOk } = require('../../lib/poll-log');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -44,14 +45,14 @@ class ISitePowerHomeDevice extends Device {
       // Live or stale-cached data available — update display and accumulate
       await this._set('measure_power', v.loadW);
       await this._accumulate(v.loadW);
-      this.log('Poll OK: Load=' + Math.round(v.loadW) + 'W');
+      logPollOk(this, 'Poll OK: Load=' + Math.round(v.loadW) + 'W');
     } else {
       // No 60010/60092 data — system is likely in solar/battery mode with no grid.
       // Keep accumulating using the last Homey-persisted measure_power so meter_power
       // stays continuous and the Energy tab doesn't show "— kWh".
       const lastW = this.getCapabilityValue('measure_power') ?? 0;
       await this._accumulate(lastW);
-      this.log('Poll: no 60010/60092 data; accumulating with last known value (' + Math.round(lastW) + 'W)');
+      logPollOk(this, 'Poll: no 60010/60092 data; accumulating with last known value (' + Math.round(lastW) + 'W)');
     }
 
     if (!this.getAvailable()) await this.setAvailable();

@@ -2,6 +2,7 @@
 
 const { Device } = require('homey');
 const { DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
+const { logPollOk } = require('../../lib/poll-log');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -154,7 +155,7 @@ class ISitePowerBatteryDevice extends Device {
     this._prevChargingState = chargingState;
 
     if (!this.getAvailable()) await this.setAvailable();
-    this.log('Poll OK: SoC=' + Math.round(v.soc ?? 0) + '% P=' + Math.round(signed) + 'W');
+    logPollOk(this, 'Poll OK: SoC=' + Math.round(v.soc ?? 0) + '% P=' + Math.round(signed) + 'W');
   }
 
   async _accumulateCharged(chargeW) {

@@ -6,6 +6,7 @@ const {
   isPowerMeterEmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
+const { logPollOk } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
@@ -192,7 +193,7 @@ class PowerMeterEmmaModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
-      this.log('Poll OK: Grid=' + Math.round(gridPower ?? 0) + 'W');
+      logPollOk(this, 'Poll OK: Grid=' + Math.round(gridPower ?? 0) + 'W');
 
     } catch (err) {
       this._failureCount += 1;

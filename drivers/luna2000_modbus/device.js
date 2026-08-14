@@ -9,6 +9,7 @@ const {
   isBatteryAbsent,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
+const { logPollOk } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -1018,7 +1019,7 @@ class LUNA2000ModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
-      this.log('Poll OK: SoC=' + Math.round(soc) + '% P=' + Math.round(power) + 'W');
+      logPollOk(this, 'Poll OK: SoC=' + Math.round(soc) + '% P=' + Math.round(power) + 'W');
 
       // Confirm pending force charge/discharge command once the poll shows the expected direction
       if (this._pendingForceMode) {

@@ -7,6 +7,7 @@ const {
   isLuna2000EmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
+const { logPollOk } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -391,7 +392,7 @@ class LUNA2000EmmaModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
-      this.log('Poll OK: SoC=' + Math.round(soc) + '% P=' + Math.round(power) + 'W');
+      logPollOk(this, 'Poll OK: SoC=' + Math.round(soc) + '% P=' + Math.round(power) + 'W');
 
     } catch (err) {
       this._failureCount += 1;
