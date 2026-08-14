@@ -6,7 +6,7 @@ const {
   isPowerMeterEmmaDataValid,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
-const { logPollOk } = require('../../lib/poll-log');
+const { logPollOk, logPollError } = require('../../lib/poll-log');
 const modbusPolling = require('../../lib/modbus-polling');
 
 const DEFAULT_INTERVAL_S = 60;
@@ -169,7 +169,7 @@ class PowerMeterEmmaModbusDevice extends Device {
 
     } catch (err) {
       this._failureCount += 1;
-      this.error(`Fetch error (${this._failureCount}):`, err.message);
+      logPollError(this, `Fetch error (${this._failureCount}): ${err.message}`, err.message);
       if (this._failureCount >= 3) {
         await this.setUnavailable(
           unavailableMessage(this.homey, err, this.getSetting('address')),
