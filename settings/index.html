@@ -7636,8 +7636,6 @@
       emsForecastGateChange();
       emsRenderSchedulerTasks(cfg.scheduled_tasks || []);
       emsUpdateSocZones();
-      var _offpeakEl = document.getElementById('ems-offpeak-enabled');
-      if (_offpeakEl) _offpeakEl.checked                                                       = !!cfg.offpeak_enabled;
       if (cfg.offpeak_start) document.getElementById('ems-offpeak-start').value                = cfg.offpeak_start;
       if (cfg.offpeak_end)   document.getElementById('ems-offpeak-end').value                  = cfg.offpeak_end;
       if (cfg.offpeak_amps)  document.getElementById('ems-offpeak-amps').value                 = cfg.offpeak_amps;
@@ -7743,7 +7741,6 @@
         share_pct_high:       Math.max(0, parseInt(document.getElementById('ems-share-pct-high').value, 10) || 0),
         forecast_gate_mode:   document.getElementById('ems-forecast-gate-mode').value,
         forecast_gate_kwh:    Math.max(0, parseFloat(document.getElementById('ems-forecast-gate-kwh').value) || 0),
-        offpeak_enabled:         false, // controlled via device capability toggle, not settings
         offpeak_start:           document.getElementById('ems-offpeak-start').value.trim() || '22:00',
         offpeak_end:             document.getElementById('ems-offpeak-end').value.trim() || '06:00',
         offpeak_amps:            parseInt(document.getElementById('ems-offpeak-amps').value, 10) || 16,

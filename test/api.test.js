@@ -170,3 +170,38 @@ test('a configured API key gets past the guard instead of short-circuiting', asy
   const res = await api.getEmsFlows({ homey: fakeHomey([fakeDevice('deadbeef')]) });
   assert.notStrictEqual(res.error, 'No API key');
 });
+
+// ── putEmsConfig: the device-owned keys must survive a settings save ──────────
+// The body replaces the stored config wholesale, so anything the settings page does not
+// send is lost. offpeak_enabled belongs to the device tile's toggle, not to the page.
+function settingsHomey(store = {}) {
+  return {
+    settings: {
+      get: (k) => store[k],
+      set: (k, v) => { store[k] = v; },
+    },
+    drivers: { getDriver() { throw new Error('Invalid Driver'); } },
+    _store: store,
+  };
+}
+
+test('putEmsConfig — a settings save does not switch the low-tariff toggle off', async () => {
+  const homey = settingsHomey({ ems_config: { offpeak_enabled: true, min_battery_soc: 20 } });
+  await api.putEmsConfig({ homey, body: { min_battery_soc: 30 } });
+  assert.strictEqual(homey._store.ems_config.offpeak_enabled, true, 'the toggle was reset by a save');
+  assert.strictEqual(homey._store.ems_config.min_battery_soc, 30, 'the saved value must still land');
+});
+
+test('putEmsConfig — an off toggle stays off, and a body that claims otherwise is ignored', async () => {
+  const homey = settingsHomey({ ems_config: { offpeak_enabled: false } });
+  // The page used to send `offpeak_enabled: false` itself; whatever it sends, the stored
+  // value is what counts, because the tile is the only thing that may change it.
+  await api.putEmsConfig({ homey, body: { offpeak_enabled: true } });
+  assert.strictEqual(homey._store.ems_config.offpeak_enabled, false);
+});
+
+test('putEmsConfig — a first save with nothing stored yet yields false, not undefined', async () => {
+  const homey = settingsHomey({});
+  await api.putEmsConfig({ homey, body: { min_battery_soc: 20 } });
+  assert.strictEqual(homey._store.ems_config.offpeak_enabled, false);
+});

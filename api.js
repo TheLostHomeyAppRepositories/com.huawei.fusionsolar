@@ -2297,9 +2297,19 @@ module.exports = {
     };
   },
 
-  /** PUT /ems/config — saves EMS config and notifies the device to reload */
+  /**
+   * PUT /ems/config — saves EMS config and notifies the device to reload.
+   *
+   * The body REPLACES the stored config rather than merging into it, so any key the
+   * settings page does not send is gone. `offpeak_enabled` is not the settings page's to
+   * send: it belongs to the device tile's toggle, whose capability listener writes it
+   * here. Carrying it forward is what stops a visit to the settings page from silently
+   * resetting the low-tariff switch — which only surfaces later, when the capability is
+   * re-initialised (a migration, a re-pair) and is restored from exactly this value.
+   */
   async putEmsConfig({ homey, body }) {
-    homey.settings.set('ems_config', body);
+    const stored = homey.settings.get('ems_config') || {};
+    homey.settings.set('ems_config', { ...body, offpeak_enabled: stored.offpeak_enabled === true });
     try {
       const driver  = homey.drivers.getDriver('energy_management');
       for (const device of driver.getDevices()) {
