@@ -3,6 +3,7 @@
 const { Device } = require('homey');
 const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, calculate } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
+const capabilitySet = require('../../lib/capability-set');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -78,15 +79,8 @@ class ISitePowerHomeDevice extends Device {
     }
   }
 
-  async _set(capability, value) {
-    if (value === null || value === undefined) return;
-    if (!this.hasCapability(capability)) return;
-    if (this.getCapabilityValue(capability) === value) return;
-    try { await this.setCapabilityValue(capability, value); } catch (err) {
-      this.log(`_set(${capability}, ${value}) failed:`, err.message);
-    }
-  }
-
 }
+
+Object.assign(ISitePowerHomeDevice.prototype, capabilitySet);
 
 module.exports = ISitePowerHomeDevice;

@@ -50,6 +50,30 @@ function _emsApi(homey) {
   return { api: new HomeyLocalApi({ homey, apiKey }), apiKey, emsDeviceId };
 }
 
+// Name of the folder every "set up flows" route drops its flows into, so a user can find
+// and remove them as a group.
+const EMS_FLOW_FOLDER = '_Huawei EMS';
+
+/**
+ * Id of that folder, creating it if it does not exist yet.
+ *
+ * Returns null on any failure — including a Homey that refuses folder creation — because
+ * every caller treats the folder as a nicety: without it the flows land at the top level,
+ * which is untidy but works. This was written out at all seven call sites, in two
+ * spellings that did the same thing.
+ */
+async function _emsFlowFolderId(api) {
+  try {
+    const folders  = await api.getFlowFolders();
+    const existing = Object.values(folders || {}).find((f) => f.name === EMS_FLOW_FOLDER);
+    if (existing) return existing.id;
+    const created = await api.createFlowFolder({ name: EMS_FLOW_FOLDER });
+    return (created && created.id) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 
 // ─── Register sets per driver ─────────────────────────────────────────────────
 // Each entry maps a human-readable group name → register map.
@@ -167,12 +191,7 @@ async function _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCa
   if (!_ems) return { error: 'No API key' };
   const { api, apiKey } = _ems;
   const APP_URI = 'homey:app:com.huawei.fusionsolar';
-  let folderId = null;
-  try {
-    const folders  = await api.getFlowFolders();
-    const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-    folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-  } catch (_) { }
+  const folderId = await _emsFlowFolderId(api);
   const baseName  = `EMS: ${deviceName || deviceId}`;
   const startName = `${baseName} → ${labelSuffix} Start`;
   const stopName  = `${baseName} → ${labelSuffix} Stop`;
@@ -1171,7 +1190,7 @@ module.exports = {
         api.getFlows().catch(() => ({})),
         api.getFlowFolders().catch(() => ({})),
       ]);
-      const emsFolder   = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
+      const emsFolder   = Object.values(folders || {}).find((f) => f.name === EMS_FLOW_FOLDER);
       const emsFolderId = emsFolder ? emsFolder.id : null;
       const flows = [];
       for (const [id, f] of Object.entries(allFlows || {})) {
@@ -1384,12 +1403,7 @@ module.exports = {
     // app (e.g. ems_start_charger / ems_start_heat_pump) — never looked up via the
     // flow-card database, which doesn't list the calling app's own cards back to it.
 
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch { /* ignore */ }
+    const folderId = await _emsFlowFolderId(api);
 
     const baseName = `EMS: ${deviceName || deviceId} → Price forecast`;
     const allFlows = await api.getFlows().catch(() => ({}));
@@ -1637,18 +1651,7 @@ module.exports = {
     const { api, apiKey } = _ems;
 
 
-    // 1. Get or create "Huawei EMS" folder (optional — skip gracefully if API unavailable)
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      if (existing) {
-        folderId = existing.id;
-      } else {
-        const created = await api.createFlowFolder({ name: '_Huawei EMS' });
-        folderId = created && created.id ? created.id : null;
-      }
-    } catch (_) { /* proceed without folder */ }
+    const folderId = await _emsFlowFolderId(api);
 
     // 2. Remove any existing EMS flow for this charger (avoid duplicates)
     const cardLabel = actionCardTitle ? ` → ${actionCardTitle}` : '';
@@ -1823,13 +1826,7 @@ module.exports = {
 
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
 
-    // Get or create "_Huawei EMS" folder
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch (_) { }
+    const folderId = await _emsFlowFolderId(api);
 
     const baseName  = `EMS: ${deviceName || deviceId}`;
     const startName = `${baseName} → Heat Pump Start`;
@@ -1929,12 +1926,7 @@ module.exports = {
     if (!_ems) return { error: 'No API key — configure EMS device first' };
     const { api, apiKey } = _ems;
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
-    let folderId = null;
-    try {
-      const folders = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch (_) { }
+    const folderId = await _emsFlowFolderId(api);
     let deviceName = deviceId;
     try { const d = await api.getDevices(); deviceName = d[deviceId]?.name || deviceId; } catch { }
     const allFlows = await api.getFlows().catch(() => ({}));
@@ -2102,12 +2094,7 @@ module.exports = {
       return a ? a.name : null;
     };
 
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch (_) { }
+    const folderId = await _emsFlowFolderId(api);
 
     const APP_URI  = 'homey:app:com.huawei.fusionsolar';
     const baseName = `EMS: ${deviceName || deviceId}`;
@@ -2258,12 +2245,7 @@ module.exports = {
 
     const APP_URI = 'homey:app:com.huawei.fusionsolar';
 
-    let folderId = null;
-    try {
-      const folders  = await api.getFlowFolders();
-      const existing = Object.values(folders || {}).find((f) => f.name === '_Huawei EMS');
-      folderId = existing ? existing.id : (await api.createFlowFolder({ name: '_Huawei EMS' }))?.id || null;
-    } catch (_) { }
+    const folderId = await _emsFlowFolderId(api);
 
     // Resolve inverter device name for flow name prefix (must happen before delete)
     let deviceName = deviceId;

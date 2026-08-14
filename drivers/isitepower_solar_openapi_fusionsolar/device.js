@@ -3,6 +3,7 @@
 const { Device } = require('homey');
 const { DEV_TYPE_SOLAR_GROUP, DEV_TYPE_POWER_CONVERTER, calculate } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
+const capabilitySet = require('../../lib/capability-set');
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',
@@ -62,15 +63,8 @@ class ISitePowerSolarDevice extends Device {
     }
   }
 
-  async _set(capability, value) {
-    if (value === null || value === undefined) return;
-    if (!this.hasCapability(capability)) return;
-    if (this.getCapabilityValue(capability) === value) return;
-    try { await this.setCapabilityValue(capability, value); } catch (err) {
-      this.log(`_set(${capability}, ${value}) failed:`, err.message);
-    }
-  }
-
 }
+
+Object.assign(ISitePowerSolarDevice.prototype, capabilitySet);
 
 module.exports = ISitePowerSolarDevice;

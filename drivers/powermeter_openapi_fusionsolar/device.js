@@ -1,6 +1,7 @@
 'use strict';
 
 const { Device } = require('homey');
+const capabilitySet = require('../../lib/capability-set');
 
 const DEV_TYPE_METER        = 17; // Grid meter (DTSU666)
 const DEV_TYPE_POWER_SENSOR = 47; // Power sensor
@@ -171,17 +172,8 @@ class FusionSolarMeterDevice extends Device {
     }
   }
 
-  async _set(capability, value) {
-    if (value === null || value === undefined) return;
-    if (!this.hasCapability(capability)) return;
-    if (this.getCapabilityValue(capability) === value) return;
-    try {
-      await this.setCapabilityValue(capability, value);
-    } catch (err) {
-      this.log(`_set(${capability}, ${value}) failed:`, err.message);
-    }
-  }
-
 }
+
+Object.assign(FusionSolarMeterDevice.prototype, capabilitySet);
 
 module.exports = FusionSolarMeterDevice;

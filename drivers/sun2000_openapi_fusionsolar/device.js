@@ -1,6 +1,7 @@
 'use strict';
 
 const { Device } = require('homey');
+const capabilitySet = require('../../lib/capability-set');
 
 const DEV_TYPE_INVERTER             = 1;
 const DEV_TYPE_RESIDENTIAL_INVERTER = 38;
@@ -229,17 +230,8 @@ class FusionSolarInverterDevice extends Device {
     }
   }
 
-  async _set(capability, value) {
-    if (value === null || value === undefined) return;
-    if (!this.hasCapability(capability)) return;
-    if (this.getCapabilityValue(capability) === value) return;
-    try {
-      await this.setCapabilityValue(capability, value);
-    } catch (err) {
-      this.log(`_set(${capability}, ${value}) failed:`, err.message);
-    }
-  }
-
 }
+
+Object.assign(FusionSolarInverterDevice.prototype, capabilitySet);
 
 module.exports = FusionSolarInverterDevice;

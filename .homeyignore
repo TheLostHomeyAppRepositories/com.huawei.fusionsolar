@@ -1,0 +1,5 @@
+# Files that must not be packed into the app archive.
+# The unit tests are run with `node --test` on a developer machine; nothing on the Homey
+# ever loads them, so shipping them only costs archive size and on-device storage
+# (test/ems.test.js alone is ~143 KB of the ~228 KB total).
+test/
