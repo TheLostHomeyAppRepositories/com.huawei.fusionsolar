@@ -23,6 +23,7 @@ const batteryMixin        = require('../../lib/ems/battery');
 const pvForecastMixin     = require('../../lib/ems/pvForecast');
 const priceForecastMixin  = require('../../lib/ems/priceForecast');
 const chargeSessionsMixin = require('../../lib/ems/chargeSessions');
+const chargerStateMixin   = require('../../lib/ems/chargerState');
 const widgetMixin         = require('../../lib/ems/widget');
 
 class EmsDevice extends Device {
@@ -119,6 +120,9 @@ class EmsDevice extends Device {
     await this._restorePriceForecast();
     // Charge session log (energy + cost per charging session, any charge mode).
     await this._restoreChargeSessions();
+    // Per-charger control state. AFTER the session log: a state blob too old to resume
+    // still has its running session booked into that array rather than dropped.
+    this._restoreChargerStates();
     // Daily energy/runtime for the ems-device widget's simple-device "today" stat.
     await this._restoreSimpleDailyStats();
 
@@ -269,8 +273,10 @@ class EmsDevice extends Device {
     this.log('[EMS] initialized');
   }
 
-  async onDeleted() { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); }
-  async onUninit()  { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); }
+  // A deploy is a clean shutdown, so this is the write that makes an app update cost the
+  // running charge session nothing at all — `true` forces it past the 5-minute cadence.
+  async onDeleted() { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); }
+  async onUninit()  { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); }
 
   async onSettings({ newSettings, changedKeys }) {
     if (changedKeys.includes('homey_api_key')) {
@@ -771,6 +777,9 @@ class EmsDevice extends Device {
     );
     // Right after the only place that mutates the maps, and a no-op when nothing moved.
     this._saveSimpleStates();
+    // Same, for the chargers: the priority loop above is what moves the target latch and
+    // the session accumulators. Writes on a decision, otherwise at most every 5 min.
+    this._saveChargerStates();
 
     // ── Export limit coordinator ──────────────────────────────────────────────
     if (this._warmupDone) {
@@ -1297,6 +1306,7 @@ Object.assign(
   pvForecastMixin,
   priceForecastMixin,
   chargeSessionsMixin,
+  chargerStateMixin,
   widgetMixin,
 );
 

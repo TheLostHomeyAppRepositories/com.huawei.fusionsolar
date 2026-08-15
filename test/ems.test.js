@@ -1508,6 +1508,70 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   assert.strictEqual(d._lastMode.mode, 'price_ev');
 });
 
+// ── chargerControl: the "car is at its target" latch across a restart ────────
+// The 2026-08-15 field case. The Audi sat at 100% on the charger; the app was updated;
+// on the next tick the EMS knew nothing about the car (a sleeping car reports no SoC
+// until charging wakes it) and had also lost the latch, so it started a full car, ramped
+// it to 16 A and stopped again two minutes later. Persisting the latch (lib/ems/chargerState.js)
+// is what closes that window — these two tests are the before and the after.
+const SLEEPING_CAR = { id: 'car1', name: 'Audi - Q4', soc: null, target: 100 };
+
+// The solar tier does not command amps in the tick that decides them — it schedules the
+// step and holds it STEP_HOLD_MS against thrash. So the tell for "the allocator wants to
+// start this charger" is pendingStepAmps, not currentAmps. (The mode is 'holding' either
+// way here and discriminates nothing.)
+test('_evaluateEvChargers — a restored target latch keeps a car the EMS cannot read from being started', async () => {
+  const charger = { ...CHARGER_1PH, carId: 'car1', powerW: 0 };
+  const d = makeChargerDevice({ _carStates: [SLEEPING_CAR] });
+  seedState(d, 'c1', { targetReachedCar: 'car1' }); // as _restoreChargerStates leaves it
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null, 'no start even scheduled');
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null);
+});
+
+test('_evaluateEvChargers — without the latch the same tick schedules a start (the bug)', async () => {
+  const charger = { ...CHARGER_1PH, carId: 'car1', powerW: 0 };
+  const d = makeChargerDevice({ _carStates: [SLEEPING_CAR] });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, 32);
+});
+
+test('_evaluateEvChargers — a latch restored for a car that turns out to be empty clears itself', async () => {
+  // The risk of restoring a decision: the car may have been swapped during the downtime.
+  // One reading below target − 2 is enough to release it, so a wrong latch costs one tick.
+  const charger = { ...CHARGER_1PH, carId: 'car1', powerW: 0 };
+  const d = makeChargerDevice({ _carStates: [{ id: 'car1', name: 'Other', soc: 20, target: 80 }] });
+  seedState(d, 'c1', { targetReachedCar: 'car1' });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  assert.strictEqual(d._getChargerState('c1').targetReachedCar, null);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, 32, 'and it is scheduled to charge');
+});
+
+test('_evaluateEvChargers — an unreadable car is reported once, not on every tick', async () => {
+  const charger = { ...CHARGER_1PH, carId: 'car1', powerW: 0 };
+  const lines = [];
+  const d = makeChargerDevice({ _carStates: [SLEEPING_CAR], log: (m) => lines.push(m) });
+  for (let i = 0; i < 3; i++) {
+    await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  }
+  const blind = lines.filter((l) => /charge target not checkable/.test(l));
+  assert.strictEqual(blind.length, 1);
+  assert.match(blind[0], /soc unknown, target 100%/);
+});
+
+test('_evaluateEvChargers — the report comes back if the car goes quiet a second time', async () => {
+  const charger = { ...CHARGER_1PH, carId: 'car1', powerW: 0 };
+  const lines = [];
+  const car = { id: 'car1', name: 'Audi - Q4', soc: null, target: 100 };
+  const d = makeChargerDevice({ _carStates: [car], log: (m) => lines.push(m) });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  car.soc = 40;  // the car wakes up and reports
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  car.soc = null; // …and drops off again
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -8000, [charger], {}, null, null);
+  assert.strictEqual(lines.filter((l) => /charge target not checkable/.test(l)).length, 2);
+});
+
 // ── chargerControl: whole-house grid-import ceiling (grid_import_limit_kw) ───
 // A hard main-fuse safety limit that
 // applies to EVERY unconditional-draw tier (Instant/Always/Off-peak here; Price/Low-
