@@ -1584,6 +1584,16 @@
       <button class="btn-secondary" style="font-size:11px;padding:4px 10px" onclick="logsClear()" data-i18n="logs.clear">Clear</button>
       <span id="logs-count" style="font-size:11px;color:#6e6e73;white-space:nowrap"></span>
     </div>
+    <!-- Legend for the colours below. Proper nouns throughout, so it needs no translation
+         and cannot drift out of step with the locale files. -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:10px;color:#6e6e73">
+      <span><span style="color:#5fd0a4">■</span> EMS</span>
+      <span><span style="color:#d9a55f">■</span> Driver</span>
+      <span><span style="color:#6fa8f5">■</span> Modbus / OCPP</span>
+      <span><span style="color:#b98ae8">■</span> App</span>
+      <span><span style="color:#6b7280">■</span> Homey</span>
+      <span><span style="color:#ff6b64">■</span> Error</span>
+    </div>
     <div id="logs-output"
          style="background:#1e1e22;color:#d6d6d9;border-radius:8px;padding:10px;height:520px;overflow-y:auto;font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all"></div>
   </div>
@@ -2066,6 +2076,40 @@
       });
     }
 
+    // ── Log colouring ─────────────────────────────────────────────────────────
+    // Only the origin markers are coloured, never the message. A log is scanned, not read
+    // top to bottom, so what helps is a fixed anchor at the head of each line telling you
+    // which part of the app is talking; a wall of coloured sentences is harder to skim than
+    // a plain one. Hues are grouped by where a line comes from, not by how loud it is —
+    // severity is already carried by the red of an error line.
+    var LOG_TS_RE = /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s/;
+    var LOG_AREAS = [
+      [/^\[EMS/,                    '#5fd0a4'],  // the energy manager's own decisions
+      [/^\[(Driver|Device):/,       '#d9a55f'],  // a specific driver or paired device
+      [/^\[(modbus|OCPP)\]$/i,      '#6fa8f5'],  // the two transports that talk to hardware
+      [/^\[FusionSolarKioskApp\]$/, '#b98ae8'],  // the app object itself
+      [/^\[Manager/,                '#6b7280'],  // Homey's own plumbing — recedes
+      [/^\[(log|err)\]$/,           '#565c68'],
+    ];
+    var LOG_TS_COLOUR = '#565c68';
+
+    function logsColourise(escaped) {
+      return escaped
+        .replace(LOG_TS_RE, '<span style="color:' + LOG_TS_COLOUR + '">$1</span> ')
+        // Runs on the ALREADY-ESCAPED string: escaping touches & < > and leaves brackets
+        // alone, so tag matching still works and nothing unescaped can be reintroduced.
+        // Brackets inside a message (e.g. "Write failed [sun2000_startup]") match no area
+        // and are returned untouched.
+        .replace(/\[[^\]]{1,60}\]/g, function(tag) {
+          for (var i = 0; i < LOG_AREAS.length; i++) {
+            if (LOG_AREAS[i][0].test(tag)) {
+              return '<span style="color:' + LOG_AREAS[i][1] + '">' + tag + '</span>';
+            }
+          }
+          return tag;
+        });
+    }
+
     function logsRender() {
       var out        = document.getElementById('logs-output');
       var filter     = (document.getElementById('logs-filter').value || '').toLowerCase();
@@ -2081,9 +2125,17 @@
         return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       };
       out.innerHTML = lines.map(function(e) {
-        return e.level === 'err'
-          ? '<span style="color:#ff6b64">' + esc(e.line) + '</span>'
-          : esc(e.line);
+        var s = esc(e.line);
+        if (e.level === 'err') {
+          // Severity outranks origin: an error stays red end to end, because the one thing
+          // you must not have to hunt for is the thing that went wrong. Only the timestamp
+          // is dimmed — it is the same 24 characters at the head of every line either way.
+          var m = LOG_TS_RE.exec(s);
+          return m
+            ? '<span style="color:#8a5250">' + m[1] + '</span> <span style="color:#ff6b64">' + s.slice(m[0].length) + '</span>'
+            : '<span style="color:#ff6b64">' + s + '</span>';
+        }
+        return logsColourise(s);
       }).join('\n');
 
       document.getElementById('logs-count').textContent =
