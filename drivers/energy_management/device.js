@@ -13,6 +13,7 @@ const {
 // Object.assign, so `this` is the device instance exactly as before — no call site
 // changes. See the Object.assign block after the class definition.
 const historyMixin        = require('../../lib/ems/history');
+const timingMixin         = require('../../lib/ems/timing');
 const priceMixin          = require('../../lib/ems/price');
 const exportLimitMixin    = require('../../lib/ems/exportLimit');
 const carsMixin           = require('../../lib/ems/cars');
@@ -514,8 +515,15 @@ class EmsDevice extends Device {
     }
     this._tickInProgress = true;
     const t0 = Date.now();
+    // Kept on the instance so a SKIPPED tick can report how long the one that is blocking
+    // it has been running. The diag figures cannot: avg and max are written in the finally
+    // below, so at the moment an overrun is announced they describe every tick EXCEPT the
+    // one causing it. That is how a five-minute tick was reported as "max 1755 ms".
+    this._tickStartedAt = t0;
+    this._tickPhase = 'start';
     try {
       await this._tickBody();
+      this._tickPhase = 'flush';
       await this._flushMode(); // apply exactly one mode decision per tick
       this._consecTickErrors = 0;
     } catch (e) {
@@ -701,14 +709,17 @@ class EmsDevice extends Device {
     if (battery.powerW !== null) await this._set('measure_battery_power', Math.round(battery.powerW));
     let houseW = null;
     if (gridW !== null) {
+      this._tickPhase = 'house';
       houseW = await this._getHouseW(cfg, gridW, pvW, battery, chargers);
       if (houseW !== null) await this._set('measure_house_power', Math.round(houseW));
     }
     // Recorded here, not next to gridW/pvW/soc above: houseW is declared further down,
     // so assigning it earlier hit the temporal dead zone and threw on every tick.
     this._diag.houseW = houseW;
+    this._tickPhase = 'battery';
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
     if (this._warmupDone) await this._checkBatteryPriceControl(cfg, battery);
+    this._tickPhase = 'scheduler';
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 
     // ── Sensor failure guard ──────────────────────────────────────────────────
@@ -754,6 +765,7 @@ class EmsDevice extends Device {
     };
     // Priority is per device, not per device class — see _runPriorityLoop in
     // chargerControl.js, which also carries the shrinking surplus budget between runs.
+    this._tickPhase = 'devices';
     effectiveGridW = await this._runPriorityLoop(
       battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval,
     );
@@ -762,6 +774,7 @@ class EmsDevice extends Device {
 
     // ── Export limit coordinator ──────────────────────────────────────────────
     if (this._warmupDone) {
+      this._tickPhase = 'exportLimit';
       await this._evaluateExportLimit(cfg, battery, gridW)
         .catch((e) => this.log(`[EMS] export limit: ${e.message}`));
     }
@@ -1274,6 +1287,7 @@ class EmsDevice extends Device {
 Object.assign(
   EmsDevice.prototype,
   historyMixin,
+  timingMixin,
   priceMixin,
   exportLimitMixin,
   carsMixin,

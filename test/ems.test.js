@@ -18,6 +18,7 @@ const exportLimitMixin = require('../lib/ems/exportLimit');
 const chargeSessionsMixin = require('../lib/ems/chargeSessions');
 const widgetMixin         = require('../lib/ems/widget');
 const historyMixin        = require('../lib/ems/history');
+const timingMixin         = require('../lib/ems/timing');
 const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
@@ -44,7 +45,14 @@ function makeChargerDevice(extra = {}) {
     _chargerStates: new Map(),
     _addHistoryEvent() {},
     _carStates: [],
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'Europe/Zurich' } },
+    // setTimeout/clearTimeout mirror the real Homey: _settleWithin puts a time budget on
+    // every flow trigger the loop fires, and it schedules that budget through the runtime.
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) },
+      clock: { getTimezone: () => 'Europe/Zurich' },
+      setTimeout: (fn, ms) => setTimeout(fn, ms),
+      clearTimeout: (t) => clearTimeout(t),
+    },
     // _evaluateEvChargers reads capabilities like 'charge_now' / 'offpeak_enabled' — stub
     // as "unset" (falsy) unless a test overrides it via extra.getCapabilityValue.
     getCapabilityValue() { return undefined; },
@@ -58,7 +66,7 @@ function makeChargerDevice(extra = {}) {
   // batteryMixin (_batteryZones), carsMixin (_carForCharger), priceMixin (_offpeakWindow),
   // pvForecastMixin + priceForecastMixin (_priceShouldChargeNow) — all things _evaluateEvChargers
   // calls via `this` for the P1/P3/P3b tiers.
-  Object.assign(dev, batteryMixin, carsMixin, priceMixin, pvForecastMixin, priceForecastMixin, chargerMixin, chargeSessionsMixin, extra);
+  Object.assign(dev, batteryMixin, carsMixin, priceMixin, pvForecastMixin, priceForecastMixin, chargerMixin, chargeSessionsMixin, timingMixin, extra);
   return dev;
 }
 
@@ -1484,7 +1492,7 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
   const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
   const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' }, setTimeout: (f, m) => setTimeout(f, m), clearTimeout: (t) => clearTimeout(t) },
     _pvForecast: null,
     _priceForecast: slots,
     _priceForecastUpdatedAt: now,
@@ -1556,7 +1564,7 @@ test('_evaluateEvChargers — Price-optimised charging (P3b) skips grid-charging
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
   const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
   const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' }, setTimeout: (f, m) => setTimeout(f, m), clearTimeout: (t) => clearTimeout(t) },
     _pvForecast: null,
     _priceForecast: slots,
     _priceForecastUpdatedAt: now,
@@ -1717,7 +1725,7 @@ test('_evaluateEvChargers — solar_price charger charges in the cheap slot, set
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
   const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
   const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' }, setTimeout: (f, m) => setTimeout(f, m), clearTimeout: (t) => clearTimeout(t) },
     _pvForecast: null,
     _priceForecast: slots,
     _priceForecastUpdatedAt: now,
@@ -1737,7 +1745,7 @@ test('_evaluateEvChargers — solar_price charger waits when solar is claiming t
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, chargeMode: 'solar_price', carId: 'car1', powerW: 0 };
   const car = { id: 'car1', name: 'EV', soc: 40, target: 80, capacityKwh: 20, readyBy: '21:00' };
   const d = makeChargerDevice({
-    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' } },
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) }, clock: { getTimezone: () => 'UTC' }, setTimeout: (f, m) => setTimeout(f, m), clearTimeout: (t) => clearTimeout(t) },
     _warmupDone: false, // avoid the solar-allocation loop actually issuing amp commands past P3b
     _pvForecast: null,
     _priceForecast: slots,
@@ -2707,4 +2715,85 @@ test('_stepCharger — after an app restart a running session is picked up at it
   assert.strictEqual(d._getChargerState('c1').currentAmps, 7, 'adopted at the amps it is actually drawing');
   assert.strictEqual(d.stops.length, 0, 'a session with budget must not be killed by the restart');
   assert.strictEqual(r.allocatedW, 7 * 3 * 230, 'and its power is counted against the budget again');
+});
+
+// ── _settleWithin: the loop must not block on a user's flows ─────────────────
+// Field evidence 2026-08-15: one tick ran 300 s against a 238 ms average and skipped 15
+// intervals. For those five minutes the EMS controlled nothing — it neither turned the
+// car down nor stopped it. Every other await in a tick is bounded (the local-API client
+// aborts at 8 s); a flow trigger is not, because what runs behind it is the user's flows.
+function timingDevice() {
+  const d = { logs: [], log: (m) => d.logs.push(m) };
+  d.homey = { setTimeout: (f, ms) => setTimeout(f, ms), clearTimeout: (t) => clearTimeout(t) };
+  Object.assign(d, timingMixin);
+  return d;
+}
+
+test('_settleWithin — a prompt promise is awaited normally and its value passed through', async () => {
+  const d = timingDevice();
+  const r = await d._settleWithin(Promise.resolve('done'), 1000, 'x');
+  assert.strictEqual(r, 'done');
+  assert.deepStrictEqual(d.logs, [], 'nothing to report when it answers in time');
+});
+
+test('_settleWithin — a promise that never settles gives up after the budget', async () => {
+  const d = timingDevice();
+  const t0 = Date.now();
+  await d._settleWithin(new Promise(() => {}), 60, 'charger c1 stop');
+  const waited = Date.now() - t0;
+  assert.ok(waited < 1000, `must not block: waited ${waited} ms`);
+  assert.match(d.logs.join('\n'), /charger c1 stop: no answer within 60 ms/);
+});
+
+test('_settleWithin — a rejection still propagates, it is not swallowed by the race', async () => {
+  const d = timingDevice();
+  await assert.rejects(() => d._settleWithin(Promise.reject(new Error('flow blew up')), 1000, 'x'),
+    /flow blew up/);
+});
+
+test('_settleWithin — the timer is cleared when the promise wins, leaving nothing pending', async () => {
+  const d = timingDevice();
+  const cleared = [];
+  d.homey.clearTimeout = (t) => { cleared.push(t); clearTimeout(t); };
+  await d._settleWithin(Promise.resolve(1), 5000, 'x');
+  assert.strictEqual(cleared.length, 1, 'a 5 s timer left armed would keep the process awake');
+});
+
+test('_chargerStop — a flow that never answers costs the budget, not the tick', async () => {
+  // The whole point: _chargerStop awaits the trigger. Before the budget, a flow stuck on a
+  // queued Modbus write held the control loop for as long as it took.
+  const { TRIGGER_BUDGET_MS } = require('../lib/ems/constants');
+  const d = makeChargerDevice({
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => new Promise(() => {}) }) },  // never settles
+      clock: { getTimezone: () => 'UTC' },
+      setTimeout: (f, ms) => setTimeout(f, Math.min(ms, 50)),   // compress the budget for the test
+      clearTimeout: (t) => clearTimeout(t),
+    },
+  });
+  const t0 = Date.now();
+  await d._chargerStop('c1');
+  const waited = Date.now() - t0;
+  assert.ok(waited < 1000, `the loop must come back: waited ${waited} ms`);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null, 'and the state is still updated');
+  assert.ok(TRIGGER_BUDGET_MS > 0 && TRIGGER_BUDGET_MS <= 10000, 'budget is a sane fraction of a tick');
+});
+
+// ── the overrun message must describe the tick that is overrunning ───────────
+test('_noteTickSkip — reports the running tick, not the statistics of finished ones', async () => {
+  const d = {
+    logs: [], log: (m) => d.logs.push(m),
+    _diag: { tickSkipped: 0, avgTickMs: 238, maxTickMs: 1755 },
+    _tickStartedAt: Date.now() - 300_000,     // the five-minute tick, still running
+    _tickPhase: 'devices',
+    getSetting: () => false,
+  };
+  Object.assign(d, historyMixin);
+  d._noteTickSkip(20000);
+  d._noteTickSkip(20000);                     // the warning fires on the second
+  const line = d.logs.find((l) => l.includes('tick overrun'));
+  assert.ok(line, d.logs.join(' | '));
+  assert.match(line, /running 300s/, 'the guilty tick must name its own elapsed time');
+  assert.match(line, /phase "devices"/, 'and where it is stuck');
+  assert.doesNotMatch(line, /max 1755/, 'max describes finished ticks and misled us for hours');
 });
