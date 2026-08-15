@@ -216,3 +216,62 @@ test('the run listener is registered in exactly one place', () => {
   assert.strictEqual(inApp, 1, 'app.js must register it once');
   assert.strictEqual(inDev, 0, 'the EMS device must not register it again');
 });
+
+// ── log timestamps ───────────────────────────────────────────────────────────
+// Homey stamps its own lines in UTC with milliseconds. Neither serves the person reading
+// their own log, so every buffered line is restamped in the Homey's own zone, to the
+// second. Done at capture rather than at render so the Copy button hands over exactly
+// what was on screen.
+function logApp(timezone = 'Europe/Zurich') {
+  const app = Object.create(App.prototype);
+  app._appLogBuffer = [];
+  app.homey = { clock: { getTimezone: () => timezone } };
+  return app;
+}
+
+test('_pushAppLog — replaces Homey\'s UTC stamp with local time, no milliseconds', () => {
+  const app = logApp();
+  app._pushAppLog('2026-08-15T08:06:34.144Z [modbus] batch 32064/11 failed', 'log');
+  const line = app._appLogBuffer[0].line;
+  // 08:06 UTC is 10:06 in Zurich in August (CEST, UTC+2).
+  assert.match(line, /^2026-08-15 10:06:34 \[modbus\] batch 32064\/11 failed$/, line);
+  assert.ok(!line.includes('.144'), 'milliseconds must be gone');
+  assert.ok(!line.includes('Z'), 'the UTC marker must be gone');
+});
+
+test('_pushAppLog — a line Homey did not stamp gets one too', () => {
+  const app = logApp();
+  app._pushAppLog('[modbus] read plan from 30000', 'log');
+  assert.match(app._appLogBuffer[0].line, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[modbus\] read plan from 30000$/);
+});
+
+test('_pushAppLog — the stamp follows the Homey\'s configured zone', () => {
+  const utc = logApp('UTC');
+  utc._pushAppLog('2026-08-15T08:06:34.144Z x', 'log');
+  assert.match(utc._appLogBuffer[0].line, /^2026-08-15 08:06:34 x$/);
+
+  const tokyo = logApp('Asia/Tokyo');
+  tokyo._pushAppLog('2026-08-15T08:06:34.144Z x', 'log');
+  assert.match(tokyo._appLogBuffer[0].line, /^2026-08-15 17:06:34 x$/);
+});
+
+test('_pushAppLog — never throws, whatever the clock does', () => {
+  // Logging must not be able to crash the app: a line can arrive before the clock is up,
+  // or with a zone Intl does not know.
+  for (const clock of [undefined, { getTimezone: () => 'Not/AZone' }, { getTimezone() { throw new Error('nope'); } }]) {
+    const app = Object.create(App.prototype);
+    app._appLogBuffer = [];
+    app.homey = clock ? { clock } : {};
+    assert.doesNotThrow(() => app._pushAppLog('2026-08-15T08:06:34.144Z x', 'log'));
+    const line = app._appLogBuffer[0].line;
+    assert.match(line, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} x$/, 'still stamped, still no ms: ' + line);
+  }
+});
+
+test('_pushAppLog — a message that merely contains an ISO date is not mangled', () => {
+  const app = logApp('UTC');
+  app._pushAppLog('2026-08-15T08:06:34.144Z [EMS] forecast slot 2026-08-16T04:00:00.000Z is next', 'log');
+  assert.match(app._appLogBuffer[0].line,
+    /^2026-08-15 08:06:34 \[EMS\] forecast slot 2026-08-16T04:00:00\.000Z is next$/,
+    'only the LEADING stamp may be replaced');
+});

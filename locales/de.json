@@ -366,6 +366,7 @@
         "chargerStarted": "Lader gestartet",
         "chargerAdjusted": "Lader angepasst",
         "chargerStopped": "Lader gestoppt",
+        "stopIneffective": "⚠ Stopp wirkungslos — Lader lädt weiter",
         "targetReached": "Ladeziel erreicht"
       }
     },

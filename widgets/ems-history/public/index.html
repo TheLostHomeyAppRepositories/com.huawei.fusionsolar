@@ -292,7 +292,7 @@ var DICTS = (function () {
     appUpdated: 'App aktualisiert', appStarted: 'App gestartet',
     emsStarted: 'EMS gestartet', emsStopped: 'EMS gestoppt',
     batFull: 'Batterie voll', batLow: 'Batterie tief', batCharge: 'Zwangsladung', batDischarge: 'Zwangsentladung', batHold: 'Hält', batNormal: 'Normalbetrieb',
-    started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt',
+    started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt', stopIneffective: '⚠ Stopp wirkungslos',
     modes: {
       solar_ev: 'Solar-EV-Laden', solar_hp: 'Solar-Wärmepumpe', solar_boiler: 'Solar-Boiler', solar_pool: 'Solar-Poolpumpe',
       solar_dehumidifier: 'Solar-Entfeuchter', solar_aircon: 'Solar-Klimaanlage', solar_multi: 'Solar (mehrere Geräte)',
@@ -309,7 +309,7 @@ var DICTS = (function () {
     appUpdated: 'App bijgewerkt', appStarted: 'App gestart',
     emsStarted: 'EMS gestart', emsStopped: 'EMS gestopt',
     batFull: 'Accu vol', batLow: 'Accu laag', batCharge: 'Geforceerd laden', batDischarge: 'Geforceerd ontladen', batHold: 'Houdt vast', batNormal: 'Normale modus',
-    started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt',
+    started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt', stopIneffective: '⚠ Stop had no effect',
     modes: {
       solar_ev: 'Zon EV-laden', solar_hp: 'Zon warmtepomp', solar_boiler: 'Zon boiler', solar_pool: 'Zon zwembadpomp',
       solar_dehumidifier: 'Zon ontvochtiger', solar_aircon: 'Zonne-airco', solar_multi: 'Zon (meerdere apparaten)',
@@ -326,7 +326,7 @@ var DICTS = (function () {
     appUpdated: 'App updated', appStarted: 'App started',
     emsStarted: 'EMS started', emsStopped: 'EMS stopped',
     batFull: 'Battery full', batLow: 'Battery low', batCharge: 'Forced charge', batDischarge: 'Forced discharge', batHold: 'Holding', batNormal: 'Normal mode',
-    started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped',
+    started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped', stopIneffective: '⚠ Stop had geen effect',
     modes: {
       solar_ev: 'Solar EV charging', solar_hp: 'Solar heat pump', solar_boiler: 'Solar boiler', solar_pool: 'Solar pool pump',
       solar_dehumidifier: 'Solar dehumidifier', solar_aircon: 'Solar air conditioning', solar_multi: 'Solar (multiple devices)',
@@ -462,6 +462,7 @@ function eventInfo(ev) {
     if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || T.started, detail: T.chargerStarted  };
     if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,       detail: T.chargerAdjusted };
     if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: T.chargerStopped,      detail: ''                };
+    if (ev.event === 'stop_ineffective') return { cls:'', dot: 'dot-charger-stop', label: T.stopIneffective, detail: ev.label || '' };
   }
   return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
 }

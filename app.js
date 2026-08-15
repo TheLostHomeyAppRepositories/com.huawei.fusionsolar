@@ -248,6 +248,10 @@ class FusionSolarKioskApp extends App {
 
   static get APP_LOG_MAX() { return 1500; }
 
+  // Homey's own leading stamp, e.g. "2026-08-15T08:06:34.144Z ". Stripped so it can be
+  // replaced by a local one.
+  static get LEADING_ISO() { return /^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s*/; }
+
   _wrapLogger() {
     const origStdout = process.stdout.write.bind(process.stdout);
     const origStderr = process.stderr.write.bind(process.stderr);
@@ -260,11 +264,46 @@ class FusionSolarKioskApp extends App {
     process.stderr.write = (chunk, ...args) => { capture(chunk, 'err'); return origStderr(chunk, ...args); };
   }
 
+  /**
+   * Timestamp for a buffered log line: local date and time, whole seconds.
+   *
+   * Homey stamps its own lines in UTC with milliseconds, and neither helps the person
+   * reading their own log — they think in the time on their kitchen clock, and a Modbus
+   * poll is not a millisecond-scale event. The `sv-SE` locale is used only because it
+   * formats as "2026-08-15 08:06:34"; dropping the T and the Z is also the signal that
+   * this is no longer UTC.
+   *
+   * Formatter cached because this runs on every single line written by the app.
+   */
+  _logStamp(now = new Date()) {
+    try {
+      if (!this._logStampFmt) {
+        this._logStampFmt = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: this.homey.clock.getTimezone(),
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+        });
+      }
+      return this._logStampFmt.format(now);
+    } catch (e) {
+      // No clock yet, or an unknown zone: UTC is still better than no timestamp, and the
+      // milliseconds go either way.
+      return now.toISOString().slice(0, 19).replace('T', ' ');
+    }
+  }
+
   _pushAppLog(msg, level) {
-    // Homey's logger already stamps lines with an ISO date — only add our own
-    // timestamp when missing (avoids a doubled prefix).
-    const hasStamp = /^\d{4}-\d{2}-\d{2}T\d{2}:/.test(msg);
-    const line = hasStamp ? msg : `${new Date().toISOString()} ${msg}`;
+    // Rewritten rather than only added when missing: Homey's own stamp is UTC and carries
+    // milliseconds, so leaving it in place would mean half the log reads in one time and
+    // half in another. Done here rather than in the settings page so the Copy button stays
+    // honest — what you read and what you paste are the same string.
+    const m = FusionSolarKioskApp.LEADING_ISO.exec(msg);
+    // When Homey stamped the line, that stamp is when the line happened — reformat that
+    // instant rather than substituting the moment we happened to capture it. One write can
+    // carry several lines, and using "now" for all of them would collapse them onto a
+    // single time.
+    const at = m ? new Date(m[0].trim()) : new Date();
+    const line = `${this._logStamp(Number.isNaN(at.getTime()) ? new Date() : at)} ${m ? msg.slice(m[0].length) : msg}`;
     this._appLogBuffer.push({ line, level });
     if (this._appLogBuffer.length > FusionSolarKioskApp.APP_LOG_MAX) this._appLogBuffer.shift();
   }

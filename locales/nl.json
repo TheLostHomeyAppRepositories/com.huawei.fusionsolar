@@ -366,6 +366,7 @@
         "chargerStarted": "Lader gestart",
         "chargerAdjusted": "Lader aangepast",
         "chargerStopped": "Lader gestopt",
+        "stopIneffective": "⚠ Stop had geen effect — lader laadt door",
         "targetReached": "Laaddoel bereikt"
       }
     },

@@ -2082,7 +2082,9 @@
     // which part of the app is talking; a wall of coloured sentences is harder to skim than
     // a plain one. Hues are grouped by where a line comes from, not by how loud it is —
     // severity is already carried by the red of an error line.
-    var LOG_TS_RE = /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\s/;
+    // Matches both shapes: the local "2026-08-15 08:06:34" the app writes now, and the
+    // UTC "2026-08-15T08:06:34.144Z" that older buffered lines still carry.
+    var LOG_TS_RE = /^(\d{4}-\d{2}-\d{2}[T ][\d:.]+Z?)\s/;
     var LOG_AREAS = [
       [/^\[EMS/,                    '#5fd0a4'],  // the energy manager's own decisions
       [/^\[(Driver|Device):/,       '#d9a55f'],  // a specific driver or paired device
@@ -7939,6 +7941,7 @@
           if (ev.event === 'start')          { dot = '#007aff'; label = ev.label || _H.__('settings.history.chargerEvent.started');    detail = _H.__('settings.history.chargerEvent.chargerStarted');  }
           if (ev.event === 'set_amps')       { dot = '#5ac8fa'; label = '→ ' + (ev.label || '');  detail = _H.__('settings.history.chargerEvent.chargerAdjusted'); }
           if (ev.event === 'stop')           { dot = '#c7c7cc'; label = _H.__('settings.history.chargerEvent.chargerStopped');        detail = ''; }
+          if (ev.event === 'stop_ineffective') { dot = '#ff3b30'; label = _H.__('settings.history.chargerEvent.stopIneffective'); detail = ev.label || ''; }
           if (ev.event === 'target_reached') { dot = '#34c759'; label = ev.label || '';           detail = _H.__('settings.history.chargerEvent.targetReached'); }
         }
 
@@ -8265,6 +8268,7 @@
         if (ev.event === 'start')               { label = ev.label || _H.__('settings.history.chargerEvent.started');    detail = _H.__('settings.history.chargerEvent.chargerStarted'); }
         else if (ev.event === 'set_amps')       { label = '→ ' + (ev.label || '');  detail = _H.__('settings.history.chargerEvent.chargerAdjusted'); }
         else if (ev.event === 'stop')           { label = _H.__('settings.history.chargerEvent.chargerStopped');        detail = ''; }
+        else if (ev.event === 'stop_ineffective') { label = _H.__('settings.history.chargerEvent.stopIneffective'); detail = ev.label || ''; }
         else if (ev.event === 'target_reached') { label = ev.label || '';           detail = _H.__('settings.history.chargerEvent.targetReached'); }
       }
       var line = _emsHistFmt(ev.ts) + '  ' + label;

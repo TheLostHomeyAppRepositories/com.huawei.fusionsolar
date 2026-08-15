@@ -366,6 +366,7 @@
         "chargerStarted": "Charger started",
         "chargerAdjusted": "Charger adjusted",
         "chargerStopped": "Charger stopped",
+        "stopIneffective": "⚠ Stop had no effect — charger still drawing",
         "targetReached": "Charge target reached"
       }
     },

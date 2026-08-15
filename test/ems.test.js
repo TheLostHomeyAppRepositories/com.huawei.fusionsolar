@@ -2590,3 +2590,121 @@ test('_trackSimpleDeviceDaily — a measured gap books exactly that gap', () => 
   assert.strictEqual(rec.runtimeMs, 30_000);
   assert.strictEqual(rec.kwh, 0.02);   // 2000 W x 30 s = 16.67 Wh, gerundet auf 2 Stellen
 });
+
+// ── _stepCharger: steer by the meter, not by our own memory ──────────────────
+// st.currentAmps records what the EMS last COMMANDED, and _chargerStop clears it the
+// moment the command is sent — not when it lands. Two field failures came from trusting
+// it: a session started outside the EMS was never regulated or stopped, and a stop the
+// charger ignored looked stopped forever, because the stop path is guarded by `cur > 0`.
+// Reported 2026-08-15: history said "Lader gestoppt" at 19:43, the house battery was
+// still giving up 3002 W a minute later, and no further stop was ever attempted.
+
+// A charger the EMS believes is idle, but which is drawing 3 kW.
+const DRAWING_1PH = { ...CHARGER_1PH, powerW: 3000 };
+
+function stepDevice(extra = {}) {
+  const d = makeChargerDevice(extra);
+  d.stops = [];
+  d._chargerStop = async (id) => {
+    d.stops.push(id);
+    const st = d._getChargerState(id);
+    st.currentAmps = null; st.currentPhases = null;   // as the real one does
+  };
+  d.sets = [];
+  d._chargerSetAmps = async (id, amps, phases) => {
+    d.sets.push({ id, amps, phases });
+    const st = d._getChargerState(id);
+    st.currentAmps = amps; st.currentPhases = phases;
+  };
+  return d;
+}
+
+test('_stepCharger — a charger drawing without an EMS command is stopped, not ignored', async () => {
+  const d = stepDevice();
+  // No state at all: the EMS never started this session.
+  const r = await d._stepCharger(DRAWING_1PH, 0, 1, Date.now(), 0, false);
+  assert.deepStrictEqual(d.stops, ['c1'], 'a stop must be issued for power we did not ask for');
+  assert.strictEqual(r.allocatedW, 0);
+});
+
+test('_stepCharger — a stop that did not take is retried on the next tick', async () => {
+  const d = stepDevice();
+  const now = Date.now();
+  // Tick 1: adopt and stop. The real _chargerStop clears currentAmps, so before the fix
+  // `cur` was 0 from here on and no further stop was ever sent.
+  await d._stepCharger(DRAWING_1PH, 0, 1, now, 0, false);
+  // Tick 2 and 3: the car is still drawing, so the command plainly did not land.
+  await d._stepCharger(DRAWING_1PH, 0, 1, now + 20000, 0, false);
+  await d._stepCharger(DRAWING_1PH, 0, 1, now + 40000, 0, false);
+  assert.strictEqual(d.stops.length, 3, 'the stop must be repeated while the draw continues');
+});
+
+test('_stepCharger — repeated failed stops are reported once, not on every tick', async () => {
+  const { CHARGER_STOP_WARN_TICKS } = require('../lib/ems/constants');
+  const events = [];
+  const d = stepDevice({ _addHistoryEvent: (type, event, label, id) => events.push({ event, label, id }) });
+  const now = Date.now();
+  for (let i = 0; i < CHARGER_STOP_WARN_TICKS + 4; i++) {
+    await d._stepCharger(DRAWING_1PH, 0, 1, now + i * 20000, 0, false);
+  }
+  const warned = events.filter((e) => e.event === 'stop_ineffective');
+  assert.strictEqual(warned.length, 1, 'exactly one "not reaching it" entry, however long it lasts');
+  assert.strictEqual(warned[0].id, 'c1');
+  assert.match(warned[0].label, /^3000W$/);
+});
+
+test('_stepCharger — an adopted session is regulated down when there IS budget', async () => {
+  // Adoption is not only about stopping: with surplus available the session should be
+  // steered like any other, rather than left to run at whatever it chose.
+  const d = stepDevice();
+  const now = Date.now();
+  // 3000 W drawn ≈ 13 A on one phase; a budget of 1400 W only affords 6 A.
+  await d._stepCharger(DRAWING_1PH, 1400, 1, now, 0, false);
+  assert.strictEqual(d.stops.length, 0, 'must not stop while a rung still fits');
+  assert.deepStrictEqual(d.sets.map((s) => s.amps), [6], 'stepped down to the affordable rung');
+});
+
+test('_stepCharger — a charger that is genuinely idle stays untouched', async () => {
+  const d = stepDevice();
+  const idle = { ...CHARGER_1PH, powerW: 120 };   // powered on, not charging
+  const r = await d._stepCharger(idle, 0, 1, Date.now(), 0, false);
+  assert.deepStrictEqual(d.stops, [], 'no command for a charger that is not drawing');
+  assert.deepStrictEqual(d.sets, []);
+  assert.strictEqual(r.allocatedW, 0);
+});
+
+test('_stepCharger — the uncommanded counter resets once the draw actually stops', async () => {
+  const { CHARGER_STOP_WARN_TICKS } = require('../lib/ems/constants');
+  const events = [];
+  const d = stepDevice({ _addHistoryEvent: (type, event, label, id) => events.push({ event }) });
+  const now = Date.now();
+  for (let i = 0; i < CHARGER_STOP_WARN_TICKS; i++) {
+    await d._stepCharger(DRAWING_1PH, 0, 1, now + i * 20000, 0, false);
+  }
+  assert.strictEqual(events.filter((e) => e.event === 'stop_ineffective').length, 1);
+  // It finally stops. A later, separate episode must be able to warn again.
+  await d._stepCharger({ ...CHARGER_1PH, powerW: 0 }, 0, 1, now + 200000, 0, false);
+  for (let i = 0; i < CHARGER_STOP_WARN_TICKS; i++) {
+    await d._stepCharger(DRAWING_1PH, 0, 1, now + 300000 + i * 20000, 0, false);
+  }
+  assert.strictEqual(events.filter((e) => e.event === 'stop_ineffective').length, 2,
+    'a second outage is a second story');
+});
+
+test('_stepCharger — after an app restart a running session is picked up at its real amps', async () => {
+  // The reported case, 2026-08-15: the charger was started at 09:52 with 7A/3ph, the app
+  // was restarted (four deploys that morning), and _chargerStates — which lives only in
+  // memory — came back empty. The session kept running, invisible to the EMS, and the
+  // house battery covered it. Re-deriving the rung from measured power is what makes a
+  // restart survivable without persisting anything.
+  const d = stepDevice();
+  const charger3ph = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 3, phaseSwitch: false,
+    powerW: 7 * 3 * 230 };                                  // 4830 W — exactly 7A on three phases
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null, 'fresh state, as after a restart');
+
+  // Plenty of surplus: it should be recognised and left running, not stopped.
+  const r = await d._stepCharger(charger3ph, 6000, 3, Date.now(), -3000, false);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 7, 'adopted at the amps it is actually drawing');
+  assert.strictEqual(d.stops.length, 0, 'a session with budget must not be killed by the restart');
+  assert.strictEqual(r.allocatedW, 7 * 3 * 230, 'and its power is counted against the budget again');
+});

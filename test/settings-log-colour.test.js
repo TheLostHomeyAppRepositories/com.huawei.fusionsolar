@@ -101,3 +101,14 @@ test('the legend lists every colour the renderer can produce', () => {
   }
   assert.ok(legend.includes('#ff6b64'), 'the error colour belongs in the legend too');
 });
+
+test('the local timestamp the app now writes is dimmed like the old UTC one', () => {
+  // Buffered lines carry "2026-08-15 10:06:34" since 1.2.167; anything still in memory
+  // from before an update carries the old UTC form, so both have to match.
+  for (const stamp of ['2026-08-15 10:06:34', '2026-08-15T08:06:34.144Z']) {
+    const out = colourise(esc(`${stamp} [modbus] read plan from 30000`));
+    assert.ok(out.startsWith('<span style="color:#565c68">' + stamp + '</span> '),
+      `timestamp not dimmed for ${stamp}: ${out}`);
+    assert.strictEqual(count(out, TRANSPORT), 1, 'and the tag after it is still coloured');
+  }
+});
