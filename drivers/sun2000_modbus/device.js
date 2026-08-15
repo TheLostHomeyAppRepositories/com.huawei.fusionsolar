@@ -735,19 +735,30 @@ class SUN2000ModbusDevice extends Device {
 
       // Sync feed-in power settings if they differ
       const settingUpdates = {};
+      // The min/max mirror app.json; SETTING_RANGES_MATCH_MANIFEST in test/ems.test.js
+      // fails if the two ever drift apart.
       const numericSync = [
-        ['activePowerMaxFeedIn',          'max_feed_in_power',     1  ],
-        ['activePowerMaxFeedInPct',       'max_feed_in_power_pct', 0.5],
-        ['activePowerFixedValueDerating', 'output_limit_w',        1  ],
-        ['activePowerPercentageDerating', 'output_limit_pct',      0.5],
-        ['mpptScanInterval',              'mppt_scan_interval',    0.5],
+        ['activePowerMaxFeedIn',          'max_feed_in_power',     1,   0, 100000],
+        ['activePowerMaxFeedInPct',       'max_feed_in_power_pct', 0.5, 0, 100   ],
+        ['activePowerFixedValueDerating', 'output_limit_w',        1,   0, 100000],
+        ['activePowerPercentageDerating', 'output_limit_pct',      0.5, 0, 100   ],
+        ['mpptScanInterval',              'mppt_scan_interval',    0.5, 1, 60    ],
       ];
-      for (const [key, settingId, tolerance] of numericSync) {
+      for (const [key, settingId, tolerance, min, max] of numericSync) {
         const v = ctrl[key];
-        if (v !== null && v !== undefined) {
-          const current = parseFloat(this.getSetting(settingId));
-          if (!Number.isFinite(current) || Math.abs(v - current) > tolerance) settingUpdates[settingId] = v;
+        if (v === null || v === undefined) continue;
+        // A value the setting cannot even hold did not come from the inverter's mind — it
+        // came from a reply that belonged to a different request. Field log 2026-08-14
+        // 00:29: a read plan desynced, and max_feed_in_power arrived outside 0..100000;
+        // Homey's own range check refused it, which is the only reason it was noticed.
+        // A wrong value INSIDE the range would have been stored silently, so implausible
+        // ones are dropped here rather than offered to setSettings.
+        if (v < min || v > max) {
+          this.log(`ignoring out-of-range ${settingId}=${v} (expected ${min}..${max}) — bad read`);
+          continue;
         }
+        const current = parseFloat(this.getSetting(settingId));
+        if (!Number.isFinite(current) || Math.abs(v - current) > tolerance) settingUpdates[settingId] = v;
       }
 
       // MPPT multimodal: raw 0 → false (disabled), raw 1 → true (enabled) — checkbox setting

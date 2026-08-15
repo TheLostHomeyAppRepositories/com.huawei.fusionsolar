@@ -498,7 +498,13 @@ class FusionSolarKioskApp extends App {
         const compact = points.map((p) => [p.t, Math.round(p.v * 100) / 100]);
         this.homey.settings.set(`sch_hist_${logId}`, compact);
       }
-      this.log(`sensor-chart: saved ${this._capHistory.size} series to settings`);
+      // Every five minutes, forever, this said the same thing — ~290 lines a day confirming
+      // that a periodic save ran, in a log that holds 1500. What is worth knowing is when
+      // the set of series changes, which happens when the user adds or removes one.
+      if (this._capHistory.size !== this._capHistorySizeLogged) {
+        this._capHistorySizeLogged = this._capHistory.size;
+        this.log(`sensor-chart: saving ${this._capHistory.size} series to settings`);
+      }
     } catch (e) {
       this.error('sensor-chart: _saveCapHistory error:', e.message);
     }

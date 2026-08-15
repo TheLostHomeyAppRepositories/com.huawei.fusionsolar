@@ -625,3 +625,116 @@ test('unavailableMessage — an unknown host still yields a sentence, not "undef
   const msg = unavailableMessage(homeyStub, new Error('connect EHOSTUNREACH 10.0.0.5:502'), null);
   assert.strictEqual(msg, 'No route to ? — powered on?');
 });
+
+// ── desync: what happens on a socket whose pairing can no longer be trusted ───
+// A timeout leaves a request the device may still answer; a function-code mismatch is
+// that late answer being paired with whatever was asked next. Every read here is FC03, so
+// the code cannot tell two reads apart, and a stale reply becomes registers from the wrong
+// address. Splitting re-asks on that same socket — the only path by which such a value can
+// reach a capability or a setting.
+
+// Client that fails one span with a given message and serves everything else normally.
+function desyncClient(failStart, message, record = []) {
+  return {
+    calls: record,
+    async readHoldingRegisters(start, count) {
+      record.push({ start, count });
+      if (start === failStart) throw new Error(message);
+      const buf = Buffer.alloc(count * 2);
+      for (let i = 0; i < count; i++) buf.writeUInt16BE((start + i) & 0xFFFF, i * 2);
+      return { response: { body: { valuesAsBuffer: buf } } };
+    },
+  };
+}
+
+for (const [label, message] of [
+  ['a timeout',              'Req timed out'],
+  ['a function-code mismatch', 'request fc and response fc does not match.'],
+]) {
+  test(`readRegisters — ${label} writes the batch off instead of re-asking on the same socket`, async () => {
+    // A healthy batch goes first on purpose: the opening request of a connection gets one
+    // free repeat (Huawei discards it whatever it is), which would otherwise be counted as
+    // if it were bisection.
+    const regs = { warm: [100, 1, 'UINT16', '', 0] };
+    for (let i = 0; i < 8; i++) regs['r' + i] = [41190 + i, 1, 'UINT16', '', 0];
+    const record = [];
+    const res = await readRegisters(regs, desyncClient(41190, message, record));
+
+    // Exactly one request for the failing batch and no sub-requests: bisecting it would
+    // have produced several more, each of which the field logs show failing anyway.
+    assert.deepStrictEqual(record.filter((c) => c.start >= 41190), [{ start: 41190, count: 8 }]);
+    assert.strictEqual(res.warm, 100, 'the healthy batch is unaffected');
+    for (const name of Object.keys(regs).filter((n) => n !== 'warm')) {
+      assert.strictEqual(res[name], null, `${name} must be null, never a value from elsewhere`);
+    }
+  });
+}
+
+test('readRegisters — a refused address still splits, so its neighbours survive', async () => {
+  // The contrast case: "illegal data address" is the device answering a specific question
+  // with "no". The socket is fine, so bisection is still how the other 19 registers get read.
+  const regs = {};
+  for (let i = 0; i < 20; i++) regs['r' + i] = [41190 + i, 1, 'UINT16', '', 0];
+  const res = await readRegisters(regs, fakeClient({ deadAddresses: [41200] }));
+  assert.strictEqual(res.r10, null);            // 41200
+  assert.strictEqual(res.r0, 41190);            // neighbours still resolve
+  assert.strictEqual(res.r19, 41209);
+});
+
+test('readRegisters — a desynced batch does not cost the batches after it', async () => {
+  // Huawei devices discard the first request of every connection whatever it is, so a
+  // timeout on the opening batch is routine. Giving up on the rest would empty the block
+  // one register per poll — the regression 1.2.53 caused.
+  const regs = {
+    a0: [100, 1, 'UINT16', '', 0], a1: [101, 1, 'UINT16', '', 0],
+    b0: [900, 1, 'UINT16', '', 0], b1: [901, 1, 'UINT16', '', 0],
+  };
+  const res = await readRegisters(regs, desyncClient(100, 'Req timed out'));
+  assert.strictEqual(res.a0, null);
+  assert.strictEqual(res.a1, null);
+  assert.strictEqual(res.b0, 900, 'the later batch must still be read');
+  assert.strictEqual(res.b1, 901);
+});
+
+test('readRegisters — a desynced batch says so in the log, and does not claim to split', async () => {
+  const lines = [];
+  const real = console.log;
+  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+  const regs = {};
+  for (let i = 0; i < 6; i++) regs['r' + i] = [45000 + i, 1, 'UINT16', '', 0];
+  await readRegisters(regs, desyncClient(45000, 'Req timed out'));
+  console.log = real;
+  const line = lines.find((l) => l.includes('batch 45000/6'));
+  assert.ok(line, lines.join(' | '));
+  assert.match(line, /pairing unreliable, batch skipped/);
+  assert.doesNotMatch(line, /splitting/);
+});
+
+// ── the sun2000 setting-sync guard ───────────────────────────────────────────
+test('sun2000 numericSync ranges match the ranges app.json declares', () => {
+  // The driver refuses to store a Modbus value that falls outside the setting's own range,
+  // because a value the setting cannot hold came from a desynced read rather than from the
+  // inverter (field log 2026-08-14 00:29). That guard is only as good as the numbers it
+  // compares against, and they are written down twice — here is the check that they agree.
+  // Writing them from memory got mppt_scan_interval wrong on the first attempt (0..1440
+  // instead of 1..60), which is exactly what this catches.
+  const fs = require('fs');
+  const src = fs.readFileSync('drivers/sun2000_modbus/device.js', 'utf8');
+  const block = /const numericSync = \[([\s\S]*?)\];/.exec(src);
+  assert.ok(block, 'numericSync table not found');
+
+  const rows = [...block[1].matchAll(/\[\s*'(\w+)',\s*'(\w+)',\s*([\d.]+),\s*(-?[\d.]+),\s*(\d+)\s*\]/g)]
+    .map((m) => ({ settingId: m[2], min: Number(m[4]), max: Number(m[5]) }));
+  assert.strictEqual(rows.length, 5, 'expected 5 synced numeric settings');
+
+  const manifest = {};
+  const walk = (arr) => { for (const s of arr || []) { if (s.children) walk(s.children); else if (s.id) manifest[s.id] = s; } };
+  walk(require('../app.json').drivers.find((d) => d.id === 'sun2000_modbus').settings);
+
+  for (const { settingId, min, max } of rows) {
+    const decl = manifest[settingId];
+    assert.ok(decl, `${settingId} is synced but not declared in app.json`);
+    assert.strictEqual(min, decl.min, `${settingId}: min ${min} does not match app.json ${decl.min}`);
+    assert.strictEqual(max, decl.max, `${settingId}: max ${max} does not match app.json ${decl.max}`);
+  }
+});
