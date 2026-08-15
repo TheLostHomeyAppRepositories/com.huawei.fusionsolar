@@ -90,11 +90,30 @@ class FusionSolarKioskApp extends App {
     // (so per-value flows like "set 80%" / "set 100%" fire independently).
     this.homey.flow
       .getTriggerCard('ems_set_car_target')
-      .registerRunListener((args, state) => {
-        if (args.car_device_id !== state.car_device_id) return false;
-        if (args.target_pct == null || args.target_pct === '') return true;
-        return String(args.target_pct).trim() === String(state.target_pct);
-      });
+      .registerRunListener(FusionSolarKioskApp.matchCarTarget);
+  }
+
+  /**
+   * Does this ems_set_car_target flow apply to the target the EMS just set?
+   *
+   * The card is shared by several flows at once — the generated "Set charge 80/90/100%"
+   * ones differ only in their target_pct argument — which is why it needs a matcher at all
+   * where the other EMS triggers do not.
+   *
+   * An empty filter means "any target", which is what app.json promises the user in the
+   * argument's own label ("leave empty for any"). The EMS device used to register a second
+   * listener for this same card that lacked that case, so Homey logged "Run listener was
+   * already registered" on every start and a hand-built flow with the field left blank
+   * never fired. One listener now, and it lives with the card's siblings rather than
+   * inside a device that can be deleted and re-paired.
+   *
+   * Compared as strings throughout: the argument is declared type "text" and the state is
+   * built with String().
+   */
+  static matchCarTarget(args, state) {
+    if (String(args.car_device_id ?? '') !== String(state.car_device_id ?? '')) return false;
+    if (args.target_pct == null || String(args.target_pct).trim() === '') return true;
+    return String(args.target_pct).trim() === String(state.target_pct ?? '').trim();
   }
 
   async onUninit() {

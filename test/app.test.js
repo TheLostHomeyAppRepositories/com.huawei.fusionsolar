@@ -163,3 +163,56 @@ test('EMMA exposes no inverter temperature at all', () => {
 test('the SmartCharger map keeps 30508 as its temperature (that one is correct)', () => {
   assert.deepStrictEqual(REG.SMARTCHARGER_REGISTERS.chargerTemperature.slice(0, 3), [30508, 2, 'INT32']);
 });
+
+// ── ems_set_car_target matching ──────────────────────────────────────────────
+// This card is shared by several flows at once (the generated "Set charge 80/90/100%"
+// ones differ only in target_pct), so unlike every other EMS trigger it needs a matcher.
+// It was registered twice — once here in the app, once in the EMS device — which Homey
+// reported on every start as "Run listener was already registered". The two disagreed
+// about a blank filter, so which one won decided whether a hand-built flow fired.
+const CAR = 'car-uuid-1';
+
+test('matchCarTarget — a per-value flow fires only for its own target', () => {
+  const state = { car_device_id: CAR, target_pct: '80' };
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: '80' }, state), true);
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: '90' }, state), false);
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: '100' }, state), false);
+});
+
+test('matchCarTarget — a blank filter matches any target, as the argument label promises', () => {
+  // app.json: "Target charge (%) filter — leave empty for any". The device's copy compared
+  // '' against '80' and returned false, so this flow never ran.
+  const state = { car_device_id: CAR, target_pct: '80' };
+  for (const blank of ['', '   ', null, undefined]) {
+    assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: blank }, state), true,
+      `a filter of ${JSON.stringify(blank)} must match any target`);
+  }
+});
+
+test('matchCarTarget — another car never matches, whatever the filter says', () => {
+  const state = { car_device_id: CAR, target_pct: '80' };
+  assert.strictEqual(App.matchCarTarget({ car_device_id: 'other-car', target_pct: '80' }, state), false);
+  assert.strictEqual(App.matchCarTarget({ car_device_id: 'other-car', target_pct: '' }, state), false);
+});
+
+test('matchCarTarget — surrounding whitespace in a pasted filter is tolerated', () => {
+  // The argument is a text field the user types into, and the ids get pasted from the
+  // settings page, so a stray space must not silently stop a flow from firing.
+  const state = { car_device_id: CAR, target_pct: '80' };
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: ' 80 ' }, state), true);
+});
+
+test('matchCarTarget — a number in either place still matches its string form', () => {
+  // The state is built with String(), but nothing stops a caller passing a number.
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: 80 }, { car_device_id: CAR, target_pct: '80' }), true);
+  assert.strictEqual(App.matchCarTarget({ car_device_id: CAR, target_pct: '80' }, { car_device_id: CAR, target_pct: 80 }), true);
+});
+
+test('the run listener is registered in exactly one place', () => {
+  const fs = require('fs');
+  const inApp = (fs.readFileSync('app.js', 'utf8').match(/getTriggerCard\('ems_set_car_target'\)\s*\.registerRunListener/g) || []).length;
+  const inDev = (fs.readFileSync('drivers/energy_management/device.js', 'utf8')
+    .match(/getTriggerCard\('ems_set_car_target'\)\s*[\s\S]{0,40}registerRunListener/g) || []).length;
+  assert.strictEqual(inApp, 1, 'app.js must register it once');
+  assert.strictEqual(inDev, 0, 'the EMS device must not register it again');
+});

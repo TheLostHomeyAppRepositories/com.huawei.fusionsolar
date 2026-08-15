@@ -199,16 +199,13 @@ class EmsDevice extends Device {
       return soc;
     };
 
-    // ems_set_car_target is the one trigger where several flows share a single card: the
-    // generated "Set charge 80/90/100%" flows differ only by their target_pct argument.
-    // Every other EMS trigger has one flow per purpose, so it needs no matching and none
-    // was registered here either — with the result that none of the three car flows ran.
-    // Compare as strings: the args are type "text" and the state is built with String().
-    this.homey.flow.getTriggerCard('ems_set_car_target')
-      .registerRunListener(async (args, state) => {
-        const same = (a, b) => String(a ?? '') === String(b ?? '');
-        return same(args.car_device_id, state.car_device_id) && same(args.target_pct, state.target_pct);
-      });
+    // The ems_set_car_target run listener lives in app.js (FusionSolarKioskApp
+    // .matchCarTarget), not here. It used to be registered in both places, which made
+    // Homey log "Run listener was already registered" on every start — and this copy
+    // lacked the "empty filter matches any target" case that the argument's own label
+    // promises, so whichever of the two won decided whether a hand-built flow with a
+    // blank filter fired at all. The card is app-level; a device that can be deleted and
+    // re-paired is the wrong owner for it.
 
     // Flow action: external app / schedule sets a car's target SOC.
     const carTargetCard = this.homey.flow.getActionCard('ems_set_car_target_soc');
