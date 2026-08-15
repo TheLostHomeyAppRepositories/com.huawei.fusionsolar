@@ -738,3 +738,70 @@ test('sun2000 numericSync ranges match the ranges app.json declares', () => {
     assert.strictEqual(max, decl.max, `${settingId}: max ${max} does not match app.json ${decl.max}`);
   }
 });
+
+// ── recovery: the rising edge, not just the falling one ──────────────────────
+// Only failures were ever logged, so a burst of them was followed by silence and there
+// was no way to tell a fault that had passed from one still running — the more so since
+// the driver's own "Poll OK" line is a 15-minute heartbeat.
+
+test('readRegisters — a span that answers again says so, with how long it did not', async () => {
+  modbus._resetStaticCache();
+  const lines = [];
+  const real = console.log;
+  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+
+  const regs = { warm: [100, 1, 'UINT16', '', 0] };
+  for (let i = 0; i < 6; i++) regs['r' + i] = [45000 + i, 1, 'UINT16', '', 0];
+
+  let broken = true;
+  const client = {
+    async readHoldingRegisters(start, count) {
+      if (broken && start === 45000) throw new Error('Req timed out');
+      const buf = Buffer.alloc(count * 2);
+      for (let i = 0; i < count; i++) buf.writeUInt16BE((start + i) & 0xFFFF, i * 2);
+      return { response: { body: { valuesAsBuffer: buf } } };
+    },
+  };
+
+  // Three failing polls, then the device comes back.
+  for (let i = 0; i < 3; i++) await readRegisters(regs, client);
+  broken = false;
+  // The recovery line only fires once the outage has outlived a same-poll bisection, so
+  // the clock has to have moved on. Reach into the map rather than sleeping 5 s.
+  modbus._ageFailuresForTest(10000);
+  const res = await readRegisters(regs, client);
+  console.log = real;
+
+  assert.strictEqual(res.r0, 45000, 'the register is readable again');
+  const line = lines.find((l) => l.includes('reading again'));
+  assert.ok(line, 'no recovery line: ' + lines.join(' | '));
+  assert.match(line, /batch 45000\/6 \(6 registers\)/);
+  assert.match(line, /after 3 failed attempt\(s\)/, 'the count must be the true one, not the throttled one');
+});
+
+test('readRegisters — bisecting inside one poll is not announced as a recovery', async () => {
+  modbus._resetStaticCache();
+  const lines = [];
+  const real = console.log;
+  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+
+  // 41200 is refused, so the batch splits and the half starting at 41190 succeeds moments
+  // later — same start address, but nothing recovered.
+  const regs = {};
+  for (let i = 0; i < 20; i++) regs['r' + i] = [41190 + i, 1, 'UINT16', '', 0];
+  await readRegisters(regs, fakeClient({ deadAddresses: [41200] }));
+  console.log = real;
+
+  assert.ok(!lines.some((l) => l.includes('reading again')),
+    'a split must not read as a recovery: ' + lines.join(' | '));
+});
+
+test('readRegisters — a span that never failed stays silent when it succeeds', async () => {
+  modbus._resetStaticCache();
+  const lines = [];
+  const real = console.log;
+  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+  await readRegisters({ a: [100, 1, 'UINT16', '', 0] }, fakeClient({}));
+  console.log = real;
+  assert.ok(!lines.some((l) => l.includes('reading again')), lines.join(' | '));
+});
