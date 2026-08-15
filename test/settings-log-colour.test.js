@@ -56,9 +56,21 @@ test('modbus and OCPP share the transport colour', () => {
 });
 
 test('the app object gets its own colour, distinct from its drivers', () => {
-  const out = colourise(esc('2026-08-15T07:40:06.780Z [log] [FusionSolarKioskApp] FusionSolar app is running...'));
+  const out = colourise(esc('2026-08-15T07:40:06.780Z [log] [FusionSolarApp] FusionSolar app is running...'));
   assert.strictEqual(count(out, APP), 1);
   assert.strictEqual(count(out, DRIVER), 0);
+});
+
+test('lines logged under the pre-1.2.172 class name are still coloured', () => {
+  // The marker is Homey's rendering of the app.js class name, renamed from
+  // FusionSolarKioskApp in 1.2.172. Lines buffered before the update keep the old one.
+  const out = colourise(esc('2026-08-15T07:40:06.780Z [log] [FusionSolarKioskApp] FusionSolar app is running...'));
+  assert.strictEqual(count(out, APP), 1);
+});
+
+test('the app colour does not leak to other apps whose name merely starts the same', () => {
+  const out = colourise(esc('2026-08-15T07:40:06.780Z [log] [FusionSolarAppExtra] hello'));
+  assert.strictEqual(count(out, APP), 0);
 });
 
 test('colouring never alters the text itself', () => {

@@ -3,7 +3,7 @@
 const { App }             = require('homey');
 const OpenAPICoordinator  = require('./lib/openapi-coordinator');
 
-class FusionSolarKioskApp extends App {
+class FusionSolarApp extends App {
 
   async onInit() {
     this._appLogBuffer = [];
@@ -90,7 +90,7 @@ class FusionSolarKioskApp extends App {
     // (so per-value flows like "set 80%" / "set 100%" fire independently).
     this.homey.flow
       .getTriggerCard('ems_set_car_target')
-      .registerRunListener(FusionSolarKioskApp.matchCarTarget);
+      .registerRunListener(FusionSolarApp.matchCarTarget);
   }
 
   /**
@@ -297,7 +297,7 @@ class FusionSolarKioskApp extends App {
     // milliseconds, so leaving it in place would mean half the log reads in one time and
     // half in another. Done here rather than in the settings page so the Copy button stays
     // honest — what you read and what you paste are the same string.
-    const m = FusionSolarKioskApp.LEADING_ISO.exec(msg);
+    const m = FusionSolarApp.LEADING_ISO.exec(msg);
     // When Homey stamped the line, that stamp is when the line happened — reformat that
     // instant rather than substituting the moment we happened to capture it. One write can
     // carry several lines, and using "now" for all of them would collapse them onto a
@@ -305,7 +305,7 @@ class FusionSolarKioskApp extends App {
     const at = m ? new Date(m[0].trim()) : new Date();
     const line = `${this._logStamp(Number.isNaN(at.getTime()) ? new Date() : at)} ${m ? msg.slice(m[0].length) : msg}`;
     this._appLogBuffer.push({ line, level });
-    if (this._appLogBuffer.length > FusionSolarKioskApp.APP_LOG_MAX) this._appLogBuffer.shift();
+    if (this._appLogBuffer.length > FusionSolarApp.APP_LOG_MAX) this._appLogBuffer.shift();
   }
 
   getAppLog() {
@@ -349,7 +349,7 @@ class FusionSolarKioskApp extends App {
                 if (!deviceId) continue;
 
                 for (const capId of device.getCapabilities()) {
-                  if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+                  if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
                   const val = device.getCapabilityValue(capId);
                   if (typeof val !== 'number') continue;
 
@@ -483,7 +483,7 @@ class FusionSolarKioskApp extends App {
             if (!deviceId) continue;
 
             for (const capId of device.getCapabilities()) {
-              if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+              if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
 
               const logId = `${deviceId}::${capId}`;
               validLogIds.add(logId);
@@ -577,7 +577,7 @@ class FusionSolarKioskApp extends App {
     // Epoch ms, not an ISO string: this value is written once per point per minute and
     // only ever compared/serialised numerically, so a string was pure overhead.
     const now = Date.now();
-    const max = FusionSolarKioskApp.CAP_HISTORY_MAX;
+    const max = FusionSolarApp.CAP_HISTORY_MAX;
     try {
       const drivers = this.homey.drivers.getDrivers();
       for (const driver of Object.values(drivers)) {
@@ -587,7 +587,7 @@ class FusionSolarKioskApp extends App {
             if (!deviceId) continue;
 
             for (const capId of device.getCapabilities()) {
-              if (!FusionSolarKioskApp._isMeaningfulCap(capId)) continue;
+              if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
               const val = device.getCapabilityValue(capId);
               if (typeof val !== 'number') continue;
 
@@ -632,4 +632,4 @@ class FusionSolarKioskApp extends App {
 
 }
 
-module.exports = FusionSolarKioskApp;
+module.exports = FusionSolarApp;

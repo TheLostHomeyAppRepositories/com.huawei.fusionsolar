@@ -2089,7 +2089,11 @@
       [/^\[EMS/,                    '#5fd0a4'],  // the energy manager's own decisions
       [/^\[(Driver|Device):/,       '#d9a55f'],  // a specific driver or paired device
       [/^\[(modbus|OCPP)\]$/i,      '#6fa8f5'],  // the two transports that talk to hardware
-      [/^\[FusionSolarKioskApp\]$/, '#b98ae8'],  // the app object itself
+      // The app object itself. Homey builds this marker from the class name in app.js, which
+      // was FusionSolarKioskApp until 1.2.172 — a leftover from when this app was only the
+      // kiosk driver. Both shapes are matched so buffered lines from before the rename keep
+      // their colour; the old branch can go once no Homey still holds a pre-1.2.172 log.
+      [/^\[FusionSolar(Kiosk)?App\]$/, '#b98ae8'],
       [/^\[Manager/,                '#6b7280'],  // Homey's own plumbing — recedes
       [/^\[(log|err)\]$/,           '#565c68'],
     ];
