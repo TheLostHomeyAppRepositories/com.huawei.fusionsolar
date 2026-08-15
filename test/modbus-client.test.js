@@ -744,64 +744,80 @@ test('sun2000 numericSync ranges match the ranges app.json declares', () => {
 // was no way to tell a fault that had passed from one still running — the more so since
 // the driver's own "Poll OK" line is a 15-minute heartbeat.
 
-test('readRegisters — a span that answers again says so, with how long it did not', async () => {
-  modbus._resetStaticCache();
+
+// ── the all-clear, per device ────────────────────────────────────────────────
+// Reported by a user of the first attempt at this: the failures said "read 47589/1
+// failed", and the recovery arrived 148 s later as "batch 47589/1 reading again". Wrong
+// altitude for the question being asked — which is whether this inverter is being read
+// properly again — and far enough away to read as an unrelated line. So: one line per
+// device, at the end of the first poll in which nothing failed.
+
+function captureModbusLog(fn) {
   const lines = [];
   const real = console.log;
   console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+  return Promise.resolve(fn()).finally(() => { console.log = real; }).then(() => lines);
+}
 
-  const regs = { warm: [100, 1, 'UINT16', '', 0] };
-  for (let i = 0; i < 6; i++) regs['r' + i] = [45000 + i, 1, 'UINT16', '', 0];
-
+test('readModbusRegisters — a device that reads cleanly again says so, once', async () => {
+  modbus._resetStaticCache();
   let broken = true;
-  const client = {
+  setFakeRead((start) => {
+    if (broken && start === LIVE) throw new Error('Req timed out');
+    return respond(5);
+  });
+  try {
+    const lines = await captureModbusLog(async () => {
+      await withServer(async (port) => {
+        const regs = { power: [LIVE, 1, 'UINT16', '', 0] };
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);   // degraded
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);   // still degraded
+        broken = false;
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);   // clean → all-clear
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);   // and silent after
+      });
+    });
+    const clear = lines.filter((l) => l.includes('reading cleanly again'));
+    assert.strictEqual(clear.length, 1, 'exactly one all-clear: ' + lines.join(' | '));
+    assert.match(clear[0], /after 2 poll\(s\) with failures/);
+    assert.match(clear[0], /^\[modbus\] 127\.0\.0\.1:\d+:/, 'named by device, not by register span');
+  } finally { setFakeRead(null); }
+});
+
+test('readModbusRegisters — a device that never failed says nothing', async () => {
+  modbus._resetStaticCache();
+  setFakeRead(() => respond(5));
+  try {
+    const lines = await captureModbusLog(async () => {
+      await withServer(async (port) => {
+        const regs = { power: [LIVE, 1, 'UINT16', '', 0] };
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);
+        await modbus.readModbusRegisters('127.0.0.1', port, 1, regs);
+      });
+    });
+    assert.ok(!lines.some((l) => l.includes('reading cleanly again')), lines.join(' | '));
+  } finally { setFakeRead(null); }
+});
+
+test('a permanently absent register never marks the device as degraded', async () => {
+  // Exception 2 means the register is simply not on this hardware. It fails on every poll
+  // for good, and is why a batch legitimately bisects — counting it would mark the device
+  // faulty forever and the all-clear would never come.
+  const lines = [];
+  const real = console.log;
+  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
+  const regs = {};
+  for (let i = 0; i < 8; i++) regs['r' + i] = [43000 + i, 1, 'UINT16', '', 0];
+  const illegal = () => { const e = new Error('A Modbus Exception Occurred'); e.response = { body: { code: 2 } }; throw e; };
+  await readRegisters(regs, {
     async readHoldingRegisters(start, count) {
-      if (broken && start === 45000) throw new Error('Req timed out');
+      for (let i = 0; i < count; i++) if (start + i === 43004) illegal();
       const buf = Buffer.alloc(count * 2);
       for (let i = 0; i < count; i++) buf.writeUInt16BE((start + i) & 0xFFFF, i * 2);
       return { response: { body: { valuesAsBuffer: buf } } };
     },
-  };
-
-  // Three failing polls, then the device comes back.
-  for (let i = 0; i < 3; i++) await readRegisters(regs, client);
-  broken = false;
-  // The recovery line only fires once the outage has outlived a same-poll bisection, so
-  // the clock has to have moved on. Reach into the map rather than sleeping 5 s.
-  modbus._ageFailuresForTest(10000);
-  const res = await readRegisters(regs, client);
+  });
   console.log = real;
-
-  assert.strictEqual(res.r0, 45000, 'the register is readable again');
-  const line = lines.find((l) => l.includes('reading again'));
-  assert.ok(line, 'no recovery line: ' + lines.join(' | '));
-  assert.match(line, /batch 45000\/6 \(6 registers\)/);
-  assert.match(line, /after 3 failed attempt\(s\)/, 'the count must be the true one, not the throttled one');
-});
-
-test('readRegisters — bisecting inside one poll is not announced as a recovery', async () => {
-  modbus._resetStaticCache();
-  const lines = [];
-  const real = console.log;
-  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
-
-  // 41200 is refused, so the batch splits and the half starting at 41190 succeeds moments
-  // later — same start address, but nothing recovered.
-  const regs = {};
-  for (let i = 0; i < 20; i++) regs['r' + i] = [41190 + i, 1, 'UINT16', '', 0];
-  await readRegisters(regs, fakeClient({ deadAddresses: [41200] }));
-  console.log = real;
-
-  assert.ok(!lines.some((l) => l.includes('reading again')),
-    'a split must not read as a recovery: ' + lines.join(' | '));
-});
-
-test('readRegisters — a span that never failed stays silent when it succeeds', async () => {
-  modbus._resetStaticCache();
-  const lines = [];
-  const real = console.log;
-  console.log = (...a) => { if (String(a[0]).startsWith('[modbus]')) lines.push(String(a[0])); else real(...a); };
-  await readRegisters({ a: [100, 1, 'UINT16', '', 0] }, fakeClient({}));
-  console.log = real;
-  assert.ok(!lines.some((l) => l.includes('reading again')), lines.join(' | '));
+  assert.ok(lines.some((l) => l.includes('43004')), 'the absent register is still reported: ' + lines.join(' | '));
+  assert.strictEqual(modbus._pollFailuresForTest(), 0, 'but it must not count as transport trouble');
 });
