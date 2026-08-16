@@ -19,7 +19,10 @@ const chargeSessionsMixin = require('../lib/ems/chargeSessions');
 const widgetMixin         = require('../lib/ems/widget');
 const historyMixin        = require('../lib/ems/history');
 const timingMixin         = require('../lib/ems/timing');
-const { MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS } = require('../lib/ems/constants');
+const {
+  MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS,
+  SIMPLE_STATE_SAVE_MS, TRIGGER_BUDGET_MS,
+} = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
   const dev = {
@@ -740,6 +743,48 @@ test('_saveSimpleStates — an unchanged state writes nothing', async () => {
   d._poolStates.get('p1').isOn = false;
   d._saveSimpleStates();
   assert.notStrictEqual(d._store.value, first);
+});
+
+test('_saveSimpleStates — savedAt is refreshed even when nothing changed', async () => {
+  // savedAt has to answer "how long was this state unattended", not "when did a timer last
+  // move". Writing only on change made it answer the second question.
+  const d = makeStateDevice();
+  const T = 1_770_000_000_000;
+  d._poolStates.set('p1', { isOn: true, startedAt: 1, surplusBadSince: null });
+  d._saveSimpleStates(false, T);
+  assert.strictEqual(d._store.value.savedAt, T);
+  assert.strictEqual(d._saveSimpleStates(false, T + 60_000), false, 'not yet due');
+  assert.strictEqual(d._saveSimpleStates(false, T + SIMPLE_STATE_SAVE_MS), true);
+  assert.strictEqual(d._store.value.savedAt, T + SIMPLE_STATE_SAVE_MS);
+});
+
+test('_saveSimpleStates — shutdown forces the write regardless of cadence', async () => {
+  const d = makeStateDevice();
+  const T = 1_770_000_000_000;
+  d._poolStates.set('p1', { isOn: true, startedAt: 1, surplusBadSince: null });
+  d._saveSimpleStates(false, T);
+  assert.strictEqual(d._saveSimpleStates(true, T + 5_000), true);
+  assert.strictEqual(d._store.value.savedAt, T + 5_000);
+});
+
+test('a quiet house does not lose its timers to an 18-second deploy', async () => {
+  // The 2026-08-15 13:08 restart, verbatim: two lines in the same second read
+  // "charger state restored — 18s gap" and "simple-device state discarded — 16 min old".
+  // The app had been away eighteen seconds. The simple devices were thrown out because
+  // nothing had happened for a quarter of an hour — the steadier the house, the more
+  // reliably a deploy erased the timers.
+  // _restoreSimpleStates reads the real clock, so the timeline is anchored on it.
+  const T = Date.now();
+  const a = makeStateDevice();
+  a._poolStates.set('p1', { isOn: true, startedAt: T - 900_000, surplusBadSince: null });
+  a._saveSimpleStates(false, T - 16 * 60_000);   // last change, sixteen minutes ago
+  for (let i = 15; i >= 1; i--) a._saveSimpleStates(false, T - i * 60_000); // quiet ticks
+  a._saveSimpleStates(true, T - 18_000);          // onUninit, eighteen seconds ago
+
+  const b = makeStateDevice(a._store.value);
+  b._restoreSimpleStates();
+  assert.strictEqual(b._poolStates.get('p1').isOn, true);
+  assert.strictEqual(b._poolStates.get('p1').startedAt, T - 900_000);
 });
 
 test('_evaluateSimpleDevices — a discharging battery is not counted as solar surplus', async () => {
@@ -1506,6 +1551,52 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   // Must follow the price-mode decision (16A, price_ev), NOT the fixed off-peak amps (10A).
   assert.strictEqual(d._getChargerState('c1').currentAmps, 16);
   assert.strictEqual(d._lastMode.mode, 'price_ev');
+});
+
+// ── chargerControl: the PV / battery-boost budget changeover line ────────────
+// Two estimates of the same surplus. Which one wins is a state, so only the changeover is
+// logged — but at night both sit on zero and the comparison flips on meter noise, which
+// made the "changeover" the most frequent line in a 33-hour field log: ~120 of them in two
+// hours. Below the smallest rung a charger can take, neither answer has a subject.
+const BUDGET_RE = /budget .* — using/;
+const NIGHT_PV_WINS  = { bat: { soc: 80, powerW: -600 }, gridW: 5,     pvW: 0,    houseW: 500 };
+const NIGHT_BAT_WINS = { bat: { soc: 80, powerW: -600 }, gridW: -5,    pvW: 0,    houseW: 500 };
+const DAY_PV_WINS    = { bat: { soc: 80, powerW: 0 },    gridW: -1000, pvW: 8000, houseW: 500 };
+const DAY_BAT_WINS   = { bat: { soc: 80, powerW: 0 },    gridW: -6000, pvW: 2000, houseW: 1900 };
+
+async function budgetTick(d, c) {
+  const charger = { ...CHARGER_1PH, powerW: 0 };
+  await d._evaluateEvChargers(c.bat, c.gridW, [charger], {}, c.pvW, c.houseW);
+}
+
+test('_evaluateEvChargers — the budget changeover is silent while neither budget can start anything', async () => {
+  const lines = [];
+  const d = makeChargerDevice({ log: (m) => lines.push(m) });
+  for (let i = 0; i < 6; i++) await budgetTick(d, i % 2 ? NIGHT_PV_WINS : NIGHT_BAT_WINS);
+  assert.strictEqual(lines.filter((l) => BUDGET_RE.test(l)).length, 0);
+});
+
+test('_evaluateEvChargers — it does speak once a budget could actually run a charger', async () => {
+  const lines = [];
+  const d = makeChargerDevice({ log: (m) => lines.push(m) });
+  await budgetTick(d, DAY_PV_WINS);
+  const hits = lines.filter((l) => BUDGET_RE.test(l));
+  assert.strictEqual(hits.length, 1);
+  assert.match(hits[0], /PV budget 7500W > battery-boost budget 1000W/);
+});
+
+test('_evaluateEvChargers — a silent night flip does not swallow the next real changeover', async () => {
+  // Why the last LOGGED winner is tracked separately from the current one. Tracking only
+  // the current one lets a flip nobody saw satisfy the "has it changed?" test, and the
+  // changeover that mattered then goes unreported.
+  const lines = [];
+  const d = makeChargerDevice({ log: (m) => lines.push(m) });
+  await budgetTick(d, DAY_PV_WINS);    // logged: PV wins
+  await budgetTick(d, NIGHT_BAT_WINS); // flips to battery boost, below the floor → silent
+  await budgetTick(d, DAY_BAT_WINS);   // battery boost wins for real → must be reported
+  const hits = lines.filter((l) => BUDGET_RE.test(l));
+  assert.strictEqual(hits.length, 2);
+  assert.match(hits[1], /battery-boost budget 6000W ≥ PV budget 100W/);
 });
 
 // ── chargerControl: the "car is at its target" latch across a restart ────────
@@ -2792,6 +2883,81 @@ function timingDevice() {
   Object.assign(d, timingMixin);
   return d;
 }
+
+// The same budget on the simple devices, which had none until 1.2.174. This owner's
+// air-conditioning stop flow deliberately waits five minutes before cutting the unit, and
+// the EMS stood next to it for all five: a 33-hour field log showed five aircon stops and
+// five tick overruns, each exactly 40 s after its stop, five for five, and no other
+// device's trigger ever produced one.
+//
+// Trigger promise never settles; homey.setTimeout fires at once but records the budget it
+// was asked for, so the test is instant and still pins the number.
+function stuckFlowDevice(extra = {}) {
+  const d = {
+    logs: [], budgets: [], log: (m) => d.logs.push(m),
+    _warmupDone: true, _postNotification() {}, _addHistoryEvent() {},
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => new Promise(() => {}) }) },
+      setTimeout: (fn, ms) => { d.budgets.push(ms); return setTimeout(fn, 0); },
+      clearTimeout: (t) => clearTimeout(t),
+    },
+  };
+  // Same companion mixins as makeSimpleDevice — _evaluateSimpleDevices reaches for
+  // _batteryZones and _forecastGateBlocksStarts through `this`.
+  Object.assign(d, simpleDevicesMixin, batteryMixin, pvForecastMixin, chargerMixin, timingMixin, extra);
+  return d;
+}
+
+// The test does its own timekeeping rather than awaiting the call outright: an unbounded
+// await on a promise that never settles HANGS, and a hung test only turns red if the runner
+// was given --test-timeout. Racing it here means the guard's removal fails the suite in
+// 200 ms under a plain `node --test`.
+function mustNotBlock(promise, label) {
+  return Promise.race([
+    promise.then(() => 'returned'),
+    new Promise((r) => setTimeout(() => r(`still waiting on ${label}`), 200)),
+  ]);
+}
+
+test('_simpleDeviceSetOn — a flow that takes five minutes does not take the tick with it', async () => {
+  const d = stuckFlowDevice();
+  const map = new Map([['a1', { isOn: true, startedAt: Date.now() - 600_000 }]]);
+  const outcome = await mustNotBlock(
+    d._simpleDeviceSetOn('a1', 'Klima', false, map, 'ems_start_aircon', 'ems_stop_aircon', 'aircon_device_id'),
+    'the aircon stop flow');
+  assert.strictEqual(outcome, 'returned');
+  assert.deepStrictEqual(d.budgets, [TRIGGER_BUDGET_MS]);
+  assert.match(d.logs.join('\n'), /aircon_device_id a1 stop: no answer within 3000 ms/);
+});
+
+test('_simpleDeviceSetOn — giving up on the flow does not undo the decision', async () => {
+  // st.isOn is set before the trigger and must stay set: the EMS decided, the flow is
+  // merely how the decision travels. Re-deciding on a slow flow would restart the timers.
+  const d = stuckFlowDevice();
+  const map = new Map([['a1', { isOn: true, startedAt: 1 }]]);
+  const outcome = await mustNotBlock(
+    d._simpleDeviceSetOn('a1', 'Klima', false, map, 'ems_start_aircon', 'ems_stop_aircon', 'aircon_device_id'),
+    'the aircon stop flow');
+  assert.strictEqual(outcome, 'returned');
+  assert.strictEqual(map.get('a1').isOn, false);
+  assert.strictEqual(map.get('a1').startedAt, null);
+  assert.ok(map.get('a1').lastEmsStopAt > 0);
+});
+
+test('_evaluateSimpleDevices — the power-mode adoption stop is bounded too', async () => {
+  // The other unbounded trigger: when a power-based device is found off, the EMS commands
+  // the switch off as well. Fires often — every heat-pump adoption in the field log.
+  const d = stuckFlowDevice();
+  const state = new Map([['d1', { isOn: true, startedAt: Date.now() - 600_000, externalOn: false }]]);
+  const dev = simpleDev({ actualOn: false, powerW: 0, stateSource: 'power', startupGraceMs: 0 });
+  const outcome = await mustNotBlock(
+    d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -5000, [dev], state,
+      'ems_start_heat_pump', 'ems_stop_heat_pump', 'heat_pump_device_id', {}),
+    'the adoption stop flow');
+  assert.strictEqual(outcome, 'returned');
+  assert.match(d.logs.join('\n'), /adoption stop: no answer within 3000 ms/);
+  assert.strictEqual(state.get('d1').isOn, false, 'the adoption stands');
+});
 
 test('_settleWithin — a prompt promise is awaited normally and its value passed through', async () => {
   const d = timingDevice();

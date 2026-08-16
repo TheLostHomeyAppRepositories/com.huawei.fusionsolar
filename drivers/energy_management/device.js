@@ -273,10 +273,11 @@ class EmsDevice extends Device {
     this.log('[EMS] initialized');
   }
 
-  // A deploy is a clean shutdown, so this is the write that makes an app update cost the
-  // running charge session nothing at all — `true` forces it past the 5-minute cadence.
-  async onDeleted() { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); }
-  async onUninit()  { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); }
+  // A deploy is a clean shutdown, so these are the writes that make an app update cost the
+  // running charge session and the device timers nothing at all — `true` forces them past
+  // the 5-minute cadence and stamps savedAt with the moment the state was last true.
+  async onDeleted() { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); this._saveSimpleStates(true); }
+  async onUninit()  { this._stopTick(); this._flushHistorySave(); this._saveSimpleDailyStats(); this._saveChargerStates(true); this._saveSimpleStates(true); }
 
   async onSettings({ newSettings, changedKeys }) {
     if (changedKeys.includes('homey_api_key')) {
