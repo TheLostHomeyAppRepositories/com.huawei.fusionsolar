@@ -1553,6 +1553,70 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   assert.strictEqual(d._lastMode.mode, 'price_ev');
 });
 
+// ── chargerControl: the SOC ramp must not be undone downstream ───────────────
+// Measured 2026-08-17. Ramp 50→100 % / 20→100 %, battery at 51-52 %, production 4241 W.
+// The settings page said "devices get 22% of production · 916 W of 4241 W"; the charger was
+// given 12 A on one phase — 2760 W. The difference is the battery's own charging power,
+// which the green-zone boost added on top of a budget that already contained its share.
+// The charger pulled the battery under the 50 % hard stop, was stopped, the battery
+// recovered to 50 %, the charger restarted: four cycles between 15:48 and 16:56.
+const RAMP_CFG = { share_soc_low: 50, share_soc_high: 100, share_pct_low: 20, share_pct_high: 100 };
+const FIELD_PV_W = 4241;
+const FIELD_HOUSE_W = 900;
+
+// What device.js does before calling the charger evaluator: fold the ramp's allowance into
+// effectiveGridW. Mirrored here so the test drives the same number the tick loop would.
+function rampGridW(dev, cfg, soc, gridW, pvW) {
+  const budget = dev._batteryShareBudgetW(cfg, soc, pvW, gridW);
+  return budget !== null && budget > 0 ? gridW - budget : gridW;
+}
+
+test('_evaluateEvChargers — the battery boost does not hand back what the SOC ramp withheld', async () => {
+  const d = makeChargerDevice();
+  const battery = { soc: 52, powerW: 2347 };   // charging, as measured
+  const gridW = rampGridW(d, RAMP_CFG, 52, -15, FIELD_PV_W);
+  await d._evaluateEvChargers(battery, gridW, [{ ...CHARGER_1PH, powerW: 0 }],
+    RAMP_CFG, FIELD_PV_W, FIELD_HOUSE_W);
+  // ~984 W of allowance, below the 1380 W a charger needs for its lowest rung.
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null, 'no start scheduled');
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null);
+});
+
+test('_evaluateEvChargers — without a ramp configured the boost still applies (the old behaviour)', async () => {
+  // min_battery_soc must be set low enough that 52 % is NOT the hard stop — its default is
+  // 80, which would keep the charger off for a reason that has nothing to do with the ramp
+  // and would make this control prove nothing.
+  const d = makeChargerDevice();
+  const battery = { soc: 52, powerW: 2347 };
+  await d._evaluateEvChargers(battery, -15, [{ ...CHARGER_1PH, powerW: 0 }],
+    { min_battery_soc: 40 }, FIELD_PV_W, FIELD_HOUSE_W);
+  assert.notStrictEqual(d._getChargerState('c1').pendingStepAmps, null,
+    'unramped installs must be untouched by this change');
+});
+
+test('_evaluateEvChargers — a fuller battery does open the ramp up again', async () => {
+  // The gate is the ramp, not a blanket refusal: at 90 % the same production yields ~3.5 kW.
+  const d = makeChargerDevice();
+  const battery = { soc: 90, powerW: 2347 };
+  const gridW = rampGridW(d, RAMP_CFG, 90, -15, FIELD_PV_W);
+  await d._evaluateEvChargers(battery, gridW, [{ ...CHARGER_1PH, powerW: 0 }],
+    RAMP_CFG, FIELD_PV_W, FIELD_HOUSE_W);
+  assert.ok(d._getChargerState('c1').pendingStepAmps >= 6);
+});
+
+test('_evaluateEvChargers — the PV cross-check is gated by the ramp as well', async () => {
+  // The second way round the ramp, and the one that would have survived fixing only the
+  // boost: pvW − houseW is computed with no share at all and wins whenever it reads higher.
+  // Here it would be 3341 W against the ramp's ~984 W. Battery idle so the boost cannot be
+  // what starts the charger — if it starts, the cross-check did it.
+  const d = makeChargerDevice();
+  const battery = { soc: 52, powerW: 0 };
+  const gridW = rampGridW(d, RAMP_CFG, 52, -15, FIELD_PV_W);
+  await d._evaluateEvChargers(battery, gridW, [{ ...CHARGER_1PH, powerW: 0 }],
+    RAMP_CFG, FIELD_PV_W, FIELD_HOUSE_W);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null);
+});
+
 // ── chargerControl: the PV / battery-boost budget changeover line ────────────
 // Two estimates of the same surplus. Which one wins is a state, so only the changeover is
 // logged — but at night both sit on zero and the comparison flips on meter noise, which
