@@ -579,6 +579,10 @@ class EmsDevice extends Device {
     const mode = (cfg.price_config && cfg.price_config.mode) || 'fixed';
     return {
       ...this._diag,
+      // The settings footer used to carry a hand-typed build number, which stopped being
+      // true at 1.2.151 and then travelled into every configuration export as a header —
+      // the one line in a bug report a reader trusts without checking.
+      appVersion: this.homey.app?.manifest?.version ?? '?',
       tickMs: this._tickMs(cfg),
       pv: this._pvForecastSummary(), price: this._priceForecastSummary(), mem: this._memUsage(),
       electricityPrice: this._getCurrentPrice(cfg), electricityPriceSource: mode,

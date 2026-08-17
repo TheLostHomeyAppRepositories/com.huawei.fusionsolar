@@ -1570,7 +1570,10 @@
         <div id="ems-save-status" style="font-size:12px;margin-bottom:10px;display:none"></div>
         <button class="btn-primary" id="ems-save-btn" onclick="emsSave()" data-i18n="common.saveSettings">Save EMS Settings</button>
         <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px">
-          <span style="font-size:10px;color:#c7c7cc">Build <span id="ems-build">1.2.151</span></span>
+          <!-- Filled from /ems/diag; the placeholder is what shows before it answers.
+               It used to be the real figure, typed by hand, and it was three months out of
+               date before anyone noticed. -->
+          <span style="font-size:10px;color:#c7c7cc">Build <span id="ems-build">…</span></span>
           <button class="btn-secondary" onclick="emsCopyConfig()" style="padding:2px 8px;font-size:10px"
             data-i18n="config.copyButton" data-i18n-title="config.copyHint">⧉ Copy configuration</button>
         </div>
@@ -2027,7 +2030,9 @@
       };
 
       out.push('FusionSolar Manager — configuration export');
-      out.push('Build ' + (document.getElementById('ems-build') || {}).textContent);
+      // From the diagnostics rather than the footer element: the footer is only filled once
+      // /ems/diag has answered, and an export taken before that would have said "…".
+      out.push('Build ' + ((_emsShareDiag && _emsShareDiag.appVersion) || '?'));
       out.push(new Date().toISOString());
       out.push('');
       out.push(_H.__('settings.config.redactNote'));
@@ -3159,6 +3164,9 @@
         emsShareRampPreview();
         emsForecastGateStatus(_emsShareDiag && _emsShareDiag.forecastGate);
         emsBatteryAnnounceNote(_emsShareDiag && _emsShareDiag.batteryAnnounce);
+        if (_emsShareDiag && _emsShareDiag.appVersion) {
+          document.getElementById('ems-build').textContent = _emsShareDiag.appVersion;
+        }
       });
     }
 

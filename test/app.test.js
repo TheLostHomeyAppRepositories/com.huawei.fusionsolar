@@ -416,3 +416,30 @@ test('the sessions list and its CSV handle a session with no end time', () => {
     assert.notStrictEqual(cs.running, cs.paused, `${lang}: the two states read the same`);
   }
 });
+
+// ── the build number in the footer and the export ────────────────────────────
+// It was a literal typed into the HTML, and it stopped being true at 1.2.151 — three
+// months and thirty releases before anyone looked. That would be cosmetic on its own, but
+// the configuration export repeats it as its header, and the version is the one line in a
+// bug report a reader trusts without checking.
+test('the build number is read from the app, not typed into the page', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  const version = JSON.parse(fs.readFileSync('app.json', 'utf8')).version;
+
+  const span = /<span id="ems-build">([^<]*)<\/span>/.exec(html);
+  assert.ok(span, 'the build span is gone');
+  assert.ok(!/^\d+\.\d+\.\d+$/.test(span[1].trim()),
+    `the footer carries the hard-coded version "${span[1]}" again — it will rot`);
+
+  assert.match(html, /ems-build'\)\.textContent = _emsShareDiag\.appVersion/,
+    'nothing fills the footer from the diagnostics');
+  assert.match(html, /_emsShareDiag\.appVersion\) \|\| '\?'/,
+    'the export header does not read the real version');
+
+  // And the device actually reports it.
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  assert.match(dev, /appVersion: this\.homey\.app\?\.manifest\?\.version/,
+    'getEmsDiag does not report the app version');
+  assert.ok(version, 'app.json has no version');
+});
