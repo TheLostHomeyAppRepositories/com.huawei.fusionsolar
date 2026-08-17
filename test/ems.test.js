@@ -21,7 +21,7 @@ const historyMixin        = require('../lib/ems/history');
 const timingMixin         = require('../lib/ems/timing');
 const {
   MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS,
-  SIMPLE_STATE_SAVE_MS, TRIGGER_BUDGET_MS,
+  SIMPLE_STATE_SAVE_MS, TRIGGER_BUDGET_MS, OVERFLOW_KEEP_W, OVERFLOW_START_W,
 } = require('../lib/ems/constants');
 
 function makeDevice(extra = {}) {
@@ -925,10 +925,46 @@ test('_evaluateSimpleDevices — overflow hysteresis: a device NOT yet running n
   const d = makeSimpleDevice();
   const now = Date.now();
   const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
-  // Export clears the old flat MIN_CHARGE_W threshold and the CONTINUE threshold, but not
-  // the higher 2×MIN_CHARGE_W START threshold — must not start via the overflow exception yet.
+  // Export clears the CONTINUE threshold but not OVERFLOW_START_W, which is MIN_CHARGE_W
+  // (the smallest thing worth starting) plus the remainder that has to survive the start.
   await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -(MIN_CHARGE_W + 200), [simpleDev()], state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
+});
+
+test('_evaluateSimpleDevices — a start under the overflow exception must leave the continue threshold behind', async () => {
+  // The measured flaw, in the simple-device half: the loop books minSurplusW against the
+  // export the moment a device starts, so a device whose demand eats all but a sliver
+  // revokes its own permission and gets hard-stopped on the very next tick.
+  //
+  // 2760 W export, a device wanting 2300 W: the old rule let it start and left 460 W —
+  // under the 690 W needed to keep going.
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -2760, [simpleDev({ minSurplusW: 2300 })],
+    state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }]);
+});
+
+test('_evaluateSimpleDevices — with the remainder covered, the same device does start', async () => {
+  // 3100 W − 2300 W = 800 W left, clear of the 690 W continue threshold.
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  await d._evaluateSimpleDevices({ soc: 10, powerW: 500 }, -3100, [simpleDev({ minSurplusW: 2300 })],
+    state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
+test('_evaluateSimpleDevices — the reserve applies only inside the overflow exception', async () => {
+  // Above the hard stop this is ordinary solar operation and minSurplusW alone decides;
+  // adding the reserve there would quietly raise every device's start threshold.
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: false, startedAt: null, surplusOkSince: now - 61_000, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, -2400, [simpleDev({ minSurplusW: 2300 })],
+    state, 'start', 'stop', 'tok', { min_battery_soc: 80 });
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
 });
 
 test('_evaluateSimpleDevices — start needs sustained surplus', async () => {
@@ -1754,6 +1790,54 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   // Must follow the price-mode decision (16A, price_ev), NOT the fixed off-peak amps (10A).
   assert.strictEqual(d._getChargerState('c1').currentAmps, 16);
   assert.strictEqual(d._lastMode.mode, 'price_ev');
+});
+
+// ── chargerControl: a start under the overflow exception must not undo itself ─
+// Below the ramp's lower point the battery has priority, and only a clear overflow — the
+// battery charging while the house still exports — overrides that. The charger then took
+// the highest rung that fit the ENTIRE export and stopped itself one tick later. Measured
+// at 30 % SoC with 7 kW of PV: 3500 W of export started it at 15 A, drew 3450 W, left
+// 50 W, and the next tick hard-stopped it. Every export from 2760 W to about 4750 W
+// oscillated on a five-minute cycle (the flip cooldown), which is exactly the band the
+// old 2×MIN_CHARGE_W start threshold was meant to protect.
+const OVF_CFG = {
+  battery_devices: [{ id: 'b1', capacity_kwh: 15 }],
+  share_soc_low: 50, share_soc_high: 100, share_pct_low: 20, share_pct_high: 100,
+};
+const OVF_BAT = { soc: 30, powerW: 5000 }; // hard-stop zone, battery charging
+
+test('_evaluateEvChargers — an overflow start leaves the continue threshold exported', async () => {
+  for (const exportW of [2500, 3000, 3500, 4000, 4500, 5000]) {
+    const d = makeChargerDevice();
+    await d._evaluateEvChargers(OVF_BAT, -exportW, [{ ...CHARGER_1PH, powerW: 0 }],
+      OVF_CFG, 12000, 0);
+    const planned = d._getChargerState('c1').pendingStepAmps;
+    assert.ok(planned, `${exportW} W of export should start the charger`);
+    const drawW = planned * 230;
+    assert.ok(exportW - drawW >= OVERFLOW_KEEP_W,
+      `at ${exportW} W it planned ${planned} A (${drawW} W), leaving ${exportW - drawW} W — `
+      + `under the ${OVERFLOW_KEEP_W} W it needs to keep running`);
+  }
+});
+
+test('_evaluateEvChargers — below the derived start threshold nothing runs', async () => {
+  // OVERFLOW_START_W is MIN_CHARGE_W plus the remainder: any less cannot both feed the
+  // smallest rung and survive the start.
+  const d = makeChargerDevice();
+  await d._evaluateEvChargers(OVF_BAT, -(OVERFLOW_START_W - 100), [{ ...CHARGER_1PH, powerW: 0 }],
+    OVF_CFG, 12000, 0);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null);
+});
+
+test('_evaluateEvChargers — the reserve applies only in the overflow exception', async () => {
+  // Above the ramp's lower point this is ordinary solar operation; holding back 690 W
+  // there would waste it for no reason.
+  const d = makeChargerDevice();
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, -3000, [{ ...CHARGER_1PH, powerW: 0 }],
+    OVF_CFG, 12000, 0);
+  const planned = d._getChargerState('c1').pendingStepAmps;
+  assert.ok(planned * 230 > 3000 - OVERFLOW_KEEP_W, 'no reserve held back outside the exception');
 });
 
 // ── chargerControl: the solar-forecast gate reaches the EV charger ───────────
