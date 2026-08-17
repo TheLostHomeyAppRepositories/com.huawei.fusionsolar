@@ -489,7 +489,8 @@
       "import": "Bezug",
       "export": "Einspeisung",
       "battery": "Batterie",
-      "unknown": "Kein Status"
+      "unknown": "Kein Status",
+      "forecast": "Prognose heute"
     },
     "status": {
       "unsaved": "Nicht gespeicherte Änderungen",

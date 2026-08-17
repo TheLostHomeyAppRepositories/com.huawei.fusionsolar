@@ -489,7 +489,8 @@
       "import": "Import",
       "export": "Export",
       "battery": "Battery",
-      "unknown": "No status"
+      "unknown": "No status",
+      "forecast": "Forecast today"
     },
     "status": {
       "unsaved": "Unsaved changes",

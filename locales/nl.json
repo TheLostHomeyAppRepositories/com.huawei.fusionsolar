@@ -489,7 +489,8 @@
       "import": "Afname",
       "export": "Teruglevering",
       "battery": "Batterij",
-      "unknown": "Geen status"
+      "unknown": "Geen status",
+      "forecast": "Prognose vandaag"
     },
     "status": {
       "unsaved": "Niet-opgeslagen wijzigingen",

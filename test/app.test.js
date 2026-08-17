@@ -307,3 +307,36 @@ test('the holding mode label states no reason — the status text carries it', (
     }
   }
 });
+
+// ── the live EMS strip ───────────────────────────────────────────────────────
+// A compact line at the top of the EMS tab: mode, PV, grid direction, battery, and
+// (1.2.180) the remaining forecast for today. Its labels are the only part a unit test can
+// reach — a missing one renders as the raw key, e.g. "settings.live.forecast 2.2 kWh".
+test('the live strip can name every figure it shows, in all three locales', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  const body = html.slice(html.indexOf('function emsLiveRefresh'));
+  const used = [...new Set([...body.slice(0, 2500).matchAll(/settings\.live\.(\w+)/g)].map((m) => m[1]))];
+  assert.ok(used.includes('forecast'), 'the strip should be reading the forecast label');
+
+  for (const lang of ['en', 'de', 'nl']) {
+    const live = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).settings.live;
+    for (const key of used) {
+      assert.ok(live[key] && live[key].trim(), `${lang}: settings.live.${key} missing`);
+    }
+  }
+});
+
+// The strip must not print a forecast the EMS would refuse to act on: a stale forecast
+// makes _pvForecastRemainingTodayKwh answer 0, and "0 kWh" on a sunny morning reads as a
+// measurement rather than as the absence of one.
+test('the live strip shows the forecast only when it is configured and fresh', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  const body = html.slice(html.indexOf('function emsLiveRefresh'));
+  const line = body.slice(0, 2500).split('\n').find((l) => /settings\.live\.forecast/.test(l));
+  assert.ok(line, 'forecast line not found');
+  const guard = body.slice(0, body.indexOf(line));
+  assert.match(guard.slice(-400), /d\.pv\.configured/, 'no configured check');
+  assert.match(guard.slice(-400), /!d\.pv\.stale/, 'no staleness check');
+});

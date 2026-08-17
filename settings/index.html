@@ -8684,6 +8684,14 @@
         if (typeof d.soc === 'number') {
           vals.push('<span>' + _H.__('settings.live.battery') + ' <b>' + Math.round(d.soc) + '%</b></span>');
         }
+        // Remaining forecast for today — only with a Solcast forecast that is set up AND
+        // fresh. _pvForecastRemainingTodayKwh answers 0 for a stale one, and "Prognose 0
+        // kWh" on a sunny morning would be a lie rather than a gap. It sits last so the
+        // three figures that were here before keep their places.
+        if (d.pv && d.pv.configured && !d.pv.stale && typeof d.pv.remainingTodayKwh === 'number') {
+          vals.push('<span>' + _H.__('settings.live.forecast') +
+                    ' <b>' + d.pv.remainingTodayKwh + ' kWh</b></span>');
+        }
         box.innerHTML =
           '<span class="ems-live-mode"><span class="ems-live-dot" style="background:' +
           ((meta && meta.dot) || '#d1d1d6') + '"></span>' +
