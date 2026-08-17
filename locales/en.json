@@ -721,7 +721,7 @@
       "autoDetect": "— auto-detect —",
       "chargingCarHint": "optional · used to stop this charger when its car reaches the target SOC",
       "adjustmentInterval": "Adjustment interval",
-      "adjustmentIntervalHint": "sec — surplus must hold this long before the charge current is stepped up (higher = fewer adjustments)",
+      "adjustmentIntervalHint": "sec — surplus must hold this long before the charge current is stepped up (higher = fewer adjustments). Stepping down happens at once, with no wait. After any step down, 5 min pass before it may rise again.",
       "maxCurrentTitle": "Max current (A)",
       "phasesTitle": "Number of phases this charger uses",
       "autoPhaseSwitchTitle": "Auto phase-switching: below 4140 W (6A × 3ph) the EMS uses 1-phase charging; at or above it switches to 3-phase"

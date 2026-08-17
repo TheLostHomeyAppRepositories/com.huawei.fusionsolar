@@ -721,7 +721,7 @@
       "autoDetect": "— automatisch detecteren —",
       "chargingCarHint": "optioneel · wordt gebruikt om deze lader te stoppen zodra de auto de streefwaarde SOC bereikt",
       "adjustmentInterval": "Aanpassingsinterval",
-      "adjustmentIntervalHint": "sec — overschot moet zo lang aanhouden voordat de laadstroom wordt opgehoogd (hoger = minder aanpassingen)",
+      "adjustmentIntervalHint": "sec — overschot moet zo lang aanhouden voordat de laadstroom wordt opgehoogd (hoger = minder aanpassingen). Omlaag wordt direct geregeld, zonder wachttijd. Na elke verlaging duurt het 5 min. voordat hij weer mag stijgen.",
       "maxCurrentTitle": "Max. stroom (A)",
       "phasesTitle": "Aantal fasen dat deze lader gebruikt",
       "autoPhaseSwitchTitle": "Automatisch faseschakelen: onder 4140 W (6A × 3f) gebruikt de EMS 1-fase laden; daarboven of gelijk wordt naar 3-fase geschakeld"

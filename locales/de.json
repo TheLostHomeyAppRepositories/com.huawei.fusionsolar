@@ -721,7 +721,7 @@
       "autoDetect": "— automatisch erkennen —",
       "chargingCarHint": "optional · wird genutzt, um diesen Lader zu stoppen, wenn sein Fahrzeug den Ziel-SOC erreicht",
       "adjustmentInterval": "Anpassungsintervall",
-      "adjustmentIntervalHint": "Sek. — so lange muss der Überschuss anhalten, bevor der Ladestrom erhöht wird (höher = weniger Anpassungen)",
+      "adjustmentIntervalHint": "Sek. — so lange muss der Überschuss anhalten, bevor der Ladestrom erhöht wird (höher = weniger Anpassungen). Nach unten wird sofort geregelt, ohne Wartezeit. Nach jeder Reduktion bleiben 5 Min. gesperrt, bevor wieder erhöht werden darf.",
       "maxCurrentTitle": "Max. Strom (A)",
       "phasesTitle": "Anzahl Phasen, die dieser Lader nutzt",
       "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt das EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um"

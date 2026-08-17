@@ -361,3 +361,27 @@ test('the battery announcement thresholds are named in all three locales', () =>
     assert.match(ramp.announceNote, /\{full\}/, `${lang}: announceNote lost {full}`);
   }
 });
+
+// ── the adjustment-interval hint quotes a constant ───────────────────────────
+// The field only governs stepping UP; stepping down is immediate, and every step down
+// locks stepping up for FLIP_COOLDOWN_MS. Asked about directly ("Geht es nur um das
+// Erhöhen? Was passiert bzgl. reduzieren?"), so the hint now says all three things — and
+// the third one names a number that lives in code. If the constant moves, the hint lies.
+test('the charger adjustment hint agrees with FLIP_COOLDOWN_MS', () => {
+  const fs = require('fs');
+  const { FLIP_COOLDOWN_MS } = require('../lib/ems/constants');
+  const minutes = FLIP_COOLDOWN_MS / 60000;
+  assert.strictEqual(minutes, 5, 'FLIP_COOLDOWN_MS changed — update the hint in all three locales');
+
+  for (const lang of ['en', 'de', 'nl']) {
+    const hint = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8'))
+      .settings.chargers.adjustmentIntervalHint;
+    // Plain string checks, no regex: a backslash class built through a template literal
+    // silently collapsed to nothing here once already ("\s" became "s").
+    const statesLockout = hint.includes(`${minutes} min`) || hint.includes(`${minutes} Min`);
+    assert.ok(statesLockout, `${lang}: hint does not state the ${minutes}-minute lock-out`);
+    // The half that prompted the question: nothing here should suggest the wait applies
+    // in both directions.
+    assert.match(hint, /(sofort|at once|direct)/i, `${lang}: hint does not say stepping down is immediate`);
+  }
+});
