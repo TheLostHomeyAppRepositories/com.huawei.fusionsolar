@@ -5,7 +5,7 @@ const HomeyLocalApi = require('../../lib/homey-local-api');
 
 const {
   TICK_MS, TICK_MIN_S, TICK_MAX_S, GRID_SENSOR_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
-  AMPS_LADDER, MODES, HIST,
+  AMPS_LADDER, MODES, HIST, TRIGGER_BUDGET_MS,
 } = require('../../lib/ems/constants');
 
 // EMS behaviour is split into lib/ems/* mixins to keep this orchestrator readable.
@@ -123,6 +123,8 @@ class EmsDevice extends Device {
     // Per-charger control state. AFTER the session log: a state blob too old to resume
     // still has its running session booked into that array rather than dropped.
     this._restoreChargerStates();
+    // "Battery low / full already announced" — so a deploy does not re-announce it.
+    await this._restoreBatteryStates();
     // Daily energy/runtime for the ems-device widget's simple-device "today" stat.
     await this._restoreSimpleDailyStats();
 
@@ -726,6 +728,8 @@ class EmsDevice extends Device {
     this._tickPhase = 'battery';
     if (this._warmupDone) await this._checkBatteryTriggers(cfg, battery);
     if (this._warmupDone) await this._checkBatteryPriceControl(cfg, battery);
+    // Right after the only place that moves the announcement flags; a no-op when unchanged.
+    this._saveBatteryStates();
     this._tickPhase = 'scheduler';
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 
@@ -924,10 +928,12 @@ class EmsDevice extends Device {
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% ≥ ${fullSoc}% → ems_battery_full`);
         this._addHistoryEvent(HIST.DEVICE, 'battery_full', `${Math.round(soc)}% ≥ ${fullSoc}%`, device.id);
         this._postNotification(`EMS: Batterie voll — ${Math.round(soc)}%`);
-        await this.homey.flow
-          .getTriggerCard('ems_battery_full')
-          .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
-          .catch((e) => this.log(`[EMS] trigger ems_battery_full failed: ${e.message}`));
+        await this._settleWithin(
+          this.homey.flow
+            .getTriggerCard('ems_battery_full')
+            .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
+            .catch((e) => this.log(`[EMS] trigger ems_battery_full failed: ${e.message}`)),
+          TRIGGER_BUDGET_MS, `battery ${device.id} full`);
       } else if (soc < fullSoc - 5) {
         st.fullFired = false;
       }
@@ -938,10 +944,12 @@ class EmsDevice extends Device {
         this.log(`[EMS] battery ${device.id}: SOC ${Math.round(soc)}% < ${minSoc}% → ems_battery_low`);
         this._addHistoryEvent(HIST.DEVICE, 'battery_low', `${Math.round(soc)}% < ${minSoc}%`, device.id);
         this._postNotification(`EMS: Batterie niedrig — ${Math.round(soc)}%`);
-        await this.homey.flow
-          .getTriggerCard('ems_battery_low')
-          .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
-          .catch((e) => this.log(`[EMS] trigger ems_battery_low failed: ${e.message}`));
+        await this._settleWithin(
+          this.homey.flow
+            .getTriggerCard('ems_battery_low')
+            .trigger({ battery_device_id: device.id, soc: Math.round(soc) }, { battery_device_id: device.id })
+            .catch((e) => this.log(`[EMS] trigger ems_battery_low failed: ${e.message}`)),
+          TRIGGER_BUDGET_MS, `battery ${device.id} low`);
       } else if (soc >= minSoc + 5) {
         st.lowFired = false;
       }
@@ -1003,10 +1011,12 @@ class EmsDevice extends Device {
       this.log(`[EMS] battery ${device.id}: price mode → ${decision.mode} (${decision.reason})`);
       // The reason is what makes this readable later: "charge" alone does not say why.
       this._addHistoryEvent(HIST.DEVICE, `battery_${decision.mode}`, decision.reason, device.id);
-      await this.homey.flow
-        .getTriggerCard(cardId)
-        .trigger({ battery_device_id: device.id }, { battery_device_id: device.id })
-        .catch((e) => this.log(`[EMS] trigger ${cardId} failed: ${e.message}`));
+      await this._settleWithin(
+        this.homey.flow
+          .getTriggerCard(cardId)
+          .trigger({ battery_device_id: device.id }, { battery_device_id: device.id })
+          .catch((e) => this.log(`[EMS] trigger ${cardId} failed: ${e.message}`)),
+        TRIGGER_BUDGET_MS, `battery ${device.id} price mode ${decision.mode}`);
     }
   }
 

@@ -680,6 +680,65 @@ test('_evaluateSimpleDevices — a per-device enabled:false is left alone even w
   assert.strictEqual(state.get('d1').isOn, false); // stateMap untouched too
 });
 
+// ── battery: "already announced" flags across a restart ──────────────────────
+// Field, 2026-08-16: "66% < 80% — Batterie tief" at 23:04 AND at 23:05, once per app start,
+// either side of a deploy. Two of the day's four announcements were restart artefacts, and
+// every flow hanging off ems_battery_low ran for nothing.
+function makeBatteryStateDevice(stored = undefined) {
+  const store = { batteryStates: stored };
+  const dev = {
+    log() {},
+    _batteryStates: new Map(),
+    getStoreValue: (k) => Promise.resolve(store[k]),
+    setStoreValue: (k, v) => { store[k] = v; return Promise.resolve(); },
+    _store: store,
+  };
+  Object.assign(dev, batteryMixin);
+  return dev;
+}
+
+test('_saveBatteryStates / _restoreBatteryStates — an announcement is not repeated after a restart', async () => {
+  const a = makeBatteryStateDevice();
+  a._batteryStates.set('bat1', { fullFired: false, lowFired: true });
+  a._saveBatteryStates();
+
+  const b = makeBatteryStateDevice(a._store.batteryStates);
+  await b._restoreBatteryStates();
+  assert.strictEqual(b._batteryStates.get('bat1').lowFired, true);
+  assert.strictEqual(b._batteryStates.get('bat1').fullFired, false);
+});
+
+test('_restoreBatteryStates — priceMode is deliberately NOT carried over', async () => {
+  // It sits on the same entry and also re-fires after a restart, but it is a COMMAND to the
+  // battery that the EMS cannot read back — believing an unverified hardware state is the
+  // mistake that cost a house battery in July. Re-commanding is the safe direction.
+  const a = makeBatteryStateDevice();
+  a._batteryStates.set('bat1', { fullFired: false, lowFired: true, priceMode: 'charge' });
+  a._saveBatteryStates();
+  assert.ok(!('priceMode' in a._store.batteryStates.bat1), 'not even written');
+
+  const b = makeBatteryStateDevice({ bat1: { lowFired: true, priceMode: 'charge' } });
+  await b._restoreBatteryStates();
+  assert.strictEqual(b._batteryStates.get('bat1').priceMode, undefined);
+});
+
+test('_saveBatteryStates — writes only when a flag actually moved', async () => {
+  const d = makeBatteryStateDevice();
+  d._batteryStates.set('bat1', { fullFired: false, lowFired: true });
+  assert.strictEqual(d._saveBatteryStates(), true);
+  assert.strictEqual(d._saveBatteryStates(), false, 'unchanged — the tick runs every 20 s');
+  d._batteryStates.get('bat1').lowFired = false;
+  assert.strictEqual(d._saveBatteryStates(), true);
+});
+
+test('_restoreBatteryStates — a missing or malformed blob is not an error', async () => {
+  for (const blob of [undefined, null, 'nonsense', { bat1: null }]) {
+    const d = makeBatteryStateDevice(blob);
+    await d._restoreBatteryStates();
+    assert.strictEqual(d._batteryStates.size, 0);
+  }
+});
+
 // ── simpleDevices: state persistence across restarts ─────────────────────────
 // Ein Geraet mit Fake-Settings und den fuenf leeren Zustandstabellen.
 function makeStateDevice(stored = undefined) {
@@ -3021,6 +3080,52 @@ test('_evaluateSimpleDevices — the power-mode adoption stop is bounded too', a
   assert.strictEqual(outcome, 'returned');
   assert.match(d.logs.join('\n'), /adoption stop: no answer within 3000 ms/);
   assert.strictEqual(state.get('d1').isOn, false, 'the adoption stands');
+});
+
+test('_chargerSetAmps — the amps command is bounded too', async () => {
+  // The most frequent trigger in the app, and the last of the charger's three to get a
+  // budget: start and stop got theirs in July, this one was missed.
+  // The fake fires the budget timer at once but records the value it was asked for. Both
+  // halves are needed: the race below catches the guard being deleted, the recorded budget
+  // catches it being widened to something useless.
+  const logs = []; const budgets = [];
+  const d = makeChargerDevice({
+    log: (m) => logs.push(m),
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => new Promise(() => {}) }) },
+      clock: { getTimezone: () => 'Europe/Zurich' },
+      setTimeout: (fn, ms) => { budgets.push(ms); return setTimeout(fn, 0); },
+      clearTimeout: (t) => clearTimeout(t),
+    },
+  });
+  seedState(d, 'c1', { currentAmps: 10, currentPhases: 3 });
+  const outcome = await mustNotBlock(d._chargerSetAmps('c1', 12, 3), 'the set-current flow');
+  assert.strictEqual(outcome, 'returned');
+  assert.deepStrictEqual(budgets, [TRIGGER_BUDGET_MS]);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 12,
+    'the EMS commanded 12 A and must reason from that next tick, answered or not');
+  assert.match(logs.join('\n'), /charger c1 set 12A: no answer within/);
+});
+
+test('_fireExportLimitTrigger — bounded per inverter', async () => {
+  // A loop on the tick path: without a budget a multi-inverter install waits out one slow
+  // flow after another.
+  const logs = []; const budgets = [];
+  const d = {
+    log: (m) => logs.push(m),
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => new Promise(() => {}) }) },
+      setTimeout: (fn, ms) => { budgets.push(ms); return setTimeout(fn, 0); },
+      clearTimeout: (t) => clearTimeout(t),
+    },
+  };
+  Object.assign(d, exportLimitMixin, timingMixin);
+  const cfg = { inverter_devices: [{ id: 'inv1' }, { id: 'inv2' }] };
+  const outcome = await mustNotBlock(
+    d._fireExportLimitTrigger(cfg, 'ems_inverter_export_limit_on', 'on'), 'the inverter flows');
+  assert.strictEqual(outcome, 'returned');
+  assert.deepStrictEqual(budgets, [TRIGGER_BUDGET_MS, TRIGGER_BUDGET_MS], 'one per inverter');
+  assert.strictEqual(logs.filter((l) => /no answer within/.test(l)).length, 2, 'both inverters');
 });
 
 test('_settleWithin — a prompt promise is awaited normally and its value passed through', async () => {
