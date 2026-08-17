@@ -310,7 +310,7 @@ test('the holding mode label states no reason — the status text carries it', (
 
 // ── the live EMS strip ───────────────────────────────────────────────────────
 // A compact line at the top of the EMS tab: mode, PV, grid direction, battery, and
-// (1.2.180) the remaining forecast for today. Its labels are the only part a unit test can
+// (1.2.175) the remaining forecast for today. Its labels are the only part a unit test can
 // reach — a missing one renders as the raw key, e.g. "settings.live.forecast 2.2 kWh".
 test('the live strip can name every figure it shows, in all three locales', () => {
   const fs = require('fs');
