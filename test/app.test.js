@@ -515,3 +515,30 @@ test('_checkBatteryTriggers fires on the derived thresholds, not on the old fiel
   assert.ok(!/cfg\.min_battery_soc|cfg\.battery_full_soc/.test(body),
     'it reads the old fields directly again, so a configured ramp would be ignored');
 });
+
+// ── a read-only button must not claim the form was edited ────────────────────
+// Every button inside the EMS tab marks the form dirty, because adding or removing a
+// device row fires no input event and a click is the only signal there is. Read-only
+// actions get out of that rule by id, or by sitting inside a read-only section.
+//
+// "Copy configuration" sits in the save bar, outside every such section, and had no id at
+// all — so opening it announced "Nicht gespeicherte Änderungen" over a page nobody had
+// touched. A warning that cries wolf is worth less than no warning.
+test('the copy-configuration button is exempt from the dirty rule', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+
+  assert.match(html, /id="ems-copy-config-btn"[^>]*onclick="emsCopyConfig\(\)"/,
+    'the button has lost the id the exemption is keyed on');
+  const list = /var EMS_NEUTRAL_BUTTONS = \[([^\]]*)\]/.exec(html);
+  assert.ok(list, 'EMS_NEUTRAL_BUTTONS is gone');
+  assert.match(list[1], /'ems-copy-config-btn'/, 'the button is not exempt');
+
+  // The other read-only buttons are covered by their sections; if one of those is ever
+  // renamed the same silent regression comes back through a different door.
+  const sections = /var EMS_READONLY_SECTIONS = \[([^\]]*)\]/.exec(html);
+  for (const id of ['ems-history-section', 'ems-sessions-section', 'ems-diag-section']) {
+    assert.match(sections[1], new RegExp(`'${id}'`), `${id} is no longer treated as read-only`);
+    assert.match(html, new RegExp(`id="${id}"`), `${id} no longer exists in the page`);
+  }
+});

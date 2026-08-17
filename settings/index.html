@@ -1576,7 +1576,7 @@
                It used to be the real figure, typed by hand, and it was three months out of
                date before anyone noticed. -->
           <span style="font-size:10px;color:#c7c7cc">Build <span id="ems-build">…</span></span>
-          <button class="btn-secondary" onclick="emsCopyConfig()" style="padding:2px 8px;font-size:10px"
+          <button id="ems-copy-config-btn" class="btn-secondary" onclick="emsCopyConfig()" style="padding:2px 8px;font-size:10px"
             data-i18n="config.copyButton" data-i18n-title="config.copyHint">⧉ Copy configuration</button>
         </div>
       </div>
@@ -8731,8 +8731,12 @@
     // pause switch. Counting those as edits would light the marker within seconds of
     // opening the page, and a warning that is always on is one nobody reads.
     var EMS_READONLY_SECTIONS = ['ems-diag-section', 'ems-history-section', 'ems-sessions-section'];
-    // Buttons that act on the page rather than on the configuration.
-    var EMS_NEUTRAL_BUTTONS = ['ems-save-btn', 'ems-load-btn'];
+    // Buttons that read rather than edit. Every other button inside the EMS tab marks the
+    // form dirty, because adding or removing a device row fires no input event and a click
+    // is the only signal there is. A read-only action landing on that rule tells the user
+    // they have unsaved changes when they have made none — and the warning is worth nothing
+    // once it has cried wolf.
+    var EMS_NEUTRAL_BUTTONS = ['ems-save-btn', 'ems-load-btn', 'ems-copy-config-btn'];
 
     function _emsIsNeutralTarget(el) {
       for (var n = el; n && n !== document; n = n.parentNode) {
