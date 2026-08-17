@@ -443,3 +443,23 @@ test('the build number is read from the app, not typed into the page', () => {
     'getEmsDiag does not report the app version');
   assert.ok(version, 'app.json has no version');
 });
+
+// ── what the configuration export lists under "devices" ──────────────────────
+// It used to dump every paired device — 146 lines of other people's lamps on this
+// installation — which buried the ten rows that matter and told a reader nothing they
+// could act on. It now prints the EMS-steered devices with the measured value beside the
+// believed one, which is where every fault found in the field this month actually lived.
+test('the export lists steered devices with both columns, not the whole house', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  const fn = html.slice(html.indexOf('function emsCopyConfig'), html.indexOf('function closeModal'));
+  assert.ok(fn.length > 200, 'emsCopyConfig is gone');
+
+  assert.match(fn, /diag && diag\.devices/, 'the export no longer reads the per-device diagnostics');
+  assert.match(fn, /measured/, 'the measured column is missing');
+  assert.match(fn, /r\.ems/, 'the believed column is missing');
+
+  // _emsDevices may still be consulted — for names — but must not be enumerated into rows.
+  assert.ok(!/_emsDevices\)\s*\|\|\s*\[\]\)\.map/.test(fn),
+    'the full paired-device list is being dumped again');
+});

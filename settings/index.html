@@ -2043,15 +2043,23 @@
         _H.api('GET', '/ems/diag', null, function(errD, diag) {
           push('diagnostics', errD ? String(errD) : redactConfig(diag || {}, null));
 
-          // Paired devices, from what the page already holds — no second round trip, and
-          // the same list the dropdowns were filled from. This is the single most useful
-          // section when a configured id in ems_config points at nothing: only the
-          // identifier travels with the config, and only this says what it was.
-          var devs = (typeof _emsDevices !== 'undefined' && _emsDevices) || [];
-          var list = devs.map(function(d) {
-            return (d.driverId || '?') + '  ' + (d.name || '') + '  [' + String(d.id || '').slice(0, 8) + ']';
-          }).sort();
-          push('devices (' + list.length + ')', list.join('\n') || '—');
+          // Only the devices the EMS steers, measured beside believed. The full paired list
+          // used to be here and was 146 lines of other people's lamps — it buried the ten
+          // rows that matter and told a reader nothing they could act on. Names are
+          // resolved from _emsDevices, which the page already holds.
+          var byId = {};
+          ((typeof _emsDevices !== 'undefined' && _emsDevices) || []).forEach(function(d) {
+            byId[d.id] = d.name;
+          });
+          var rows = (diag && diag.devices) || [];
+          push('devices (' + rows.length + ')', rows.map(function(r) {
+            var head = (r.kind + '        ').slice(0, 13)
+              + ((r.name || byId[r.id] || '?') + '                    ').slice(0, 22)
+              + '[' + String(r.id).slice(0, 8) + ']';
+            return head
+              + '\n    measured  ' + JSON.stringify(r.measured)
+              + (r.ems ? '\n    ems       ' + JSON.stringify(r.ems) : '');
+          }).join('\n') || '—');
 
           document.getElementById('export-textarea').value = out.join('\n');
           document.getElementById('copy-hint').textContent = '';

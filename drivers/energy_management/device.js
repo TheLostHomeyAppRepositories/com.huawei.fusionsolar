@@ -24,6 +24,7 @@ const pvForecastMixin     = require('../../lib/ems/pvForecast');
 const priceForecastMixin  = require('../../lib/ems/priceForecast');
 const chargeSessionsMixin = require('../../lib/ems/chargeSessions');
 const chargerStateMixin   = require('../../lib/ems/chargerState');
+const deviceDiagMixin     = require('../../lib/ems/deviceDiag');
 const widgetMixin         = require('../../lib/ems/widget');
 
 class EmsDevice extends Device {
@@ -600,6 +601,8 @@ class EmsDevice extends Device {
       // Solar-forecast start gate: state + the two figures it compared, so the settings
       // page can show why it is holding rather than only that it is.
       forecastGate: this._forecastGateDiag(cfg, this._diag.soc),
+      // Measured beside believed, per device the EMS steers — see lib/ems/deviceDiag.js.
+      devices: this._deviceDiag(),
       // The two "tell the user" thresholds behind ems_battery_low / _full. They lost their
       // input fields with the SOC zones in 1.2.108 but kept firing, so their defaults turn
       // up in the history as "53% < 80% — Batterie tief" and read like a limit that stops
@@ -818,6 +821,21 @@ class EmsDevice extends Device {
     // left a passive state ('holding'/'idle') while e.g. the pool is running,
     // the running simple devices take over the display.
     const simpleDevicesAll = [...heatPumps, ...boilers, ...pools, ...dehumidifiers, ...aircons];
+    // Keep this tick's readings for the diagnostics. They are read once per tick and were
+    // then thrown away, so the configuration export could show what the EMS decided but
+    // not what it decided FROM. Re-reading them at export time would be worse than useless:
+    // it would show a different moment than the decision it is meant to explain.
+    this._diag.readings = [
+      ...chargers.map((c) => ({
+        id: c.id, kind: 'charger',
+        measured: { powerW: c.rawPowerW ?? null, connected: c.connected, chargeMode: c.chargeMode },
+      })),
+      ...simpleDevicesAll.map((d) => ({
+        id: d.id, name: d.name, kind: 'simple',
+        measured: { powerW: d.powerW ?? null, actualOn: d.actualOn, stateSource: d.stateSource,
+                    minSurplusW: d.minSurplusW },
+      })),
+    ];
     const socStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
     const activeHpCount           = heatPumps.filter((d)     => this._heatPumpStates.get(d.id)?.isOn).length;
     const activeBoilerCount       = boilers.filter((d)       => this._boilerStates.get(d.id)?.isOn).length;
@@ -1337,6 +1355,7 @@ Object.assign(
   priceForecastMixin,
   chargeSessionsMixin,
   chargerStateMixin,
+  deviceDiagMixin,
   widgetMixin,
 );
 
