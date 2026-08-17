@@ -2393,6 +2393,23 @@ test('getEmsChargeSessions — a just-started session is shown despite the 0.05 
   assert.strictEqual(out[0].running, true);
 });
 
+test('getEmsChargeSessions — the running row says whether it is drawing right now', () => {
+  // Plugged in is not the same as charging: between two solar windows the EMS holds the
+  // charger at zero and the session stays open. The session-history widget shows that as
+  // "paused", and a growing duration labelled "in progress" while nothing flows would be
+  // the wrong word.
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { currency: 'CHF' } };
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 7360, powerW: 7360 }, cfg, 15_000, 99999);
+
+  seedState(d, 'c1', { currentAmps: null });
+  assert.strictEqual(d.getEmsChargeSessions(cfg)[0].charging, false, 'held at zero');
+  seedState(d, 'c1', { currentAmps: 0 });
+  assert.strictEqual(d.getEmsChargeSessions(cfg)[0].charging, false, '0 A is not charging either');
+  seedState(d, 'c1', { currentAmps: 10 });
+  assert.strictEqual(d.getEmsChargeSessions(cfg)[0].charging, true);
+});
+
 test('getEmsChargeSessions — finished and running rows carry the same fields', () => {
   // Two builders would drift into two subtly different shapes, and the reader would meet a
   // list whose columns mean different things depending on the row.
@@ -2404,9 +2421,12 @@ test('getEmsChargeSessions — finished and running rows carry the same fields',
   d._trackChargeSession({ ...charger, connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 99999);
   const finishedRow = d.getEmsChargeSessions(cfg)[0];
 
-  const keys = (o) => Object.keys(o).filter((k) => k !== 'running').sort();
+  // `running` and `charging` mark the live row; they are not columns of the table.
+  const MARKERS = ['running', 'charging'];
+  const keys = (o) => Object.keys(o).filter((k) => !MARKERS.includes(k)).sort();
   assert.deepStrictEqual(keys(runningRow), keys(finishedRow));
   assert.strictEqual(finishedRow.running, undefined);
+  assert.strictEqual(finishedRow.charging, undefined);
   assert.strictEqual(runningRow.energyKwh, finishedRow.energyKwh, 'same energy, just now closed');
 });
 
