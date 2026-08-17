@@ -403,10 +403,16 @@ test('the sessions list and its CSV handle a session with no end time', () => {
   assert.match(csv.slice(0, 2000), /s\.endedAt \? new Date\(s\.endedAt\)\.toISOString\(\) : ''/,
     'CSV would date an unfinished charge to the moment of export');
 
+  // Open and drawing are two different things: the EMS holds the charger at zero between
+  // two solar windows while the cable stays in. Reported from the field — the list said
+  // "läuft" over a session that was paused at that moment.
+  assert.match(render, /s\.charging !== false/, 'the row does not distinguish paused from charging');
+
   for (const lang of ['en', 'de', 'nl']) {
     const cs = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).settings.chargeSessions;
-    for (const k of ['running', 'now']) {
+    for (const k of ['running', 'paused', 'now']) {
       assert.ok(cs[k] && cs[k].trim(), `${lang}: settings.chargeSessions.${k} missing`);
     }
+    assert.notStrictEqual(cs.running, cs.paused, `${lang}: the two states read the same`);
   }
 });

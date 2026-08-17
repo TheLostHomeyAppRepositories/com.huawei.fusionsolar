@@ -8128,9 +8128,15 @@
         if (durMin >= 1440) {
           durTxt = Math.floor(durMin / 1440) + 'd ' + Math.floor((durMin % 1440) / 60) + 'h';
         }
-        var badge = s.running
-          ? ' <span style="color:#34c759;font-weight:600">● ' + _emsHistEsc(_H.__('settings.chargeSessions.running')) + '</span>'
-          : '';
+        // Open and drawing are two different things. Between two solar windows the EMS
+        // holds the charger at zero while the cable stays in, and labelling that "charging"
+        // next to a duration that keeps growing is simply wrong.
+        var badge = '';
+        if (s.running) {
+          var live = s.charging !== false;
+          badge = ' <span style="color:' + (live ? '#34c759' : '#8e8e93') + ';font-weight:600">● '
+            + _emsHistEsc(_H.__('settings.chargeSessions.' + (live ? 'running' : 'paused'))) + '</span>';
+        }
         var endTxt = s.running ? _H.__('settings.chargeSessions.now') : fmtDt(s.endedAt);
         var costTxt = s.cost != null ? (' · ' + s.cost.toFixed(2) + ' ' + _emsHistEsc(s.currency) + ' (Ø ' + s.avgPrice.toFixed(3) + '/kWh)') : '';
         // Solar vs. bought. Older sessions predate the split and carry no pvShare — showing

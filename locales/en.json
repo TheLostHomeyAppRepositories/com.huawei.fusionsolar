@@ -402,8 +402,9 @@
       "allCars": "All cars / chargers",
       "exportCsv": "⬇ Export CSV",
       "nothingToExport": "No sessions to export for this selection.",
-      "running": "running",
-      "now": "now"
+      "running": "charging",
+      "now": "now",
+      "paused": "paused"
     },
     "diagLabels": {
       "tickInterval": "Interval",

@@ -402,8 +402,9 @@
       "allCars": "Alle Autos / Lader",
       "exportCsv": "⬇ CSV exportieren",
       "nothingToExport": "Keine Sessions für diese Auswahl zum Exportieren.",
-      "running": "läuft",
-      "now": "jetzt"
+      "running": "lädt",
+      "now": "jetzt",
+      "paused": "pausiert"
     },
     "diagLabels": {
       "tickInterval": "Takt",

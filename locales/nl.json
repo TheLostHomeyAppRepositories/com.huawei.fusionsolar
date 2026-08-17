@@ -402,8 +402,9 @@
       "allCars": "Alle auto's / laders",
       "exportCsv": "⬇ CSV exporteren",
       "nothingToExport": "Geen sessies om te exporteren voor deze selectie.",
-      "running": "loopt",
-      "now": "nu"
+      "running": "laadt",
+      "now": "nu",
+      "paused": "gepauzeerd"
     },
     "diagLabels": {
       "tickInterval": "Interval",
