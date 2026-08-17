@@ -7916,8 +7916,14 @@
         var isSystem = ev.type === 'system';
 
         if (isSystem) {
-          dot   = ev.event === 'app_update' ? '#5e5ce6' : '#8e8e93';
-          label = ev.event === 'app_update' ? _H.__('settings.history.appUpdated') : _H.__('settings.history.appStarted');
+          var _SYS = {
+            app_update:        { dot: '#5e5ce6', label: _H.__('settings.history.appUpdated') },
+            forecast_gate_on:  { dot: '#ff9500', label: _H.__('settings.history.forecastGateOn') },
+            forecast_gate_off: { dot: '#34c759', label: _H.__('settings.history.forecastGateOff') },
+          };
+          var _sm = _SYS[ev.event] || { dot: '#8e8e93', label: _H.__('settings.history.appStarted') };
+          dot    = _sm.dot;
+          label  = _sm.label;
           detail = ev.label || '';
         } else if (ev.type === 'mode') {
           var meta = _emsHistModeMeta()[ev.event];
@@ -8247,7 +8253,12 @@
       var label = ev.event || '?';
       var detail = '';
       if (ev.type === 'system') {
-        label = ev.event === 'app_update' ? _H.__('settings.history.appUpdated') : _H.__('settings.history.appStarted');
+        var _SYS_T = {
+          app_update:        _H.__('settings.history.appUpdated'),
+          forecast_gate_on:  _H.__('settings.history.forecastGateOn'),
+          forecast_gate_off: _H.__('settings.history.forecastGateOff'),
+        };
+        label = _SYS_T[ev.event] || _H.__('settings.history.appStarted');
         detail = ev.label || '';
       } else if (ev.type === 'mode') {
         var meta = _emsHistModeMeta()[ev.event];

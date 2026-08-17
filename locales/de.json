@@ -368,7 +368,9 @@
         "chargerStopped": "Lader gestoppt",
         "stopIneffective": "⚠ Stopp wirkungslos — Lader lädt weiter",
         "targetReached": "Ladeziel erreicht"
-      }
+      },
+      "forecastGateOn": "Prognose-Sperre aktiv",
+      "forecastGateOff": "Prognose-Sperre aufgehoben"
     },
     "histMode": {
       "solarEv": "Solar-EV-Laden",
@@ -867,7 +869,7 @@
       },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",
-        "desc": "An einem Tag mit schlechter Prognose werden <em>Starts</em> von Geräten (Wärmepumpe / Boiler / Pool / Entfeuchter / Klimaanlage) zurückgehalten, um die Batterie für die Nacht zu schonen. Laufende Geräte beenden normal; EV-Laden ist nicht betroffen. Benötigt eine aktivierte Solcast-Prognose — fällt bei fehlender/veralteter Prognose auf Normalbetrieb zurück.",
+        "desc": "An einem Tag mit schlechter Prognose werden <em>Starts</em> zurückgehalten — Wärmepumpe / Boiler / Pool / Entfeuchter / Klimaanlage und auch das Solar-EV-Laden —, um die Batterie für die Nacht zu schonen. Was bereits läuft, beendet normal, auch ein laufender Ladevorgang. Ausdrücklich angefordertes Laden (Sofort, Immer, Niedertarif, Preis, Off-Peak) wird nie zurückgehalten. Benötigt eine aktivierte Solcast-Prognose — fällt bei fehlender/veralteter Prognose auf Normalbetrieb zurück.",
         "optOff": "Aus",
         "optManual": "Manueller Schwellenwert (kWh)",
         "optAdaptive": "Adaptiv (Batterie-Defizit)",

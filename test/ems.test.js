@@ -1146,6 +1146,72 @@ test('_forecastGateBlocksStarts — off / manual / adaptive / guards', () => {
   assert.strictEqual(stale._forecastGateBlocksStarts({ ...withBat, forecast_gate_mode: 'manual', forecast_gate_kwh: 5 }, { soc: 60 }, now), false);
 });
 
+// ── pvForecast: announcing the gate in the EMS history ───────────────────────
+// "Starts are being held back" is only half an answer; the half that lets someone check
+// the setting is "4 kWh left today against the 5 kWh needed to fill the battery".
+function gateDevice(history = []) {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecastFetchedAt: now,
+    _pvForecast: [{ end: now + 30 * 60000, kw: 4, h: 0.5 }, { end: now + 60 * 60000, kw: 4, h: 0.5 }],
+    _emsHistory: history,
+    events: [],
+    logs: [],
+  });
+  d.log = (m) => d.logs.push(m);
+  d._addHistoryEvent = (type, event, label) => { d.events.push({ type, event, label }); d._emsHistory.push({ type, event, label }); };
+  return d;
+}
+const GATE_ON_CFG  = { battery_devices: [{ id: 'b1', capacity_kwh: 10 }], forecast_gate_mode: 'adaptive' };
+
+test('_forecastGateState — reports the figures behind the verdict', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const s = gateDevice()._forecastGateState(GATE_ON_CFG, { soc: 50 }, now);
+  assert.strictEqual(s.blocked, true);
+  assert.strictEqual(s.remainingKwh, 4);
+  assert.strictEqual(s.thresholdKwh, 5, '50 % of a 10 kWh battery still to fill');
+});
+
+test('_announceForecastGate — one history entry per transition, not per tick', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice();
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now), true);
+  for (let i = 0; i < 5; i++) d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now);
+  assert.strictEqual(d.events.length, 1);
+  assert.strictEqual(d.events[0].event, 'forecast_gate_on');
+  assert.strictEqual(d.events[0].label, '4 / 5 kWh');
+
+  // Battery fuller → deficit 3 kWh, forecast 4 kWh covers it → gate opens.
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 70 }, now), true);
+  assert.strictEqual(d.events.length, 2);
+  assert.strictEqual(d.events[1].event, 'forecast_gate_off');
+});
+
+test('_announceForecastGate — a restart does not re-announce a gate already in the history', () => {
+  // The state is derived from forecast + SOC + config, so it survives nothing; the last
+  // announcement does, in the history itself. Reading it back beats keeping a second flag
+  // that could disagree with what the user is looking at.
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const restored = [
+    { type: 'system', event: 'forecast_gate_on', label: '4 / 5 kWh' },
+    { type: 'mode', event: 'idle', label: '—' },
+  ];
+  const d = gateDevice(restored);
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now), false);
+  assert.strictEqual(d.events.length, 0);
+});
+
+test('_announceForecastGate — the LAST gate entry wins, not the first', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice([
+    { type: 'system', event: 'forecast_gate_on', label: '1 / 9 kWh' },
+    { type: 'system', event: 'forecast_gate_off', label: '9 / 1 kWh' },
+  ]);
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now), true, 'gate is on again');
+  assert.strictEqual(d.events[0].event, 'forecast_gate_on');
+});
+
 test('_evaluateSimpleDevices — forecast gate blocks a start, running device continues', async () => {
   const now = Date.now();
   const cfg = { min_battery_soc: 80, battery_devices: [{ id: 'b1' }], forecast_gate_mode: 'manual', forecast_gate_kwh: 100 };
@@ -1610,6 +1676,85 @@ test('_evaluateEvChargers — global offpeak_enabled toggle does not override so
   // Must follow the price-mode decision (16A, price_ev), NOT the fixed off-peak amps (10A).
   assert.strictEqual(d._getChargerState('c1').currentAmps, 16);
   assert.strictEqual(d._lastMode.mode, 'price_ev');
+});
+
+// ── chargerControl: the solar-forecast gate reaches the EV charger ───────────
+// Owner's request, 2026-08-17: "Die Startsperre soll auch für das EV Laden bei Solar gelten.
+// Nicht dass mir die Hausbatterie nicht lädt an nicht so sonnigen Tagen." The car is by far
+// the largest load, so a gate that spared the heat pump and let the car take 11 kW was
+// protecting the battery in name only.
+// _evaluateEvChargers reads the real clock, and "remaining today" is bounded by local
+// midnight — a fixture of half-hour slots would quietly shrink when the suite runs late in
+// the evening, and these tests would pass or fail by the hour. The remaining-kWh figure is
+// stubbed instead; everything the gate itself does — capacity, SOC, the comparison — is the
+// real code, and _pvForecastRemainingTodayKwh has its own tests above.
+function gateChargerDevice(extra = {}) {
+  return makeChargerDevice({
+    homey: {
+      flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) },
+      clock: { getTimezone: () => 'UTC' },
+      setTimeout: (f, m) => setTimeout(f, m),
+      clearTimeout: (t) => clearTimeout(t),
+    },
+    // _pvForecastStale wants both a fetch time AND a forecast array; the array's contents
+    // are irrelevant here because the kWh figure is stubbed, but it has to exist.
+    _pvForecastFetchedAt: Date.now(),
+    _pvForecast: [{ end: Date.now() + 3600_000, kw: 4, h: 1 }],
+    _pvForecastRemainingTodayKwh: () => 4,
+    ...extra,
+  });
+}
+// 4 kWh forecast left vs 5 kWh needed to fill a 10 kWh battery at 50 % → gate closed.
+// min_battery_soc has to be stated: its default of 80 would put 50 % and 70 % below the
+// hard stop, and the charger would then be held back for a reason that is not the gate.
+const GATE_CFG = {
+  battery_devices: [{ id: 'b1', capacity_kwh: 10 }],
+  forecast_gate_mode: 'adaptive',
+  min_battery_soc: 20,
+};
+const GATE_BAT = { soc: 50, powerW: 0 };
+
+test('_evaluateEvChargers — a closed forecast gate holds a NEW solar charge', async () => {
+  const d = gateChargerDevice();
+  await d._evaluateEvChargers(GATE_BAT, -8000, [{ ...CHARGER_1PH, powerW: 0 }], GATE_CFG, 8000, 500);
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null);
+});
+
+test('_evaluateEvChargers — the status text names the gate rather than blaming the sun', async () => {
+  const d = gateChargerDevice();
+  await d._evaluateEvChargers(GATE_BAT, -8000, [{ ...CHARGER_1PH, powerW: 0 }], GATE_CFG, 8000, 500);
+  assert.match(d._lastMode.text, /Prognose-Sperre/,
+    '8 kW of export and a stopped charger needs an explanation on the tile');
+});
+
+test('_evaluateEvChargers — a charge already running is NOT cut off by the gate', async () => {
+  // Stopping mid-session to save the battery leaves the car with neither.
+  //
+  // Asserting "not null" is not enough: zeroing a running charger's budget does not stop it
+  // outright, because the export guard then holds it at the lowest rung. It arrives at 6 A
+  // instead of stopping — throttled, not spared. The running current is what has to be left
+  // alone, so that is what this pins.
+  const d = gateChargerDevice();
+  seedState(d, 'c1', { currentAmps: 10, currentPhases: 1 });
+  await d._evaluateEvChargers(GATE_BAT, -8000, [{ ...CHARGER_1PH, powerW: 2300 }], GATE_CFG, 8000, 500);
+  assert.ok(d._getChargerState('c1').currentAmps >= 10,
+    `still charging at full budget, got ${d._getChargerState('c1').currentAmps} A`);
+});
+
+test('_evaluateEvChargers — an explicitly requested charge ignores the gate', async () => {
+  // "Charge now" is the user asking for it. Holding that back would ignore an instruction,
+  // not conserve a battery — the gate sits below every deliberate tier by design.
+  const d = gateChargerDevice({ getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined) });
+  await d._evaluateEvChargers(GATE_BAT, 0, [{ ...CHARGER_1PH, powerW: 0 }], GATE_CFG, 8000, 500);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 32);
+});
+
+test('_evaluateEvChargers — an open gate leaves solar charging alone', async () => {
+  // Same everything, battery at 70 %: deficit 3 kWh, forecast 4 kWh covers it.
+  const d = gateChargerDevice();
+  await d._evaluateEvChargers({ soc: 70, powerW: 0 }, -8000, [{ ...CHARGER_1PH, powerW: 0 }], GATE_CFG, 8000, 500);
+  assert.notStrictEqual(d._getChargerState('c1').pendingStepAmps, null);
 });
 
 // ── chargerControl: the SOC ramp must not be undone downstream ───────────────

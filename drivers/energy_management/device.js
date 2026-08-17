@@ -730,6 +730,10 @@ class EmsDevice extends Device {
     if (this._warmupDone) await this._checkBatteryPriceControl(cfg, battery);
     // Right after the only place that moves the announcement flags; a no-op when unchanged.
     this._saveBatteryStates();
+    // The solar-forecast gate is asked for its verdict once per device type and once for
+    // the chargers; announcing it is done here, once, so the history gets one entry per
+    // transition rather than one per consumer.
+    if (this._warmupDone) this._announceForecastGate(cfg, battery);
     this._tickPhase = 'scheduler';
     if (this._warmupDone) await this._checkScheduler(cfg).catch((e) => this.error('[EMS] scheduler:', e.message));
 

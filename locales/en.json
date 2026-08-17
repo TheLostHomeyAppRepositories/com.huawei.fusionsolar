@@ -368,7 +368,9 @@
         "chargerStopped": "Charger stopped",
         "stopIneffective": "⚠ Stop had no effect — charger still drawing",
         "targetReached": "Charge target reached"
-      }
+      },
+      "forecastGateOn": "Forecast gate closed",
+      "forecastGateOff": "Forecast gate open"
     },
     "histMode": {
       "solarEv": "Solar EV charging",
@@ -867,7 +869,7 @@
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",
-        "desc": "On a poor-forecast day, hold off <em>starting</em> devices (heat pump / boiler / pool / dehumidifier / air conditioner) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.",
+        "desc": "On a day with a poor forecast, <em>starts</em> are held back — heat pump / boiler / pool / dehumidifier / air conditioning, and solar EV charging too — so the battery keeps enough charge for the night. Anything already running finishes normally, including a charge in progress. Charging you asked for explicitly (instant, always, off-peak, price, low tariff) is never held back. Requires an active Solcast forecast; falls back to normal operation when the forecast is missing or stale.",
         "optOff": "Off",
         "optManual": "Manual threshold (kWh)",
         "optAdaptive": "Adaptive (battery deficit)",
