@@ -340,3 +340,24 @@ test('the live strip shows the forecast only when it is configured and fresh', (
   assert.match(guard.slice(-400), /d\.pv\.configured/, 'no configured check');
   assert.match(guard.slice(-400), /!d\.pv\.stale/, 'no staleness check');
 });
+
+// ── the two announcement thresholds have no field, so they must have a sentence ──
+// ems_battery_low / _full kept firing at their defaults (80 % / 95 %) after the SOC-zone
+// inputs were removed in 1.2.108. With a surplus ramp configured they stop nothing — the
+// ramp's lower point does — yet the history renders "53% < 80% — Batterie tief", which
+// reads like a limit. Naming them in the settings is the only thing standing between the
+// reader and that misreading, so it is worth a test.
+test('the battery announcement thresholds are named in all three locales', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  assert.match(html, /ems-battery-announce-note/, 'the note element is gone');
+  assert.match(html, /shareRamp\.announceNote/, 'nothing reads the note text');
+
+  for (const lang of ['en', 'de', 'nl']) {
+    const ramp = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8'))
+      .settings.homeBatteries.shareRamp;
+    assert.ok(ramp.announceNote && ramp.announceNote.trim(), `${lang}: announceNote missing`);
+    assert.match(ramp.announceNote, /\{low\}/, `${lang}: announceNote lost {low}`);
+    assert.match(ramp.announceNote, /\{full\}/, `${lang}: announceNote lost {full}`);
+  }
+});

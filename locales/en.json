@@ -866,7 +866,8 @@
         "stopNote": "below that: every device off, battery charges at full power",
         "stopZone": "all off",
         "axisSoc": "battery level %",
-        "axisShare": "share %"
+        "axisShare": "share %",
+        "announceNote": "Separate from this: the flow cards “battery low” and “battery full” still fire at {low} % and {full} %. They only notify — what stops devices is the lower ramp point above."
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",

@@ -866,7 +866,8 @@
         "stopNote": "darunter: alle Geräte aus, die Batterie lädt mit voller Leistung",
         "stopZone": "alles aus",
         "axisSoc": "Ladestand %",
-        "axisShare": "Anteil %"
+        "axisShare": "Anteil %",
+        "announceNote": "Davon unabhängig: Die Flow-Karten „Batterie tief“ und „Batterie voll“ lösen weiterhin bei {low} % und {full} % aus. Sie melden nur — gestoppt wird über den unteren Rampenpunkt oben."
       },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",

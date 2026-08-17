@@ -866,7 +866,8 @@
         "stopNote": "daaronder: alle apparaten uit, de accu laadt op vol vermogen",
         "stopZone": "alles uit",
         "axisSoc": "accuniveau %",
-        "axisShare": "aandeel %"
+        "axisShare": "aandeel %",
+        "announceNote": "Los daarvan: de flowkaarten „accu leeg” en „accu vol” reageren nog steeds bij {low} % en {full} %. Die melden alleen — stoppen doet het onderste ramppunt hierboven."
       },
       "forecastGate": {
         "title": "🌤 Zonprognose-startpoort",

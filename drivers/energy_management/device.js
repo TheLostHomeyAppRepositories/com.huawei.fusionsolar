@@ -596,6 +596,14 @@ class EmsDevice extends Device {
       // Solar-forecast start gate: state + the two figures it compared, so the settings
       // page can show why it is holding rather than only that it is.
       forecastGate: this._forecastGateDiag(cfg, this._diag.soc),
+      // The two "tell the user" thresholds behind ems_battery_low / _full. They lost their
+      // input fields with the SOC zones in 1.2.108 but kept firing, so their defaults turn
+      // up in the history as "53% < 80% — Batterie tief" and read like a limit that stops
+      // something. Reported so the settings page can name them; they stop nothing.
+      batteryAnnounce: {
+        lowSoc:  Number(cfg.min_battery_soc ?? 80),
+        fullSoc: Number(cfg.battery_full_soc ?? 95),
+      },
     };
   }
 

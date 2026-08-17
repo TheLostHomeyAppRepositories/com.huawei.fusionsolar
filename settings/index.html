@@ -1149,6 +1149,12 @@
               </div>
             </div>
             <div style="font-size:11px;color:#ff3b30;margin:-4px 0 10px" data-i18n="homeBatteries.shareRamp.stopNote">below that: every device off, battery charges at full power</div>
+            <!-- The two announcement thresholds. They have no field of their own — the old
+                 min_battery_soc input went away with the SOC zones in 1.2.108 — but they
+                 still fire ems_battery_low / _full, and their defaults then show up in the
+                 history as "53% < 80% — Batterie tief", reading like a limit that stops
+                 something. Naming them here is the whole point; they are not editable. -->
+            <div id="ems-battery-announce-note" style="display:none;font-size:11px;color:#6e6e73;margin:-4px 0 10px"></div>
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">From SOC (%)</div>
@@ -3084,7 +3090,23 @@
         _emsShareDiag = (!err && d) ? d : null;
         emsShareRampPreview();
         emsForecastGateStatus(_emsShareDiag && _emsShareDiag.forecastGate);
+        emsBatteryAnnounceNote(_emsShareDiag && _emsShareDiag.batteryAnnounce);
       });
+    }
+
+    // ── The two announcement thresholds, named ─────────────────────────────────
+    // ems_battery_low / _full survived the removal of the SOC-zone inputs in 1.2.108 and
+    // still fire at their defaults, 80 % and 95 %. With a ramp configured they stop nothing
+    // — the ramp's lower point does that — but the history line "53% < 80% — Batterie tief"
+    // reads exactly like a limit. Saying out loud what they are is the fix; making them
+    // editable again would be a new setting nobody asked to tune.
+    function emsBatteryAnnounceNote(a) {
+      var box = document.getElementById('ems-battery-announce-note');
+      if (!box) return;
+      if (!a || typeof a.lowSoc !== 'number') { box.style.display = 'none'; return; }
+      box.textContent = _H.__('settings.homeBatteries.shareRamp.announceNote')
+        .replace('{low}', a.lowSoc).replace('{full}', a.fullSoc);
+      box.style.display = '';
     }
 
     // ── Live state of the solar-forecast start gate ────────────────────────────
