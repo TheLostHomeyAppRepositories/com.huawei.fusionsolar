@@ -275,3 +275,35 @@ test('_pushAppLog — a message that merely contains an ISO date is not mangled'
     /^2026-08-15 08:06:34 \[EMS\] forecast slot 2026-08-16T04:00:00\.000Z is next$/,
     'only the LEADING stamp may be replaced');
 });
+
+// ── the `holding` mode must not name a reason it does not always have ────────
+// Three situations end up in this mode: no surplus at all, the solar-forecast gate holding
+// starts back, and a car sitting at its charge target waiting to be unplugged. The status
+// text carries which one; the mode label used to claim "no surplus" for all three, which
+// produced this line in the field on 2026-08-17:
+//
+//   Prognose-Sperre · Batterie wird geschont · Bat 55% ↑1162W — Wartet — kein Überschuss
+//
+// The battery was charging at 1162 W. There was surplus, and the label said otherwise.
+test('the holding mode label states no reason — the status text carries it', () => {
+  const fs = require('fs');
+  const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+  const titles = [];
+  const holdingTitle = appJson.capabilities.ems_mode.values.find((v) => v.id === 'holding').title;
+  titles.push(holdingTitle);
+  // The same id appears again as a flow-card argument label — both have to stay neutral.
+  const found = JSON.stringify(appJson).split('"id":"holding"').length - 1;
+  assert.ok(found >= 2, `expected the holding id in the capability AND a flow card, found ${found}`);
+
+  for (const lang of ['en', 'de', 'nl']) {
+    const loc = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8'));
+    titles.push({ [lang]: loc.settings.histMode.holding });
+  }
+  const words = /surplus|Überschuss|overschot|unplug|abstecken|forecast|Prognose/i;
+  for (const t of titles) {
+    for (const [lang, text] of Object.entries(t)) {
+      assert.ok(!words.test(text),
+        `${lang} holding label "${text}" names one of the three reasons — it fits all three or none`);
+    }
+  }
+});

@@ -385,7 +385,7 @@
       "priceEv": "Price-optimised EV charging",
       "instantEv": "Instant charge (max)",
       "batteryPriority": "Battery priority",
-      "holding": "Waiting — no surplus",
+      "holding": "Waiting",
       "idle": "No EV connected",
       "disabled": "EMS disabled",
       "notConfigured": "Not configured",

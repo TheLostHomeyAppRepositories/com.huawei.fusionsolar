@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.177",
+  "version": "1.2.178",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1539,9 +1539,9 @@
         {
           "id": "holding",
           "title": {
-            "en": "Waiting for Surplus",
-            "de": "Warte auf Überschuss",
-            "nl": "Wachten op surplus"
+            "en": "Waiting",
+            "de": "Wartet",
+            "nl": "Wacht"
           }
         },
         {
@@ -13161,9 +13161,9 @@
               {
                 "id": "holding",
                 "label": {
-                  "en": "Waiting for Surplus",
-                  "de": "Warte auf Überschuss",
-                  "nl": "Wachten op surplus"
+                  "en": "Waiting",
+                  "de": "Wartet",
+                  "nl": "Wacht"
                 }
               },
               {

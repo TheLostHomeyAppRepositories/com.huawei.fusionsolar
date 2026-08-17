@@ -385,7 +385,7 @@
       "priceEv": "Preisoptimiertes EV-Laden",
       "instantEv": "Sofortladen (max.)",
       "batteryPriority": "Batterie-Priorität",
-      "holding": "Wartet — kein Überschuss",
+      "holding": "Wartet",
       "idle": "Kein EV verbunden",
       "disabled": "EMS deaktiviert",
       "notConfigured": "Nicht konfiguriert",

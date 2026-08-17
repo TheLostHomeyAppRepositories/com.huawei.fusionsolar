@@ -385,7 +385,7 @@
       "priceEv": "Prijsgeoptimaliseerd EV-laden",
       "instantEv": "Direct laden (max)",
       "batteryPriority": "Batterijprioriteit",
-      "holding": "Wachten — geen overschot",
+      "holding": "Wacht",
       "idle": "Geen EV aangesloten",
       "disabled": "EMS uitgeschakeld",
       "notConfigured": "Niet geconfigureerd",
