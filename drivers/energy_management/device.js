@@ -593,6 +593,9 @@ class EmsDevice extends Device {
         committedW: this._gridImportCommittedW || 0,
         maxKw: Number(cfg.grid_import_limit_kw) || 0,
       },
+      // Solar-forecast start gate: state + the two figures it compared, so the settings
+      // page can show why it is holding rather than only that it is.
+      forecastGate: this._forecastGateDiag(cfg, this._diag.soc),
     };
   }
 

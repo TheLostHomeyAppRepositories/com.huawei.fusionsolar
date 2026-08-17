@@ -1165,6 +1165,82 @@ function gateDevice(history = []) {
 }
 const GATE_ON_CFG  = { battery_devices: [{ id: 'b1', capacity_kwh: 10 }], forecast_gate_mode: 'adaptive' };
 
+// Each way the gate can be inactive, and the label the settings box shows for it. "No
+// Solcast forecast yet" and "the forecast is ample" both mean "not holding" and want
+// opposite reactions from the reader, so the box must be able to tell them apart.
+const GATE_REASONS = {
+  mode_off:       'whyModeOff',
+  no_battery:     'whyNoBattery',
+  forecast_stale: 'whyStale',
+  no_capacity:    'whyNoCapacity',
+  no_soc:         'whyNoSoc',
+  no_threshold:   'whyNoThreshold',
+};
+
+test('_forecastGateState — every way of being inactive is told apart', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const bat = { battery_devices: [{ id: 'b1', capacity_kwh: 10 }] };
+  const noCap = { battery_devices: [{ id: 'b1' }] };
+  const r = (cfg, battery, dev) => (dev || gateDevice())._forecastGateState(cfg, battery, now).reason;
+
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'off' }, { soc: 50 }), 'mode_off');
+  assert.strictEqual(r({ forecast_gate_mode: 'adaptive' }, { soc: 50 }), 'no_battery');
+  assert.strictEqual(r({ ...noCap, forecast_gate_mode: 'adaptive' }, { soc: 50 }), 'no_capacity');
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'adaptive' }, { soc: null }), 'no_soc');
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'manual', forecast_gate_kwh: 0 }, { soc: 50 }), 'no_threshold');
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'adaptive' }, { soc: 50 }), 'below', '4 kWh < 5 kWh');
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'adaptive' }, { soc: 70 }), 'above', '4 kWh ≥ 3 kWh');
+
+  const staleDev = makeDevice({
+    homey: { clock: { getTimezone: () => 'UTC' } },
+    _pvForecastFetchedAt: now - 25 * 3600 * 1000,
+    _pvForecast: [{ end: now + 30 * 60000, kw: 4, h: 0.5 }],
+  });
+  assert.strictEqual(r({ ...bat, forecast_gate_mode: 'adaptive' }, { soc: 50 }, staleDev), 'forecast_stale');
+});
+
+test('every inactive reason has a label in all three locales', () => {
+  // The box switches on these strings. A reason the code can produce but the page cannot
+  // name would render as a bare identifier like "no_capacity" in front of the user.
+  const fs = require('fs');
+  for (const lang of ['en', 'de', 'nl']) {
+    const gate = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8'))
+      .settings.homeBatteries.forecastGate;
+    for (const [reason, key] of Object.entries(GATE_REASONS)) {
+      assert.ok(gate[key] && gate[key].trim(), `${lang}: no label for reason "${reason}" (key ${key})`);
+    }
+    for (const k of ['stateActive', 'stateInactive', 'compareBlocked', 'compareOpen', 'calcAdaptive']) {
+      assert.ok(gate[k] && gate[k].trim(), `${lang}: missing ${k}`);
+    }
+    assert.match(gate.calcAdaptive, /\{soc\}.*\{cap\}.*\{need\}/, `${lang}: calcAdaptive lost a placeholder`);
+    for (const k of ['compareBlocked', 'compareOpen']) {
+      assert.match(gate[k], /\{have\}[\s\S]*\{need\}/, `${lang}: ${k} lost a placeholder`);
+    }
+  }
+});
+
+test('_forecastGateDiag — carries what the settings box cannot work out for itself', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const cfg = { battery_devices: [{ id: 'b1', capacity_kwh: 10 }], forecast_gate_mode: 'adaptive' };
+  const d = gateDevice()._forecastGateDiag(cfg, 50, now);
+  assert.strictEqual(d.blocked, true);
+  assert.strictEqual(d.configuredMode, 'adaptive', 'the mode survives even when the state reads "off"');
+  assert.strictEqual(d.socPct, 50);
+  assert.strictEqual(d.capacityKwh, 10);
+  assert.strictEqual(d.thresholdKwh, 5);
+});
+
+test('_forecastGateDiag — an inactive gate still reports the configured mode', () => {
+  // state.mode collapses to 'off' for every inactive case, which would leave the box unable
+  // to decide whether to show the adaptive derivation at all.
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const cfg = { battery_devices: [{ id: 'b1' }], forecast_gate_mode: 'adaptive' };
+  const d = gateDevice()._forecastGateDiag(cfg, 50, now);
+  assert.strictEqual(d.reason, 'no_capacity');
+  assert.strictEqual(d.configuredMode, 'adaptive');
+  assert.strictEqual(d.capacityKwh, 0);
+});
+
 test('_forecastGateState — reports the figures behind the verdict', () => {
   const now = Date.UTC(2026, 0, 1, 10, 0, 0);
   const s = gateDevice()._forecastGateState(GATE_ON_CFG, { soc: 50 }, now);

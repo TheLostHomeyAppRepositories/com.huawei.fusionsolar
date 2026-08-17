@@ -1169,7 +1169,7 @@
           <!-- Solar-forecast start gate -->
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
             <div style="font-size:12px;font-weight:600;color:#3a3a3c;margin-bottom:4px" data-i18n="homeBatteries.forecastGate.title">🌤 Solar-forecast start gate</div>
-            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n-html="homeBatteries.forecastGate.desc">On a poor-forecast day, hold off <em>starting</em> devices (heat pump / boiler / pool / dehumidifier / air conditioner) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.<em>starting</em> devices (heat pump / boiler / pool / dehumidifier) to protect the battery you'll need tonight. Running devices finish normally; EV charging is not affected. Requires an enabled Solcast forecast — falls back to normal when the forecast is missing or stale.</p>
+            <p style="font-size:11px;color:#6e6e73;margin:0 0 8px;line-height:1.5" data-i18n-html="homeBatteries.forecastGate.desc">On a day with a poor forecast, <em>starts</em> are held back — heat pump / boiler / pool / dehumidifier / air conditioning, and solar EV charging too — so the battery keeps enough charge for the night. Anything already running finishes normally, including a charge in progress. Charging you asked for explicitly (instant, always, off-peak, price, low tariff) is never held back. Requires an active Solcast forecast; falls back to normal operation when the forecast is missing or stale.</p>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <select id="ems-forecast-gate-mode" onchange="emsForecastGateChange()"
                 style="padding:6px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;background:#fff">
@@ -1185,6 +1185,9 @@
               </div>
               <span id="ems-forecast-gate-adaptive-hint" style="display:none;font-size:11px;color:#6e6e73;max-width:320px" data-i18n="homeBatteries.forecastGate.adaptiveHint">Blocks starts when today's remaining forecast can't refill the battery to 100 % (uses capacity + current SOC).</span>
             </div>
+            <!-- Live state, straight from the EMS: not recomputed here, so it cannot
+                 disagree with the device. Reflects the SAVED configuration. -->
+            <div id="ems-forecast-gate-status" style="display:none;font-size:11px;margin-top:8px;padding:8px 10px;border-radius:6px;line-height:1.6"></div>
           </div>
         </div>
       </details>
@@ -3080,7 +3083,60 @@
       _H.api('GET', '/ems/diag', null, function(err, d) {
         _emsShareDiag = (!err && d) ? d : null;
         emsShareRampPreview();
+        emsForecastGateStatus(_emsShareDiag && _emsShareDiag.forecastGate);
       });
+    }
+
+    // ── Live state of the solar-forecast start gate ────────────────────────────
+    // Answers two questions the dropdown alone cannot: is it holding starts right now, and
+    // what were the two numbers it compared. The verdict comes from the device — the same
+    // code that decides — rather than being recomputed here, so the box cannot claim
+    // something the EMS is not doing. It therefore describes the SAVED setting; changing
+    // the dropdown without saving changes nothing until the next load.
+    function emsForecastGateStatus(g) {
+      var box = document.getElementById('ems-forecast-gate-status');
+      if (!box) return;
+      if (!g) { box.style.display = 'none'; return; }
+      var t = function(k) { return _H.__('settings.homeBatteries.forecastGate.' + k); };
+
+      // The several ways it can be inactive are worth telling apart: "no forecast yet" and
+      // "the forecast is ample" both mean "not holding" and want opposite reactions.
+      var WHY = {
+        mode_off:       t('whyModeOff'),
+        no_battery:     t('whyNoBattery'),
+        forecast_stale: t('whyStale'),
+        no_capacity:    t('whyNoCapacity'),
+        no_soc:         t('whyNoSoc'),
+        no_threshold:   t('whyNoThreshold'),
+      };
+      var head, colour, back, detail = '';
+
+      if (g.blocked) {
+        head = t('stateActive'); colour = '#a15c00'; back = '#fff4e5';
+        detail = t('compareBlocked').replace('{have}', g.remainingKwh).replace('{need}', g.thresholdKwh);
+      } else if (g.reason === 'above') {
+        head = t('stateInactive'); colour = '#1d6f42'; back = '#eaf7ef';
+        detail = t('compareOpen').replace('{have}', g.remainingKwh).replace('{need}', g.thresholdKwh);
+      } else {
+        head = t('stateInactive'); colour = '#3a3a3c'; back = '#f2f2f7';
+        detail = WHY[g.reason] || g.reason;
+      }
+
+      // How the requirement was arrived at — only the adaptive mode derives it; the manual
+      // mode's threshold is the number in the field right there, and restating it is noise.
+      var calc = '';
+      if (g.configuredMode === 'adaptive' && g.thresholdKwh !== null && g.socPct !== null) {
+        calc = t('calcAdaptive')
+          .replace('{soc}', Math.round(g.socPct))
+          .replace('{cap}', g.capacityKwh)
+          .replace('{need}', g.thresholdKwh);
+      }
+
+      box.style.color = colour;
+      box.style.background = back;
+      box.innerHTML = '<b>' + escHtml(head) + '</b> — ' + escHtml(detail)
+        + (calc ? '<br><span style="opacity:.75">' + escHtml(calc) + '</span>' : '');
+      box.style.display = '';
     }
 
     function emsPriorityUpdateButtons() {
