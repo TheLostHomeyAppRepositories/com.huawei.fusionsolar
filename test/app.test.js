@@ -351,14 +351,20 @@ test('the battery announcement thresholds are named in all three locales', () =>
   const fs = require('fs');
   const html = fs.readFileSync('settings/index.html', 'utf8');
   assert.match(html, /ems-battery-announce-note/, 'the note element is gone');
-  assert.match(html, /shareRamp\.announceNote/, 'nothing reads the note text');
+  assert.match(html, /shareRamp\.' \+ key/, 'nothing reads the note text');
+  // Two sentences: with a ramp the cards follow its points, without one they are leftovers
+  // from the SOC zones and the note has to say so rather than implying a relationship.
+  assert.match(html, /a\.source === 'ramp' \? 'announceNote' : 'announceNoteLegacy'/,
+    'the note no longer distinguishes a derived threshold from a leftover one');
 
   for (const lang of ['en', 'de', 'nl']) {
     const ramp = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8'))
       .settings.homeBatteries.shareRamp;
-    assert.ok(ramp.announceNote && ramp.announceNote.trim(), `${lang}: announceNote missing`);
-    assert.match(ramp.announceNote, /\{low\}/, `${lang}: announceNote lost {low}`);
-    assert.match(ramp.announceNote, /\{full\}/, `${lang}: announceNote lost {full}`);
+    for (const k of ['announceNote', 'announceNoteLegacy']) {
+      assert.ok(ramp[k] && ramp[k].trim(), `${lang}: ${k} missing`);
+      assert.match(ramp[k], /\{low\}/, `${lang}: ${k} lost {low}`);
+      assert.match(ramp[k], /\{full\}/, `${lang}: ${k} lost {full}`);
+    }
   }
 });
 
@@ -493,4 +499,19 @@ test('every reading the control loop branches on is reported as a value', () => 
   const charger = fs.readFileSync('lib/ems/chargerControl.js', 'utf8');
   assert.ok(charger.split('battery.powerW').length - 1 >= 5,
     'battery.powerW stopped being load-bearing — this test may be over-specified now');
+});
+
+// The announcement thresholds are only worth deriving if the code that FIRES the
+// announcements uses the derivation. device.js needs the homey module and never loads in
+// the test process, so its wiring is checked by reading it.
+test('_checkBatteryTriggers fires on the derived thresholds, not on the old fields', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  const start = dev.indexOf('async _checkBatteryTriggers');
+  assert.ok(start > 0, '_checkBatteryTriggers is gone');
+  const body = dev.slice(start, dev.indexOf('async _checkBatteryPriceControl'));
+
+  assert.match(body, /_batteryAnnounceThresholds\(cfg\)/, 'it does not ask for the derived pair');
+  assert.ok(!/cfg\.min_battery_soc|cfg\.battery_full_soc/.test(body),
+    'it reads the old fields directly again, so a configured ramp would be ignored');
 });

@@ -870,7 +870,8 @@
         "stopZone": "all off",
         "axisSoc": "battery level %",
         "axisShare": "share %",
-        "announceNote": "Separate from this: the flow cards “battery low” and “battery full” still fire at {low} % and {full} %. They only notify — what stops devices is the lower ramp point above."
+        "announceNote": "The “battery low” and “battery full” flow cards follow these two points: they fire at {low} % and {full} %. They only notify — stopping is what the lower point does.",
+        "announceNoteLegacy": "No ramp configured: the “battery low” and “battery full” flow cards fire at {low} % and {full} %. They only notify, and nothing here stops a device."
       },
       "forecastGate": {
         "title": "🌤 Solar-forecast start gate",

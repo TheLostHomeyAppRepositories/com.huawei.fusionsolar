@@ -1149,12 +1149,6 @@
               </div>
             </div>
             <div style="font-size:11px;color:#ff3b30;margin:-4px 0 10px" data-i18n="homeBatteries.shareRamp.stopNote">below that: every device off, battery charges at full power</div>
-            <!-- The two announcement thresholds. They have no field of their own — the old
-                 min_battery_soc input went away with the SOC zones in 1.2.108 — but they
-                 still fire ems_battery_low / _full, and their defaults then show up in the
-                 history as "53% < 80% — Batterie tief", reading like a limit that stops
-                 something. Naming them here is the whole point; they are not editable. -->
-            <div id="ems-battery-announce-note" style="display:none;font-size:11px;color:#6e6e73;margin:-4px 0 10px"></div>
             <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:8px">
               <div>
                 <div style="font-size:11px;color:#6e6e73;margin-bottom:4px" data-i18n="homeBatteries.shareRamp.socHigh">From SOC (%)</div>
@@ -1169,6 +1163,14 @@
             <div id="ems-share-chart" style="margin-top:10px;display:none"></div>
             <div id="ems-share-preview" style="font-size:11px;color:#3a3a3c;margin-top:8px;padding:8px 10px;background:#f2f7ff;border-radius:6px;line-height:1.5;display:none"></div>
             <div style="font-size:11px;color:#6e6e73;margin-top:6px;line-height:1.5" data-i18n="homeBatteries.shareRamp.hint">The house is served from the same production, so a high share at high house load can draw from the grid.</div>
+            <!-- The two announcement thresholds. They have no field of their own — the old
+                 min_battery_soc input went away with the SOC zones in 1.2.108 — but they
+                 still fire ems_battery_low / _full, and their defaults then show up in the
+                 history as "53% < 80% — Batterie tief", reading like a limit that stops
+                 something. Naming them here is the whole point.
+                 Below the ramp, not between its two rows: the lower and upper points are
+                 read as a pair and a paragraph in the middle broke them apart. -->
+            <div id="ems-battery-announce-note" style="display:none;font-size:11px;color:#6e6e73;margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f5;line-height:1.5"></div>
 
           </div>
 
@@ -3195,7 +3197,11 @@
       var box = document.getElementById('ems-battery-announce-note');
       if (!box) return;
       if (!a || typeof a.lowSoc !== 'number') { box.style.display = 'none'; return; }
-      box.textContent = _H.__('settings.homeBatteries.shareRamp.announceNote')
+      // Two sentences, because the two cases mean different things: with a ramp the cards
+      // follow the points right above, without one they are leftovers from the SOC zones
+      // that fire from nowhere and the note has to say so.
+      var key = a.source === 'ramp' ? 'announceNote' : 'announceNoteLegacy';
+      box.textContent = _H.__('settings.homeBatteries.shareRamp.' + key)
         .replace('{low}', a.lowSoc).replace('{full}', a.fullSoc);
       box.style.display = '';
     }

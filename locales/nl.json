@@ -870,7 +870,8 @@
         "stopZone": "alles uit",
         "axisSoc": "accuniveau %",
         "axisShare": "aandeel %",
-        "announceNote": "Los daarvan: de flowkaarten „accu leeg” en „accu vol” reageren nog steeds bij {low} % en {full} %. Die melden alleen — stoppen doet het onderste ramppunt hierboven."
+        "announceNote": "De flowkaarten „accu leeg“ en „accu vol“ volgen deze twee punten: ze reageren bij {low} % en {full} %. Ze melden alleen — stoppen doet het onderste punt.",
+        "announceNoteLegacy": "Geen ramp ingesteld: de flowkaarten „accu leeg“ en „accu vol“ reageren bij {low} % en {full} %. Ze melden alleen."
       },
       "forecastGate": {
         "title": "🌤 Zonprognose-startpoort",

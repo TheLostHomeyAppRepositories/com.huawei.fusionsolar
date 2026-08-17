@@ -3585,3 +3585,49 @@ test('_noteTickSkip — reports the running tick, not the statistics of finished
   assert.match(line, /phase "devices"/, 'and where it is stuck');
   assert.doesNotMatch(line, /max 1755/, 'max describes finished ticks and misled us for hours');
 });
+
+// ── the battery announcement thresholds follow the ramp ──────────────────────
+// They were min_battery_soc / battery_full_soc, whose input fields went away with the SOC
+// zones in 1.2.108 — leaving the `?? 80` and `?? 95` defaults firing from nowhere. On a
+// system whose hard stop is at 50 %, "53% < 80% — Batterie tief" reads like a limit that
+// stops something, and the owner asked what it governed. Nothing.
+test('_batteryAnnounceThresholds — a configured ramp supplies both points', () => {
+  const d = makeDevice();
+  const t = d._batteryAnnounceThresholds({ share_soc_low: 50, share_soc_high: 100 });
+  assert.deepStrictEqual(t, { lowSoc: 50, fullSoc: 100, source: 'ramp' });
+});
+
+test('_batteryAnnounceThresholds — the ramp beats the old fields, not the other way round', () => {
+  // A stale min_battery_soc left in ems_config must not win over the visible setting.
+  const d = makeDevice();
+  const t = d._batteryAnnounceThresholds({
+    share_soc_low: 50, share_soc_high: 100, min_battery_soc: 80, battery_full_soc: 95,
+  });
+  assert.strictEqual(t.lowSoc, 50);
+  assert.strictEqual(t.fullSoc, 100);
+});
+
+test('_batteryAnnounceThresholds — without a ramp nothing moves', () => {
+  // Installations that never configured one keep the figures they have been firing at.
+  const d = makeDevice();
+  assert.deepStrictEqual(d._batteryAnnounceThresholds({}), { lowSoc: 80, fullSoc: 95, source: 'legacy' });
+  assert.deepStrictEqual(d._batteryAnnounceThresholds({ min_battery_soc: 70, battery_full_soc: 90 }),
+    { lowSoc: 70, fullSoc: 90, source: 'legacy' });
+});
+
+test('_batteryAnnounceThresholds — an incomplete ramp is not a ramp', () => {
+  // Only the lower point set, or the two inverted: _batterySurplusShare returns null for
+  // both, so the announcements must not follow half a setting either.
+  const d = makeDevice();
+  assert.strictEqual(d._batteryAnnounceThresholds({ share_soc_low: 50 }).source, 'legacy');
+  assert.strictEqual(d._batteryAnnounceThresholds({ share_soc_low: 90, share_soc_high: 50 }).source, 'legacy');
+});
+
+test('_batteryAnnounceThresholds — agrees with the hard stop _batteryZones derives', () => {
+  // "Battery low" now means "every device just stopped". If these two ever disagree, the
+  // announcement is back to describing something that does not happen.
+  const cfg = { share_soc_low: 50, share_soc_high: 100, share_pct_low: 0, share_pct_high: 100 };
+  const d = makeDevice();
+  assert.strictEqual(d._batteryAnnounceThresholds(cfg).lowSoc,
+    d._batteryZones(cfg, { soc: 60 }).minSoc);
+});

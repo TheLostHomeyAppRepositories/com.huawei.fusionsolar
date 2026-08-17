@@ -870,7 +870,8 @@
         "stopZone": "alles aus",
         "axisSoc": "Ladestand %",
         "axisShare": "Anteil %",
-        "announceNote": "Davon unabhängig: Die Flow-Karten „Batterie tief“ und „Batterie voll“ lösen weiterhin bei {low} % und {full} % aus. Sie melden nur — gestoppt wird über den unteren Rampenpunkt oben."
+        "announceNote": "Die Flow-Karten „Batterie tief“ und „Batterie voll“ folgen diesen beiden Punkten: Sie lösen bei {low} % und {full} % aus. Sie melden nur — gestoppt wird über den unteren Punkt.",
+        "announceNoteLegacy": "Keine Rampe eingerichtet: Die Flow-Karten „Batterie tief“ und „Batterie voll“ lösen bei {low} % und {full} % aus. Sie melden nur, gestoppt wird hier nichts."
       },
       "forecastGate": {
         "title": "🌤 Solarprognose-Startsperre",

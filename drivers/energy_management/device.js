@@ -607,10 +607,7 @@ class EmsDevice extends Device {
       // input fields with the SOC zones in 1.2.108 but kept firing, so their defaults turn
       // up in the history as "53% < 80% — Batterie tief" and read like a limit that stops
       // something. Reported so the settings page can name them; they stop nothing.
-      batteryAnnounce: {
-        lowSoc:  Number(cfg.min_battery_soc ?? 80),
-        fullSoc: Number(cfg.battery_full_soc ?? 95),
-      },
+      batteryAnnounce: this._batteryAnnounceThresholds(cfg),
     };
   }
 
@@ -959,8 +956,10 @@ class EmsDevice extends Device {
 
   async _checkBatteryTriggers(cfg, battery) {
     const devices    = cfg.battery_devices || [];
-    const minSoc     = Number(cfg.min_battery_soc ?? 80);
-    const fullSoc    = Number(cfg.battery_full_soc ?? 95);
+    // Derived from the surplus ramp where one is configured — see
+    // _batteryAnnounceThresholds. The two points that mean something are where every device
+    // stops and where the battery stops having priority.
+    const { lowSoc: minSoc, fullSoc } = this._batteryAnnounceThresholds(cfg);
 
     for (const device of devices) {
       // Reuse per-device SOC already fetched in _getBattery — avoids a second API round-trip
