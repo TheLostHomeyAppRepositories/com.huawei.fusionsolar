@@ -396,12 +396,14 @@
     "chargeSessions": {
       "title": "🔌 Lade-Sessions",
       "subtitle": "Energie & Kosten pro Ladevorgang",
-      "hint": "Ein Eintrag pro \"Einstecken → Ausstecken\"-Zeitraum, unabhängig vom Lademodus",
+      "hint": "Ein Eintrag pro „Einstecken → Ausstecken“-Zeitraum, unabhängig vom Lademodus. Eine noch laufende Sitzung steht zuoberst, mit der bisher gezählten Energie.",
       "noneYet": "Noch keine abgeschlossenen Lade-Sessions.",
       "charger": "Lader",
       "allCars": "Alle Autos / Lader",
       "exportCsv": "⬇ CSV exportieren",
-      "nothingToExport": "Keine Sessions für diese Auswahl zum Exportieren."
+      "nothingToExport": "Keine Sessions für diese Auswahl zum Exportieren.",
+      "running": "läuft",
+      "now": "jetzt"
     },
     "diagLabels": {
       "tickInterval": "Takt",

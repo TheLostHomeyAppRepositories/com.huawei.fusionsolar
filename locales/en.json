@@ -396,12 +396,14 @@
     "chargeSessions": {
       "title": "🔌 Charge Sessions",
       "subtitle": "energy & cost per charge",
-      "hint": "One entry per \"plug in → unplug\" period, any charging mode",
+      "hint": "One entry per “plug in → unplug” period, any charging mode. A session still running is listed first, with the energy counted so far.",
       "noneYet": "No completed charge sessions yet.",
       "charger": "Charger",
       "allCars": "All cars / chargers",
       "exportCsv": "⬇ Export CSV",
-      "nothingToExport": "No sessions to export for this selection."
+      "nothingToExport": "No sessions to export for this selection.",
+      "running": "running",
+      "now": "now"
     },
     "diagLabels": {
       "tickInterval": "Interval",

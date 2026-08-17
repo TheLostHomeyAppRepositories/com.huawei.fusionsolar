@@ -396,12 +396,14 @@
     "chargeSessions": {
       "title": "🔌 Laadsessies",
       "subtitle": "energie & kosten per laadbeurt",
-      "hint": "Eén item per \"instekken → uitstekken\"-periode, ongeacht de laadmodus",
+      "hint": "Eén regel per „inpluggen → uitpluggen”-periode, ongeacht de laadmodus. Een nog lopende sessie staat bovenaan, met de tot nu toe getelde energie.",
       "noneYet": "Nog geen afgeronde laadsessies.",
       "charger": "Lader",
       "allCars": "Alle auto's / laders",
       "exportCsv": "⬇ CSV exporteren",
-      "nothingToExport": "Geen sessies om te exporteren voor deze selectie."
+      "nothingToExport": "Geen sessies om te exporteren voor deze selectie.",
+      "running": "loopt",
+      "now": "nu"
     },
     "diagLabels": {
       "tickInterval": "Interval",

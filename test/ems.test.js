@@ -65,6 +65,8 @@ function makeChargerDevice(extra = {}) {
     _debugLog() {},
     setStoreValue() { return Promise.resolve(); },
     _chargeSessions: [],
+    // getEmsChargeSessions reads the currency for a still-running session from the config.
+    _getConfig: () => ({}),
   };
   // batteryMixin (_batteryZones), carsMixin (_carForCharger), priceMixin (_offpeakWindow),
   // pvForecastMixin + priceForecastMixin (_priceShouldChargeNow) — all things _evaluateEvChargers
@@ -2344,6 +2346,68 @@ test('_trackChargeSession — no price configured (mode variable, unset) → ene
   assert.ok(d._chargeSessions[0].energyKwh > 0);
   assert.strictEqual(d._chargeSessions[0].cost, null);
   assert.strictEqual(d._chargeSessions[0].avgPrice, null);
+});
+
+// ── the session still running is listed too ──────────────────────────────────
+// A session closes on UNPLUG. A car left on the cable over a weekend therefore produced
+// nothing to look at: the owner charged on the Friday and the Saturday and found a list
+// whose newest entry was nine days old. The energy was never lost — it was accumulating in
+// an open session — but the device's memory is not a place anyone can look.
+test('getEmsChargeSessions — a running session is listed first, marked, with no end time', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: 7360, powerW: 7360 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 99999); // 1 h
+
+  const out = d.getEmsChargeSessions(cfg);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].running, true);
+  assert.strictEqual(out[0].endedAt, null, 'no end — the cable is still in');
+  assert.strictEqual(out[0].energyKwh, 7.36);
+  assert.strictEqual(out[0].currency, 'CHF');
+  assert.strictEqual(d._chargeSessions.length, 0, 'not written to the persisted list yet');
+});
+
+test('getEmsChargeSessions — the running one sorts above finished ones', () => {
+  const d = makeChargerDevice({
+    _chargeSessions: [{ chargerId: 'c9', startedAt: 1, endedAt: 2, energyKwh: 1 }],
+  });
+  const cfg = { price_config: { currency: 'CHF' } };
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 7360, powerW: 7360 }, cfg, 15_000, 99999);
+  const out = d.getEmsChargeSessions(cfg);
+  assert.strictEqual(out.length, 2);
+  assert.strictEqual(out[0].running, true);
+  assert.strictEqual(out[1].chargerId, 'c9');
+});
+
+test('getEmsChargeSessions — a just-started session is shown despite the 0.05 kWh floor', () => {
+  // _finalizeChargeSession drops anything under 0.05 kWh, which is right for a connection
+  // blip that is over. It is wrong for a session in progress: the one whose absence would
+  // puzzle someone most is the one that started a minute ago.
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { currency: 'CHF' } };
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 99999);
+  const out = d.getEmsChargeSessions(cfg);
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].energyKwh, 0);
+  assert.strictEqual(out[0].running, true);
+});
+
+test('getEmsChargeSessions — finished and running rows carry the same fields', () => {
+  // Two builders would drift into two subtly different shapes, and the reader would meet a
+  // list whose columns mean different things depending on the row.
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, currency: 'CHF' } };
+  const charger = { id: 'c1', connected: true, rawPowerW: 7360, powerW: 7360 };
+  for (let i = 0; i < 240; i++) d._trackChargeSession(charger, cfg, 15_000, 99999);
+  const runningRow = d.getEmsChargeSessions(cfg)[0];
+  d._trackChargeSession({ ...charger, connected: false, rawPowerW: 0, powerW: 0 }, cfg, 15_000, 99999);
+  const finishedRow = d.getEmsChargeSessions(cfg)[0];
+
+  const keys = (o) => Object.keys(o).filter((k) => k !== 'running').sort();
+  assert.deepStrictEqual(keys(runningRow), keys(finishedRow));
+  assert.strictEqual(finishedRow.running, undefined);
+  assert.strictEqual(runningRow.energyKwh, finishedRow.energyKwh, 'same energy, just now closed');
 });
 
 test('getEmsChargeSessions — returns newest first, capped, as shallow clones', () => {

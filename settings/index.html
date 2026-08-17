@@ -8119,8 +8119,19 @@
       var fmtDt = function(ms) { return new Date(ms).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
       list.innerHTML = sessions.map(function(s) {
         var title = _emsHistEsc(_emsSessionLabel(s));
-        var durMin = Math.max(0, Math.round((s.endedAt - s.startedAt) / 60000));
+        // A running session has no end yet. Every figure below is derived from endedAt, so
+        // it is stood in for by "now" here rather than guarded five separate times —
+        // new Date(null) is 1 Jan 1970 and would have printed it without complaining.
+        var ended  = s.endedAt || Date.now();
+        var durMin = Math.max(0, Math.round((ended - s.startedAt) / 60000));
         var durTxt = durMin >= 60 ? (Math.floor(durMin / 60) + 'h ' + (durMin % 60) + 'm') : (durMin + 'm');
+        if (durMin >= 1440) {
+          durTxt = Math.floor(durMin / 1440) + 'd ' + Math.floor((durMin % 1440) / 60) + 'h';
+        }
+        var badge = s.running
+          ? ' <span style="color:#34c759;font-weight:600">● ' + _emsHistEsc(_H.__('settings.chargeSessions.running')) + '</span>'
+          : '';
+        var endTxt = s.running ? _H.__('settings.chargeSessions.now') : fmtDt(s.endedAt);
         var costTxt = s.cost != null ? (' · ' + s.cost.toFixed(2) + ' ' + _emsHistEsc(s.currency) + ' (Ø ' + s.avgPrice.toFixed(3) + '/kWh)') : '';
         // Solar vs. bought. Older sessions predate the split and carry no pvShare — showing
         // nothing beats showing a made-up 0 %.
@@ -8130,8 +8141,8 @@
                 + _H.__('settings.sessions.fromGrid') + '</span>' : '')
           : '';
         return '<div style="padding:6px 0;border-bottom:1px solid #f0f0f5">' +
-          '<div style="font-size:12px;font-weight:600;color:#1d1d1f">' + title + '</div>' +
-          '<div style="font-size:11px;color:#6e6e73">' + fmtDt(s.startedAt) + ' – ' + fmtDt(s.endedAt) + ' · ' + durTxt + '</div>' +
+          '<div style="font-size:12px;font-weight:600;color:#1d1d1f">' + title + badge + '</div>' +
+          '<div style="font-size:11px;color:#6e6e73">' + fmtDt(s.startedAt) + ' – ' + _emsHistEsc(endTxt) + ' · ' + durTxt + '</div>' +
           '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + s.energyKwh.toFixed(2) + ' kWh' + splitTxt + costTxt + '</div>' +
           '</div>';
       }).join('');
@@ -8149,11 +8160,13 @@
               'Solar (kWh)', 'Grid (kWh)', 'Cost', 'Currency', 'Avg price/kWh'];
       var lines = [header.map(csvEsc).join(',')];
       sessions.forEach(function(s) {
-        var durMin = Math.max(0, Math.round((s.endedAt - s.startedAt) / 60000));
+        // A running session exports with an empty "Ended" column — a spreadsheet should
+        // not be told the charge finished at the moment of the export.
+        var durMin = Math.max(0, Math.round(((s.endedAt || Date.now()) - s.startedAt) / 60000));
         lines.push([
           _emsSessionLabel(s),
           new Date(s.startedAt).toISOString(),
-          new Date(s.endedAt).toISOString(),
+          s.endedAt ? new Date(s.endedAt).toISOString() : '',
           durMin,
           s.energyKwh.toFixed(3),
           s.pvKwh   != null ? s.pvKwh.toFixed(3)   : '',

@@ -385,3 +385,28 @@ test('the charger adjustment hint agrees with FLIP_COOLDOWN_MS', () => {
     assert.match(hint, /(sofort|at once|direct)/i, `${lang}: hint does not say stepping down is immediate`);
   }
 });
+
+// ── the running session in the settings list ─────────────────────────────────
+// It arrives with endedAt: null. new Date(null) is 1 Jan 1970 and would have printed it
+// without complaining, and a CSV would have claimed the charge ended at export time.
+test('the sessions list and its CSV handle a session with no end time', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+
+  const render = html.slice(html.indexOf('function emsSessionsRenderFiltered'),
+                           html.indexOf('function emsSessionsExportCsv'));
+  assert.match(render, /s\.endedAt \|\| Date\.now\(\)/, 'duration would be computed against null');
+  assert.match(render, /s\.running/, 'nothing marks the running row');
+  assert.match(render, /chargeSessions\.now/, 'no stand-in for the missing end time');
+
+  const csv = html.slice(html.indexOf('function emsSessionsExportCsv'));
+  assert.match(csv.slice(0, 2000), /s\.endedAt \? new Date\(s\.endedAt\)\.toISOString\(\) : ''/,
+    'CSV would date an unfinished charge to the moment of export');
+
+  for (const lang of ['en', 'de', 'nl']) {
+    const cs = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).settings.chargeSessions;
+    for (const k of ['running', 'now']) {
+      assert.ok(cs[k] && cs[k].trim(), `${lang}: settings.chargeSessions.${k} missing`);
+    }
+  }
+});
