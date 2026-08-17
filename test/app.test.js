@@ -474,3 +474,23 @@ test('the export pads the device columns instead of slicing a fixed string', () 
   assert.match(fn, /while \(s\.length < n\) s \+= ' ';/, 'no real padding helper');
   assert.ok(!/\(r\.kind \+ '\s+'\)\.slice/.test(fn), 'the fixed-string padding is back');
 });
+
+// ── can a tick be recomputed from the export alone? ──────────────────────────
+// The point of the configuration export is that someone can replay a decision. Every
+// figure the control loop branches on therefore has to leave the device as a value, not
+// only inside a sentence: battery.powerW reached the diagnostics as an arrow in modeText
+// ("↓859W"), which is prose. A reader could see what the EMS decided and not recompute it.
+test('every reading the control loop branches on is reported as a value', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  for (const field of ['gridW', 'pvW', 'soc', 'houseW', 'batteryW']) {
+    assert.match(dev, new RegExp(`_diag\.${field} = `), `_diag.${field} is never set`);
+  }
+
+  // batteryW specifically: the hard-stop overflow exception, the battery boost and the
+  // discharge correction all read battery.powerW, so an export without it cannot decide
+  // whether any of the three applied.
+  const charger = fs.readFileSync('lib/ems/chargerControl.js', 'utf8');
+  assert.ok(charger.split('battery.powerW').length - 1 >= 5,
+    'battery.powerW stopped being load-bearing — this test may be over-specified now');
+});

@@ -703,6 +703,15 @@ class EmsDevice extends Device {
       this._getSimpleDevices('aircon_devices', cfg),
     ]);
     this._diag.gridW = gridW; this._diag.pvW = pvW; this._diag.soc = battery.soc;
+    // The battery's own power, which decides more than any other single reading: whether
+    // the hard-stop overflow exception applies at all (batCharging), whether the battery
+    // boost is added, and whether the discharge correction bites — seven call sites across
+    // chargerControl and simpleDevices. It reached the diagnostics only as an arrow inside
+    // modeText, which is prose, so a decision could be read but not recomputed.
+    this._diag.batteryW = battery.powerW;
+    // Per battery, for installations with more than one: battery.soc is the MINIMUM across
+    // the bank, so an aggregate alone cannot show which one is holding the figure down.
+    this._diag.socPerDevice = battery.socPerDevice || null;
     // Whole-house grid-import ceiling (cfg.grid_import_limit_kw) — seeded to the ALREADY
     // measured grid import so ordinary house baseline load (fridge, lights, whatever's
     // not EMS-controlled) is accounted for before any EMS-controlled load claims more.
