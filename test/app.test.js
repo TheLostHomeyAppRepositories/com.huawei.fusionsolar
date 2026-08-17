@@ -463,3 +463,14 @@ test('the export lists steered devices with both columns, not the whole house', 
   assert.ok(!/_emsDevices\)\s*\|\|\s*\[\]\)\.map/.test(fn),
     'the full paired-device list is being dumped again');
 });
+
+// The device table is read as a table. Short kind names ("pool", "car") were padded with a
+// fixed-length string and then sliced, which is a no-op when the string is already shorter
+// — so those rows sat a column left of the others and the export looked broken.
+test('the export pads the device columns instead of slicing a fixed string', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+  const fn = html.slice(html.indexOf('function emsCopyConfig'), html.indexOf('function closeModal'));
+  assert.match(fn, /while \(s\.length < n\) s \+= ' ';/, 'no real padding helper');
+  assert.ok(!/\(r\.kind \+ '\s+'\)\.slice/.test(fn), 'the fixed-string padding is back');
+});

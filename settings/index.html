@@ -2051,10 +2051,17 @@
           ((typeof _emsDevices !== 'undefined' && _emsDevices) || []).forEach(function(d) {
             byId[d.id] = d.name;
           });
+          // Pad, do not slice-a-fixed-string: "pool" plus eight spaces is twelve characters
+          // and slicing to thirteen leaves it twelve, so the short kinds sat a column left
+          // of the long ones. A misaligned table is read as a broken one.
+          var pad = function(s, n) {
+            s = String(s == null ? '' : s);
+            while (s.length < n) s += ' ';
+            return s.length > n ? s.slice(0, n - 1) + '…' : s;
+          };
           var rows = (diag && diag.devices) || [];
           push('devices (' + rows.length + ')', rows.map(function(r) {
-            var head = (r.kind + '        ').slice(0, 13)
-              + ((r.name || byId[r.id] || '?') + '                    ').slice(0, 22)
+            var head = pad(r.kind, 14) + pad(r.name || byId[r.id] || '?', 22)
               + '[' + String(r.id).slice(0, 8) + ']';
             return head
               + '\n    measured  ' + JSON.stringify(r.measured)

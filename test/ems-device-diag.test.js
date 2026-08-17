@@ -22,7 +22,7 @@ function makeDevice(extra = {}) {
     _heatPumpStates: new Map(), _boilerStates: new Map(), _poolStates: new Map(),
     _dehumidifierStates: new Map(), _airconStates: new Map(),
     _carStates: [],
-    _diag: { readings: [] },
+    _diag: {}, _deviceReadings: [],
   };
   Object.assign(d, simpleMixin, deviceDiag, extra);
   return d;
@@ -35,7 +35,7 @@ test('a charger reports the commanded current beside the measured draw', () => {
     lastDownStepAt: NOW - 90_000, lastPhaseSwitchAt: null, targetReachedCar: null,
     uncommandedTicks: 0, sessionActive: true, sessionEnergyKwh: 6.764, sessionStartedAt: NOW - 3600_000,
   });
-  d._diag.readings = [{ id: 'c1', kind: 'charger', measured: { powerW: 2760, connected: true, chargeMode: 'solar' } }];
+  d._deviceReadings = [{ id: 'c1', kind: 'charger', measured: { powerW: 2760, connected: true, chargeMode: 'solar' } }];
 
   const row = d._deviceDiag(NOW).find((r) => r.id === 'c1');
   assert.strictEqual(row.measured.powerW, 2760);
@@ -51,7 +51,7 @@ test('the gap the EMS cannot see on its own is visible in one row', () => {
   // the other shows nothing commanded — and that pairing is the whole diagnosis.
   const d = makeDevice();
   d._chargerStates.set('c1', { currentAmps: null, currentPhases: null, uncommandedTicks: 3 });
-  d._diag.readings = [{ id: 'c1', kind: 'charger', measured: { powerW: 8280, connected: true } }];
+  d._deviceReadings = [{ id: 'c1', kind: 'charger', measured: { powerW: 8280, connected: true } }];
 
   const row = d._deviceDiag(NOW)[0];
   assert.strictEqual(row.measured.powerW, 8280);
@@ -67,7 +67,7 @@ test('simple devices report their timers as ages, not as epochs', () => {
     isOn: true, startedAt: NOW - 900_000, surplusOkSince: NOW - 1200_000,
     surplusBadSince: null, lastEmsStopAt: null, powerDropStoppedAt: null, externalOn: false,
   });
-  d._diag.readings = [{ id: 'hp1', kind: 'simple', name: 'Luxtronik',
+  d._deviceReadings = [{ id: 'hp1', kind: 'simple', name: 'Luxtronik',
     measured: { powerW: 0, actualOn: false, stateSource: 'power', minSurplusW: 3000 } }];
 
   const row = d._deviceDiag(NOW).find((r) => r.id === 'hp1');
@@ -102,7 +102,7 @@ test('only steered devices appear — meters and inverters do not', () => {
   // Their values are the summed figures already in the diagnostics; a row each would pad
   // the export without adding anything.
   const d = makeDevice();
-  d._diag.readings = [{ id: 'meter1', kind: 'meter', measured: { powerW: 29 } }];
+  d._deviceReadings = [{ id: 'meter1', kind: 'meter', measured: { powerW: 29 } }];
   assert.deepStrictEqual(d._deviceDiag(NOW), []);
 });
 
@@ -111,4 +111,14 @@ test('an empty EMS produces an empty list, not a crash', () => {
   d._chargerStates = null;
   d._carStates = null;
   assert.deepStrictEqual(d._deviceDiag(NOW), []);
+});
+
+test('the raw readings do not travel in the diagnostics beside the assembled rows', () => {
+  // getEmsDiag spreads this._diag wholesale. Parking the tick's readings there published
+  // them twice in one export — once raw, once as the `devices` rows built from them — and
+  // the raw copy is the shape nobody reads.
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  assert.match(dev, /this\._deviceReadings = \[/, 'the readings are not stashed off _diag');
+  assert.ok(!/_diag\.readings/.test(dev), 'the readings are on _diag again and will be published twice');
 });
