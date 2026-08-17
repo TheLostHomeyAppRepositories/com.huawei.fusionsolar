@@ -968,6 +968,12 @@
     "sessions": {
       "solar": "solar",
       "fromGrid": "from grid"
+    },
+    "config": {
+      "copyButton": "⧉ Copy configuration",
+      "copyHint": "Everything needed to reproduce a problem, with API keys and credentials replaced",
+      "redacted": "<set, not shown>",
+      "redactNote": "API keys, passwords and system codes are replaced with <set, not shown>. Check before posting anyway."
     }
   }
 }

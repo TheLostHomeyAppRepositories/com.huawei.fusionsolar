@@ -968,6 +968,12 @@
     "sessions": {
       "solar": "zon",
       "fromGrid": "uit het net"
+    },
+    "config": {
+      "copyButton": "⧉ Configuratie kopiëren",
+      "copyHint": "Alles om een probleem na te bootsen — API-sleutels en inloggegevens worden vervangen",
+      "redacted": "<ingesteld, niet getoond>",
+      "redactNote": "API-sleutels, wachtwoorden en systeemcodes zijn vervangen door <ingesteld, niet getoond>. Kijk het toch even na voor je het deelt."
     }
   }
 }

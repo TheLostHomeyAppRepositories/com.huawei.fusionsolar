@@ -968,6 +968,12 @@
     "sessions": {
       "solar": "Solar",
       "fromGrid": "aus dem Netz"
+    },
+    "config": {
+      "copyButton": "⧉ Konfiguration kopieren",
+      "copyHint": "Alles zum Nachstellen eines Problems — API-Schlüssel und Zugangsdaten werden ersetzt",
+      "redacted": "<gesetzt, nicht angezeigt>",
+      "redactNote": "API-Schlüssel, Passwörter und System-Codes sind durch <gesetzt, nicht angezeigt> ersetzt. Vor dem Veröffentlichen trotzdem durchsehen."
     }
   }
 }
