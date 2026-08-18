@@ -1247,13 +1247,14 @@ test('every inactive reason has a label in all three locales', () => {
     for (const [reason, key] of Object.entries(GATE_REASONS)) {
       assert.ok(gate[key] && gate[key].trim(), `${lang}: no label for reason "${reason}" (key ${key})`);
     }
-    for (const k of ['stateActive', 'stateInactive', 'compareBlocked', 'compareOpen', 'calcAdaptive']) {
+    for (const k of ['stateActive', 'stateInactive', 'compareBlocked', 'compareOpen', 'compareHysteresis', 'calcAdaptive']) {
       assert.ok(gate[k] && gate[k].trim(), `${lang}: missing ${k}`);
     }
     assert.match(gate.calcAdaptive, /\{soc\}.*\{cap\}.*\{need\}/, `${lang}: calcAdaptive lost a placeholder`);
     for (const k of ['compareBlocked', 'compareOpen']) {
       assert.match(gate[k], /\{have\}[\s\S]*\{need\}/, `${lang}: ${k} lost a placeholder`);
     }
+    assert.match(gate.compareHysteresis, /\{have\}[\s\S]*\{reopen\}/, `${lang}: compareHysteresis lost a placeholder`);
   }
 });
 
@@ -1324,6 +1325,108 @@ test('_announceForecastGate — the LAST gate entry wins, not the first', () => 
   ]);
   assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now), true, 'gate is on again');
   assert.strictEqual(d.events[0].event, 'forecast_gate_on');
+});
+
+// ── the gate's hysteresis ─────────────────────────────────────────────────────
+// Field, 2026-08-18: active at 5.1/5.7 (16:30), open at 5.1/5.1 (16:52), active again at
+// 5.1/5.3 (16:58). The opening undid itself — it started devices whose draw slowed the
+// battery's charging and grew the deficit. Closing therefore uses the bare comparison,
+// reopening demands FORECAST_GATE_HYSTERESIS_KWH on top.
+// gateDevice's fixture forecast leaves 4 kWh today; capacity is 10 kWh, so the deficit at
+// soc 65 is 3.5 kWh — the bare comparison says open, the reopen bar (4.5) says not yet.
+test('_forecastGateState — a closed gate does not reopen at the bare crossing', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice();
+  d._forecastGateOn = true; // closed earlier in the day
+  const s = d._forecastGateState(GATE_ON_CFG, { soc: 65 }, now);
+  assert.strictEqual(s.blocked, true, '4 kWh ≥ 3.5 kWh, but the margin holds');
+  assert.strictEqual(s.reason, 'hysteresis');
+  assert.strictEqual(s.reopenAtKwh, 4.5);
+});
+
+test('_forecastGateState — the margin cleared, the gate opens', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice();
+  d._forecastGateOn = true;
+  const s = d._forecastGateState(GATE_ON_CFG, { soc: 75 }, now);
+  assert.strictEqual(s.blocked, false, '4 kWh ≥ 2.5 + 1 kWh');
+  assert.strictEqual(s.reason, 'above');
+});
+
+test('_forecastGateState — an OPEN gate closes at the bare threshold, not the padded one', () => {
+  // The asymmetry is the point: closing protects the battery and must not wait for the
+  // margin. soc 62 → deficit 3.8; remaining 4 is above it, so an open gate stays open —
+  // padding the closing side too would close it here.
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice();
+  d._forecastGateOn = false;
+  assert.strictEqual(d._forecastGateState(GATE_ON_CFG, { soc: 62 }, now).blocked, false);
+  d._forecastGateOn = true;
+  assert.strictEqual(d._forecastGateState(GATE_ON_CFG, { soc: 62 }, now).blocked, true,
+    'same figures, previously closed → the margin holds it closed');
+});
+
+test('_announceForecastGate — the field flap produces one closed and one open, not three', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice();
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 50 }, now), true);  // 4 < 5 → closed
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 65 }, now), false,
+    'the crossing that flapped in the field: bare comparison says open, margin says hold');
+  assert.strictEqual(d._announceForecastGate(GATE_ON_CFG, { soc: 75 }, now), true);  // margin cleared
+  assert.deepStrictEqual(d.events.map((e) => e.event), ['forecast_gate_on', 'forecast_gate_off']);
+});
+
+test('_forecastGateState — a restart restores the closed state from the history', () => {
+  // The hysteresis memory survives the same way the announcements do: read back from the
+  // persisted history, so a deploy in the flap band does not reopen the gate.
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const d = gateDevice([{ type: 'system', event: 'forecast_gate_on', label: '5.1 / 5.7 kWh' }]);
+  assert.strictEqual(d._forecastGateState(GATE_ON_CFG, { soc: 65 }, now).blocked, true);
+});
+
+// ── external-ON adoption waits for the device's own reaction lag ──────────────
+// Field, 2026-08-18, four times in one day at exactly +1 minute:
+//   14:45  Klima — EMS gestoppt
+//   14:46  Klima — ausserhalb des EMS eingeschaltet — belassen
+// The grace after an EMS stop was a hard-coded 60 s. A device whose app reports onoff more
+// slowly than that (Gree, cloud round trip) was classified "switched on externally" after
+// every single stop, and the EMS then left it running unmanaged into the evening.
+test('_evaluateSimpleDevices — a slow device is not adopted as external-ON inside its own grace', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', {
+    isOn: false, startedAt: null, surplusOkSince: null, surplusBadSince: null,
+    powerDropStoppedAt: null, lastEmsStopAt: now - 90_000, externalOn: false,
+  }]]);
+  const dev = simpleDev({ actualOn: true, stateSource: 'onoff', startupGraceMs: 300_000 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [dev], state, 's', 'x', 'tok', { min_battery_soc: 20 });
+  assert.strictEqual(state.get('d1').externalOn, false, '90 s after the stop, inside the 300 s grace');
+});
+
+test('_evaluateSimpleDevices — past its grace, still on IS an external switch-on', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', {
+    isOn: false, startedAt: null, surplusOkSince: null, surplusBadSince: null,
+    powerDropStoppedAt: null, lastEmsStopAt: now - 301_000, externalOn: false,
+  }]]);
+  const dev = simpleDev({ actualOn: true, stateSource: 'onoff', startupGraceMs: 300_000 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [dev], state, 's', 'x', 'tok', { min_battery_soc: 20 });
+  assert.strictEqual(state.get('d1').externalOn, true);
+});
+
+test('_evaluateSimpleDevices — the old 60 s stays as the floor', async () => {
+  // startup_grace_s can be set to 0; the classification lag must not drop below what it
+  // always was, or a normal switch's half-second of reporting delay becomes "external".
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', {
+    isOn: false, startedAt: null, surplusOkSince: null, surplusBadSince: null,
+    powerDropStoppedAt: null, lastEmsStopAt: now - 45_000, externalOn: false,
+  }]]);
+  const dev = simpleDev({ actualOn: true, stateSource: 'onoff', startupGraceMs: 0 });
+  await d._evaluateSimpleDevices({ soc: 90, powerW: 0 }, 0, [dev], state, 's', 'x', 'tok', { min_battery_soc: 20 });
+  assert.strictEqual(state.get('d1').externalOn, false, '45 s is inside the 60 s floor');
 });
 
 test('_evaluateSimpleDevices — forecast gate blocks a start, running device continues', async () => {
@@ -1838,6 +1941,57 @@ test('_evaluateEvChargers — the reserve applies only in the overflow exception
     OVF_CFG, 12000, 0);
   const planned = d._getChargerState('c1').pendingStepAmps;
   assert.ok(planned * 230 > 3000 - OVERFLOW_KEEP_W, 'no reserve held back outside the exception');
+});
+
+// ── the ramp budget is capped by what the battery actually absorbs ───────────
+// Field, 2026-08-18, 17:05–17:16: at 60 % SoC the ramp granted 20 % of ~7 kW while the
+// battery was DISCHARGING. That kept one rung of permanent headroom in the charger budget,
+// so it climbed 12A/1ph → 10A/3ph in eleven minutes, financed by the battery (↓3521 W).
+// The import guard and the discharge correction were both blind, because the inverter
+// holds the grid meter at ~0 while the battery covers the deficit.
+const CAP_CFG = { battery_devices: [{ id: 'b1', capacity_kwh: 15 }],
+  share_soc_low: 50, share_soc_high: 100, share_pct_low: 0, share_pct_high: 100 };
+
+test('_batteryShareBudgetW — a discharging battery lends nothing', () => {
+  const d = makeDevice();
+  // soc 60 → share 20 % → claim would be 1400 W; the battery is giving, not taking.
+  assert.strictEqual(d._batteryShareBudgetW(CAP_CFG, 60, 7000, 0, -3521), 0);
+});
+
+test('_batteryShareBudgetW — the cap is the absorption, not the share', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._batteryShareBudgetW(CAP_CFG, 60, 7000, 0, 800), 800,
+    'only 800 W is being absorbed, so only 800 W can be claimed instead');
+});
+
+test('_batteryShareBudgetW — full absorption leaves the share untouched', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._batteryShareBudgetW(CAP_CFG, 60, 7000, 0, 5000), 1400);
+});
+
+test('_batteryShareBudgetW — without a battery power sensor the old behaviour stands', () => {
+  // Capping on a guess would be worse than not capping; four-argument callers are the
+  // sensorless installs.
+  const d = makeDevice();
+  assert.strictEqual(d._batteryShareBudgetW(CAP_CFG, 60, 7000, 0), 1400);
+});
+
+test('_evaluateEvChargers — a running charger cannot climb on the back of a discharging battery', async () => {
+  // The 17:05 tick, replayed: charger at 12A/1ph, battery discharging, meter at zero.
+  // With the cap the effective budget is exactly the charger's own draw — target equals
+  // current, no pending step, no phase switch. Before the cap the granted 1400 W meant
+  // permanent headroom: 12A/1ph plus 1400 W crosses MIN_3PH_W and switches to 3 phases.
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 12, currentPhases: 1 });
+  const battery = { soc: 60, powerW: -3521 };
+  const eff = 0 - (d._batteryShareBudgetW(CAP_CFG, 60, 7000, 0, battery.powerW) || 0);
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3,
+    phaseSwitch: true, powerW: 12 * 230, rawPowerW: 12 * 230 };
+  await d._evaluateEvChargers(battery, eff, [charger], CAP_CFG, 7000, 500);
+  const st = d._getChargerState('c1');
+  assert.strictEqual(st.currentAmps, 12, 'holds, does not climb');
+  assert.strictEqual(st.currentPhases, 1, 'no phase switch');
+  assert.strictEqual(st.pendingStepAmps, null, 'no step planned either');
 });
 
 // ── chargerControl: the solar-forecast gate reaches the EV charger ───────────

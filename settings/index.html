@@ -3232,7 +3232,12 @@
 
       if (g.blocked) {
         head = t('stateActive'); colour = '#a15c00'; back = '#fff4e5';
-        detail = t('compareBlocked').replace('{have}', g.remainingKwh).replace('{need}', g.thresholdKwh);
+        // In the hysteresis band the bare comparison already reads "enough forecast" —
+        // printing remaining ≥ needed next to the word "blocked" would look broken, so
+        // that band names the reopening point instead.
+        detail = (g.reason === 'hysteresis' && g.reopenAtKwh != null)
+          ? t('compareHysteresis').replace('{have}', g.remainingKwh).replace('{reopen}', g.reopenAtKwh)
+          : t('compareBlocked').replace('{have}', g.remainingKwh).replace('{need}', g.thresholdKwh);
       } else if (g.reason === 'above') {
         head = t('stateInactive'); colour = '#1d6f42'; back = '#eaf7ef';
         detail = t('compareOpen').replace('{have}', g.remainingKwh).replace('{need}', g.thresholdKwh);
