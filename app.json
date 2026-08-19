@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.178",
+  "version": "1.2.179",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1666,6 +1666,23 @@
       "uiComponent": "sensor",
       "insights": true,
       "icon": "/assets/capabilities/measure_solar_surplus.svg"
+    },
+    "measure_released_surplus": {
+      "type": "number",
+      "title": {
+        "en": "Released Surplus",
+        "de": "Freigegebener Überschuss",
+        "nl": "Vrijgegeven overschot"
+      },
+      "units": {
+        "en": "W"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true,
+      "icon": "/assets/capabilities/measure_released_surplus.svg"
     },
     "measure_electricity_price": {
       "type": "number",
@@ -6608,6 +6625,7 @@
         "ems_mode",
         "ems_status_text",
         "measure_solar_surplus",
+        "measure_released_surplus",
         "measure_pv_power",
         "measure_house_power",
         "measure_grid_power",
@@ -6627,6 +6645,13 @@
             "en": "Solar Surplus",
             "de": "Solar-Überschuss",
             "nl": "Zonne-overschot"
+          }
+        },
+        "measure_released_surplus": {
+          "title": {
+            "en": "Released Surplus",
+            "de": "Freigegebener Überschuss",
+            "nl": "Vrijgegeven overschot"
           }
         },
         "measure_pv_power": {

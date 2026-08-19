@@ -542,3 +542,69 @@ test('the copy-configuration button is exempt from the dirty rule', () => {
     assert.match(html, new RegExp(`id="${id}"`), `${id} no longer exists in the page`);
   }
 });
+
+// ── the released surplus, logged beside the measured one ─────────────────────
+// measure_solar_surplus is the meter reading. The share ramp lends the devices power the
+// meter never sees, so on a ramp day the two figures differ by exactly the lent amount —
+// and only the second one explains why a device was allowed to run. Both are logged so the
+// gap between them can be read over the day.
+test('the released surplus is a capability of its own, charted like the measured one', () => {
+  const fs = require('fs');
+  const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+  const cap = appJson.capabilities.measure_released_surplus;
+
+  assert.ok(cap, 'measure_released_surplus is not defined');
+  assert.strictEqual(cap.type, 'number');
+  assert.strictEqual(cap.units.en, 'W');
+  assert.strictEqual(cap.decimals, 0);
+  assert.strictEqual(cap.setable, false, 'a reading must not be writable');
+  // Without insights there is no history to look at, which is the entire point of it.
+  assert.strictEqual(cap.insights, true, 'the released surplus is not charted');
+
+  for (const lang of ['en', 'de', 'nl']) {
+    assert.ok(cap.title[lang], `capability title missing for ${lang}`);
+  }
+  assert.ok(fs.existsSync(cap.icon.replace(/^\//, '')), `icon ${cap.icon} does not exist`);
+
+  const drv = appJson.drivers.find((d) => d.id === 'energy_management');
+  assert.ok(drv.capabilities.includes('measure_released_surplus'),
+    'the EMS device does not carry the capability');
+  for (const lang of ['en', 'de', 'nl']) {
+    assert.ok(drv.capabilitiesOptions.measure_released_surplus.title[lang],
+      `device tile title missing for ${lang}`);
+  }
+});
+
+// The figure is spent as it is handed out: _runPriorityLoop lowers effectiveGridW with every
+// allocation, so reading it after the loop records what is LEFT — near zero on exactly the
+// busy days the chart is meant to explain.
+test('the released surplus is recorded before the priority loop spends it', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+
+  const set  = dev.indexOf("_set('measure_released_surplus', Math.max(0, Math.round(-effectiveGridW)))");
+  const ramp = dev.indexOf('const _shareBudgetW = this._batteryShareBudgetW(');
+  const loop = dev.indexOf('effectiveGridW = await this._runPriorityLoop(');
+
+  assert.ok(set > 0, 'the released surplus is never published, or no longer from effectiveGridW');
+  assert.ok(ramp > 0 && loop > 0, 'the tick no longer looks the way this test assumes');
+  assert.ok(set > ramp, 'it is read before the ramp is added, so it would equal the meter reading');
+  assert.ok(set < loop, 'it is read after the loop has spent it');
+});
+
+// Two branches hold all control and hand out nothing: EMS off / no API key, and a dead grid
+// sensor. Neither used to touch the capability, which would leave the last live figure
+// standing and draw a flat line at that height through the whole outage.
+test('a held tick reports nothing released, rather than the last live figure', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  const zeroed = dev.split("_set('measure_released_surplus', 0)").length - 1;
+  assert.strictEqual(zeroed, 2, 'expected both held branches to zero the released surplus');
+
+  // And an existing device has to grow the capability on update, or it stays empty forever.
+  const ensureAt = dev.indexOf('async _ensureCapabilities');
+  assert.ok(ensureAt > 0, '_ensureCapabilities is gone');
+  const ensure = dev.slice(ensureAt, dev.indexOf('// _offpeakWindow / _parseTime', ensureAt));
+  assert.match(ensure, /'measure_released_surplus'/,
+    'the capability is never added to devices that already exist');
+});

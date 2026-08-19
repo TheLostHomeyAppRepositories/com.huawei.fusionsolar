@@ -680,6 +680,9 @@ class EmsDevice extends Device {
         if (pvW !== null) await this._set('measure_pv_power', Math.round(pvW));
         if (battery.powerW !== null) await this._set('measure_battery_power', Math.round(battery.powerW));
       }
+      // A switched-off EMS releases nothing. Leaving the last figure standing would draw a
+      // flat line through the whole outage at whatever was released the moment it stopped.
+      await this._set('measure_released_surplus', 0);
       if (!enabled) {
         await this._setMode(MODES.DISABLED, '—');
       } else {
@@ -765,6 +768,8 @@ class EmsDevice extends Device {
     // _getGridW returns null once the sensor has been silent for GRID_SENSOR_HOLD_MS.
     // Hold all device control and report error; PV/battery display is still updated above.
     if (gridW === null) {
+      // Same as the disabled branch: control is held, so nothing is being released.
+      await this._set('measure_released_surplus', 0);
       // Distinguish "no grid meter configured" (setup incomplete) from a genuine
       // sensor/API failure (configured but reads keep failing) so the status is honest
       // instead of always blaming the sensor.
@@ -795,6 +800,17 @@ class EmsDevice extends Device {
       this._diag.shareBudgetW = _shareBudgetW;
       this._diag.surplusShare = this._batterySurplusShare(cfg, battery.soc);
     }
+    // What the devices may actually claim this tick: the measured export PLUS whatever the
+    // SOC ramp lends on top of it. Read here and not one line later, because the priority
+    // loop below spends this figure as it allocates — by the end of the tick effectiveGridW
+    // says what is LEFT, which is a different number and not the one to record.
+    //
+    // measure_solar_surplus cannot show this. It is the meter reading, so on a day when the
+    // devices ran on a share the meter never saw — the ramp's whole purpose — it looks
+    // exactly like a day when they ran on genuine export. Logging both side by side is what
+    // makes the ramp's effect readable over the day: the gap between the two lines IS the
+    // share the battery handed over, and it widens as the SOC climbs.
+    await this._set('measure_released_surplus', Math.max(0, Math.round(-effectiveGridW)));
     // Simple-device dispatch table — replaces four near-identical evaluator wrappers.
     // Each entry carries the device list, its state map and the flow-card / config ids.
     const simpleEval = {
@@ -1330,7 +1346,7 @@ class EmsDevice extends Device {
     // / "Auto-Ziel-Ladestand" tiles; the suffix-less ids are never used directly.
     if (this.hasCapability('measure_car_soc'))         await this.removeCapability('measure_car_soc').catch(() => {});
     if (this.hasCapability('measure_car_target_soc'))  await this.removeCapability('measure_car_target_soc').catch(() => {});
-    for (const cap of ['ems_mode', 'ems_status_text', 'measure_solar_surplus', 'measure_pv_power', 'measure_house_power', 'measure_grid_power', 'measure_battery_power', 'measure_electricity_price', 'offpeak_enabled', 'charge_now']) {
+    for (const cap of ['ems_mode', 'ems_status_text', 'measure_solar_surplus', 'measure_released_surplus', 'measure_pv_power', 'measure_house_power', 'measure_grid_power', 'measure_battery_power', 'measure_electricity_price', 'offpeak_enabled', 'charge_now']) {
       if (!this.hasCapability(cap)) {
         this.log(`[EMS] addCapability: ${cap}`);
         await this.addCapability(cap).catch((e) => this.error(`[EMS] addCapability ${cap} failed:`, e));
