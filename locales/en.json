@@ -40,7 +40,8 @@
       "host": {
         "unreachable": "No route to {{host}} — is the device powered on and still on this IP address?",
         "timeout": "{{host}} is not responding — is the device powered on and on the same network?",
-        "refused": "{{host}} refused the connection — is Modbus TCP enabled on the device, and is the port right?"
+        "refused": "{{host}} refused the connection — is Modbus TCP enabled on the device, and is the port right?",
+        "closed": "{{host}} accepted the connection and closed it again — no register could be read. Huawei devices allow only one Modbus connection at a time: is another program reading this device?"
       },
       "noAddress": "No IP address configured. Please check the device settings.",
       "fetchFailed": "Modbus read failed",

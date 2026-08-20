@@ -40,7 +40,8 @@
       "host": {
         "unreachable": "Gerät unter {{host}} nicht erreichbar — eingeschaltet? IP-Adresse noch dieselbe?",
         "timeout": "Gerät unter {{host}} antwortet nicht — eingeschaltet und im selben Netzwerk?",
-        "refused": "{{host}} weist die Verbindung ab — Modbus TCP am Gerät aktiviert? Port korrekt?"
+        "refused": "{{host}} weist die Verbindung ab — Modbus TCP am Gerät aktiviert? Port korrekt?",
+        "closed": "{{host}} hat die Verbindung angenommen und sofort wieder geschlossen — kein Register konnte gelesen werden. Huawei-Geräte erlauben nur eine Modbus-Verbindung gleichzeitig: Liest ein anderes Programm dieses Gerät aus?"
       },
       "noAddress": "Keine IP-Adresse konfiguriert. Bitte überprüfe die Geräteeinstellungen.",
       "fetchFailed": "Modbus-Abruf fehlgeschlagen",

@@ -597,6 +597,7 @@ const homeyStub = {
     'modbus.errors.host.unreachable': 'No route to {{host}} — powered on?',
     'modbus.errors.host.timeout': '{{host}} is not responding',
     'modbus.errors.host.refused': '{{host}} refused the connection',
+    'modbus.errors.host.closed': '{{host}} accepted the connection and closed it again',
   })[k] ?? k,
 };
 
@@ -624,6 +625,113 @@ test('unavailableMessage — a Modbus-level fault keeps its raw text', () => {
 test('unavailableMessage — an unknown host still yields a sentence, not "undefined"', () => {
   const msg = unavailableMessage(homeyStub, new Error('connect EHOSTUNREACH 10.0.0.5:502'), null);
   assert.strictEqual(msg, 'No route to ? — powered on?');
+});
+
+// ── a socket that is accepted and then hung up ───────────────────────────────
+// Field log cee22305 (2026-08-20): the TCP handshake succeeded — _connect only runs the read
+// function from its 'connect' handler, so nothing below could have been logged otherwise —
+// and every one of ~60 reads was then refused with "no connection to modbus server", which
+// jsmodbus raises WITHOUT putting the request on the wire.
+//
+// That poll used to resolve with an all-nulls object, so it reached the driver as data. Each
+// driver checks its own key register, finds it null, and says what that means on a device
+// that IS answering: "LUNA2000 battery not detected". The owner was told to inspect an RS485
+// cable that was never the problem.
+
+// jsmodbus wording, verbatim: the request in flight when the socket closes gets the first,
+// everything queued behind it the second.
+const OFFLINE_IN_FLIGHT = 'connection to modbus server closed';
+const OFFLINE_QUEUED    = 'no connection to modbus server';
+
+// Answers normally until `until` registers have been served, then behaves like a client whose
+// socket has gone: instant rejection, no wire traffic, for every request that follows.
+function hangUpClient(afterCalls, message = OFFLINE_QUEUED, record = []) {
+  return {
+    calls: record,
+    async readHoldingRegisters(start, count) {
+      record.push({ start, count });
+      if (record.length > afterCalls) throw new Error(message);
+      const buf = Buffer.alloc(count * 2);
+      for (let i = 0; i < count; i++) buf.writeUInt16BE((start + i) & 0xFFFF, i * 2);
+      return { response: { body: { valuesAsBuffer: buf } } };
+    },
+  };
+}
+
+test('readRegisters — a poll that lost the socket and read nothing fails, rather than returning nulls', async () => {
+  const regs = { a: [100, 1, 'UINT16', '', 0], b: [200, 1, 'UINT16', '', 0] };
+  await assert.rejects(
+    () => readRegisters(regs, hangUpClient(0)),
+    (err) => {
+      assert.strictEqual(err.modbusConnectionLost, true, 'the flag the tile message keys on is missing');
+      return true;
+    },
+  );
+});
+
+test('readRegisters — the in-flight wording is recognised as well as the queued one', async () => {
+  const regs = { a: [100, 1, 'UINT16', '', 0] };
+  await assert.rejects(
+    () => readRegisters(regs, hangUpClient(0, OFFLINE_IN_FLIGHT)),
+    (err) => err.modbusConnectionLost === true,
+  );
+});
+
+// The retry that follows a first-request failure must not be able to swallow the verdict.
+test('readRegisters — the first-request retry does not hide a dead socket', async () => {
+  const regs = { a: [100, 1, 'UINT16', '', 0], b: [200, 1, 'UINT16', '', 0] };
+  const client = hangUpClient(0);
+  await assert.rejects(() => readRegisters(regs, client), (err) => err.modbusConnectionLost === true);
+  assert.ok(client.calls.length >= 2, 'the first request was not retried at all');
+});
+
+// Anything the device actually SAID keeps the old behaviour: those failures describe
+// registers, and the driver's own check is the right place to interpret them.
+test('readRegisters — a refused register is not mistaken for a lost connection', async () => {
+  const regs = { a: [100, 1, 'UINT16', '', 0], b: [200, 1, 'UINT16', '', 0] };
+  const client = { async readHoldingRegisters() { throw new Error('Modbus exception 2 (Illegal Data Address)'); } };
+  const out = await readRegisters(regs, client);
+  assert.deepStrictEqual(out, { a: null, b: null }, 'this must still resolve, not throw');
+});
+
+// Half a poll is still worth having: those replies were real. Discarding them would empty a
+// block that is partly working — the 1.2.53 regression.
+test('readRegisters — registers read before the hang-up are kept, and the poll still succeeds', async () => {
+  const regs = { a: [100, 1, 'UINT16', '', 0], far: [500, 1, 'UINT16', '', 0] };
+  const out = await readRegisters(regs, hangUpClient(1));  // first span answers, then the socket dies
+  assert.strictEqual(out.a, 100, 'the register that was genuinely read was thrown away');
+  assert.strictEqual(out.far, null);
+});
+
+// The field shape: adjacent registers, so buildReadPlan makes one batch of them, and the
+// failure arrives on a group that gets bisected all the way down before the poll is over.
+// The verdict has to survive that whole cascade.
+test('readRegisters — a batch that hangs up still fails the poll, bisection and all', async () => {
+  const regs = {};
+  for (let i = 0; i < 8; i++) regs[`r${i}`] = [37760 + i, 1, 'UINT16', '', 0];
+  const client = hangUpClient(0);
+  await assert.rejects(
+    () => readRegisters(regs, client),
+    (err) => err.modbusConnectionLost === true,
+  );
+  assert.ok(client.calls.length > 1, 'this never reached the bisection path, so it proves nothing');
+});
+
+test('unavailableMessage — a hung-up socket names the connection, not the hardware', () => {
+  const err = new Error('Modbus connection closed before any register could be read');
+  err.modbusConnectionLost = true;
+  const msg = unavailableMessage(homeyStub, err, '192.168.0.226');
+  assert.strictEqual(msg, '192.168.0.226 accepted the connection and closed it again');
+});
+
+test('the hung-up-socket message exists in all three locales and names the host', () => {
+  const fs = require('fs');
+  for (const lang of ['en', 'de', 'nl']) {
+    const host = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).modbus.errors.host;
+    assert.ok(host.closed, `modbus.errors.host.closed missing in ${lang}`);
+    assert.match(host.closed, /\{\{host\}\}/, `${lang}: the message does not name the host`);
+    assert.notStrictEqual(host.closed, host.refused, `${lang}: closed and refused say the same thing`);
+  }
 });
 
 // ── desync: what happens on a socket whose pairing can no longer be trusted ───
