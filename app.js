@@ -119,6 +119,7 @@ class FusionSolarApp extends App {
   async onUninit() {
     this.log('FusionSolar app is stopping...');
     if (this._midnightTimer)       this.homey.clearTimeout(this._midnightTimer);
+    if (this._baselineTimer)       this.homey.clearTimeout(this._baselineTimer);
     if (this._capHistoryPollTimer) this.homey.clearInterval(this._capHistoryPollTimer);
     this._saveCapHistory(); // persist before shutdown
   }
@@ -170,27 +171,71 @@ class FusionSolarApp extends App {
   }
 
   /**
-   * On app start: if no baseline exists for today yet, write one now.
-   * We wait 10 s to give drivers time to complete their first poll.
+   * On app start: if no baseline exists for today yet, write one.
+   *
+   * Two things used to go wrong here, both visible in field log 9c7e4414 (2026-08-21),
+   * where "No baseline for today yet – writing initial baseline" appeared after every one
+   * of four app starts on the same day.
+   *
+   * The line announced the write BEFORE knowing whether one was possible. That installation
+   * has no SUN2000 device at all, so _saveMidnightBaseline had nothing to read and wrote
+   * nothing — leaving a log line claiming an action that never happened, on every start,
+   * forever. The announcement now comes after the attempt and says what actually occurred.
+   *
+   * The second is worse and was not reported, because it is silent: the attempt was a single
+   * shot 10 s after start. Ten seconds is a guess at how long a driver needs for its first
+   * poll, and on a slow or briefly unreachable inverter it is too short. The counters read
+   * null, nothing was written, and nothing tried again — so that whole day had no baseline
+   * and the energy-balance widget's daily delta was wrong until the next midnight. It now
+   * retries on a widening schedule and gives up only after ~21 minutes, saying why.
+   *
+   * No retry when no source device is paired: that is not a race, and repeating it would
+   * only restate a fact that cannot change while the app runs.
    */
-  _ensureTodayBaseline() {
-    this.homey.setTimeout(() => {
-      const today = this._todayStr();
-      const exportStored = (() => { try { return this.homey.settings.get('eb_grid_export_baseline'); } catch { return null; } })();
-      const importStored = (() => { try { return this.homey.settings.get('eb_grid_import_baseline'); } catch { return null; } })();
-      if (!exportStored || exportStored.date !== today ||
-          !importStored || importStored.date !== today) {
-        this.log('No baseline for today yet – writing initial baseline');
-        this._saveMidnightBaseline();
+  _ensureTodayBaseline(attempt = 0) {
+    const DELAYS_MS = [10_000, 60_000, 5 * 60_000, 15 * 60_000];
+    if (attempt >= DELAYS_MS.length) return;
+
+    this._baselineTimer = this.homey.setTimeout(() => {
+      const today  = this._todayStr();
+      const stored = (key) => { try { return this.homey.settings.get(key); } catch { return null; } };
+      const exportStored = stored('eb_grid_export_baseline');
+      const importStored = stored('eb_grid_import_baseline');
+      if (exportStored && exportStored.date === today
+       && importStored && importStored.date === today) return; // already complete
+
+      const result = this._saveMidnightBaseline();
+      if (result.written.length === 2) return;                 // done, it logged its own lines
+
+      if (result.reason === 'no-reading' && attempt + 1 < DELAYS_MS.length) {
+        this._ensureTodayBaseline(attempt + 1);
+        return;
       }
-    }, 10000);
+
+      const totalMin = Math.round(DELAYS_MS.reduce((a, b) => a + b, 0) / 60000);
+      this.log(result.reason === 'no-source'
+        ? 'No baseline for today: no SUN2000 Modbus or EMMA device is paired, so there are no cumulative grid counters to snapshot'
+        : `No baseline for today: the grid counters were still unread after ${totalMin} min — the energy-balance widget's daily delta will be off until tomorrow`);
+    }, DELAYS_MS[attempt]);
   }
 
+  /**
+   * Snapshots the cumulative grid counters for today.
+   *
+   * Returns what it managed to do, so the caller can tell a race from a dead end:
+   *   { written: ['export','import'], reason: null }        both stored
+   *   { written: [],                  reason: 'no-source' } nothing to read from
+   *   { written: [...],               reason: 'no-reading'} source present, counter null
+   * The midnight timer ignores the return; _ensureTodayBaseline uses it to decide whether
+   * trying again could possibly help.
+   */
   _saveMidnightBaseline() {
+    const written = [];
     try {
       const today = this._todayStr();
       const sun2000     = this._getDevice('sun2000_modbus');
       const sun2000emma = this._getDevice('sun2000_emma_modbus');
+      if (!sun2000 && !sun2000emma) return { written, reason: 'no-source' };
 
       // Cumulative grid counters — MUST use the same source priority as the
       // energy-balance widget's rawExport/rawImport (sun2000 → sun2000emma),
@@ -205,14 +250,17 @@ class FusionSolarApp extends App {
       if (gridExport !== null) {
         this.homey.settings.set('eb_grid_export_baseline', { date: today, baseline: gridExport });
         this.log(`Midnight baseline saved – export: ${gridExport} kWh`);
+        written.push('export');
       }
       if (gridImport !== null) {
         this.homey.settings.set('eb_grid_import_baseline', { date: today, baseline: gridImport });
         this.log(`Midnight baseline saved – import: ${gridImport} kWh`);
+        written.push('import');
       }
     } catch (err) {
       this.error('Failed to save midnight baseline:', err.message);
     }
+    return { written, reason: written.length === 2 ? null : 'no-reading' };
   }
 
   _getDevice(driverId) {
