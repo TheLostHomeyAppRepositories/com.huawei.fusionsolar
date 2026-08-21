@@ -2,6 +2,7 @@
 
 const { Device } = require('homey');
 const { parseKioskUrl, buildApiUrl, fetchKioskData, extractKpiValues } = require('../../lib/kiosk-api');
+const { logPollOk, logPollError } = require('../../lib/poll-log');
 
 const DEFAULT_INTERVAL_MIN = 10;
 const MIN_INTERVAL_MIN = 5;
@@ -113,28 +114,45 @@ class FusionSolarKioskDevice extends Device {
       await this._set('meter_power_monthly',  kpi.monthEnergy);
       await this._set('meter_power_yearly',   kpi.yearEnergy);
 
-      // Trigger flows
-      await this.homey.flow
-        .getDeviceTriggerCard('power_changed')
-        .trigger(this, { power: kpi.realTimePower })
-        .catch((err) => this.log('Flow trigger power_changed failed:', err.message));
+      // Trigger flows. Not on a figure the API did not report: the token is a number, and a
+      // flow that switches on "production above X" must not be handed a null to compare.
+      if (kpi.realTimePower !== null) {
+        await this.homey.flow
+          .getDeviceTriggerCard('power_changed')
+          .trigger(this, { power: kpi.realTimePower })
+          .catch((err) => this.log('Flow trigger power_changed failed:', err.message));
+      }
 
-      await this.homey.flow
-        .getDeviceTriggerCard('daily_energy_updated')
-        .trigger(this, { daily_energy: kpi.dailyEnergy })
-        .catch((err) => this.log('Flow trigger daily_energy_updated failed:', err.message));
+      if (kpi.dailyEnergy !== null) {
+        await this.homey.flow
+          .getDeviceTriggerCard('daily_energy_updated')
+          .trigger(this, { daily_energy: kpi.dailyEnergy })
+          .catch((err) => this.log('Flow trigger daily_energy_updated failed:', err.message));
+      }
 
       if (!this.getAvailable()) await this.setAvailable();
+      this._failureCount = 0;
+      // Every other driver in this app reports its polls through the same throttled pair;
+      // this one logged nothing at all on success, so a device that had quietly stopped
+      // updating left an hour of log with no evidence either way. Throttled to one line per
+      // 15 minutes, so a 5-minute interval does not fill the log.
+      logPollOk(this, `Poll OK: ${kpi.realTimePower === null ? '—' : `${kpi.realTimePower} W`}`);
 
     } catch (err) {
-      this.error('Fetch error:', err.message);
+      this._failureCount = (this._failureCount || 0) + 1;
+      logPollError(this, `Fetch error (${this._failureCount}): ${err.message}`, err.message);
       await this.setUnavailable(
         `${this.homey.__('errors.fetchFailed')}: ${err.message}`,
       );
     }
   }
 
+  // A figure the API did not report is not a measurement of zero. Writing null through would
+  // blank the tile; writing 0 would be worse still on the cumulative counter, from which
+  // Homey derives the daily yield by difference. Holding the last known value is the least
+  // wrong of the three, and the poll log above is what makes the gap visible.
   async _set(capability, value) {
+    if (value === null || value === undefined) return;
     if (this.hasCapability(capability) && this.getCapabilityValue(capability) !== value) {
       await this.setCapabilityValue(capability, value);
     }
