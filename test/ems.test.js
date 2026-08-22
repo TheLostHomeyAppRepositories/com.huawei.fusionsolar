@@ -2332,6 +2332,51 @@ test('_evaluateEvChargers — Instant charging (P0) gracefully reduces amps to f
   assert.strictEqual(d._getChargerState('c1').currentAmps, 8);
   assert.strictEqual(d._lastMode.mode, 'instant_ev');
 });
+// ── instant charging with a car that is already full ─────────────────────────
+// P0 returns before P2.5, so the charge-target hold never applies here — deliberately: the
+// mode means "full power until I say otherwise". A car at its target still draws nothing,
+// though, and the tile used to read "16A/3ph" for hours with no watt behind it.
+test('_evaluateEvChargers — Instant charging (P0) says the car is full, and keeps granting anyway', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false };
+  const d = makeChargerDevice({
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+    _carStates: [{ id: 'car1', name: 'Tesla', soc: 82, target: 80 }],
+  });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, 0, [charger], {}, null, null);
+
+  assert.strictEqual(d._lastMode.mode, 'instant_ev', 'the mode must not change — nothing was decided');
+  assert.match(d._lastMode.text, /Tesla voll \(82% ≥ 80%\)/, 'the status does not say the car is full');
+  assert.match(d._lastMode.text, /wartet auf Abstecken/, 'it does not say what ends this');
+  assert.match(d._lastMode.text, /16A\/3ph/, 'the granted amps vanished from the text');
+  // The decisive half: the owner said charge, so the charger keeps its grant.
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 16, 'instant charging was stopped by a full car');
+});
+
+test('_evaluateEvChargers — Instant charging (P0) below target reads exactly as before', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false };
+  const d = makeChargerDevice({
+    getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+    _carStates: [{ id: 'car1', name: 'Tesla', soc: 42, target: 80 }],
+  });
+  await d._evaluateEvChargers({ soc: 90, powerW: 0 }, 0, [charger], {}, null, null);
+  assert.strictEqual(d._lastMode.text, '16A/3ph', 'the plain case grew decoration it should not have');
+});
+
+// A car whose SoC or target is unknown must not be called full — the P2.5 comment makes the
+// same point: an unreadable car may well need the energy.
+test('_evaluateEvChargers — Instant charging (P0) never calls an unreadable car full', async () => {
+  for (const car of [{ id: 'car1', name: 'Tesla', soc: null, target: 80 },
+                     { id: 'car1', name: 'Tesla', soc: 82, target: null }]) {
+    const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: false };
+    const d = makeChargerDevice({
+      getCapabilityValue: (cap) => (cap === 'charge_now' ? true : undefined),
+      _carStates: [car],
+    });
+    await d._evaluateEvChargers({ soc: 90, powerW: 0 }, 0, [charger], {}, null, null);
+    assert.strictEqual(d._lastMode.text, '16A/3ph', `an unreadable car was called full: ${JSON.stringify(car)}`);
+  }
+});
+
 test('_evaluateEvChargers — Instant charging (P0) stops the charger entirely when even the minimum amp does not fit', async () => {
   const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 1, phaseSwitch: false };
   const d = makeChargerDevice({
