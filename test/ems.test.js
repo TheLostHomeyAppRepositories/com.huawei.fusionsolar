@@ -864,6 +864,73 @@ test('_evaluateSimpleDevices — a discharging battery is not counted as solar s
     'die 46 W Einspeisung stammen aus der Batterie, nicht aus der Sonne');
 });
 
+// ── what the log says is holding a device ────────────────────────────────────
+// The diagnostic chain reports which constraint is keeping a device off, and its order has
+// to mirror the wantOn hierarchy — a branch above the one that actually decides names a
+// constraint that is not the binding one.
+//
+// The hard stop had no branch at all. Field log 2026-08-22, 00:36, battery at 2 %: three
+// devices reported "start-sustain pending (120s)" while `batHardStop && !batOverflow` had
+// already forced wantOn = false. Worse, the line had read "solar-forecast gate — holding
+// start" all evening; at midnight the gate opened for the new day, the phase changed, and
+// the log announced movement towards a start that the empty battery still forbade.
+function diagLines(dev) {
+  const lines = [];
+  dev.log = (l) => lines.push(String(l));
+  return lines;
+}
+
+test('_evaluateSimpleDevices — below the hard stop the log names the battery, not a pending start', async () => {
+  const d = makeSimpleDevice();
+  const lines = diagLines(d);
+  const state = new Map();
+  const dev = simpleDev({ minSurplusW: 1000, startSustainMs: 120_000 });
+  // The surplus has to be genuinely OK, or this proves nothing: the old chain reached its
+  // 'sustain' branch only when surplusOk was true, so a fixture with no surplus would leave
+  // the branch unentered and pass against the unfixed code. Battery at 2 % and NOT charging,
+  // so the overflow exception cannot apply and the hard stop is the only thing deciding.
+  await d._evaluateSimpleDevices({ soc: 2, powerW: 0 }, -2000, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 });
+
+  assert.ok(!lines.some((l) => /start-sustain pending/.test(l)),
+    'it still reports a start that the hard stop forbids');
+  const line = lines.find((l) => /hard stop/.test(l));
+  assert.ok(line, 'nothing in the log says why the device is off');
+  assert.match(line, /SoC 2% below 50%/, 'the line does not name the two figures that decide it');
+  // The device is written off, as it always was — what must never happen is a start.
+  assert.ok(!d._setOnCalls.some((c) => c.on === true), 'a device was started below the hard stop');
+});
+
+// The counter-check that keeps the new branch from swallowing the others: with the battery
+// above the stop, the surplus timers are the binding constraint again and must say so.
+test('_evaluateSimpleDevices — above the hard stop the start-sustain phase is still reported', async () => {
+  const d = makeSimpleDevice();
+  const lines = diagLines(d);
+  const state = new Map();
+  const dev = simpleDev({ minSurplusW: 1000, startSustainMs: 120_000 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -2000, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 });
+
+  assert.ok(lines.some((l) => /start-sustain pending/.test(l)),
+    'the sustain phase is no longer reported at all');
+  assert.ok(!lines.some((l) => /hard stop/.test(l)), 'the hard stop is claimed where it does not apply');
+});
+
+// The overflow exception is the one case where the hard stop does NOT hold a device, so the
+// branch must not claim it does — otherwise the log contradicts the device that is running.
+test('_evaluateSimpleDevices — under the overflow exception the hard stop is not blamed', async () => {
+  const d = makeSimpleDevice();
+  const lines = diagLines(d);
+  const state = new Map();
+  const dev = simpleDev({ minSurplusW: 1000, startSustainMs: 0 });
+  // Below the stop, but the battery is charging and export clears the START threshold.
+  await d._evaluateSimpleDevices({ soc: 20, powerW: 3000 }, -5000, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 });
+
+  assert.ok(!lines.some((l) => /hard stop/.test(l)),
+    'the overflow exception is running the device while the log blames the hard stop');
+});
+
 test('_evaluateSimpleDevices — a charging battery is not mistaken for a discharging one', async () => {
   // Gegenprobe: gleiche Betraege, aber die Batterie LAEDT. Ein Abzug, der das Vorzeichen
   // verliert (etwa ueber Math.abs), wuerde hier ein Geraet abschalten, das voll in der
