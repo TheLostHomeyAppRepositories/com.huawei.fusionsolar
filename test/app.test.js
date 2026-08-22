@@ -543,6 +543,42 @@ test('the copy-configuration button is exempt from the dirty rule', () => {
   }
 });
 
+// ── the feed-in tariff on the settings page ──────────────────────────────────
+// The field's empty state carries meaning: unset is "nobody has said what an exported kWh
+// earns", zero is "it earns nothing". Every other price box may collapse an empty value to
+// 0 — an unset price to PAY is 0 either way — but this one must not, or saving the page
+// would silently claim the user exports for free.
+test('the feed-in tariff keeps its empty state through a save', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+
+  assert.match(html, /id="ems-price-feed-in"/, 'the input is gone');
+  assert.match(html, /price_feed_in: emsPriceFeedInValue\(\)/,
+    'the value is collected some other way — check it still preserves empty');
+
+  const fn = html.slice(html.indexOf('function emsPriceFeedInValue'), html.indexOf('function emsRenderPriceConfig'));
+  assert.ok(fn.length > 50, 'emsPriceFeedInValue is gone');
+  assert.match(fn, /if \(raw === ''\) return null;/, 'an empty box no longer stays empty');
+  assert.match(fn, /n >= 0/, 'a negative tariff would turn sunny sessions into a profit');
+  assert.ok(!/parseFloat\(document\.getElementById\('ems-price-feed-in'\)\.value\) \|\| 0/.test(html),
+    'the `|| 0` pattern is back, which turns "not configured" into "earns nothing"');
+
+  // And it survives the trip back into the form.
+  assert.match(html, /ems-price-feed-in'\)\.value\s*=\s*\n?\s*\(pc\.price_feed_in === undefined \|\| pc\.price_feed_in === null\) \? '' : pc\.price_feed_in;/,
+    'rendering an unset tariff does not leave the box empty');
+});
+
+test('the feed-in tariff is labelled and explained in all three locales', () => {
+  const fs = require('fs');
+  for (const lang of ['en', 'de', 'nl']) {
+    const price = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).settings.price;
+    assert.ok(price.feedInPerKwh, `feedInPerKwh missing in ${lang}`);
+    assert.ok(price.feedInHint, `feedInHint missing in ${lang}`);
+    // The hint has to say what leaving it empty means, or the field looks like a bug.
+    assert.ok(price.feedInHint.length > 80, `the ${lang} hint does not explain the empty case`);
+  }
+});
+
 // ── the released surplus, logged beside the measured one ─────────────────────
 // measure_solar_surplus is the meter reading. The share ramp lends the devices power the
 // meter never sees, so on a ramp day the two figures differ by exactly the lent amount —

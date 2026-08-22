@@ -295,7 +295,9 @@
         "desc": "This hourly forecast is fed via the <em>\"Set price forecast\"</em> flow action. Works directly with <strong>Power by the Hour</strong>'s \"New prices received\" trigger (its <code>Prices</code> token), Tibber, or any similar day-ahead price app. Used by EV chargers set to <em>\"Solar &amp; cheapest hours (forecast)\"</em> to charge during the cheapest hours before a car's deadline.",
         "notLoaded": "Not yet loaded",
         "refresh": "↻ Refresh"
-      }
+      },
+      "feedInPerKwh": "Feed-in tariff / kWh",
+      "feedInHint": "What you are paid per exported kWh. Leave empty if you do not know — solar a charging car takes is then left unpriced, as before. Entering it makes charge sessions count that solar at the revenue you gave up instead of as free."
     },
     "exportLimit": {
       "title": "📤 Export Limit Coordinator",

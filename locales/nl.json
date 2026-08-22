@@ -295,7 +295,9 @@
         "desc": "Deze uurprognose wordt gevoed via de flowactie <em>\"Prijsprognose instellen\"</em>. Werkt rechtstreeks samen met de trigger \"Nieuwe prijzen ontvangen\" van <strong>Power by the Hour</strong> (het <code>Prices</code>-token), Tibber, of een vergelijkbare day-ahead prijs-app. Wordt gebruikt door EV-laders ingesteld op <em>\"Zon &amp; goedkoopste uren (prognose)\"</em> om tijdens de goedkoopste uren vóór de deadline van een auto te laden.",
         "notLoaded": "Nog niet geladen",
         "refresh": "↻ Vernieuwen"
-      }
+      },
+      "feedInPerKwh": "Terugleververgoeding / kWh",
+      "feedInHint": "Wat je krijgt per teruggeleverde kWh. Leeg laten als je het niet weet — zonnestroom die een ladende auto opneemt blijft dan zoals voorheen zonder prijs. Vul je hem in, dan rekenen laadsessies die zonnestroom tegen de gemiste opbrengst in plaats van als gratis."
     },
     "exportLimit": {
       "title": "📤 Exportlimiet-coördinator",

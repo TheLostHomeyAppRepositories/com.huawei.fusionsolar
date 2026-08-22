@@ -2610,6 +2610,74 @@ test('_evaluateEvChargers — solar_price charger waits when solar is claiming t
   assert.strictEqual(d._getChargerState('c1').currentAmps, null); // not forced on by price logic
 });
 
+// ── the feed-in tariff ───────────────────────────────────────────────────────
+// Solar a charging car takes was never bought, but on a contract that pays for exports it
+// was not free either — it is revenue given up. The session cost used to value it at zero,
+// which is only true where feeding in earns nothing, and made every sunny session read
+// "0.00".
+//
+// Unset and zero are deliberately different answers, and these tests exist mostly to keep
+// them apart: unset means nobody has said what an exported kWh earns, and every install was
+// in that state before the field existed, so it must behave exactly as it did.
+test('_feedInTariff — tells "not configured" apart from "earns nothing"', () => {
+  const d = makeChargerDevice();
+  assert.strictEqual(d._feedInTariff({}), null, 'no price_config at all');
+  assert.strictEqual(d._feedInTariff({ price_config: {} }), null, 'field absent');
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: null } }), null);
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: '' } }), null, 'an empty box is not a zero');
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: 0 } }), 0, 'zero is a real contract');
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: 0.09 } }), 0.09);
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: '0.12' } }), 0.12, 'the settings page sends strings');
+  // A stray minus would turn every sunny session into a profit.
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: -0.05 } }), null);
+  assert.strictEqual(d._feedInTariff({ price_config: { price_feed_in: 'gratis' } }), null);
+});
+
+// One hour at 2 kW with the meter importing 1 kW: half the energy is grid, half is solar.
+function feedInSession(priceConfig) {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: priceConfig };
+  const charger = { id: 'c1', connected: true, rawPowerW: 2000 };
+  d._trackChargeSession(charger, cfg, 3600_000, 1000); // 1 h tick, grid +1000 W
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0 }, cfg, 0, 0);
+  return d._chargeSessions[0];
+}
+
+test('_trackChargeSession — without a feed-in tariff the figures are exactly what they were', () => {
+  const row = feedInSession({ mode: 'fixed', price_fixed: 0.30, currency: 'CHF' });
+  assert.strictEqual(row.energyKwh, 2);
+  assert.strictEqual(row.gridKwh, 1);
+  assert.strictEqual(row.pvKwh, 1);
+  assert.strictEqual(row.cost, 0.3, 'only the grid half costs anything');
+  assert.strictEqual(row.avgPrice, 0.3, 'the average still means "per kWh whose price was known"');
+});
+
+test('_trackChargeSession — with a feed-in tariff the solar half costs the revenue given up', () => {
+  const row = feedInSession({ mode: 'fixed', price_fixed: 0.30, price_feed_in: 0.09, currency: 'CHF' });
+  assert.strictEqual(row.energyKwh, 2);
+  assert.strictEqual(row.cost, 0.39, '1 kWh grid at 0.30 plus 1 kWh solar at 0.09');
+  assert.strictEqual(row.avgPrice, 0.195, 'now every kWh has a price, so the average covers all of it');
+});
+
+// The case that makes the null/zero split worth having: a contract that pays nothing.
+test('_trackChargeSession — a feed-in tariff of zero prices the solar, it does not un-price it', () => {
+  const row = feedInSession({ mode: 'fixed', price_fixed: 0.30, price_feed_in: 0, currency: 'CHF' });
+  assert.strictEqual(row.cost, 0.3, 'solar earns nothing, so it costs nothing');
+  assert.strictEqual(row.avgPrice, 0.15, 'but it IS priced, so it counts in the average');
+});
+
+test('_trackChargeSession — a session drawn entirely from the grid is untouched by the tariff', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.30, price_feed_in: 0.09, currency: 'CHF' } };
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 2000 }, cfg, 3600_000, 5000); // import exceeds the draw
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0 }, cfg, 0, 0);
+  const row = d._chargeSessions[0];
+  assert.strictEqual(row.gridKwh, 2);
+  assert.strictEqual(row.pvKwh, 0);
+  assert.strictEqual(row.cost, 0.6);
+  assert.strictEqual(row.avgPrice, 0.3);
+});
+
 // ── chargeSessions: _trackChargeSession / _finalizeChargeSession ─────────────
 test('_trackChargeSession — accumulates energy over ticks and finalizes on disconnect', () => {
   const d = makeChargerDevice({ _chargeSessions: [] });

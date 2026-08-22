@@ -1235,6 +1235,16 @@
               style="width:140px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
           </div>
 
+          <!-- Feed-in tariff. Outside the mode blocks on purpose: what an exported kWh
+               earns is a separate contract from what a drawn kWh costs, and it applies
+               whichever tariff model is selected above. -->
+          <div id="ems-price-feed-in-row" style="margin-bottom:8px">
+            <label style="font-size:11px;color:#6e6e73;display:block;margin-bottom:4px" data-i18n="price.feedInPerKwh">Feed-in tariff / kWh</label>
+            <input id="ems-price-feed-in" type="number" step="0.001" min="0" placeholder="—"
+              style="width:140px;padding:7px 10px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none;background:#fff">
+            <div style="font-size:11px;color:#6e6e73;margin-top:4px" data-i18n="price.feedInHint">What you are paid per exported kWh. Leave empty if you do not know — solar a charging car takes is then left unpriced, as before. Entering it makes charge sessions count that solar at the revenue you gave up instead of as free.</div>
+          </div>
+
           <!-- Dual -->
           <div id="ems-price-dual-rows" style="display:none">
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">
@@ -3705,14 +3715,32 @@
         price_fixed: parseFloat(document.getElementById('ems-price-fixed').value) || 0,
         price_low:   parseFloat(document.getElementById('ems-price-low').value)   || 0,
         price_high:  parseFloat(document.getElementById('ems-price-high').value)  || 0,
+        // Empty stays empty rather than becoming 0 — the two mean different things here.
+        // Unset is "I have not said what an exported kWh earns"; zero is "it earns nothing",
+        // which is a real contract and a real answer. `|| 0` on the others is fine because
+        // an unset price to PAY is 0 either way.
+        price_feed_in: emsPriceFeedInValue(),
         high_windows: windows,
       };
+    }
+
+    // The feed-in field's empty state has to survive the round trip: an empty box means
+    // "not configured", and turning that into 0 on save would silently claim the user
+    // exports for nothing.
+    function emsPriceFeedInValue() {
+      var el = document.getElementById('ems-price-feed-in');
+      var raw = el ? String(el.value).trim() : '';
+      if (raw === '') return null;
+      var n = parseFloat(raw);
+      return (isFinite(n) && n >= 0) ? n : null;
     }
 
     function emsRenderPriceConfig(pc) {
       pc = pc || {};
       document.getElementById('ems-price-mode').value     = pc.mode || 'fixed';
       document.getElementById('ems-price-currency').value = pc.currency || 'CHF';
+      document.getElementById('ems-price-feed-in').value  =
+        (pc.price_feed_in === undefined || pc.price_feed_in === null) ? '' : pc.price_feed_in;
       if (pc.price_fixed !== undefined) document.getElementById('ems-price-fixed').value = pc.price_fixed;
       if (pc.price_low   !== undefined) document.getElementById('ems-price-low').value   = pc.price_low;
       if (pc.price_high  !== undefined) document.getElementById('ems-price-high').value  = pc.price_high;

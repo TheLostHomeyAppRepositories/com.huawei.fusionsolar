@@ -295,7 +295,9 @@
         "desc": "Diese Stundenprognose wird über die Flow-Aktion <em>\"Set price forecast\"</em> gespeist. Funktioniert direkt mit dem \"New prices received\"-Trigger von <strong>Power by the Hour</strong> (dessen <code>Prices</code>-Token), Tibber, oder ähnlichen Day-ahead-Preis-Apps. Wird von EV-Ladern im Modus <em>\"Solar &amp; cheapest hours (forecast)\"</em> genutzt, um in den günstigsten Stunden vor der Deadline eines Fahrzeugs zu laden.",
         "notLoaded": "Noch nicht geladen",
         "refresh": "↻ Aktualisieren"
-      }
+      },
+      "feedInPerKwh": "Einspeisevergütung / kWh",
+      "feedInHint": "Was dir eine eingespeiste kWh einbringt. Leer lassen, wenn du es nicht weisst — Solarstrom, den ein ladendes Auto nimmt, bleibt dann wie bisher unbepreist. Trägst du sie ein, rechnen die Ladesessions diesen Solarstrom mit der entgangenen Vergütung statt als gratis."
     },
     "exportLimit": {
       "title": "📤 Einspeiselimit-Koordinator",
