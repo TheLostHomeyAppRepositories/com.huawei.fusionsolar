@@ -39,6 +39,8 @@ Connection via the public Kiosk URL. No FusionSolar account required.
 | Monthly yield    | Monthly energy yield (kWh)      |
 | Yearly yield     | Annual energy yield (kWh)       |
 
+A reading the kiosk endpoint does not deliver is **never reported as zero**. Its payload is JSON escaped inside more JSON, and a response that fails to unpack used to fall through to a complete set of zeros — nothing failed, the device stayed available, and the tile read `0 W`, indistinguishable from a roof in the dark. A missing figure now keeps its last known value, a response carrying no measurements at all marks the device unavailable with the real reason, and no flow fires on a value that never arrived. This mattered most for the lifetime counter, from which Homey derives the daily yield by difference: writing `0` and then the true reading again booked the whole lifetime output as a single day.
+
 ---
 
 ### Inverter SUN2000 (OpenAPI)
@@ -385,7 +387,7 @@ Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Sett
 
 ### Energy Management System (EMS)
 
-A local orchestration device (Homey class `other`) that decides, every 15 seconds, how to use solar surplus. It reads your PV, house, grid and battery figures from the paired FusionSolar devices and drives loads — EV chargers, heat pump, boiler, pool pump, dehumidifier — plus battery and inverter export limits, prioritising free solar energy. No cloud, no external service; all logic runs on Homey.
+A local orchestration device (Homey class `other`) that decides, on a configurable tick (15 s by default), how to use solar surplus. It reads your PV, house, grid and battery figures from the paired FusionSolar devices and drives loads — EV chargers, heat pump, boiler, pool pump, dehumidifier, air conditioner — plus battery and inverter export limits, prioritising free solar energy. No cloud, no external service; all logic runs on Homey.
 
 **Control model:** the EMS does not write to other devices directly. Instead it **fires flow trigger cards** (e.g. *Set charger current*, *Start heat pump*) that you link to the corresponding device action cards in your own flows. This keeps it compatible with any charger/heat-pump brand, not just Huawei.
 
@@ -395,12 +397,13 @@ A local orchestration device (Homey class `other`) that decides, every 15 second
 |-----------------------|-----------------------------------------------------------------------------|
 | Enabled (on/off)      | Master switch for the whole EMS                                              |
 | Off-peak charging     | Enables cheap-tariff EV charging when solar is insufficient                  |
-| Charge now            | One-tap override to charge the EV immediately                               |
+| Charge now            | Instant charging at full power. A deliberate toggle: nothing clears it but unplugging the car — the charge target does not apply, since the point of the mode is "full power until *I* say otherwise". Once the car reaches its target it stops drawing on its own, and the status says so (`Tesla full (82% ≥ 80%) — waiting to be unplugged`) rather than implying the granted amps are flowing |
 | EMS mode              | Current decision (see modes below)                                          |
 | Status text           | Human-readable summary of the active decision (e.g. `16A × 1 Lader · Bat 82%`) |
-| Solar surplus (W)     | Live exportable surplus the EMS is allocating                               |
+| Solar surplus (W)     | The meter reading — what is actually flowing to the grid                    |
+| Released surplus (W)  | What the EMS grants the devices: the meter reading **plus** the share the SoC ramp lends out of the battery's charging. The gap between the two lines is exactly that share, and it widens as the battery fills — so Insights shows over the day why a device was allowed to run, which the meter alone can never explain (the lent power never passes it). Identical to Solar surplus when no ramp is configured; `0` while the EMS is holding |
 | PV / House / Grid / Battery power (W) | Live snapshot of the inputs driving the decision            |
-| Electricity price     | Current tariff (fixed or from a variable-price flow)                        |
+| Electricity price     | Current tariff (fixed, dual, variable flow, or day-ahead forecast)          |
 
 #### EMS Modes
 
@@ -411,13 +414,28 @@ A local orchestration device (Homey class `other`) that decides, every 15 second
 | Load               | Behaviour                                                                                     |
 |--------------------|-----------------------------------------------------------------------------------------------|
 | EV chargers        | Solar-first current stepping (1/3-phase, per-charger min/max), off-peak fallback, per-car target SoC + car↔charger assignment |
-| Heat pump / boiler / pool / dehumidifier | On/off from surplus with per-device start-up grace, min-run, stop-grace and max-run guards |
-| Battery            | Reserve/hard-stop SoC zones; surplus is shared with loads before charging the battery         |
+| Heat pump / boiler / pool / dehumidifier / air conditioner | On/off from surplus with per-device reaction grace, min-run, stop-grace and max-run guards |
+| Battery            | One hard-stop SoC, plus a surplus **share ramp** — see below                                  |
 | Inverter export    | Optional export-limit coordinator (fires on/off triggers at a configurable SoC + export hold) |
+
+#### How the battery and the loads share the sun
+
+Older releases had three SoC zones (reserve / normal / an "orange" flat watt budget). That is gone. There is now **one threshold and one ramp**, configured under *Home Batteries*:
+
+- **Below the lower SoC point** nothing runs. Every controllable load is off and the battery takes the whole production. This point *is* the hard stop — "0 % share at the lower point" therefore means what it reads like.
+- **Between the two points** the devices' share of production rises linearly with SoC: the fuller the battery, the more of the sun the devices may claim, and the less goes into charging.
+- **At the upper point** the battery stops having priority.
+
+Two guards sit under the ramp, both from field measurements:
+
+- **The share can never exceed what the battery is actually absorbing.** The budget's whole justification is "what a device may claim is what the battery would otherwise have taken" — so while the battery *discharges* it lends nothing. Without this, a charger climbed 1.6 → 6.9 kW in eleven minutes financed entirely by the battery, invisible to every meter-based guard because the inverter holds the grid near zero during discharge. Installations without a battery power sensor keep the old behaviour: capping on a guess would be worse than not capping.
+- **A hard-stop overflow exception** lets a load run below the stop threshold when the battery is charging *and* there is more export than it can absorb — with a reserve held back, so a start cannot revoke its own permission on the next tick.
+
+The two SoC points also decide when the EMS announces *battery low* / *battery full*: those are the moments the chart already shows, rather than hidden defaults.
 
 #### Flow triggers (device: Energy Management System)
 
-`ems_mode_changed`, `ems_set_charger_current`, `ems_start_charger`, `ems_start_heat_pump` / `ems_stop_heat_pump`, `ems_start_boiler` / `ems_stop_boiler`, `ems_start_pool` / `ems_stop_pool`, `ems_start_dehumidifier` / `ems_stop_dehumidifier`, `ems_battery_full`, `ems_battery_low`, `ems_battery_force_charge` / `ems_battery_force_discharge` / `ems_battery_normal_mode`, `ems_battery_max_charge_power` / `ems_battery_max_discharge_power`, `ems_inverter_export_limit_on` / `ems_inverter_export_limit_off`, `ems_inverter_set_power_w` / `ems_inverter_set_power_pct` / `ems_inverter_remove_limit`, `ems_set_car_target`
+`ems_mode_changed`, `ems_set_charger_current`, `ems_start_charger`, `ems_start_heat_pump` / `ems_stop_heat_pump`, `ems_start_boiler` / `ems_stop_boiler`, `ems_start_pool` / `ems_stop_pool`, `ems_start_dehumidifier` / `ems_stop_dehumidifier`, `ems_start_aircon` / `ems_stop_aircon`, `ems_battery_full`, `ems_battery_low`, `ems_battery_force_charge` / `ems_battery_force_discharge` / `ems_battery_normal_mode`, `ems_battery_max_charge_power` / `ems_battery_max_discharge_power`, `ems_inverter_export_limit_on` / `ems_inverter_export_limit_off`, `ems_inverter_set_power_w` / `ems_inverter_set_power_pct` / `ems_inverter_remove_limit`, `ems_set_car_target`
 
 #### Flow actions
 
@@ -425,7 +443,9 @@ A local orchestration device (Homey class `other`) that decides, every 15 second
 
 #### Solar forecast (Solcast, optional)
 
-An optional **Solcast** PV forecast feed. Enter a free [Solcast Hobbyist](https://toolkit.solcast.com.au) rooftop **Resource ID** and **API key** under *App Settings → Energy Management → Data sources → Solar Forecast*. The EMS fetches the rooftop-site forecast (30-minute slots, up to 7 days) and caches it. **Multiple sites** are supported (e.g. a north- and south-facing roof) — enter one Resource ID per line and their forecasts are summed per slot. To respect the free tier's ~10 calls/day limit, it refreshes **at most every 3 hours** (the interval scales with the number of sites, since each site is one API call) and persists the last fetch across restarts so app reloads never exhaust the daily quota. When configured, the EMS device also exposes three forecast **capabilities** (device card / flows / Insights): *Solar forecast today* and *Solar forecast tomorrow* (kWh) and *Solar forecast (now)* (kW) — the latter is handy for comparing the forecast against actual production. They are added only while Solcast is configured and removed when it is disabled. Expected PV (remaining today / next 6 h / forecast peak) is also shown in the EMS Diagnostics panel and available in flows: a **Solar forecast updated** trigger (tokens: remaining today / next 6 h / peak) and **Expected solar today / in the next N hours / until a cutoff time is more/less than X kWh** conditions (the cutoff-time variant is anchored to a wall-clock deadline). **Solar-forecast start gate** (under *Data sources → Home Batteries*): on a poor-forecast day the EMS can hold off *starting* simple devices (heat pump / boiler / pool / dehumidifier) to protect the home battery for the evening — either a manual kWh threshold or an Adaptive mode that blocks starts when the remaining forecast can't refill the battery to full (uses each battery's usable-capacity setting — summed across multiple batteries — + current SOC). Running devices finish normally, EV charging is unaffected, and the gate falls back to normal when the forecast is missing or stale. Beyond this, the forecast is a **data feed** for flows/Insights (foundation for further solar-aware planning).
+An optional **Solcast** PV forecast feed. Enter a free [Solcast Hobbyist](https://toolkit.solcast.com.au) rooftop **Resource ID** and **API key** under *App Settings → Energy Management → Data sources → Solar Forecast*. The EMS fetches the rooftop-site forecast (30-minute slots, up to 7 days) and caches it. **Multiple sites** are supported (e.g. a north- and south-facing roof) — enter one Resource ID per line and their forecasts are summed per slot. To respect the free tier's ~10 calls/day limit, it refreshes **at most every 3 hours** (the interval scales with the number of sites, since each site is one API call) and persists the last fetch across restarts so app reloads never exhaust the daily quota. When configured, the EMS device also exposes three forecast **capabilities** (device card / flows / Insights): *Solar forecast today* and *Solar forecast tomorrow* (kWh) and *Solar forecast (now)* (kW) — the latter is handy for comparing the forecast against actual production. They are added only while Solcast is configured and removed when it is disabled. Expected PV (remaining today / next 6 h / forecast peak) is also shown in the EMS Diagnostics panel and available in flows: a **Solar forecast updated** trigger (tokens: remaining today / next 6 h / peak) and **Expected solar today / in the next N hours / until a cutoff time is more/less than X kWh** conditions (the cutoff-time variant is anchored to a wall-clock deadline). **Solar-forecast start gate** (under *Data sources → Home Batteries*): on a poor-forecast day the EMS can hold off *starting* loads to protect the home battery for the evening — either a manual kWh threshold or an Adaptive mode that blocks starts when the remaining forecast can't refill the battery to full (uses each battery's usable-capacity setting — summed across multiple batteries — + current SOC). It covers **solar EV charging as well as** heat pump / boiler / pool / dehumidifier / air conditioner. Running devices and charges finish normally — the gate holds *starts*, never stops something already going — and it falls back to normal when the forecast is missing or stale.
+
+The gate closes at the bare comparison but **reopens only with 1 kWh of forecast on top of the deficit**. The asymmetry is deliberate and was measured: an opening starts loads whose own draw slows the battery's charging, which grows the deficit and closes the gate again. Without the margin it closed at 5.1/5.7, opened at 5.1/5.1 and closed again at 5.1/5.3 inside 28 minutes — every opening revoking itself. While the margin is what holds it, the settings page says so (`5.4 kWh left — reopens from 6.3 kWh`) rather than showing "blocked" beside a remaining figure that already exceeds the requirement. Each transition is written to the EMS History once, so you can see when it engaged and why. Beyond this, the forecast is a **data feed** for flows/Insights (foundation for further solar-aware planning).
 
 #### Price-optimised EV charging (optional)
 
@@ -464,9 +484,21 @@ Unlike EV charging, there's no "by" deadline — a battery has no real-world mom
 
 Every configured EV charger (any charging mode — solar, off-peak, price-optimised, low-tariff, always) gets a per-session energy and cost log, shown under **App Settings → Energy Management → 🔌 Charge Sessions**. A session runs from the car being plugged in to being unplugged; energy only accumulates on ticks where the charger actually draws power, so pauses within one plug-in period (waiting for surplus, a cheaper price slot, battery protection, …) don't split it into several entries. Energy is integrated from the charger's **measured** power, not from the current the EMS commanded — a car that self-caps below the commanded amps (tapering near full, or a 1-phase car on a 3-phase charger) is billed for what it actually drew. Before 1.2.43 the commanded estimate was used, which could overstate a session's kWh and cost by up to about 3×; entries logged before that release keep their original figures. Cost is computed from whatever the **Electricity Price** tariff model reports at each tick (Fixed / Low-high / Variable / Price forecast) — sessions where no price was known at all show energy only, with cost left blank. Sessions under 0.05 kWh (e.g. a brief plug-in) aren't logged. The last 200 sessions are kept.
 
+**The running session is shown too**, at the top of the list, so a charge in progress is visible instead of appearing only once the cable comes out. It is labelled *charging* or *paused* by whether current is actually flowing — a session waiting for surplus or a cheaper price slot is still one session, but it is not charging, and saying "running" for both was misleading. The same list feeds the **Charging Sessions** widget, which falls back to these EMS sessions when no OCPP charger is paired.
+
+**Feed-in tariff.** Solar a charging car takes was never bought — but where exporting is paid for, it was not free either: it is revenue given up. Enter what you are paid per exported kWh under **Electricity Price → Feed-in tariff / kWh** (it applies whichever tariff model you use for buying, since feeding in is a separate contract), and the solar half of a session is counted at that rate. Both the cost and the average price per kWh then become the real ones — a sunny charge no longer reads `0.00` as if that were the whole story.
+
+Leaving the field **empty keeps everything exactly as it was**: without it nobody has said what an exported kWh earns, that solar stays unpriced, and the average keeps meaning "per kWh whose price was known". Entering **zero** is a different and equally valid answer — some contracts pay nothing, and that solar is then genuinely free, which the average now says rather than leaving it out.
+
 #### Configuration & diagnostics
 
 Data sources, controlled devices, tariff/automation and diagnostics are configured in **App Settings → Energy Management** (grouped by section). The settings page also shows an **EMS History** (recent mode/device/charger events, with a Copy button) and a live **EMS Diagnostics** view (`getEmsDiag`: tick health, last decision snapshot, the Solcast PV forecast when enabled, and the price forecast when configured).
+
+**Copy configuration** puts the whole setup on the clipboard for a bug report: settings, the current readings, and the per-device table with each steered device's *measured* value beside the one the EMS believes. The aim is that a tick can be recomputed from the export alone — every figure the control loop branches on leaves the device as a value rather than only inside a sentence. **Secrets are redacted by key name** (anything matching key / secret / password / token / code / credential / user): the key stays, the value is replaced, and an unset secret stays visibly unset, so the export is safe to paste into a forum thread.
+
+#### Manual control always wins
+
+A device switched on **by hand** while the EMS is not running it is adopted as "externally on" and left alone entirely — no start, no stop, no amp commands — until it is switched off again. To avoid mistaking a slow report for a person, that decision waits out the device's own **reaction grace** (the per-device setting that also covers start-up lag; 60 s minimum). Without it, an air conditioner whose app reports more slowly than a minute was classified "switched on externally" one minute after *every* EMS stop, and then ran unmanaged into the evening — four times in one day.
 
 ---
 
@@ -503,6 +535,8 @@ Data sources, controlled devices, tariff/automation and diagnostics are configur
 - Modbus TCP enabled (default port: **502**)
 - Modbus Unit ID: **0**
 - Static IP address recommended
+
+> **Huawei hardware accepts exactly one Modbus TCP connection at a time.** A second program connecting — Home Assistant, EVCC, another Homey app, or the FusionSolar app left in local commissioning mode — takes the connection over, and the dongle then accepts the handshake and hangs up immediately. That looks nothing like a wiring or address fault, so the device now says what it is: *"192.168.x.x accepted the connection and closed it again — no register could be read. Huawei devices allow only one Modbus connection at a time: is another program reading this device?"* rather than blaming the battery or the meter. Also check that **Modbus TCP** is set to *Enable (unrestricted)* in the FusionSolar app under the dongle's parameter settings; *limited* produces the same symptom.
 
 ### Setup in Homey
 
@@ -843,7 +877,7 @@ Live state of an EV charger (OCPP or EMMA): charging power, session energy, acti
 
 ### Charging Sessions (Ladesitzungen)
 
-A scrollable history of completed charging sessions — energy delivered, duration and end reason per session (OCPP charger).
+A scrollable history of charging sessions — energy delivered, duration and end reason per session. Prefers a paired OCPP charger, whose history is the richer one, and otherwise falls back to the EMS's own charge sessions, so the widget is useful with any charger brand. A session in progress appears at the top, labelled *charging* or *paused*.
 
 ---
 
