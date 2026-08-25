@@ -337,6 +337,9 @@ class EmsDevice extends Device {
     for (const c of (cfg.chargers || [])) {
       clamp(c, 'max_amps', 6, 32);
       clamp(c, 'step_hold_s', 15, 600);
+      // 0 is a valid answer here and the default: it means 'reduce immediately', which is
+      // what every install did before the field existed.
+      clamp(c, 'step_down_hold_s', 0, 600);
     }
     for (const key of ['heat_pump_devices', 'boiler_devices', 'pool_devices', 'dehumidifier_devices', 'aircon_devices']) {
       for (const d of (cfg[key] || [])) {
@@ -1248,6 +1251,7 @@ class EmsDevice extends Device {
         // How long a higher amp target must hold before the EMS steps up (anti-thrash).
         // Per-charger; falls back to the global STEP_HOLD_MS default (30 s).
         stepHoldMs:  Math.max(0, Number(c.step_hold_s) || 30) * 1000,
+        stepDownHoldMs: Math.max(0, Number(c.step_down_hold_s) || 0) * 1000,
         // Per-device "EMS controls this device" toggle — undefined/missing means
         // enabled (backward-compatible default). See lib/ems/widget.js.
         enabled:     c.enabled !== false,

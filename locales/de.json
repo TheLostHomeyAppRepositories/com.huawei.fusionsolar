@@ -726,11 +726,12 @@
       "chargingCar": "Ladendes Fahrzeug",
       "autoDetect": "— automatisch erkennen —",
       "chargingCarHint": "optional · wird genutzt, um diesen Lader zu stoppen, wenn sein Fahrzeug den Ziel-SOC erreicht",
-      "adjustmentInterval": "Anpassungsintervall",
-      "adjustmentIntervalHint": "Sek. — so lange muss der Überschuss anhalten, bevor der Ladestrom erhöht wird (höher = weniger Anpassungen). Nach unten wird sofort geregelt, ohne Wartezeit. Nach jeder Reduktion bleiben 5 Min. gesperrt, bevor wieder erhöht werden darf.",
+      "adjustmentInterval": "Anpassungsintervall  ↑",
+      "adjustmentIntervalHint": "Sek. — so lange muss der Überschuss anhalten, bevor der Ladestrom erhöht (↑) und bevor er reduziert wird (↓). Höher = weniger Anpassungen. Runter auf 0 regelt sofort ab, wie bisher; erhöhe den Wert, wenn eine Hausbatterie eine vorbeiziehende Wolke überbrücken kann — dann fällt der Lader nicht um eine Stufe, die er eine Minute später wieder hochklettern muss. Anhaltender Netzbezug überstimmt die Verzögerung nach 60 Sek. Nach jeder Reduktion bleiben 5 Min. gesperrt, bevor wieder erhöht werden darf.",
       "maxCurrentTitle": "Max. Strom (A)",
       "phasesTitle": "Anzahl Phasen, die dieser Lader nutzt",
-      "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt das EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um"
+      "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt das EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um",
+      "adjustmentIntervalDown": "↓"
     },
     "pvForecast": {
       "subtitleOff": "aus",

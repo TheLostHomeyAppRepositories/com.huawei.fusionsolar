@@ -543,6 +543,44 @@ test('the copy-configuration button is exempt from the dirty rule', () => {
   }
 });
 
+// ── the confirmation time before reducing the charge current ─────────────────
+// The behaviour is tested in test/ems.test.js against _stepCharger. What cannot be tested
+// there is the plumbing on either side of it: device.js needs the `homey` module and never
+// loads in the test process, and the settings page is not executed at all. Both are checked
+// by reading them — mutation testing found each of these silently survivable otherwise.
+test('the down-hold setting reaches the charger the tick reasons about', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+
+  assert.match(dev, /stepDownHoldMs: Math\.max\(0, Number\(c\.step_down_hold_s\) \|\| 0\) \* 1000,/,
+    'the configured value never becomes a figure _stepCharger can see');
+  // 0 has to stay reachable — it is the default and it means "reduce immediately".
+  assert.match(dev, /clamp\(c, 'step_down_hold_s', 0, 600\);/,
+    'the clamp floor is not 0, so "reduce immediately" cannot be configured');
+});
+
+test('the settings page saves the down-hold, and keeps a deliberate zero', () => {
+  const fs = require('fs');
+  const html = fs.readFileSync('settings/index.html', 'utf8');
+
+  assert.match(html, /dataset\.field = 'step_down_hold_s';/, 'the input is gone');
+  assert.match(html, /c\.step_down_hold_s = \(isFinite\(downS\) && downS > 0\) \? downS : 0;/,
+    'the value is not saved, or a zero no longer survives the save');
+  assert.match(html, /downInput\.min = 0;/, 'the input will not accept "reduce immediately"');
+});
+
+test('both adjustment directions are labelled and explained in all three locales', () => {
+  const fs = require('fs');
+  for (const lang of ['en', 'de', 'nl']) {
+    const c = JSON.parse(fs.readFileSync(`locales/${lang}.json`, 'utf8')).settings.chargers;
+    assert.ok(c.adjustmentInterval, `adjustmentInterval missing in ${lang}`);
+    assert.ok(c.adjustmentIntervalDown, `adjustmentIntervalDown missing in ${lang}`);
+    // The hint used to promise that reducing happens "at once, with no wait". With a
+    // configurable delay that is only true at 0, and the hint has to say so.
+    assert.match(c.adjustmentIntervalHint, /↓/, `the ${lang} hint does not mention the down direction`);
+  }
+});
+
 // ── the feed-in tariff on the settings page ──────────────────────────────────
 // The field's empty state carries meaning: unset is "nobody has said what an exported kWh
 // earns", zero is "it earns nothing". Every other price box may collapse an empty value to

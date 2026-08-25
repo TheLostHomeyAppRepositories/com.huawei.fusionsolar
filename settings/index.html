@@ -5201,10 +5201,25 @@
       stepInput.value = (stored && stored.step_hold_s) || 30;
       stepInput.min = 15; stepInput.max = 600; stepInput.step = 5;
       stepInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+      // The same, for reducing. 0 = reduce immediately, which is what every install did
+      // before this field existed, so it stays the default.
+      var downInput = document.createElement('input');
+      downInput.type = 'number';
+      downInput.className = 'ems-charger-stepdownhold';
+      downInput.dataset.field = 'step_down_hold_s';
+      downInput.value = (stored && stored.step_down_hold_s) || 0;
+      downInput.min = 0; downInput.max = 600; downInput.step = 5;
+      downInput.style.cssText = 'width:80px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:6px;font-size:12px;outline:none';
+      var downLbl = document.createElement('span');
+      downLbl.textContent = _H.__('settings.chargers.adjustmentIntervalDown');
+      downLbl.style.cssText = 'font-size:11px;color:#6e6e73';
+
       var stepHint = document.createElement('span');
       stepHint.textContent = _H.__('settings.chargers.adjustmentIntervalHint');
       stepHint.style.cssText = 'font-size:11px;color:#3a3a3c;line-height:1.4;flex:1;min-width:190px';
-      stepRow.appendChild(stepLbl); stepRow.appendChild(stepInput); stepRow.appendChild(stepHint);
+      stepRow.appendChild(stepLbl); stepRow.appendChild(stepInput);
+      stepRow.appendChild(downLbl); stepRow.appendChild(downInput);
+      stepRow.appendChild(stepHint);
 
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
@@ -7686,6 +7701,11 @@
         var stepEl = entry.querySelector('.ems-charger-stephold');
         var stepS  = stepEl ? parseInt(stepEl.value, 10) : 30;
         c.step_hold_s = (isFinite(stepS) && stepS > 0) ? stepS : 30;
+        // Zero is meaningful here — "reduce immediately" — so it is kept rather than
+        // falling back to a default the way step_hold_s does.
+        var downEl = entry.querySelector('.ems-charger-stepdownhold');
+        var downS  = downEl ? parseInt(downEl.value, 10) : 0;
+        c.step_down_hold_s = (isFinite(downS) && downS > 0) ? downS : 0;
         var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
         // Written explicitly in both directions so the settings page and the widget always

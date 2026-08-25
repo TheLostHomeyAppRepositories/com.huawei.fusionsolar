@@ -726,11 +726,12 @@
       "chargingCar": "Auto die laadt",
       "autoDetect": "— automatisch detecteren —",
       "chargingCarHint": "optioneel · wordt gebruikt om deze lader te stoppen zodra de auto de streefwaarde SOC bereikt",
-      "adjustmentInterval": "Aanpassingsinterval",
-      "adjustmentIntervalHint": "sec — overschot moet zo lang aanhouden voordat de laadstroom wordt opgehoogd (hoger = minder aanpassingen). Omlaag wordt direct geregeld, zonder wachttijd. Na elke verlaging duurt het 5 min. voordat hij weer mag stijgen.",
+      "adjustmentInterval": "Aanpassingsinterval  ↑",
+      "adjustmentIntervalHint": "sec — hoe lang het overschot moet aanhouden voordat de laadstroom wordt opgehoogd (↑) en voordat hij wordt verlaagd (↓). Hoger = minder aanpassingen. Omlaag op 0 verlaagt direct, zoals voorheen; verhoog het als een thuisaccu een voorbijtrekkende wolk kan overbruggen, zodat de lader geen trede laat vallen die hij een minuut later weer moet beklimmen. Aanhoudende netafname overruled de vertraging na 60 sec. Na elke verlaging duurt het 5 min. voordat hij weer mag stijgen.",
       "maxCurrentTitle": "Max. stroom (A)",
       "phasesTitle": "Aantal fasen dat deze lader gebruikt",
-      "autoPhaseSwitchTitle": "Automatisch faseschakelen: onder 4140 W (6A × 3f) gebruikt de EMS 1-fase laden; daarboven of gelijk wordt naar 3-fase geschakeld"
+      "autoPhaseSwitchTitle": "Automatisch faseschakelen: onder 4140 W (6A × 3f) gebruikt de EMS 1-fase laden; daarboven of gelijk wordt naar 3-fase geschakeld",
+      "adjustmentIntervalDown": "↓"
     },
     "pvForecast": {
       "subtitleOff": "uit",

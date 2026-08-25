@@ -430,6 +430,93 @@ test('_stepCharger — start requires STEP_HOLD before committing', async () => 
   assert.strictEqual(d._getChargerState('c1').currentAmps, 6);
 });
 
+// ── the confirmation time before REDUCING ────────────────────────────────────
+// Stepping up has always had to be earned; stepping down was immediate. That asymmetry is
+// right for a house without storage, where every second over budget is bought from the
+// grid — but with a battery it is needlessly twitchy: the battery bridges a passing cloud
+// while the charger drops a rung it has to climb back a minute later, and each drop costs
+// another FLIP_COOLDOWN_MS before it may rise at all.
+//
+// Off by default, so an install that never touches the field behaves exactly as before.
+const CHARGER_1PH_DOWN = { ...CHARGER_1PH, stepDownHoldMs: 120_000 };
+
+test('_stepCharger — with no down-hold configured, a reduction still lands at once', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 });
+  const r = await d._stepCharger(CHARGER_1PH, 1500, 1, T, 0, false); // budget now fits 6 A only
+  assert.strictEqual(r.amps, 6, 'the old behaviour must survive untouched');
+});
+
+test('_stepCharger — a configured down-hold makes the charger wait before reducing', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 });
+
+  let r = await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T, 0, false);
+  assert.strictEqual(r.amps, 16, 'it reduced immediately despite the hold');
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, T, 'the clock never started');
+
+  r = await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T + 119_000, 0, false);
+  assert.strictEqual(r.amps, 16, 'it gave up before the hold was over');
+
+  r = await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T + 121_000, 0, false);
+  assert.strictEqual(r.amps, 6, 'the hold expired and nothing happened');
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, null, 'the clock was not cleared');
+});
+
+// The clock must track "a reduction is wanted", not the destination rung. Keyed on the
+// target it would restart whenever the surplus wobbled between two rungs, and the step
+// would never arrive.
+test('_stepCharger — a target that wobbles between rungs does not restart the down-hold', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 });
+
+  await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T, 0, false);           // wants 6 A
+  await d._stepCharger(CHARGER_1PH_DOWN, 2100, 1, T + 60_000, 0, false);  // now wants 9 A
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, T, 'the clock restarted on a new target');
+
+  // Past the hold, it steps to whatever the target is NOW, not the one that started it.
+  const r = await d._stepCharger(CHARGER_1PH_DOWN, 2100, 1, T + 121_000, 0, false);
+  assert.strictEqual(r.amps, 9);
+});
+
+test('_stepCharger — surplus returning cancels a pending reduction', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 });
+
+  await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T, 0, false);
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, T);
+
+  // Budget back at the current rung → steady, and the pending reduction is off.
+  await d._stepCharger(CHARGER_1PH_DOWN, 16 * 230, 1, T + 30_000, 0, false);
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, null,
+    'an answered dip could still fire a reduction later');
+});
+
+// A rise answers the dip that armed the clock. Leaving it running would let that stale dip
+// fire a reduction later, straight through a climb.
+test('_stepCharger — a step up clears a pending reduction', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 10, currentPhases: 1, lastDownStepAt: null });
+
+  await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T, 0, false); // wants down to 6 A → arms
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, T);
+
+  // Surplus now well above the current rung → the up branch runs.
+  await d._stepCharger(CHARGER_1PH_DOWN, 6000, 1, T + 30_000, -6000, false);
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, null,
+    'the stale dip can still fire a reduction after the charger has climbed');
+});
+
+// The one case the delay must never touch: sustained grid import is not a passing cloud,
+// it is the house already paying for the overdraw.
+test('_stepCharger — sustained import reduces at once, whatever the down-hold says', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1 });
+  const r = await d._stepCharger(CHARGER_1PH_DOWN, 1500, 1, T, 3000, true); // forcedDown
+  assert.strictEqual(r.amps, 6, 'the down-hold delayed a forced reduction');
+  assert.strictEqual(d._getChargerState('c1').pendingDownSince, null);
+});
+
 test('_stepCharger — running, no rung fits, still exporting → hold at minimum', async () => {
   const d = makeChargerDevice();
   seedState(d, 'c1', { currentAmps: 10, currentPhases: 1 });
