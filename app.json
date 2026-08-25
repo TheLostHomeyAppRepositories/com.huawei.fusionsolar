@@ -259,9 +259,9 @@
     "nl": "Huawei FusionSolar Manager"
   },
   "description": {
-    "en": "Take control of your solar energy — via Kiosk, OpenAPI or Modbus.",
-    "de": "Solarenergie im Griff – via Kiosk, OpenAPI oder Modbus.",
-    "nl": "Beheer je zonne-energie — via Kiosk, OpenAPI of Modbus."
+    "en": "Watch your Huawei solar plant — and steer EV charging, heat pump and battery from the surplus.",
+    "de": "Huawei-Solaranlage im Blick — und EV-Laden, Wärmepumpe und Batterie aus dem Überschuss steuern.",
+    "nl": "Je Huawei-zonne-installatie in beeld — en laadpaal, warmtepomp en accu sturen op het overschot."
   },
   "tags": {
     "en": [

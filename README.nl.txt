@@ -1,0 +1,9 @@
+De app bereikt je installatie op vijf onafhankelijke manieren: via de openbare Kiosk-URL (geen account nodig), via de officiële FusionSolar Northbound API, met Modbus TCP rechtstreeks naar de SUN2000-omvormer, de LUNA2000-accu en de DTSU666-energiemeter, via de EMMA-energiemanagementmodule, en via een OCPP 1.6-server op Homey waarmee laadpalen zich rechtstreeks verbinden.
+
+Daarbovenop draait een energiemanagementsysteem dat elke paar seconden beslist wat er met je zonneoverschot gebeurt. Het regelt het laden van de auto de ampèreladder op en af, schakelt warmtepomp, boiler, zwembadpomp, luchtontvochtiger en airco, en geeft de thuisaccu voorrang via een verdeelramp die je zelf instelt: hoe voller de accu, hoe meer zon je apparaten mogen gebruiken. Het kan accu en auto uit het net laden tijdens de goedkoopste uren van een day-ahead prijsprognose, op dagen met een slechte zonneprognose nieuwe starts tegenhouden zodat de accu 's avonds vol is, en de totale netafname onder een door jou gekozen grens houden. Het schrijft nooit rechtstreeks naar je apparaten, maar activeert flow-kaarten die je aan je eigen apparatuur koppelt — zo werkt elk merk, niet alleen Huawei.
+
+Elk apparaattype verschijnt apart in Homey. De SUN2000-omvormer levert zonnevermogen, PV-stringspanningen en -stromen en de dag- en totaalopbrengst. De LUNA2000-accu toont laadtoestand, laad- en ontlaadvermogen en maakt directe besturing van de werkmodus mogelijk. DTSU666- en EMMA-meters registreren netafname en teruglevering over alle drie de fasen en worden in het Homey Energiedashboard als P1-meter opgenomen. Kiosk-, OpenAPI- en iSitePower-M-apparaten leveren installatiebrede energiegegevens inclusief dag-, maand- en jaartotalen.
+
+Elf dashboard-widgets tonen de zonnestroom in realtime, een netstoplicht, de energiebalans van de dag, de accustatus, laadsessies, de EMS-geschiedenis en een vrij instelbare sensorgrafiek.
+
+Alle waarden zijn beschikbaar in Homey Insights en Flows.
