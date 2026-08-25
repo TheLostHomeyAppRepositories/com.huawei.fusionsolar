@@ -1027,9 +1027,25 @@ class LUNA2000ModbusDevice extends Device {
     if (hasValue) {
       if (!this.hasCapability(capId)) await this.addCapability(capId);
       await this._set(capId, value.trim());
-    } else if (this.hasCapability(capId)) {
-      await this.removeCapability(capId);
+      return;
     }
+    if (!this.hasCapability(capId)) return;
+    // An empty read is not proof the unit is absent. These two live in registers 37799 and
+    // 37814, which the field log of 2026-08-20 shows failing individually while the rest of
+    // the poll came through — the bisection path exists for exactly that. Removing on the
+    // first empty answer therefore deleted a capability that was merely unread, and the
+    // next good poll added it straight back: the tile flickers and the store is rewritten
+    // for nothing.
+    //
+    // A total failure never got this far — isBatteryDataValid returns earlier — so the case
+    // this guards is the partial one.
+    //
+    // Requiring the CURRENT value to be empty too keeps a version string that was once read
+    // through any number of failed reads, while "this battery has no second unit" still
+    // removes the capability: there the value was never there to begin with.
+    const current = this.getCapabilityValue(capId);
+    if (current !== null && current !== undefined && String(current).trim().length > 0) return;
+    await this.removeCapability(capId);
   }
 
   async _fetchControl(address, port, modbusId) {
