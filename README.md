@@ -827,7 +827,7 @@ Daily energy totals shown as relative bars, plus self-consumption and self-suffi
 | Grid import today | `sun2000_modbus` → cumulative delta from midnight baseline                    |
 | House consumption | Calculated: self-consumed PV + grid import                                    |
 
-> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start. A hint is shown in the widget until the baseline is available.
+> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start — retried after 1, 5 and 15 minutes, because ten seconds after start is a guess at how long an inverter needs for its first reading, and losing that race used to cost the whole day its baseline in silence. If the counters are still unread after that, the log says so instead. Installations with no SUN2000 Modbus or EMMA device have no cumulative counters to snapshot at all, and the log says that too rather than repeating that it is writing one. A hint is shown in the widget until the baseline is available.
 
 - **Eigenverbrauch %** — share of PV energy used on-site (not exported)
 - **Autarkie %** — share of total consumption covered by PV

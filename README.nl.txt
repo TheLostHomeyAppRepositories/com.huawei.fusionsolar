@@ -4,6 +4,6 @@ Daarbovenop draait een energiemanagementsysteem dat elke paar seconden beslist w
 
 Elk apparaattype verschijnt apart in Homey. De SUN2000-omvormer levert zonnevermogen, PV-stringspanningen en -stromen en de dag- en totaalopbrengst. De LUNA2000-accu toont laadtoestand, laad- en ontlaadvermogen en maakt directe besturing van de werkmodus mogelijk. DTSU666- en EMMA-meters registreren netafname en teruglevering over alle drie de fasen en worden in het Homey Energiedashboard als P1-meter opgenomen. Kiosk-, OpenAPI- en iSitePower-M-apparaten leveren installatiebrede energiegegevens inclusief dag-, maand- en jaartotalen.
 
-Elf dashboard-widgets tonen de zonnestroom in realtime, een netstoplicht, de energiebalans van de dag, de accustatus, laadsessies, de EMS-geschiedenis en een vrij instelbare sensorgrafiek.
+Twaalf dashboard-widgets tonen de zonnestroom in realtime, een netstoplicht, de energiebalans van de dag, de accustatus, laadsessies, de EMS-geschiedenis en een vrij instelbare sensorgrafiek.
 
 Alle waarden zijn beschikbaar in Homey Insights en Flows.

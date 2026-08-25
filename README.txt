@@ -4,6 +4,6 @@ On top of that sits an Energy Management System that decides, every few seconds,
 
 Each device type appears separately in Homey. The SUN2000 inverter reports solar power, PV string voltages and currents, daily and total yield. The LUNA2000 battery shows state of charge, charge and discharge power, and allows direct control of the storage working mode. The DTSU666 and EMMA meters track grid import and export across all three phases and integrate with the Homey Energy Dashboard as P1 meters. Kiosk, OpenAPI and iSitePower-M devices provide plant-level energy data including daily, monthly and yearly totals.
 
-Eleven dashboard widgets show the live solar flow, a grid traffic light, the day's energy balance, battery status, charging sessions, the EMS decision history and a configurable sensor chart.
+Twelve dashboard widgets show the live solar flow, a grid traffic light, the day's energy balance, battery status, charging sessions, the EMS decision history and a configurable sensor chart.
 
 Every value is available in Homey Insights and Flows.

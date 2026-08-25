@@ -4,6 +4,6 @@ Darüber liegt ein Energiemanagementsystem, das alle paar Sekunden entscheidet, 
 
 Jeder Gerätetyp erscheint separat in Homey. Der SUN2000 Wechselrichter liefert Solarleistung, PV-String-Spannungen und -Ströme sowie Tages- und Gesamtertrag. Die LUNA2000 Batterie zeigt Ladezustand, Lade- und Entladeleistung und ermöglicht die direkte Steuerung des Speicherbetriebsmodus. DTSU666- und EMMA-Zähler erfassen Netzbezug und -einspeisung über alle drei Phasen und werden im Homey Energiedashboard als P1-Zähler eingebunden. Kiosk-, OpenAPI- und iSitePower-M-Geräte liefern anlagenweite Energiedaten inklusive Tages-, Monats- und Jahreserträgen.
 
-Elf Dashboard-Widgets zeigen den Solarfluss in Echtzeit, eine Netzampel, die Energiebilanz des Tages, den Batteriestatus, Ladesitzungen, den EMS-Verlauf und ein frei konfigurierbares Sensordiagramm.
+Zwölf Dashboard-Widgets zeigen den Solarfluss in Echtzeit, eine Netzampel, die Energiebilanz des Tages, den Batteriestatus, Ladesitzungen, den EMS-Verlauf und ein frei konfigurierbares Sensordiagramm.
 
 Alle Werte stehen in Homey Insights und Flows zur Verfügung.
