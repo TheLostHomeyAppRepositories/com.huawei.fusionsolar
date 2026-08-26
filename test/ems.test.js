@@ -20,7 +20,7 @@ const widgetMixin         = require('../lib/ems/widget');
 const historyMixin        = require('../lib/ems/history');
 const timingMixin         = require('../lib/ems/timing');
 const {
-  MIN_3PH_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS,
+  MIN_3PH_W, PHASE_UP_MARGIN_W, STEP_HOLD_MS, EXPORT_GUARD_W, MIN_CHARGE_W, EXPORT_LIMIT_HOLD_MS,
   SIMPLE_STATE_SAVE_MS, TRIGGER_BUDGET_MS, OVERFLOW_KEEP_W, OVERFLOW_START_W,
 } = require('../lib/ems/constants');
 
@@ -273,12 +273,34 @@ test('getEmsPriceStatus — defaults to fixed mode with price 0 when price_confi
 });
 
 // ── chargerControl: _bestPhases ──────────────────────────────────────────────
-test('_bestPhases — 3-phase above threshold, 1-phase below', () => {
+// MIN_3PH_W is not only the price of admission to three phases, it is the floor afterwards:
+// three phases cannot draw less. Switching over at exactly that figure therefore left the
+// charger standing on the budget that justified the move, and the next dip stopped it
+// outright — the amp ladder has nowhere lower to go. Field log 2026-08-26, 15:33–17:45:
+// eight start/stop cycles, and every one of the five that reached three phases ended in a
+// stop within two minutes; the two that stayed single-phase ran on.
+test('_bestPhases — committing to three phases wants a rung of headroom', () => {
   const d = makeDevice();
-  assert.strictEqual(d._bestPhases(MIN_3PH_W), 3);
-  assert.strictEqual(d._bestPhases(MIN_3PH_W + 100), 3);
-  assert.strictEqual(d._bestPhases(MIN_3PH_W - 1), 1);
-  assert.strictEqual(d._bestPhases(0), 1);
+  assert.strictEqual(d._bestPhases(MIN_3PH_W, 1), 1, 'the bare floor is not enough to commit');
+  assert.strictEqual(d._bestPhases(MIN_3PH_W + PHASE_UP_MARGIN_W - 1, 1), 1);
+  assert.strictEqual(d._bestPhases(MIN_3PH_W + PHASE_UP_MARGIN_W, 1), 3);
+  assert.strictEqual(d._bestPhases(0, 1), 1);
+});
+
+test('_bestPhases — staying at three phases only wants the floor', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._bestPhases(MIN_3PH_W, 3), 3, 'it would drop a phase it could still carry');
+  assert.strictEqual(d._bestPhases(MIN_3PH_W - 1, 3), 1, 'below the floor three phases are impossible');
+  // The gap between the two is the hysteresis: inside it, whichever phase count is running
+  // stays running.
+  const inBetween = MIN_3PH_W + 100;
+  assert.strictEqual(d._bestPhases(inBetween, 1), 1);
+  assert.strictEqual(d._bestPhases(inBetween, 3), 3);
+});
+
+test('_bestPhases — called without a current phase count, it assumes the cautious one', () => {
+  const d = makeDevice();
+  assert.strictEqual(d._bestPhases(MIN_3PH_W), 1, 'an unknown state must not be read as "already at three"');
 });
 
 // ── cars: _pickChargingCar ───────────────────────────────────────────────────
@@ -461,6 +483,59 @@ test('_stepCharger — start requires STEP_HOLD before committing', async () => 
   r = await d._stepCharger(CHARGER_1PH, 1500, 1, T + STEP_HOLD_MS + 1, -1500, false);
   assert.strictEqual(r.amps, 6);
   assert.strictEqual(d._getChargerState('c1').currentAmps, 6);
+});
+
+// ── dropping a phase instead of stopping ─────────────────────────────────────
+// The phase-switch cooldown exists to stop a charger flipping between one and three phases.
+// Dropping to one phase when three no longer fit is not that kind of flip: three phases
+// cannot go below MIN_3PH_W, so the alternative to switching is not "stay put", it is a full
+// stop. Holding the cooldown there bought stability by trading a phase change for an outage
+// — five times in two hours in the 2026-08-26 log.
+const CHARGER_SWITCH = { id: 'c1', connected: true, minAmps: 6, maxAmps: 32, phases: 3, phaseSwitch: true };
+
+test('_stepCharger — trapped at three phases inside the cooldown, it drops a phase rather than stop', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 6, currentPhases: 3, lastPhaseSwitchAt: T, lastDownStepAt: null });
+
+  // 3000 W: below MIN_3PH_W (4140) so no three-phase rung fits, but plenty for one phase.
+  const r = await d._stepCharger(CHARGER_SWITCH, 3000, 3, T + 1000, 0, false);
+
+  assert.strictEqual(r.phases, 1, 'it stayed on three phases and had to stop');
+  assert.ok(r.amps >= 6, 'the charger was stopped instead of stepped down');
+  assert.strictEqual(d._getChargerState('c1').currentPhases, 1);
+});
+
+// The hysteresis is only worth having if the caller hands _bestPhases the phase count the
+// charger is actually on. Passing a fixed 1 there would make a running three-phase charger
+// drop to one the moment the budget fell into the band — which is the flapping again, one
+// step further down.
+test('_stepCharger — inside the hysteresis band a three-phase charger stays on three', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 6, currentPhases: 3, lastPhaseSwitchAt: null, lastDownStepAt: null });
+
+  // 4400 W: above MIN_3PH_W (4140), below the commit threshold (4830). A charger already on
+  // three phases carries this; one on a single phase would not commit for it.
+  const r = await d._stepCharger(CHARGER_SWITCH, 4400, 3, T, -4400, false);
+  assert.strictEqual(r.phases, 3, 'it dropped a phase it could still carry');
+  assert.strictEqual(d._getChargerState('c1').currentPhases, 3);
+});
+
+// The counter-check that keeps the escape from becoming a new oscillation: upwards the
+// cooldown still applies in full.
+test('_stepCharger — the cooldown still blocks switching UP to three phases', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1, lastPhaseSwitchAt: T, lastDownStepAt: null });
+
+  // Well past the margin, so the only thing that can hold it back is the cooldown.
+  const r = await d._stepCharger(CHARGER_SWITCH, 8000, 3, T + 1000, -8000, false);
+  assert.strictEqual(r.phases, 1, 'it switched up inside the cooldown');
+});
+
+test('_stepCharger — once the cooldown is over, switching up happens normally', async () => {
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 16, currentPhases: 1, lastPhaseSwitchAt: T, lastDownStepAt: null });
+  const r = await d._stepCharger(CHARGER_SWITCH, 8000, 3, T + 11 * 60_000, -8000, false);
+  assert.strictEqual(r.phases, 3, 'the switch up never happens any more');
 });
 
 // ── the confirmation time before REDUCING ────────────────────────────────────
