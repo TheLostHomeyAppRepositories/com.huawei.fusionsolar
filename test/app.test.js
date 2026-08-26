@@ -543,6 +543,27 @@ test('the copy-configuration button is exempt from the dirty rule', () => {
   }
 });
 
+// ── the short hold on the battery state of charge ────────────────────────────
+// Since an absent SoC holds the hard stop rather than releasing it, a single dropped
+// reading would stop every controllable device for one tick and start them again on the
+// next. _getBattery therefore keeps the last good figure for a minute, the same way
+// _getGridW keeps the last grid reading — checked by reading device.js, which needs the
+// `homey` module and never loads in the test process.
+test('an unreadable state of charge falls back to the last one, briefly', () => {
+  const fs = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  const fn  = dev.slice(dev.indexOf('async _getBattery'), dev.indexOf('async _checkBatteryTriggers'));
+
+  assert.match(fn, /this\._lastValidSoc\s+= soc;/, 'no good reading is ever remembered');
+  assert.match(fn, /< BATTERY_SOC_HOLD_MS/, 'the fallback has no time limit, so a dead battery reads as full forever');
+  // powerW must NOT be held: it feeds the ramp's discharge cap, where a stale value would
+  // let the ramp keep lending against an absorption that has stopped.
+  assert.ok(!/_lastValidPowerW/.test(fn), 'the battery power is being held too — that is the dangerous direction');
+
+  const consts = require('../lib/ems/constants');
+  assert.strictEqual(consts.BATTERY_SOC_HOLD_MS, 60_000);
+});
+
 // ── the confirmation time before reducing the charge current ─────────────────
 // The behaviour is tested in test/ems.test.js against _stepCharger. What cannot be tested
 // there is the plumbing on either side of it: device.js needs the `homey` module and never

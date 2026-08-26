@@ -381,12 +381,45 @@ test('_batteryZones — an incomplete ramp falls back to the old settings', () =
   assert.strictEqual(d._batteryZones(cfg, { soc: 60 }).batHardStop, false);  // 60 >= 50
   assert.strictEqual(d._batteryZones(cfg, { soc: 40 }).batHardStop, true);
 });
-test('_batteryZones — soc null → nothing triggers', () => {
+// An unreadable state of charge holds the stop; it does not release it. Until 1.2.188 the
+// test was `battery.soc !== null && …`, so a missing reading freed every device. Field log
+// 2026-08-26, 09:31, battery at 22 %: three devices entered start-sustain and the mode fell
+// to idle — both meaning the EMS saw no low battery — and forty seconds later, with the
+// reading back, the stop re-engaged.
+//
+// The two cases below look identical from inside _batteryZones and must not be treated
+// alike: "configured but unreadable" is a failure to protect against, "no battery at all"
+// is a fact, and confusing them would stop every device forever on a PV-only installation.
+test('_batteryZones — a battery that cannot be read keeps the hard stop on', () => {
+  const d = makeDevice();
+  const cfg = { min_battery_soc: 80, min_battery_soc_low: 50, battery_devices: [{ id: 'b1' }] };
+  for (const soc of [null, undefined]) {
+    const z = d._batteryZones(cfg, { soc });
+    assert.strictEqual(z.batHardStop, true, `soc ${soc} released the protection`);
+    assert.strictEqual(z.batLow, true);
+  }
+});
+
+test('_batteryZones — with no battery configured, an absent soc is a fact and stops nothing', () => {
   const d = makeDevice();
   const z = d._batteryZones({ min_battery_soc: 80, min_battery_soc_low: 50 }, { soc: null });
-  assert.strictEqual(z.batLow, false);
+  assert.strictEqual(z.batLow, false, 'a PV-only installation would never run a device again');
   assert.strictEqual(z.batReserve, false);
   assert.strictEqual(z.batHardStop, false);
+});
+
+test('_batteryZones — an unreadable battery with no threshold configured still stops nothing', () => {
+  const d = makeDevice();
+  const z = d._batteryZones({ min_battery_soc: 0, battery_devices: [{ id: 'b1' }] }, { soc: null });
+  assert.strictEqual(z.batHardStop, false, 'a stop was invented where no level was set');
+});
+
+test('_batteryZones — a readable battery is judged exactly as before', () => {
+  const d = makeDevice();
+  const cfg = { min_battery_soc: 80, min_battery_soc_low: 50, battery_devices: [{ id: 'b1' }] };
+  assert.strictEqual(d._batteryZones(cfg, { soc: 49 }).batHardStop, true);
+  assert.strictEqual(d._batteryZones(cfg, { soc: 50 }).batHardStop, false);
+  assert.strictEqual(d._batteryZones(cfg, { soc: 0 }).batHardStop, true, 'a genuine zero is a reading, not an absence');
 });
 test('_batteryZones — misconfigured low ≥ min disables the reserve zone', () => {
   const d = makeDevice();

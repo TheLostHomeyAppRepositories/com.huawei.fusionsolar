@@ -4,7 +4,7 @@ const { Device }    = require('homey');
 const HomeyLocalApi = require('../../lib/homey-local-api');
 
 const {
-  TICK_MS, TICK_MIN_S, TICK_MAX_S, GRID_SENSOR_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
+  TICK_MS, TICK_MIN_S, TICK_MAX_S, GRID_SENSOR_HOLD_MS, BATTERY_SOC_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
   AMPS_LADDER, MODES, HIST, TRIGGER_BUDGET_MS,
 } = require('../../lib/ems/constants');
 
@@ -968,8 +968,27 @@ class EmsDevice extends Device {
     devices.forEach((d, i) => { socPerDevice[d.id] = socs[i]; });
     const validSoc   = socs.filter((s) => s !== null);
     const validPower = powers.filter((p) => p !== null);
+    // Hold the last good state of charge for a short window, the same way _getGridW holds
+    // the last grid reading. The reason is sharper here since 1.2.188: an absent SoC now
+    // HOLDS the battery hard stop instead of releasing it, so without this a single dropped
+    // reading would stop every controllable device for one tick and start them again on the
+    // next — the churn the min-run and cooldown timers exist to prevent.
+    //
+    // Only the SoC. powerW feeds the surplus ramp's discharge cap, and there a stale value
+    // is the dangerous direction: it would let the ramp keep lending against an absorption
+    // that may have stopped. Missing power already means "no cap information", which the
+    // ramp handles by falling back to the uncapped claim.
+    let soc = validSoc.length ? Math.min(...validSoc) : null;
+    if (soc !== null) {
+      this._lastValidSoc   = soc;
+      this._lastValidSocAt = Date.now();
+    } else if (this._lastValidSoc !== undefined && this._lastValidSocAt
+               && (Date.now() - this._lastValidSocAt) < BATTERY_SOC_HOLD_MS) {
+      this.log(`[EMS] _getBattery: SoC unreadable, using cached ${this._lastValidSoc}%`);
+      soc = this._lastValidSoc;
+    }
     return {
-      soc:          validSoc.length   ? Math.min(...validSoc)                 : null,
+      soc,
       powerW:       validPower.length ? validPower.reduce((a, b) => a + b, 0) : null,
       socPerDevice,
     };
