@@ -826,8 +826,23 @@ class EmsDevice extends Device {
     // Priority is per device, not per device class — see _runPriorityLoop in
     // chargerControl.js, which also carries the shrinking surplus budget between runs.
     this._tickPhase = 'devices';
+    // The ramp's share of production, as a ceiling on what all EMS-controlled devices may
+    // draw together. _batteryShareBudgetW above turned the same share into an ADDITION to
+    // the measured export, which is what lets a device claim while the grid sits at zero —
+    // but an addition alone cannot reclaim. A charger already running has a budget of "its
+    // own draw minus the meter", and once it consumes everything the meter reads zero, so
+    // it justifies itself. Measured 2026-08-29 at 62 % SoC with a 32 % share: 2354 W
+    // promised, 6152 W taken, 346 W left for the battery.
+    //
+    // Derived from pvW directly, not from the grid meter: the share is a share of what the
+    // roof makes, and the meter only shows what is left after everything has taken its part.
+    const _share = this._batterySurplusShare(cfg, battery.soc);
+    const rampAllowanceW = (_share === null || pvW === null)
+      ? null
+      : Math.max(0, Math.round(Math.max(0, pvW) * _share));
+    this._diag.rampAllowanceW = rampAllowanceW;
     effectiveGridW = await this._runPriorityLoop(
-      battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval,
+      battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval, rampAllowanceW,
     );
     // Right after the only place that mutates the maps, and a no-op when nothing moved.
     this._saveSimpleStates();

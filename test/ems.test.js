@@ -485,6 +485,95 @@ test('_stepCharger — start requires STEP_HOLD before committing', async () => 
   assert.strictEqual(d._getChargerState('c1').currentAmps, 6);
 });
 
+// ── the surplus ramp as a ceiling, not only an addition ──────────────────────
+// The ramp folded into effectiveGridW CREATES budget — that is what lets a device claim
+// while the grid sits at zero and the battery is taking everything. It cannot RECLAIM:
+// a running charger's budget is its own draw minus the meter, and once it consumes
+// everything the meter reads zero, so it justifies itself.
+//
+// Configuration export of 2026-08-29, 62 % SoC, ramp 50→100 % / 10→100 %:
+//   pv 7448 W · share 31.6 % · allowance 2354 W
+//   grid +13 W · battery +346 W (all it could still absorb) · car 6152 W
+// The ramp promised the devices 32 % and the car held 83 %, with 5 % left for the battery.
+const CEILING_CFG = {
+  share_soc_low: 50, share_soc_high: 100, share_pct_low: 10, share_pct_high: 100,
+  min_battery_soc: 20, battery_devices: [{ id: 'b1' }],
+};
+
+test('_evaluateEvChargers — the ramp allowance pulls a running charger back down', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: true, powerW: 6152, chargeMode: 'solar' };
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 9, currentPhases: 3, lastPhaseSwitchAt: null, lastDownStepAt: null });
+
+  // effectiveGridW as device.js computes it: 13 − 346.
+  await d._evaluateEvChargers({ soc: 62, powerW: 346 }, -333, [charger], CEILING_CFG, 7448, 950, 2354);
+
+  const st = d._getChargerState('c1');
+  assert.ok(st.currentAmps * st.currentPhases * 230 <= 2354,
+    `charger left at ${st.currentAmps}A/${st.currentPhases}ph — above the 2354 W share`);
+  assert.strictEqual(st.currentPhases, 1, 'three phases cannot fit inside the share at all');
+});
+
+test('_evaluateEvChargers — without a ramp the charger keeps what it had', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 3, phaseSwitch: true, powerW: 6152, chargeMode: 'solar' };
+  const d = makeChargerDevice();
+  seedState(d, 'c1', { currentAmps: 9, currentPhases: 3, lastPhaseSwitchAt: null, lastDownStepAt: null });
+
+  // Same tick, no allowance passed — every installation without a ramp must be untouched.
+  // min_battery_soc explicitly below the SoC: an empty cfg would fall back to the old 80 %
+  // default and stop the charger on battery priority, which is not what this test is about.
+  await d._evaluateEvChargers({ soc: 62, powerW: 346 }, -333, [charger], { min_battery_soc: 20 }, 7448, 950, null);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, 9);
+  assert.strictEqual(d._getChargerState('c1').currentPhases, 3);
+});
+
+test('_evaluateEvChargers — a generous allowance does not raise a small budget', async () => {
+  const charger = { id: 'c1', connected: true, minAmps: 6, maxAmps: 16, phases: 1, phaseSwitch: false, powerW: 0, chargeMode: 'solar' };
+  const d = makeChargerDevice();
+  // Nothing running, meter importing: there is no surplus, and a big share must not invent
+  // one. Two calls, because a start arms a pending step on the first tick and only commits
+  // on a later one — a single call would pass whatever the budget said.
+  const battery = { soc: 90, powerW: 0 };
+  await d._evaluateEvChargers(battery, 500, [charger], CEILING_CFG, 7448, 7000, 6000);
+  await d._evaluateEvChargers(battery, 500, [charger], CEILING_CFG, 7448, 7000, 6000);
+  assert.strictEqual(d._getChargerState('c1').currentAmps, null, 'the ceiling created budget instead of bounding it');
+  assert.strictEqual(d._getChargerState('c1').pendingStepAmps, null, 'a start was even armed');
+});
+
+// The same property for the on/off devices: the share has to be able to say no to one that
+// is already running, or it only ever gates starts.
+test('_evaluateSimpleDevices — a running device is stopped when the share no longer covers it', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  const dev = simpleDev({ minSurplusW: 2000, stopGraceMs: 0, powerW: 2000 });
+
+  // Export alone would keep it running (2000 + 500 ≥ 2000); the remaining share is 400 W.
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -500, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 }, 400);
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }], 'the share could not reclaim a running device');
+});
+
+test('_evaluateSimpleDevices — the same device keeps running when the share does cover it', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  const dev = simpleDev({ minSurplusW: 2000, stopGraceMs: 0, powerW: 2000 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -500, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 }, 2500);
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
+test('_evaluateSimpleDevices — no ramp configured leaves the decision exactly as it was', async () => {
+  const d = makeSimpleDevice();
+  const now = Date.now();
+  const state = new Map([['d1', { isOn: true, startedAt: now - 600_000, surplusOkSince: null, surplusBadSince: null, powerDropStoppedAt: null }]]);
+  const dev = simpleDev({ minSurplusW: 2000, stopGraceMs: 0, powerW: 2000 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -500, [dev], state, 'start', 'stop', 'tok',
+    { min_battery_soc: 50 }, null);
+  assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: true }]);
+});
+
 // ── dropping a phase instead of stopping ─────────────────────────────────────
 // The phase-switch cooldown exists to stop a charger flipping between one and three phases.
 // Dropping to one phase when three no longer fit is not that kind of flip: three phases
@@ -3522,9 +3611,13 @@ test('_buildPriorityRuns — empty order falls back to configured order, nothing
 function makeLoopDevice(alloc = {}) {
   const d = Object.assign({ log() {} }, chargerMixin);
   d._seen = [];
-  const record = (kind) => async (battery, gridW, list) => {
+  // The allowance sits in a different argument slot per kind: last for both, but the
+  // charger evaluator takes seven parameters and the simple one nine.
+  const record = (kind) => async (...args) => {
+    const list = args[2];
     const key = list.map((x) => x.id).join(',');
-    d._seen.push({ kind, key, gridW });
+    const allowanceW = kind === 'charger' ? args[6] : args[8];
+    d._seen.push({ kind, key, gridW: args[1], allowanceW });
     return alloc[key] || 0;
   };
   d._evaluateEvChargers    = record('charger');
@@ -3588,6 +3681,58 @@ test('_runPriorityLoop — the budget shrinks across three runs in sequence', as
     _prioSimple({ boiler: [{ id: 'boil' }], pool: [{ id: 'pl' }] }), -5000);
   assert.deepStrictEqual(d._seen.map((s) => s.gridW), [-5000, -4000, -2500]);
   assert.strictEqual(left, -1700);
+});
+
+// The ramp's share is spent along the priority order, exactly as the surplus budget is.
+// Without that, every run would see the full share and the ceiling would bound each device
+// on its own instead of all of them together.
+const _loopArgsA = (d, order, chargers, simple, gridW, allowanceW) =>
+  d._runPriorityLoop({ soc: 50 }, gridW, chargers, {}, null, null, order, simple, allowanceW);
+
+test('_runPriorityLoop — the ramp share is spent along the order, like the surplus', async () => {
+  const d = makeLoopDevice({ a: 2000 });
+  await _loopArgsA(d, ['a', 'boil'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000, 3000);
+  assert.strictEqual(d._seen[0].allowanceW, 3000, 'the first run must see the whole share');
+  assert.strictEqual(d._seen[1].allowanceW, 1000, 'the second run still saw the full share');
+});
+
+// A charger already running spent its part of the share before the tick began, so the share
+// is reduced by what it was GRANTED, not by the delta it newly claimed.
+test('_runPriorityLoop — a running charger spends its whole grant, not just its delta', async () => {
+  const d = makeLoopDevice({ a: 2500 });
+  await _loopArgsA(d, ['a', 'boil'], [{ id: 'a', powerW: 2000 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -1000, 3000);
+  assert.strictEqual(d._seen[1].allowanceW, 500, 'only the 500 W delta was charged to the share');
+});
+
+// Same for the on/off devices: a pool that started an hour ago has to cost the share its
+// running draw, or the ceiling is blind to everything already on.
+test('_runPriorityLoop — a simple device already running is charged to the share', async () => {
+  const d = makeLoopDevice({});
+  const states = new Map([['boil', { isOn: true }]]);
+  const simple = { boiler: { list: [{ id: 'boil', powerW: 1800 }], states, start: 's', stop: 'x', arg: 'a' } };
+  await _loopArgsA(d, ['boil', 'a'], [{ id: 'a', powerW: 0 }], simple, -5000, 3000);
+  const chargerRun = d._seen.find((s) => s.kind === 'charger');
+  assert.strictEqual(chargerRun.allowanceW, 1200, 'the running boiler cost the share nothing');
+});
+
+// A device with no power capability reports null; its configured minSurplusW stands in,
+// because treating it as zero would let exactly the unmeasured devices slip past.
+test('_runPriorityLoop — an unmeasured running device is charged at its configured need', async () => {
+  const d = makeLoopDevice({});
+  const states = new Map([['ac', { isOn: true }]]);
+  const simple = { aircon: { list: [{ id: 'ac', powerW: null, minSurplusW: 1200 }], states, start: 's', stop: 'x', arg: 'a' } };
+  await _loopArgsA(d, ['ac', 'a'], [{ id: 'a', powerW: 0 }], simple, -5000, 3000);
+  assert.strictEqual(d._seen.find((s) => s.kind === 'charger').allowanceW, 1800);
+});
+
+test('_runPriorityLoop — with no ramp the allowance stays null all the way down', async () => {
+  const d = makeLoopDevice({ a: 2000 });
+  await _loopArgsA(d, ['a', 'boil'], [{ id: 'a', powerW: 0 }],
+    _prioSimple({ boiler: [{ id: 'boil' }] }), -5000, null);
+  assert.strictEqual(d._seen[0].allowanceW, null);
+  assert.strictEqual(d._seen[1].allowanceW, null);
 });
 
 test('_runPriorityLoop — adjacent chargers share ONE budget deduction, not two', async () => {

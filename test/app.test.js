@@ -543,6 +543,27 @@ test('the copy-configuration button is exempt from the dirty rule', () => {
   }
 });
 
+// ── the ramp's share reaches the priority loop as a ceiling ──────────────────
+// The behaviour is tested against _runPriorityLoop and the two evaluators in ems.test.js.
+// What only device.js can get wrong is deriving the figure and handing it over, and device.js
+// needs the `homey` module and never loads in the test process — mutation testing found the
+// derivation silently removable otherwise.
+test('the tick derives the ramp allowance from production and passes it down', () => {
+  const fs  = require('fs');
+  const dev = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+
+  // From pvW, not from the meter: the share is a share of what the roof makes, and the
+  // meter only shows what is left after everything has taken its part.
+  assert.match(dev, /Math\.max\(0, Math\.round\(Math\.max\(0, pvW\) \* _share\)\)/,
+    'the allowance is no longer derived from production');
+  assert.match(dev, /_runPriorityLoop\(\s*\n?\s*battery, effectiveGridW, chargers, cfg, pvW, houseW, priorityOrder, simpleEval, rampAllowanceW,/,
+    'the allowance never reaches the priority loop');
+  // No ramp configured must stay null all the way down, not become 0 — 0 would stop
+  // every device on installations that never asked for a share.
+  assert.match(dev, /\(_share === null \|\| pvW === null\)\s*\n?\s*\? null/,
+    'an absent ramp no longer yields null');
+});
+
 // ── the short hold on the battery state of charge ────────────────────────────
 // Since an absent SoC holds the hard stop rather than releasing it, a single dropped
 // reading would stop every controllable device for one tick and start them again on the
