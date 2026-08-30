@@ -1058,6 +1058,56 @@ test('_saveSimpleStates / _restoreSimpleStates — timers survive a restart', as
   assert.ok(!('lastDiagKey' in st), 'reines Log-Feld gehoert nicht in den gespeicherten Zustand');
 });
 
+// Nothing pruned these maps, so a device removed from the settings kept its entry for good:
+// restored on every boot, listed in every diagnostics export. Field export 2026-08-30 still
+// carried a pool paired and removed long before — no name, no measurements, and no way for
+// the owner to get rid of it.
+test('_restoreSimpleStates — an entry for a device no longer configured is dropped', async () => {
+  const snap = { savedAt: Date.now() - 1000, maps: { pool: {
+    keep:  { isOn: true, startedAt: 1 },
+    ghost: { isOn: false, startedAt: 1 },
+  } } };
+  const d = makeStateDevice(snap);
+  d._getConfig = () => ({ pool_devices: [{ id: 'keep' }] });
+  const lines = [];
+  d.log = (l) => lines.push(String(l));
+
+  d._restoreSimpleStates();
+  assert.ok(d._poolStates.has('keep'), 'a configured device lost its timers');
+  assert.ok(!d._poolStates.has('ghost'), 'the leftover entry came back');
+  assert.ok(lines.some((l) => /dropped 1 entry/.test(l)), 'it vanished without saying so');
+});
+
+// The guard that matters more than the feature: an empty or failed settings read looks
+// exactly like "nothing is configured", and pruning against that would throw away the timers
+// of every device that IS configured.
+test('_restoreSimpleStates — an empty configuration prunes nothing', async () => {
+  const snap = { savedAt: Date.now() - 1000, maps: { pool: { p1: { isOn: true, startedAt: 1 } } } };
+  for (const cfg of [{}, { pool_devices: [] }, null]) {
+    const d = makeStateDevice(snap);
+    d._getConfig = () => cfg;
+    d._restoreSimpleStates();
+    assert.strictEqual(d._poolStates.size, 1, `pruned everything on cfg ${JSON.stringify(cfg)}`);
+  }
+});
+
+test('_restoreSimpleStates — a device with no _getConfig at all still restores', async () => {
+  const snap = { savedAt: Date.now() - 1000, maps: { pool: { p1: { isOn: true, startedAt: 1 } } } };
+  const d = makeStateDevice(snap);   // no _getConfig on the fixture
+  d._restoreSimpleStates();
+  assert.strictEqual(d._poolStates.size, 1);
+});
+
+// Pruning is per kind: a boiler and a pool may share an id space only by accident, and an
+// entry must be judged against its OWN kind's configuration.
+test('_restoreSimpleStates — an id configured under another kind does not save the entry', async () => {
+  const snap = { savedAt: Date.now() - 1000, maps: { pool: { x1: { isOn: true, startedAt: 1 } } } };
+  const d = makeStateDevice(snap);
+  d._getConfig = () => ({ boiler_devices: [{ id: 'x1' }] });
+  d._restoreSimpleStates();
+  assert.strictEqual(d._poolStates.size, 0, 'a boiler id kept a pool entry alive');
+});
+
 test('_restoreSimpleStates — a stale snapshot is discarded, not applied', async () => {
   // Nach Stunden beschreiben die Timer eine Welt, die es nicht mehr gibt. Dann lieber
   // gar nichts wiederherstellen: die Uebernahme aus dem echten Geraetezustand greift.
