@@ -77,8 +77,23 @@ class FusionSolarApp extends App {
       ems_stop_aircon:               'aircon_device_id',
       ems_battery_full:              'battery_device_id',
       ems_battery_low:               'battery_device_id',
+      // Battery price control (_checkBatteryPriceControl → TRIGGER_BY_MODE). Same
+      // omission as the dehumidifier above, and just as invisible: the EMS fired these
+      // three, the log said "price mode → charge", and the user's flow never ran.
+      ems_battery_force_charge:        'battery_device_id',
+      ems_battery_max_discharge_power: 'battery_device_id',
+      ems_battery_normal_mode:         'battery_device_id',
+      // Placeholders by design, not omissions: EMS Setup Flows builds a scaffold flow
+      // whose WHEN the user replaces (each card says so in its own hint). Nothing fires
+      // these — they are listed anyway so the rule above holds without exceptions. An
+      // exception list is what let the three above sit unnoticed since 1.2.38.
+      ems_battery_force_discharge:     'battery_device_id',
+      ems_battery_max_charge_power:    'battery_device_id',
       ems_inverter_export_limit_on:  'inverter_device_id',
       ems_inverter_export_limit_off: 'inverter_device_id',
+      ems_inverter_set_power_w:        'inverter_device_id',
+      ems_inverter_set_power_pct:      'inverter_device_id',
+      ems_inverter_remove_limit:       'inverter_device_id',
     };
     for (const [cardId, argName] of Object.entries(emsDeviceTriggers)) {
       this.homey.flow

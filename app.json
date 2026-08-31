@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.191",
+  "version": "1.2.192",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -8860,9 +8860,9 @@
           "nl": "EMS: batterij [[battery_device_id]] — geforceerd laden"
         },
         "hint": {
-          "en": "Placeholder trigger created by EMS Setup Flows for 'Force Charge'. Replace with your own trigger (e.g. energy price, time schedule) in Homey.",
-          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Zwangsladen'. Ersetze ihn durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan).",
-          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Geforceerd laden'. Vervang hem in Homey door een eigen trigger (bijvoorbeeld energieprijs of tijdschema)."
+          "en": "Fires when the EMS decides this battery should grid-charge because electricity is cheap now. Requires price-based charging to be enabled for the battery in the EMS settings.",
+          "de": "Wird ausgelöst, wenn das EMS entscheidet, dass diese Batterie bei günstigem Strom aus dem Netz laden soll. Setzt voraus, dass für die Batterie in den EMS-Einstellungen die preisbasierte Ladung aktiviert ist.",
+          "nl": "Wordt geactiveerd wanneer het EMS besluit dat deze accu uit het net moet laden omdat stroom nu goedkoop is. Vereist dat prijsgestuurd laden voor de accu is ingeschakeld in de EMS-instellingen."
         },
         "args": [
           {
@@ -8940,9 +8940,9 @@
           "nl": "EMS: batterij [[battery_device_id]] — normaal bedrijf"
         },
         "hint": {
-          "en": "Placeholder trigger created by EMS Setup Flows for 'Normal Mode'. Replace with your own trigger in Homey.",
-          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Normalbetrieb'. Ersetze ihn durch einen eigenen Trigger.",
-          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Normaal bedrijf'. Vervang hem in Homey door een eigen trigger."
+          "en": "Fires when the EMS hands this battery back to its normal behaviour — neither grid-charging nor holding its charge back.",
+          "de": "Wird ausgelöst, wenn das EMS diese Batterie wieder ihrem normalen Verhalten überlässt — weder Netzladung noch Zurückhalten der Ladung.",
+          "nl": "Wordt geactiveerd wanneer het EMS deze accu teruggeeft aan haar normale gedrag — niet laden uit het net en de lading niet vasthouden."
         },
         "args": [
           {
@@ -9020,9 +9020,9 @@
           "nl": "EMS: batterij [[battery_device_id]] — max. ontlaadvermogen instellen"
         },
         "hint": {
-          "en": "Placeholder trigger created by EMS Setup Flows for 'Max Discharge Power'. Replace with your own trigger in Homey.",
-          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Max. Entladeleistung'. Ersetze ihn durch einen eigenen Trigger.",
-          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Max. ontlaadvermogen'. Vervang hem in Homey door een eigen trigger."
+          "en": "Fires when the EMS wants this battery to stop discharging and save its capacity for the most expensive upcoming hours. Wire it to a card that sets the discharge power to 0 W.",
+          "de": "Wird ausgelöst, wenn das EMS die Entladung dieser Batterie stoppen und ihre Kapazität für die teuersten kommenden Stunden aufsparen will. Verbinde die Karte mit einer Aktion, die die Entladeleistung auf 0 W setzt.",
+          "nl": "Wordt geactiveerd wanneer het EMS wil dat deze accu stopt met ontladen om capaciteit te bewaren voor de duurste komende uren. Koppel hem aan een kaart die het ontlaadvermogen op 0 W zet."
         },
         "args": [
           {
@@ -9129,6 +9129,11 @@
           "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeiseleistung setzen (W)",
           "nl": "EMS: omvormer [[inverter_device_id]] — terugleverlimiet instellen (W)"
         },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Set max feed-in power (W)'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Maximale Einspeiseleistung (W)'. Das EMS löst ihn nie aus — ersetze ihn in Homey durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan).",
+          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Maximaal terugleververmogen (W)'. Het EMS activeert hem nooit — vervang hem in Homey door een eigen trigger (bijvoorbeeld energieprijs of tijdschema)."
+        },
         "args": [
           {
             "name": "inverter_device_id",
@@ -9164,6 +9169,11 @@
           "de": "EMS: Wechselrichter [[inverter_device_id]] — Einspeiseleistung setzen (%)",
           "nl": "EMS: omvormer [[inverter_device_id]] — terugleverlimiet instellen (%)"
         },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Set max feed-in power (%)'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Maximale Einspeiseleistung (%)'. Das EMS löst ihn nie aus — ersetze ihn in Homey durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan).",
+          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Maximaal terugleververmogen (%)'. Het EMS activeert hem nooit — vervang hem in Homey door een eigen trigger (bijvoorbeeld energieprijs of tijdschema)."
+        },
         "args": [
           {
             "name": "inverter_device_id",
@@ -9198,6 +9208,11 @@
           "en": "EMS: inverter [[inverter_device_id]] — remove output limit",
           "de": "EMS: Wechselrichter [[inverter_device_id]] — Leistungsbegrenzung aufheben",
           "nl": "EMS: omvormer [[inverter_device_id]] — uitgangsbegrenzing opheffen"
+        },
+        "hint": {
+          "en": "Placeholder trigger created by EMS Setup Flows for 'Remove output limit'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey.",
+          "de": "Platzhalter-Trigger von EMS Setup Flows für 'Ausgangsbegrenzung aufheben'. Das EMS löst ihn nie aus — ersetze ihn in Homey durch einen eigenen Trigger (z.B. Energiepreis, Zeitplan).",
+          "nl": "Tijdelijke trigger, aangemaakt door EMS Setup Flows voor 'Uitgangsbegrenzing opheffen'. Het EMS activeert hem nooit — vervang hem in Homey door een eigen trigger (bijvoorbeeld energieprijs of tijdschema)."
         },
         "args": [
           {
