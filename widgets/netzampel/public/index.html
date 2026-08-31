@@ -176,16 +176,19 @@ var DICTS = (function() {
     export: 'Einspeisung', exportSub: 'ins Netz',
     import: 'Netzbezug',   importSub: 'vom Netz',
     self:   'Eigenversorgung', selfSub: 'PV deckt Verbrauch',
+    unknown: 'Keine Netzdaten', unknownSub: 'kein Zähler gekoppelt',
   };
   var nl = {
     export: 'Teruglevering', exportSub: 'aan net',
     import: 'Netafname',     importSub: 'van net',
     self:   'Zelfvoorzienend', selfSub: 'PV dekt verbruik',
+    unknown: 'Geen netgegevens', unknownSub: 'geen meter gekoppeld',
   };
   var en = {
     export: 'Feed-in',      exportSub: 'to grid',
     import: 'Grid import',  importSub: 'from grid',
     self:   'Self-sufficient', selfSub: 'PV covers load',
+    unknown: 'No grid data', unknownSub: 'no meter paired',
   };
   return { de: de, nl: nl, en: en };
 })();
@@ -232,8 +235,17 @@ function onHomeyReady(Homey) {
     var value  = document.getElementById('status-value');
     var sub    = document.getElementById('status-sub');
 
-    // Grid status
-    if (grid < -thr) {
+    // Grid status. An unknown reading is its own state, never one of the three verdicts
+    // below: with grid === null both comparisons are false and the widget used to fall
+    // through to "self-sufficient" -- announcing that the house covers its own load on the
+    // strength of no measurement at all.
+    if (grid === null || grid === undefined) {
+      circle.setAttribute('class', 'circle');
+      label.textContent = T.unknown;
+      value.textContent = '—';
+      value.style.color = '#9CA3AF';
+      sub.textContent   = T.unknownSub;
+    } else if (grid < -thr) {
       // Exporting to grid
       circle.setAttribute('class', 'circle pulse-green');
       label.textContent = T.export;
