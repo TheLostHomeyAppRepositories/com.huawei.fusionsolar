@@ -26,7 +26,24 @@ const {
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
 const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
-const { version: APP_VERSION } = require('./app.json');
+const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
+
+// Which trigger cards does the EMS never fire? Not a list kept here — a list here would
+// drift the moment a card starts or stops being driven. Each such card already says so in
+// its own hint ("Placeholder trigger created by EMS Setup Flows"), and that hint is what
+// Homey shows the user in its flow editor, so the manifest is the single place the answer
+// lives. test/flow-card-wiring.test.js holds the other end of the same rule.
+const PLACEHOLDER_TRIGGERS = new Set(
+  ((APP_FLOW && APP_FLOW.triggers) || [])
+    .filter((t) => t.hint && typeof t.hint.en === 'string' && /placeholder/i.test(t.hint.en))
+    .map((t) => t.id),
+);
+// A stored card id is either the bare id or "<uri>:<id>", depending on how the flow was
+// created — the same two shapes getEmsTriggerUsage already copes with.
+const shortCardId = (raw) => {
+  const s = typeof raw === 'string' ? raw : '';
+  return s.indexOf(':') !== -1 ? s.slice(s.lastIndexOf(':') + 1) : s;
+};
 
 /**
  * The EMS device's Homey local-API client, or null when no EMS device is paired or the
@@ -1910,8 +1927,12 @@ module.exports = {
         const { cardId, cardUri } = firstAction ? parseAction(firstAction) : { cardId: '', cardUri: '' };
         const { device: _d, ...restArgs } = firstAction?.args || {};
         const tid = (flow.trigger && flow.trigger.id) || '';
+        const shortTid = shortCardId(tid);
         matched.push({ id: flow.id, name: flow.name, actionCardId: cardId || null, actionCardUri: cardUri || null, cardArgs: restArgs,
-          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerCardId: shortTid,
+          // The flow exists and its action is right, which is all the green tick used to
+          // check. Whether it can ever RUN depends on its trigger, so say that too.
+          triggerIsPlaceholder: PLACEHOLDER_TRIGGERS.has(shortTid),
           triggerArgs: (flow.trigger && flow.trigger.args) || {} });
       }
       return { matched };
@@ -2017,7 +2038,30 @@ module.exports = {
     } catch (_) { safeTokens = {}; }
     try {
       await homey.flow.getTriggerCard(cardId).trigger(safeTokens, state || {});
-      return { ok: true, cardId, state: state || {}, tokens: safeTokens };
+      // `trigger()` resolves whether or not a single flow was listening, so "it resolved"
+      // is not the same as "something ran" — and reporting the first as the second is how
+      // three dead price-control cards passed for working from 1.2.38 until 1.2.192. Count
+      // the flows actually built on this card and hand that number back, so the button can
+      // say "fired, and nobody listened" instead of a bare tick.
+      let listeners = null; // null = could not be determined, which is not the same as 0
+      try {
+        const _ems = _emsApi(homey);
+        if (_ems) {
+          const [flows, advFlows] = await Promise.all([
+            _ems.api.getFlows().catch(() => ({})),
+            _ems.api.getAdvancedFlows().catch(() => ({})),
+          ]);
+          listeners = 0;
+          for (const f of Object.values(flows || {})) {
+            if (f.enabled !== false && shortCardId(f.trigger && f.trigger.id) === cardId) listeners++;
+          }
+          for (const f of Object.values(advFlows || {})) {
+            if (f.enabled === false) continue;
+            if (Object.values(f.cards || {}).some((c) => c && shortCardId(c.id) === cardId)) listeners++;
+          }
+        }
+      } catch (_) { listeners = null; }
+      return { ok: true, cardId, listeners, state: state || {}, tokens: safeTokens };
     } catch (e) {
       return { error: e.message || String(e) };
     }
@@ -2218,7 +2262,8 @@ module.exports = {
           actionCardId:  cardId || null,
           actionCardUri: cardUri || null,
           cardArgs:      restArgs,
-          triggerCardId: tid.indexOf(':') !== -1 ? tid.slice(tid.lastIndexOf(':') + 1) : tid,
+          triggerCardId: shortCardId(tid),
+          triggerIsPlaceholder: PLACEHOLDER_TRIGGERS.has(shortCardId(tid)),
           triggerArgs:   (flow.trigger && flow.trigger.args) || {},
         });
       }

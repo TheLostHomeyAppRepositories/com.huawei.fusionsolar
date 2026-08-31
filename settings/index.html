@@ -5995,7 +5995,7 @@
           matched.forEach(function(f) {
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
-            var dot = document.createElement('span'); dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+            var dot = _emsFlowDot(f);
             var name = document.createElement('span'); name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
             var badge = _emsFlowRunBtn(f);
             row.appendChild(dot); row.appendChild(name); row.appendChild(badge);
@@ -6268,6 +6268,23 @@
     // "Run" button for a listed flow — fires that flow's own trigger card with
     // its own filter args, i.e. exactly what the EMS does. Verifies the whole
     // chain: trigger → filter match → flow → action.
+    // The tick used to mean only "a flow with this name exists and its action is ours" —
+    // it said nothing about whether the flow can ever run. A flow left on a placeholder
+    // trigger never fires, and showing it the same green tick as a working one is what
+    // made three dead price-control flows look configured for months.
+    function _emsFlowDot(f) {
+      var dot = document.createElement('span');
+      if (f && f.triggerIsPlaceholder) {
+        dot.textContent = '⚠';
+        dot.style.cssText = 'color:#c07a00;font-weight:600;cursor:help';
+        dot.title = _H.__('settings.flowSetup.placeholderTriggerHint');
+      } else {
+        dot.textContent = '✓';
+        dot.style.cssText = 'color:#34c759;font-weight:600';
+      }
+      return dot;
+    }
+
     function _emsFlowRunBtn(f, extraTokens) {
       var b = document.createElement('button');
       b.className = 'btn-secondary';
@@ -6290,9 +6307,15 @@
           function(err, res) {
             b.disabled = false;
             var ok = !err && res && res.ok;
-            b.textContent = ok ? _H.__('settings.flowSetup.fired') : _H.__('settings.flowSetup.failedRun');
-            b.style.color = ok ? '#1a7a3a' : '#c0392b';
+            // The card fired either way — Homey resolves trigger() with nobody listening.
+            // res.listeners is how many flows are actually built on this card; null means
+            // the answer could not be fetched, which is not the same as none.
+            var unheard = ok && res.listeners === 0;
+            b.textContent = !ok ? _H.__('settings.flowSetup.failedRun')
+              : (unheard ? _H.__('settings.flowSetup.firedUnheard') : _H.__('settings.flowSetup.fired'));
+            b.style.color = !ok ? '#c0392b' : (unheard ? '#c07a00' : '#1a7a3a');
             if (!ok) b.title = (res && res.error) || (err && err.message) || _H.__('settings.flowSetup.errorGeneric');
+            else if (unheard) b.title = _H.__('settings.flowSetup.firedUnheardHint');
             setTimeout(function() { b.textContent = orig; b.style.color = ''; }, 2500);
           });
       };
@@ -6686,8 +6709,7 @@
           matched.forEach(function(f) {
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
-            var dot = document.createElement('span');
-            dot.textContent = '✓'; dot.style.cssText = 'color:#34c759;font-weight:600';
+            var dot = _emsFlowDot(f);
             var name = document.createElement('span');
             name.textContent = f.name; name.style.cssText = 'color:#1d1d1f';
             var badge = _emsFlowRunBtn(f);

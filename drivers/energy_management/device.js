@@ -1103,7 +1103,11 @@ class EmsDevice extends Device {
         const fitsCeiling = limitKw <= 0 || baselineW + chargeW <= limitKw * 1000;
         if (!fitsCeiling) {
           this._debugLog(`battery ${device.id}: force-charge DENIED — grid import ceiling (${limitKw}kW) has no headroom`);
-          decision.mode = decision.reserveSlots?.length ? 'hold' : 'normal';
+          // What the battery would have done anyway, decided by _batteryPriceMode itself
+          // rather than inferred here from the slot lists — inferring it always produced
+          // 'normal', so a denied charge released a battery that was reserving capacity.
+          decision.mode   = decision.deniedMode || 'normal';
+          decision.reason = `grid import ceiling denied the charge — ${decision.deniedReason || 'default battery behaviour'}`;
         } else {
           this._gridImportCommittedW = baselineW + chargeW;
         }

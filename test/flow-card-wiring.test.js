@@ -218,3 +218,34 @@ test('each registered listener compares the arguments its card actually declares
   }
   assert.ok(checked >= 15, 'only ' + checked + ' listeners were exercised -- the wiring moved');
 });
+
+// -- 4. the settings page must not report a dead flow as a working one ------
+// Both signals below reported success unconditionally, which is how the three broken
+// price-control flows looked configured from 1.2.38 to 1.2.192. Source reads, because
+// api.js keeps the set in a module-private const and the page is not loadable here.
+test('the placeholder set is derived from the manifest, not kept as a list in api.js', () => {
+  const src = read('api.js');
+  assert.match(src, /PLACEHOLDER_TRIGGERS[\s\S]{0,400}?placeholder\/i\.test/,
+    'the set must come from each card hint in app.json, or it drifts the moment a card '
+    + 'starts or stops being fired');
+  const hardcoded = src.match(/PLACEHOLDER_TRIGGERS\s*=\s*new Set\(\s*\[/);
+  assert.strictEqual(hardcoded, null, 'the set is a literal list again — that is the drift this avoids');
+});
+
+test('the flow lists mark a placeholder-triggered flow instead of ticking it green', () => {
+  const html = read('settings/index.html');
+  // The two panels that can actually contain one: only battery and inverter rows are
+  // built on placeholder cards.
+  const uses = (html.match(/var dot = _emsFlowDot\(f\);/g) || []).length;
+  assert.strictEqual(uses, 2, 'both the battery and the inverter flow list must use the shared marker');
+  assert.match(html, /function _emsFlowDot[\s\S]{0,400}?triggerIsPlaceholder/,
+    'the marker has to consult the flag the API sends');
+});
+
+test('the run button distinguishes "fired" from "anything listened"', () => {
+  const html = read('settings/index.html');
+  assert.match(html, /res\.listeners === 0/,
+    'trigger() resolves with nobody listening, so res.ok alone must not be reported as success');
+  assert.match(read('api.js'), /listeners = 0;/,
+    'postEmsTestTrigger has to count the flows built on the card it just fired');
+});

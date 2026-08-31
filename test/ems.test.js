@@ -2207,6 +2207,49 @@ test('_batteryPriceMode — allows discharge during the reserved top-expensive h
   const r = d._batteryPriceMode(bd, 50, {}, now + 3600_000); // now = the peak slot
   assert.strictEqual(r.mode, 'normal');
 });
+// A grid-charge can be refused after the fact by the main-fuse ceiling (device.js
+// _checkBatteryPriceControl). What the battery does instead has to come from here — the
+// caller used to infer it from reserveSlots, which this function emptied on the charge
+// path, so the answer was always 'normal' and a battery saving capacity for the evening
+// peak was released the moment its charge was denied.
+test('_batteryPriceMode — a charge carries the mode that applies if it is denied', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [
+    { start: now,            end: now + 3600_000, price: 0.05 }, // now: cheapest → charge
+    { start: now + 3600_000, end: now + 7200_000, price: 0.30 }, // later: the peak → reserved
+  ];
+  const bd = { price_charge_enabled: true, price_target_soc: 90, price_charge_power_kw: 5,
+               capacity_kwh: 10, price_discharge_reserve_hours: 1 };
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 40, {}, now);
+  assert.strictEqual(r.mode, 'charge');
+  assert.strictEqual(r.deniedMode, 'hold', 'a denied charge must still reserve for the peak ahead');
+  assert.match(r.deniedReason, /reserving capacity/);
+  // The function's own contract: the lists are populated even when mode does not match them.
+  assert.strictEqual(r.reserveSlots.length, 1);
+  assert.strictEqual(r.reserveSlots[0].start, now + 3600_000);
+});
+test('_batteryPriceMode — with nothing worth reserving, a denied charge falls back to normal', () => {
+  const now = Date.UTC(2026, 0, 1, 10, 0, 0);
+  const slots = [{ start: now, end: now + 3600_000, price: 0.05 }];
+  const bd = { price_charge_enabled: true, price_target_soc: 90, price_charge_power_kw: 5,
+               capacity_kwh: 10, price_discharge_reserve_hours: 0 }; // reserve switched off
+  const d = makeDevice({ homey: { clock: { getTimezone: () => 'UTC' } }, _priceForecast: slots, _priceForecastUpdatedAt: now });
+  const r = d._batteryPriceMode(bd, 40, {}, now);
+  assert.strictEqual(r.mode, 'charge');
+  assert.strictEqual(r.deniedMode, 'normal');
+});
+// device.js cannot be require()d here (it needs `homey`), so the half that consumes
+// deniedMode is checked by reading it. Without this, the fix above could be reverted at
+// the call site and every test in this file would stay green.
+test('_checkBatteryPriceControl takes the denied mode from the decision, not from the slot lists', () => {
+  const fs  = require('fs');
+  const src = fs.readFileSync('drivers/energy_management/device.js', 'utf8');
+  assert.match(src, /decision\.mode\s*=\s*decision\.deniedMode/,
+    'the ceiling-denied branch must use the mode _batteryPriceMode derived');
+  assert.doesNotMatch(src, /decision\.reserveSlots\?\.length\s*\?\s*'hold'/,
+    'the fallback is inferred from reserveSlots again — that always yields normal');
+});
 test('_batteryPriceMode — reserve disabled (0 hours) and target met → normal (nothing to do)', () => {
   const now = Date.now();
   const bd = { price_charge_enabled: true, price_target_soc: 0, price_discharge_reserve_hours: 0 };
