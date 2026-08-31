@@ -6265,9 +6265,6 @@
       };
     }
 
-    // "Run" button for a listed flow — fires that flow's own trigger card with
-    // its own filter args, i.e. exactly what the EMS does. Verifies the whole
-    // chain: trigger → filter match → flow → action.
     // The tick used to mean only "a flow with this name exists and its action is ours" —
     // it said nothing about whether the flow can ever run. A flow left on a placeholder
     // trigger never fires, and showing it the same green tick as a working one is what
@@ -6285,6 +6282,9 @@
       return dot;
     }
 
+    // "Run" button for a listed flow — fires that flow's own trigger card with
+    // its own filter args, i.e. exactly what the EMS does. Verifies the whole
+    // chain: trigger → filter match → flow → action.
     function _emsFlowRunBtn(f, extraTokens) {
       var b = document.createElement('button');
       b.className = 'btn-secondary';
