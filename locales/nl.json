@@ -977,7 +977,9 @@
     },
     "sessions": {
       "solar": "zon",
-      "fromGrid": "uit het net"
+      "fromGrid": "uit het net",
+      "costPaid": "betaald",
+      "costForgone": "gemiste teruglevering"
     },
     "config": {
       "copyButton": "⧉ Configuratie kopiëren",

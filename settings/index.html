@@ -8311,7 +8311,19 @@
             + _emsHistEsc(_H.__('settings.chargeSessions.' + (live ? 'running' : 'paused'))) + '</span>';
         }
         var endTxt = s.running ? _H.__('settings.chargeSessions.now') : fmtDt(s.endedAt);
-        var costTxt = s.cost != null ? (' · ' + s.cost.toFixed(2) + ' ' + _emsHistEsc(s.currency) + ' (Ø ' + s.avgPrice.toFixed(3) + '/kWh)') : '';
+        var costTxt = s.cost != null ? (s.cost.toFixed(2) + ' ' + _emsHistEsc(s.currency) + ' (Ø ' + s.avgPrice.toFixed(3) + '/kWh)') : '';
+        // Where that amount came from. Two different kinds of money: what was actually
+        // bought, and export revenue given up by putting the sun into the car instead of
+        // the grid. Only worth its own line when BOTH are non-zero -- a pure-grid session
+        // or one with no feed-in tariff configured would just read "0.00" twice. Sessions
+        // recorded before the split carry neither field and keep the single-line look.
+        var breakTxt = '';
+        if (s.cost != null && s.gridCost > 0 && s.solarCost > 0) {
+          breakTxt = '<div style="font-size:11px;color:#8e8e93;margin-top:1px">'
+            + s.gridCost.toFixed(2) + ' ' + _emsHistEsc(_H.__('settings.sessions.costPaid'))
+            + ' · ' + s.solarCost.toFixed(2) + ' ' + _emsHistEsc(_H.__('settings.sessions.costForgone'))
+            + '</div>';
+        }
         // Solar vs. bought. Older sessions predate the split and carry no pvShare — showing
         // nothing beats showing a made-up 0 %.
         var splitTxt = (s.pvShare != null && s.gridKwh != null)
@@ -8322,7 +8334,8 @@
         return '<div style="padding:6px 0;border-bottom:1px solid #f0f0f5">' +
           '<div style="font-size:12px;font-weight:600;color:#1d1d1f">' + title + badge + '</div>' +
           '<div style="font-size:11px;color:#6e6e73">' + fmtDt(s.startedAt) + ' – ' + _emsHistEsc(endTxt) + ' · ' + durTxt + '</div>' +
-          '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + s.energyKwh.toFixed(2) + ' kWh' + splitTxt + costTxt + '</div>' +
+          '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + s.energyKwh.toFixed(2) + ' kWh' + splitTxt + '</div>' +
+          (costTxt ? '<div style="font-size:12px;color:#3a3a3c;margin-top:2px">' + costTxt + '</div>' : '') + breakTxt +
           '</div>';
       }).join('');
     }
@@ -8336,7 +8349,10 @@
       if (!sessions.length) { alert(_H.__('settings.chargeSessions.nothingToExport')); return; }
       var csvEsc = function(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? ('"' + v.replace(/"/g, '""') + '"') : v; };
       var header = ['Car/Charger', 'Started', 'Ended', 'Duration (min)', 'Energy (kWh)',
-              'Solar (kWh)', 'Grid (kWh)', 'Cost', 'Currency', 'Avg price/kWh'];
+              'Solar (kWh)', 'Grid (kWh)', 'Cost', 'Currency', 'Avg price/kWh',
+              // Appended rather than slotted in next to "Cost": every existing column keeps
+              // its position, so a sheet or script that reads by index still works.
+              'Grid cost', 'Forgone feed-in'];
       var lines = [header.map(csvEsc).join(',')];
       sessions.forEach(function(s) {
         // A running session exports with an empty "Ended" column — a spreadsheet should
@@ -8353,6 +8369,8 @@
           s.cost != null ? s.cost.toFixed(2) : '',
           s.cost != null ? s.currency : '',
           s.avgPrice != null ? s.avgPrice.toFixed(4) : '',
+          s.gridCost  != null ? s.gridCost.toFixed(2)  : '',
+          s.solarCost != null ? s.solarCost.toFixed(2) : '',
         ].map(csvEsc).join(','));
       });
       document.getElementById('export-textarea').value = lines.join('\n');

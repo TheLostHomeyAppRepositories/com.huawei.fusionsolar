@@ -977,7 +977,9 @@
     },
     "sessions": {
       "solar": "Solar",
-      "fromGrid": "aus dem Netz"
+      "fromGrid": "aus dem Netz",
+      "costPaid": "bezahlt",
+      "costForgone": "entgangene Einspeisung"
     },
     "config": {
       "copyButton": "⧉ Konfiguration kopieren",

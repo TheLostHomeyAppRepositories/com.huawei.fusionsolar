@@ -977,7 +977,9 @@
     },
     "sessions": {
       "solar": "solar",
-      "fromGrid": "from grid"
+      "fromGrid": "from grid",
+      "costPaid": "paid",
+      "costForgone": "forgone feed-in"
     },
     "config": {
       "copyButton": "⧉ Copy configuration",

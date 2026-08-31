@@ -3108,6 +3108,43 @@ test('_trackChargeSession — with a feed-in tariff the solar half costs the rev
   assert.strictEqual(row.avgPrice, 0.195, 'now every kWh has a price, so the average covers all of it');
 });
 
+// `cost` alone cannot answer "what did I actually pay?" — it mixes money that left the
+// account with export revenue that was never taken. The two halves travel with the row so
+// the settings page can name them instead of leaving the reader to guess.
+test('_trackChargeSession — the cost is reported as its two halves as well as its total', () => {
+  const row = feedInSession({ mode: 'fixed', price_fixed: 0.30, price_feed_in: 0.09, currency: 'CHF' });
+  assert.strictEqual(row.gridCost, 0.3, '1 kWh bought at 0.30');
+  assert.strictEqual(row.solarCost, 0.09, '1 kWh of sun not fed in at 0.09');
+  assert.strictEqual(row.cost, 0.39, 'and the total is still the total');
+});
+
+// The field question that prompted the split: a 6.28 kWh session that was 97 % solar
+// showed 0.51 CHF, and nothing on screen said why that is nowhere near the 0.3415 tariff.
+test('_trackChargeSession — the halves reproduce the field session that raised the question', () => {
+  const d = makeChargerDevice({ _chargeSessions: [] });
+  const cfg = { price_config: { mode: 'fixed', price_fixed: 0.3415, price_feed_in: 0.075, currency: 'CHF' } };
+  // 6.28 kWh over one hour, of which 0.16 kWh came from the meter.
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 6280 }, cfg, 3600_000, 160);
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0 }, cfg, 0, 0);
+  const row = d._chargeSessions[0];
+  assert.strictEqual(row.energyKwh, 6.28);
+  assert.strictEqual(row.gridCost, 0.05, '0.16 kWh × 0.3415');
+  assert.strictEqual(row.solarCost, 0.46, '6.12 kWh × 0.075');
+  assert.strictEqual(row.cost, 0.51);
+  assert.strictEqual(row.avgPrice, 0.082);
+});
+
+test('_trackChargeSession — a session with no price at all reports no halves either', () => {
+  const d = makeChargerDevice({ _chargeSessions: [], _variablePrice: null });
+  const cfg = { price_config: { mode: 'variable' } }; // nothing ever pushed → price is unknown, not zero
+  d._trackChargeSession({ id: 'c1', connected: true, rawPowerW: 2000 }, cfg, 3600_000, 1000);
+  d._trackChargeSession({ id: 'c1', connected: false, rawPowerW: 0 }, cfg, 0, 0);
+  const row = d._chargeSessions[0];
+  assert.strictEqual(row.cost, null);
+  assert.strictEqual(row.gridCost, null, 'nothing was priced, so there is nothing to split');
+  assert.strictEqual(row.solarCost, null);
+});
+
 // The case that makes the null/zero split worth having: a contract that pays nothing.
 test('_trackChargeSession — a feed-in tariff of zero prices the solar, it does not un-price it', () => {
   const row = feedInSession({ mode: 'fixed', price_fixed: 0.30, price_feed_in: 0, currency: 'CHF' });
