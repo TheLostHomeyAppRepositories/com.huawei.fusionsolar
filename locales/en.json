@@ -357,6 +357,7 @@
         "emsStopped": "EMS stopped",
         "manualOn": "switched on outside the EMS — left alone",
         "manualOff": "switched off outside the EMS — state adopted",
+        "startNoEffect": "started, but nothing happened — the start flow did not act",
         "batteryFull": "Battery full",
         "batteryLow": "Battery low",
         "batteryCharge": "Forced charge",

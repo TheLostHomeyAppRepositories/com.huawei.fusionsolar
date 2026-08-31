@@ -554,6 +554,78 @@ test('_evaluateSimpleDevices — a running device is stopped when the share no l
   assert.deepStrictEqual(d._setOnCalls, [{ id: 'd1', on: false }], 'the share could not reclaim a running device');
 });
 
+// A run the EMS commanded can end two ways, and they used to be reported identically.
+// The start card is a flow the OWNER writes, and a flow may decline — a field report of an
+// air conditioner "switched off outside the EMS" four times turned out to be a temperature
+// condition in that flow, so the device was never on to be switched off.
+function adoptionEvents(seenOn) {
+  const d = makeSimpleDevice();
+  d.events = [];
+  d._addHistoryEvent = (type, event, label) => d.events.push({ event, label });
+  const now = Date.now();
+  const st = { isOn: true, startedAt: now - 300_000, surplusOkSince: null, surplusBadSince: null,
+               powerDropStoppedAt: null };
+  if (seenOn !== 'absent') st.seenOn = seenOn;
+  return { d, st, now };
+}
+
+test('_evaluateSimpleDevices — a start that never took hold is not reported as an external off', async () => {
+  const { d, st } = adoptionEvents(false); // commanded on, never once observed running
+  const dev = simpleDev({ actualOn: false, stateSource: 'onoff', minSurplusW: 1200 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -5000, [dev], new Map([['d1', st]]),
+    'start', 'stop', 'tok', { min_battery_soc: 50 }, 5000);
+  assert.deepStrictEqual(d.events.map((e) => e.event), ['start_no_effect'],
+    'the flow declined — nobody switched anything off');
+  assert.strictEqual(st.isOn, false, 'the state is still adopted either way');
+});
+
+test('_evaluateSimpleDevices — a device that really ran keeps the external-off reading', async () => {
+  const { d, st } = adoptionEvents(true); // seen running, then went off
+  const dev = simpleDev({ actualOn: false, stateSource: 'onoff', minSurplusW: 1200 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -5000, [dev], new Map([['d1', st]]),
+    'start', 'stop', 'tok', { min_battery_soc: 50 }, 5000);
+  assert.deepStrictEqual(d.events.map((e) => e.event), ['manual_off']);
+});
+
+test('_evaluateSimpleDevices — a restored run with no record falls back to the cautious reading', async () => {
+  const { d, st } = adoptionEvents('absent'); // state restored across a restart
+  const dev = simpleDev({ actualOn: false, stateSource: 'onoff', minSurplusW: 1200 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -5000, [dev], new Map([['d1', st]]),
+    'start', 'stop', 'tok', { min_battery_soc: 50 }, 5000);
+  assert.deepStrictEqual(d.events.map((e) => e.event), ['manual_off'],
+    'undefined must not be read as "never took hold" — the app could not observe the run');
+});
+
+test('_evaluateSimpleDevices — being seen on inside the startup grace still counts', async () => {
+  const { d, st, now } = adoptionEvents(false);
+  st.startedAt = now - 10_000; // still inside the 120 s grace
+  const dev = simpleDev({ actualOn: true, stateSource: 'onoff', minSurplusW: 1200 });
+  await d._evaluateSimpleDevices({ soc: 80, powerW: 0 }, -5000, [dev], new Map([['d1', st]]),
+    'start', 'stop', 'tok', { min_battery_soc: 50 }, 5000);
+  assert.strictEqual(st.seenOn, true, 'a sighting during the grace window must be recorded');
+  assert.deepStrictEqual(d.events.map((e) => e.event), [], 'nothing has ended yet');
+});
+
+// The tests above stub _simpleDeviceSetOn, so they cannot see it arm the record. This one
+// runs the real method: without the reset, a second run inherits the first run's sighting
+// and a start that never took hold would be misreported as an external off again.
+test('_simpleDeviceSetOn — a fresh start arms the sighting record, a stop clears it', async () => {
+  const d = Object.assign({
+    log() {}, _warmupDone: true, _addHistoryEvent() {}, _postNotification() {},
+    _settleWithin: async (p) => p,
+    homey: { flow: { getTriggerCard: () => ({ trigger: () => Promise.resolve() }) } },
+  }, simpleDevicesMixin);
+  const st = { isOn: false, startedAt: null, seenOn: true }; // leftover from an earlier run
+  const map = new Map([['d1', st]]);
+
+  await d._simpleDeviceSetOn('d1', 'Klima', true, map, 'start', 'stop', 'tok');
+  assert.strictEqual(st.seenOn, false, 'a new run must start with no sighting on record');
+
+  st.seenOn = true;
+  await d._simpleDeviceSetOn('d1', 'Klima', false, map, 'start', 'stop', 'tok');
+  assert.strictEqual(st.seenOn, undefined, 'a stop leaves no stale sighting behind');
+});
+
 test('_evaluateSimpleDevices — the same device keeps running when the share does cover it', async () => {
   const d = makeSimpleDevice();
   const now = Date.now();

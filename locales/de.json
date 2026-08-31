@@ -357,6 +357,7 @@
         "emsStopped": "EMS gestoppt",
         "manualOn": "ausserhalb des EMS eingeschaltet — belassen",
         "manualOff": "ausserhalb des EMS ausgeschaltet — Status übernommen",
+        "startNoEffect": "gestartet, aber nichts passiert — der Start-Flow hat nicht gehandelt",
         "batteryFull": "Batterie voll",
         "batteryLow": "Batterie tief",
         "batteryCharge": "Zwangsladung",

@@ -357,6 +357,7 @@
         "emsStopped": "EMS gestopt",
         "manualOn": "buiten de EMS om ingeschakeld — met rust gelaten",
         "manualOff": "buiten de EMS om uitgeschakeld — status overgenomen",
+        "startNoEffect": "gestart, maar er gebeurde niets — de startflow deed niets",
         "batteryFull": "Accu vol",
         "batteryLow": "Accu laag",
         "batteryCharge": "Geforceerd laden",
