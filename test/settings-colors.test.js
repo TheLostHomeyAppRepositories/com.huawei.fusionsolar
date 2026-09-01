@@ -1,11 +1,14 @@
 'use strict';
 
-// The settings page's colour system. Run: node --test
+// The settings page's visual system — colour tokens and the focus/tap rules that decide
+// how it behaves under a thumb. Run: node --test
 //
-// Every colour goes through a token so the dark-mode block can redefine values without
-// touching a single component rule. Two things rot silently if nothing watches them:
-// a raw hex slipped back into a component (invisible until someone opens the page in
-// dark mode), and a token pair whose contrast quietly drops below AA.
+// Every colour goes through a token, so a shade changes in one place rather than in the
+// 59 spots one red used to occupy. The page is deliberately light-only: a dark theme was
+// built and then dropped because it was not wanted, and `color-scheme: light` is what
+// stops a dark device from colouring the native controls anyway. Two things rot silently
+// if nothing watches them: a raw hex slipped back into a component, and a token pair
+// whose contrast quietly drops below AA.
 
 const test   = require('node:test');
 const assert = require('node:assert');
@@ -23,7 +26,6 @@ function tokens(indent) {
   return out;
 }
 const LIGHT = tokens('      ');
-const DARK  = tokens('        ');
 
 const luminance = (hex) => {
   const c = [1, 3, 5]
@@ -36,11 +38,16 @@ const contrast = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-test('the dark mode redefines exactly the tokens the light mode declares', () => {
+// Light-only is a decision, not an omission: half a dark theme — the page's own colours
+// flipped while the browser still paints selects, scrollbars and date pickers dark — is
+// worse than no dark theme at all.
+test('the page pins itself to the light theme', () => {
   assert.ok(Object.keys(LIGHT).length >= 20, 'the token block moved — this test found almost none');
-  assert.deepStrictEqual(Object.keys(DARK).sort(), Object.keys(LIGHT).sort(),
-    'a token defined in only one mode falls back to the other mode\'s value, which is how '
-    + 'a page ends up with one theme\'s text on the other theme\'s ground');
+  assert.match(SRC, /color-scheme:\s*light/,
+    'without this a dark device still renders the native controls dark inside a light page');
+  assert.doesNotMatch(SRC, /prefers-color-scheme/,
+    'a dark theme is back — if that is wanted, this file has to check both themes again: '
+    + 'token parity, and every contrast pair below in each of them');
 });
 
 test('every token the page uses is defined, and every defined token is used', () => {
@@ -94,31 +101,40 @@ const PAIRS = [
   ['--c-label',        '--c-segment-track', AA_TEXT, 'an unselected segment'],
 ];
 
-for (const [mode, set] of [['light', LIGHT], ['dark', DARK]]) {
-  test(`${mode} mode meets AA contrast on every text/surface pair`, () => {
-    for (const [fg, bg, min, what] of PAIRS) {
-      assert.ok(set[fg] && set[bg], `${what}: a token is missing in ${mode} mode`);
-      const r = contrast(set[fg], set[bg]);
-      assert.ok(r >= min,
-        `${what} in ${mode} mode: ${r.toFixed(2)} : 1, needs ${min}. `
-        + `${fg} (${set[fg]}) on ${bg} (${set[bg]})`);
-    }
-  });
-}
-
-// A segmented control reads as raised-on-recessed. That relationship inverts between
-// themes — white on grey in light, a lighter grey than the track in dark — so it cannot
-// be expressed by reusing the card token, and it cannot be checked by contrast alone:
-// two colours can meet AA against the label while the pill sits *below* its own track.
-test('the selected segment is lighter than its track in both themes', () => {
-  for (const [mode, set] of [['light', LIGHT], ['dark', DARK]]) {
-    const track = set['--c-segment-track'];
-    const pill  = set['--c-segment-on'];
-    assert.ok(track && pill, `the segment tokens are missing in ${mode} mode`);
-    assert.ok(luminance(pill) > luminance(track),
-      `${mode} mode: the pill (${pill}) is not lighter than its track (${track}), so the `
-      + 'selected segment reads as sunk rather than raised');
+test('every text/surface pair meets AA contrast', () => {
+  for (const [fg, bg, min, what] of PAIRS) {
+    assert.ok(LIGHT[fg] && LIGHT[bg], `${what}: a token is missing`);
+    const r = contrast(LIGHT[fg], LIGHT[bg]);
+    assert.ok(r >= min,
+      `${what}: ${r.toFixed(2)} : 1, needs ${min}. ${fg} (${LIGHT[fg]}) on ${bg} (${LIGHT[bg]})`);
   }
+});
+
+// A segmented control reads as raised-on-recessed, and contrast alone cannot check that:
+// two colours can both meet AA against the label while the pill sits *below* its track,
+// which would make the selected tab look pressed into the page rather than lifted out.
+test('the selected segment is lighter than its track', () => {
+  const track = LIGHT['--c-segment-track'];
+  const pill  = LIGHT['--c-segment-on'];
+  assert.ok(track && pill, 'the segment tokens are missing');
+  assert.ok(luminance(pill) > luminance(track),
+    `the pill (${pill}) is not lighter than its track (${track})`);
+});
+
+// The pointer-versus-keyboard split. Suppressing the focus ring is a one-line edit that
+// looks like tidying and quietly removes the only way to operate the page without a
+// pointer, so the ring is asserted to still exist — and the tap suppression it sits next
+// to is asserted to come with a replacement, or the page feels dead under the thumb.
+test('the keyboard focus ring survives, and taps get feedback without it', () => {
+  assert.match(SRC, /:focus-visible[^{]*\{\s*outline:\s*2px solid var\(--c-accent\)/,
+    'the keyboard focus ring is gone — the page can no longer be operated without a pointer');
+  assert.match(SRC, /\.tab:focus:not\(:focus-visible\)/,
+    'nothing clears a pointer-induced focus ring, which sits on the segmented pill as a '
+    + 'border the design never asked for');
+  assert.match(SRC, /-webkit-tap-highlight-color:\s*transparent/,
+    'the grey iOS tap flash is back, drawn on top of the control\'s own pressed state');
+  assert.match(SRC, /button:active:not\(:disabled\)/,
+    'the tap highlight is suppressed with nothing put in its place');
 });
 
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only

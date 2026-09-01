@@ -9,11 +9,14 @@
     /* ── Farbsystem ─────────────────────────────────── */
     /* Ein System statt drei. Die Seite trug Apple-Web-Grau (#6e6e73, #0071e3),
        iOS-Systemfarben (#8e8e93, #f2f2f7) und Flat-UI-Reste (#c0392b, 59 Mal)
-       nebeneinander. Alles laeuft jetzt ueber diese Marken, was den Dunkelmodus
-       darunter erst moeglich macht: dort werden nur die Werte neu gesetzt, keine
-       einzige Komponentenregel. Text- und Flaechenrot sind getrennt, weil das
+       nebeneinander. Alles laeuft jetzt ueber diese Marken: eine Farbe aendert sich an
+       einer Stelle statt an 59. Text- und Flaechenrot sind getrennt, weil das
        iOS-Rot auf Weiss nur ~3.4:1 erreicht und fuer Fliesstext zu hell waere. */
     :root {
+      /* Die Seite bleibt hell, auch auf einem dunkel gestellten Geraet. Ohne diese
+         Zeile faerbt das System Auswahllisten, Rollbalken und Datumswaehler
+         weiterhin dunkel — helle Flaechen mit dunklen Bedienelementen darin. */
+      color-scheme: light;
       --c-bg:              #f5f5f7;
       --c-card-2:          #f9f9fb;
       --c-grouped:         #f2f2f7;
@@ -45,40 +48,6 @@
       --c-segment-track:   #e9e9ec;
       --c-segment-on:      #ffffff;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --c-bg:              #1c1c1e;
-        --c-card-2:          #3a3a3c;
-        --c-grouped:         #242426;
-        --c-row-alt:         #313135;
-        --c-label:           #f5f5f7;
-        --c-label-strong:    #e5e5ea;
-        --c-label-2:         #98989f;
-        --c-label-3:         #8e8e93;
-        --c-separator:       #38383a;
-        --c-separator-2:     #48484a;
-        --c-fill:            #3a3a3c;
-        --c-fill-2:          #313135;
-        --c-accent:          #2c95ff;
-        --c-accent-fill:     #0a6fd8;
-        --c-accent-press:    #409cff;
-        --c-success:         #30d158;
-        --c-success-text:    #30d158;
-        --c-danger:          #ff453a;
-        --c-danger-text:     #ff6961;
-        --c-warning:         #ff9f0a;
-        --c-warning-text:    #ffb340;
-        --c-card:            #2c2c2e;
-        --c-on-fill:         #ffffff;
-        --c-tint-accent:     #10233a;
-        --c-tint-danger:     #3a1a18;
-        --c-tint-success:    #12301f;
-        --c-tint-warning:    #3a2a10;
-        --c-link:            #6fa8f5;
-        --c-segment-track:   #2f2f31;
-        --c-segment-on:      #636366;
-      }
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -87,6 +56,12 @@
       background: var(--c-bg);
       color: var(--c-label);
       padding: 16px;
+      /* The grey rectangle iOS flashes over anything tappable. It is drawn on top of the
+         element's own pressed state, so a control ends up announcing a touch twice, in
+         two different visual languages. Suppressed here and replaced by the deliberate
+         :active dimming below — removing it without a replacement leaves a page that
+         feels dead under the thumb. */
+      -webkit-tap-highlight-color: transparent;
     }
 
     /* ── Header ─────────────────────────────────────────── */
@@ -133,9 +108,21 @@
     .btn-secondary.btn-secondary { background: var(--c-fill); color: var(--c-label); }
     .btn-secondary:not(:disabled):hover { background: var(--c-separator); }
     .btn-danger.btn-danger { background: var(--c-danger); color: var(--c-on-fill); }
+    /* Keyboard focus stays visible — it is the only way to tell where you are without a
+       pointer, and it must survive every future tidy-up of the rules below it. */
     button:focus-visible, .tab:focus-visible, .sub-tab:focus-visible {
       outline: 2px solid var(--c-accent); outline-offset: 2px;
     }
+    /* But it must not linger after a tap. On the old underlined tab bar the ring was
+       barely noticeable; on the segmented control's white pill it reads as a border the
+       design never asked for. :focus-visible alone should already exclude pointer input,
+       so this guards the other candidate: a plain :focus rule from the stylesheet Homey
+       injects, which this page cannot see and has already been bitten by once. */
+    button:focus:not(:focus-visible),
+    .tab:focus:not(:focus-visible),
+    .sub-tab:focus:not(:focus-visible) { outline: none; }
+    /* What replaces the suppressed tap highlight: iOS dims a control while it is held. */
+    button:active:not(:disabled) { opacity: 0.55; }
 
     /* ── Device cards ────────────────────────────────────── */
     .device-card {
