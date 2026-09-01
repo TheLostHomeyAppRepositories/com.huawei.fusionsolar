@@ -90,6 +90,8 @@ const PAIRS = [
   ['--c-danger-text',  '--c-tint-danger',  AA_TEXT, 'error text on its tint'],
   ['--c-success-text', '--c-tint-success', AA_TEXT, 'success text on its tint'],
   ['--c-warning-text', '--c-tint-warning', AA_TEXT, 'warning text on its tint'],
+  ['--c-label',        '--c-segment-on',    AA_TEXT, 'the selected segment'],
+  ['--c-label',        '--c-segment-track', AA_TEXT, 'an unselected segment'],
 ];
 
 for (const [mode, set] of [['light', LIGHT], ['dark', DARK]]) {
@@ -103,6 +105,21 @@ for (const [mode, set] of [['light', LIGHT], ['dark', DARK]]) {
     }
   });
 }
+
+// A segmented control reads as raised-on-recessed. That relationship inverts between
+// themes — white on grey in light, a lighter grey than the track in dark — so it cannot
+// be expressed by reusing the card token, and it cannot be checked by contrast alone:
+// two colours can meet AA against the label while the pill sits *below* its own track.
+test('the selected segment is lighter than its track in both themes', () => {
+  for (const [mode, set] of [['light', LIGHT], ['dark', DARK]]) {
+    const track = set['--c-segment-track'];
+    const pill  = set['--c-segment-on'];
+    assert.ok(track && pill, `the segment tokens are missing in ${mode} mode`);
+    assert.ok(luminance(pill) > luminance(track),
+      `${mode} mode: the pill (${pill}) is not lighter than its track (${track}), so the `
+      + 'selected segment reads as sunk rather than raised');
+  }
+});
 
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only
 // 4.02 : 1 against white — fine for Apple's 17px type, not for this page's 12–13px labels.

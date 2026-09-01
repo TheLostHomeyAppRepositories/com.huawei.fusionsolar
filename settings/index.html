@@ -42,6 +42,8 @@
       --c-tint-success:    #d1f2e0;
       --c-tint-warning:    #fff3e0;
       --c-link:            #1a56db;
+      --c-segment-track:   #e9e9ec;
+      --c-segment-on:      #ffffff;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -73,6 +75,8 @@
         --c-tint-success:    #12301f;
         --c-tint-warning:    #3a2a10;
         --c-link:            #6fa8f5;
+        --c-segment-track:   #2f2f31;
+        --c-segment-on:      #636366;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -323,50 +327,66 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Tab bar ─────────────────────────────────────────── */
+    /* ── Segmented control ──────────────────────────────── */
+    /* A handful of mutually exclusive views is one control on iOS — a recessed track
+       carrying a raised pill — not a row of underlined links. Segments share the width
+       equally, so the control reads as one object rather than four separate buttons.
+       The pill has its own two tokens because it INVERTS between themes: white on grey
+       in light, but a LIGHTER grey than its track in dark. Reusing --c-card there would
+       make the pill darker than the track, i.e. sunk instead of raised. All segments
+       keep full label colour, as iOS does — the pill alone marks the selection.
+       The !important stays: these class names are generic enough to collide with the
+       stylesheet Homey injects, which is what cost the Save button its colour once. */
     .tab-bar {
       display: flex;
-      gap: 4px;
+      gap: 0;
       margin-bottom: 14px;
-      border-bottom: 2px solid var(--c-fill);
-      padding-bottom: 0;
+      background: var(--c-segment-track);
+      border-radius: 9px;
+      padding: 2px;
     }
     .tab {
-      padding: 7px 18px;
+      flex: 1;
+      height: 30px;
+      padding: 0 10px;
       border: none;
       background: none;
-      border-radius: 6px 6px 0 0;
+      border-radius: 7px;
       font-size: 13px;
       font-weight: 500;
-      color: var(--c-label-2);
+      color: var(--c-label);
       cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
+      transition: background 0.15s;
     }
-    .tab.active { color: var(--c-accent) !important; font-weight: 700 !important; border-bottom: 2px solid var(--c-accent) !important; background: var(--c-card) !important; }
-    .tab:hover:not(.active) { background: var(--c-grouped); color: var(--c-label); }
+    .tab.active { background: var(--c-segment-on) !important; color: var(--c-label) !important; font-weight: 600 !important; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); }
+    .tab:hover:not(.active) { background: none; color: var(--c-label); }
 
     /* ── Sub-tab bar (inside Modbus) ─────────────────────── */
+    /* The nested control, one step smaller — iOS scales a segmented control inside a
+       view rather than switching to a different pattern for it. */
     .sub-tab-bar {
       display: flex;
-      gap: 2px;
+      gap: 0;
       margin-bottom: 12px;
-      border-bottom: 1px solid var(--c-fill);
-      padding-bottom: 0;
+      background: var(--c-segment-track);
+      border-radius: 8px;
+      padding: 2px;
     }
     .sub-tab {
-      padding: 5px 14px;
+      flex: 1;
+      height: 26px;
+      padding: 0 8px;
       border: none;
       background: none;
-      border-radius: 4px 4px 0 0;
+      border-radius: 6px;
       font-size: 12px;
       font-weight: 500;
-      color: var(--c-label-2);
+      color: var(--c-label);
       cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
+      transition: background 0.15s;
     }
-    .sub-tab.active { color: var(--c-accent) !important; font-weight: 700 !important; border-bottom: 2px solid var(--c-accent) !important; background: var(--c-bg) !important; }
-    .sub-tab:hover:not(.active) { background: var(--c-grouped); color: var(--c-label); }
+    .sub-tab.active { background: var(--c-segment-on) !important; color: var(--c-label) !important; font-weight: 600 !important; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); }
+    .sub-tab:hover:not(.active) { background: none; color: var(--c-label); }
 
     /* ── EMS list rows ───────────────────────────────────── */
     .ems-entry {
