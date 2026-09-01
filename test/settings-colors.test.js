@@ -163,6 +163,39 @@ test('section headings name their group without ruling it off', () => {
     + 'unfinished before they were brought into step');
 });
 
+// Corners had drifted to twelve different values between 1px and 12px. No one notices any
+// single one; together they are what makes a page read as assembled over years rather than
+// designed. Four steps carry everything, and the ladder is not arbitrary — a pill inside a
+// track needs outer minus padding, or it sits crooked in its own well.
+const RADIUS_LADDER = [6, 8, 10, 12];
+
+test('corners come from the radius ladder', () => {
+  // The whole file, not just the stylesheet: only 39 of the 137 radii live in <style>,
+  // the rest are inline on markup the page builds in JavaScript — which is exactly where
+  // a one-off value gets typed without anyone seeing the other 136.
+  // Single-valued only: one-sided shapes (border-radius: 1px 1px 0 0) and circles (50%)
+  // are deliberate and say so by their own syntax.
+  const found = [...SRC.matchAll(/border-radius:\s*(\d+)px(?=\s*[;}"'])/g)].map((m) => Number(m[1]));
+  assert.ok(found.length >= 100, 'the radii moved — this test found almost none');
+  const stray = [...new Set(found.filter((r) => !RADIUS_LADDER.includes(r)))].sort((a, b) => a - b);
+  assert.deepStrictEqual(stray, [], 'off-ladder corner radii: ' + stray.join(', '));
+});
+
+test('each segmented pill is inset from its track by exactly its padding', () => {
+  const css = SRC.slice(0, SRC.indexOf('</style>'));
+  const radiusOf = (sel) => {
+    const i = css.indexOf('    ' + sel + ' {');
+    assert.ok(i >= 0, 'rule not found: ' + sel);
+    const block = css.slice(i, i + css.slice(i).indexOf('}'));
+    return Number((block.match(/border-radius:\s*(\d+)px/) || [])[1]);
+  };
+  for (const [track, pill] of [['.tab-bar', '.tab'], ['.sub-tab-bar', '.sub-tab']]) {
+    assert.strictEqual(radiusOf(track) - 2, radiusOf(pill),
+      `${track}: a ${radiusOf(pill)}px pill in a ${radiusOf(track)}px track with 2px of padding `
+      + 'leaves a crescent of track showing at each corner');
+  }
+});
+
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only
 // 4.02 : 1 against white — fine for Apple's 17px type, not for this page's 12–13px labels.
 // The pair above enforces the outcome; this records why the value looks "wrong".

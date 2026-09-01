@@ -252,7 +252,7 @@
     .val {
       display: inline-block;
       padding: 2px 7px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: 'SF Mono', Menlo, monospace;
       font-size: 12px;
       font-weight: 500;
@@ -294,7 +294,7 @@
       font-size: 12px;
       padding: 4px 8px;
       background: var(--c-tint-danger);
-      border-radius: 4px;
+      border-radius: 6px;
     }
 
     /* ── Empty / loading state ───────────────────────────── */
@@ -332,7 +332,7 @@
       gap: 0;
       margin-bottom: 14px;
       background: var(--c-segment-track);
-      border-radius: 9px;
+      border-radius: 10px;
       padding: 2px;
     }
     .tab {
@@ -341,7 +341,7 @@
       padding: 0 10px;
       border: none;
       background: none;
-      border-radius: 7px;
+      border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
       color: var(--c-label);
@@ -408,7 +408,7 @@
     }
     .ems-priority-order-item {
       display:flex; align-items:center; gap:8px; padding:8px 10px;
-      background:var(--c-card); border:1px solid var(--c-fill); border-radius:7px;
+      background:var(--c-card); border:1px solid var(--c-fill); border-radius:8px;
       font-size:13px; font-weight:500; color:var(--c-label);
     }
     .ems-priority-order-item .priority-rank {
@@ -418,7 +418,7 @@
     }
     .ems-priority-order-item .priority-label { flex:1; }
     .ems-priority-move-btn {
-      background:none; border:1px solid var(--c-separator); border-radius:5px;
+      background:none; border:1px solid var(--c-separator); border-radius:6px;
       width:24px; height:24px; font-size:13px; line-height:1; cursor:pointer;
       color:var(--c-label-strong); display:flex; align-items:center; justify-content:center; flex-shrink:0;
     }
@@ -427,11 +427,11 @@
     #ems-device-priority-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
     .ems-scheduler-task { background:var(--c-bg); border:1px solid var(--c-fill); border-radius:8px; padding:10px 12px; }
     .ems-scheduler-task + .ems-scheduler-task { margin-top:0; }
-    .sched-text-input { flex:1; padding:4px 8px; border:1px solid var(--c-separator); border-radius:5px; font-size:13px; background:var(--c-card); min-width:80px; }
-    .sched-time-input { padding:4px 6px; border:1px solid var(--c-separator); border-radius:5px; font-size:13px; background:var(--c-card); width:84px; }
-    .sched-type-select { padding:4px 6px; border:1px solid var(--c-separator); border-radius:5px; font-size:13px; background:var(--c-card); }
-    .sched-flow-select { width:100%; padding:5px 8px; border:1px solid var(--c-separator); border-radius:5px; font-size:13px; background:var(--c-card); margin-top:6px; }
-    .sched-day-chip { display:inline-flex; align-items:center; justify-content:center; width:26px; height:22px; border-radius:4px; border:1px solid var(--c-separator); background:var(--c-card); font-size:11px; font-weight:600; cursor:pointer; user-select:none; color:var(--c-label-strong); }
+    .sched-text-input { flex:1; padding:4px 8px; border:1px solid var(--c-separator); border-radius:6px; font-size:13px; background:var(--c-card); min-width:80px; }
+    .sched-time-input { padding:4px 6px; border:1px solid var(--c-separator); border-radius:6px; font-size:13px; background:var(--c-card); width:84px; }
+    .sched-type-select { padding:4px 6px; border:1px solid var(--c-separator); border-radius:6px; font-size:13px; background:var(--c-card); }
+    .sched-flow-select { width:100%; padding:5px 8px; border:1px solid var(--c-separator); border-radius:6px; font-size:13px; background:var(--c-card); margin-top:6px; }
+    .sched-day-chip { display:inline-flex; align-items:center; justify-content:center; width:26px; height:22px; border-radius:6px; border:1px solid var(--c-separator); background:var(--c-card); font-size:11px; font-weight:600; cursor:pointer; user-select:none; color:var(--c-label-strong); }
     .sched-day-chip.active { background:var(--c-accent-fill); border-color:var(--c-accent); color:var(--c-on-fill); }
     .sched-delete-btn { background:none; border:none; cursor:pointer; font-size:15px; color:var(--c-danger-text); padding:2px 4px; line-height:1; }
     .sched-delete-btn:hover { color:var(--c-danger-text); }
@@ -444,12 +444,12 @@
     /* Der EMS-Schalter ist kein Zahlenfeld — die 80px-Regel oben darf ihn nicht treffen. */
     .ems-config-row .ems-toggle-switch input { width:auto !important; }
     .ems-row-remove {
-      padding:3px 8px; font-size:13px; border:1px solid var(--c-separator); border-radius:5px;
+      padding:3px 8px; font-size:13px; border:1px solid var(--c-separator); border-radius:6px;
       background:var(--c-card); cursor:pointer; color:var(--c-danger-text); line-height:1;
     }
     .ems-row-remove:hover { background:var(--c-tint-danger); }
-    .ems-soc-bar { height:6px; background:var(--c-fill); border-radius:3px; overflow:hidden; margin:6px 0 5px; }
-    .ems-soc-bar-fill { height:100%; background:linear-gradient(to right,var(--c-success),#f4b400); border-radius:3px; transition:width .15s; }
+    .ems-soc-bar { height:6px; background:var(--c-fill); border-radius:6px; overflow:hidden; margin:6px 0 5px; }
+    .ems-soc-bar-fill { height:100%; background:linear-gradient(to right,var(--c-success),#f4b400); border-radius:6px; transition:width .15s; }
     .ems-callout {
       display:flex; align-items:flex-start; gap:8px; padding:8px 10px;
       background:var(--c-tint-accent); border-left:3px solid var(--c-accent); border-radius:0 6px 6px 0; margin-bottom:12px;
@@ -464,7 +464,7 @@
     .ems-toggle-switch { position:relative; width:38px; height:22px; flex-shrink:0; margin-top:1px; }
     .ems-toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
     .ems-toggle-slider {
-      position:absolute; inset:0; background:var(--c-separator); border-radius:11px; transition:background .2s;
+      position:absolute; inset:0; background:var(--c-separator); border-radius:12px; transition:background .2s;
     }
     .ems-toggle-slider::before {
       content:''; position:absolute; width:18px; height:18px;
@@ -695,7 +695,7 @@
       align-items: center;
       gap: 10px;
       padding: 7px 10px;
-      border-radius: 7px;
+      border-radius: 8px;
       border: 1px solid var(--c-fill);
       margin-bottom: 6px;
       cursor: pointer;
@@ -723,7 +723,7 @@
       margin-top: 8px;
       padding: 10px 12px;
       background: var(--c-card-2);
-      border-radius: 7px;
+      border-radius: 8px;
       border: 1px solid var(--c-fill);
     }
     .uid-config-label { font-size: 12px; font-weight: 600; color: var(--c-label-strong); margin-bottom: 6px; }
@@ -859,13 +859,13 @@
     .boot-status { font-size: 13px; color: var(--c-label-3); min-height: 15px; }
     .boot-track  {
       width: 190px; height: 4px;
-      border-radius: 2px;
+      border-radius: 6px;
       background: rgba(0,0,0,0.08);
       overflow: hidden;
     }
     .boot-bar {
       width: 6%; height: 100%;
-      border-radius: 2px;
+      border-radius: 6px;
       background: var(--c-accent-fill);
       transition: width 0.45s cubic-bezier(.22,.61,.36,1);
     }
@@ -3966,7 +3966,7 @@
         if (card && card.tokens && card.tokens.length) {
           tokenHint.style.display = 'block';
           var html = _H.__('settings.priceFlowSetup.tokensOnCard') + ' ' + card.tokens.map(function(t) {
-            return '<code style="background:var(--c-fill);padding:1px 4px;border-radius:3px">' + _emsHistEsc(t.title) + '</code>';
+            return '<code style="background:var(--c-fill);padding:1px 4px;border-radius:6px">' + _emsHistEsc(t.title) + '</code>';
           }).join(' ') + ' — ' + _H.__('settings.priceFlowSetup.dragTokenHint');
           // Straight from the source app's own card definition — the most reliable way
           // to know what the array actually represents (today from midnight vs. a
@@ -4387,7 +4387,7 @@
       idLabel.style.cssText = 'color:var(--c-label-2);white-space:nowrap';
       var idCode = document.createElement('code');
       idCode.textContent = deviceId;
-      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:4px;font-size:12px;word-break:break-all';
+      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all';
       var idCopy = document.createElement('button');
       idCopy.textContent = _H.__('settings.flowSetup.copy'); idCopy.className = 'btn-secondary';
       idCopy.style.cssText = 'font-size:11px;padding:2px 8px';
@@ -4680,7 +4680,7 @@
       wrap.style.cssText = 'display:inline-flex;align-items:center;gap:4px;flex:1;min-width:0';
 
       var sel = document.createElement('select');
-      sel.style.cssText = 'font-size:12px;padding:2px 6px;border:1px solid var(--c-separator);border-radius:4px;outline:none;flex:1;min-width:0';
+      sel.style.cssText = 'font-size:12px;padding:2px 6px;border:1px solid var(--c-separator);border-radius:6px;outline:none;flex:1;min-width:0';
       var none = document.createElement('option');
       none.value = ''; none.textContent = '— not used —';
       sel.appendChild(none);
@@ -5711,7 +5711,7 @@
         idLabel.style.cssText = 'color:var(--c-label-2);white-space:nowrap';
         var idCode = document.createElement('code');
         idCode.textContent = deviceId;
-        idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:4px;font-size:12px;word-break:break-all';
+        idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all';
         var copyBtn = document.createElement('button');
         copyBtn.textContent = _H.__('settings.flowSetup.copy'); copyBtn.className = 'btn-secondary';
         copyBtn.style.cssText = 'font-size:11px;padding:2px 8px';
@@ -6444,7 +6444,7 @@
       idLabel.style.cssText = 'color:var(--c-label-2);white-space:nowrap';
       var idCode = document.createElement('code');
       idCode.textContent = deviceId;
-      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:4px;font-size:12px;word-break:break-all';
+      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all';
       var copyBtn = document.createElement('button');
       copyBtn.textContent = _H.__('settings.flowSetup.copy');
       copyBtn.className = 'btn-secondary';
@@ -7110,7 +7110,7 @@
       pre.textContent = text;
       var copyBtn = document.createElement('button');
       copyBtn.textContent = _H.__('settings.flowSetup.copy');
-      copyBtn.style.cssText = 'position:absolute;top:6px;right:6px;font-size:11px;padding:2px 8px;background:var(--c-card);border:1px solid var(--c-separator-2);border-radius:4px;cursor:pointer;opacity:0.85';
+      copyBtn.style.cssText = 'position:absolute;top:6px;right:6px;font-size:11px;padding:2px 8px;background:var(--c-card);border:1px solid var(--c-separator-2);border-radius:6px;cursor:pointer;opacity:0.85';
       copyBtn.onclick = function() {
         try {
           var ta = document.createElement('textarea');
@@ -7139,7 +7139,7 @@
       idLabel.style.cssText = 'color:var(--c-label-2);white-space:nowrap';
       var idCode = document.createElement('code');
       idCode.textContent = chargerId;
-      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:4px;font-size:12px;word-break:break-all';
+      idCode.style.cssText = 'background:var(--c-fill);padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all';
       var copyBtn = document.createElement('button');
       copyBtn.textContent = _H.__('settings.flowSetup.copy');
       copyBtn.className = 'btn-secondary';
