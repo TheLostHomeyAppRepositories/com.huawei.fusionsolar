@@ -145,12 +145,22 @@ test('section headings name their group without ruling it off', () => {
   const css = SRC.slice(0, SRC.indexOf('</style>'));
   assert.doesNotMatch(css, /\.ems-group::(after|before)/,
     'the flexible rule beside the group label is back');
+  // Deliberately a floor and a weight rather than one exact size: the page's whole type
+  // scale gets nudged from time to time, and a test that pins 13px turns every such nudge
+  // into a false failure. What must not come back is the 11px bold label that shouted at
+  // the rows it was introducing.
+  const sizes = [];
   for (const cls of ['.ems-group', '.section-title']) {
     const block = css.slice(css.indexOf('    ' + cls + ' {'));
     const rule = block.slice(0, block.indexOf('}'));
-    assert.match(rule, /font-size:\s*13px/, `${cls} is no longer 13px`);
+    const size = Number((rule.match(/font-size:\s*(\d+)px/) || [])[1]);
+    assert.ok(size >= 13, `${cls} is ${size}px — too small to introduce anything`);
     assert.match(rule, /font-weight:\s*400/, `${cls} is bold again — a heading that competes with its own rows`);
+    sizes.push(size);
   }
+  assert.strictEqual(sizes[0], sizes[1],
+    'the two section headings disagree about their size, which is what made the page look '
+    + 'unfinished before they were brought into step');
 });
 
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only
