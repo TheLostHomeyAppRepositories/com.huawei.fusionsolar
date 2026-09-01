@@ -483,23 +483,54 @@
     .ems-caps-info:empty { min-height:0; }
 
     /* ── EMS collapsible sections ─────────────────────────── */
-    details.ems-section {
+    /* ── Grouped list ────────────────────────────────────── */
+    /* A group is one surface. Six cards, each with its own border and a gap to the next,
+       is how a web page shows sections; a grouped list shows them as rows of one thing.
+       The rounding belongs to the group, so the rows inside carry none — which is why
+       .ems-list exists in the markup at all: CSS alone cannot tell where one run of
+       sections ends and the next heading begins without :has(), and a selector that
+       silently failed to match would cost every group its corners with nobody noticing.
+       Sections still open in place. They hold toggle rows, nested settings and flow
+       lists — far too much for a row that pushes to another screen, and in a settings
+       window you want several of them visible at once. */
+    .ems-list {
       background: var(--c-card);
       border: 1px solid var(--c-fill);
-      border-radius: 10px;
+      border-radius: 12px;
       margin-bottom: 12px;
       overflow: hidden;
     }
+    details.ems-section {
+      background: none;
+      border: 0;
+      border-radius: 0;
+      margin-bottom: 0;
+    }
     details.ems-section > summary {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 10px 14px;
-      background: var(--c-card-2);
+      min-height: 44px;
+      padding: 8px 14px;
+      background: none;
       border-bottom: 1px solid transparent;
       cursor: pointer;
       user-select: none;
       list-style: none;
+    }
+    /* The hairline between rows starts where the row's content starts, not at the edge of
+       the group. That inset is the detail by which a grouped list is recognised — a rule
+       drawn edge to edge reads as a stack of separate boxes again. The first row has
+       nothing above it to be separated from, hence the sibling selector. */
+    .ems-list > details.ems-section + details.ems-section > summary::before {
+      content: '';
+      position: absolute;
+      left: 14px;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: var(--c-fill);
     }
     details.ems-section[open] > summary { border-bottom-color: var(--c-fill); }
     details.ems-section > summary::-webkit-details-marker { display: none; }
@@ -1084,6 +1115,7 @@
            install never sees it. -->
       <div id="ems-setup-banner" style="display:none"></div>
       <div class="ems-group" data-i18n="group.dataSources">Data sources</div>
+      <div class="ems-list">
       <details class="ems-section" id="ems-sec-inverter">
         <summary><span class="ems-section-label" data-i18n="inverter.title" data-i18n-title="inverter.subtitle">☀️ Solar Inverter</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
@@ -1398,9 +1430,11 @@
           </div>
         </div>
       </details>
+      </div>
 
       <!-- EV Chargers -->
       <div class="ems-group" data-i18n="group.controlledDevices">Controlled devices</div>
+      <div class="ems-list">
       <details class="ems-section" id="ems-sec-chargers">
         <summary><span class="ems-section-label" data-i18n="evChargers.title" data-i18n-title="evChargers.subtitle">🚗 EV Chargers</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
@@ -1566,9 +1600,11 @@
       </div>
         </div>
       </details>
+      </div>
 
       <!-- Scheduler -->
       <div class="ems-group" data-i18n="group.tariffAutomation">Automation</div>
+      <div class="ems-list">
       <details class="ems-section">
         <summary><span class="ems-section-label" data-i18n="scheduler.title">⏱ Scheduler</span><span class="ems-section-state"><span id="ems-scheduler-count">no tasks</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
@@ -1577,6 +1613,7 @@
           <span id="ems-scheduler-flow-hint" style="font-size:12px;color:var(--c-label-2);margin-left:8px"></span>
         </div>
       </details>
+      </div>
 
       <!-- Electricity Price -->
 
@@ -1584,6 +1621,7 @@
 
       <div class="ems-group" data-i18n="group.diagnostics">Diagnostics</div>
       <!-- EMS Diagnostics (live tick health + last decision) -->
+      <div class="ems-list">
       <details class="ems-section" id="ems-diag-section" onToggle="emsDiagToggle(this)">
         <summary><span class="ems-section-label" data-i18n="diag.title" data-i18n-title="diag.subtitle">🩺 EMS Diagnostics</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:8px">
@@ -1654,6 +1692,7 @@
           </div>
         </div>
       </details>
+      </div>
 
       <div class="ems-save-bar">
         <div id="ems-dirty-note" class="ems-dirty" style="display:none"></div>

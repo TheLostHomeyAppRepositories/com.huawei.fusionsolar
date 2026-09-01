@@ -196,6 +196,34 @@ test('each segmented pill is inset from its track by exactly its padding', () =>
   }
 });
 
+// The grouped list depends on markup, not only on CSS: each run of sections between two
+// headings is wrapped so the group can own the rounding. A section that ends up outside a
+// wrapper gets no corners and no separator, and looks broken in a way that is easy to miss
+// when adding "just one more section".
+test('every collapsible section lives inside a group wrapper', () => {
+  const sections = (SRC.match(/<details class="ems-section"/g) || []).length;
+  assert.ok(sections >= 15, 'the sections moved — this test found almost none');
+  const wrappers = (SRC.match(/<div class="ems-list">/g) || []).length;
+  assert.ok(wrappers >= 1, 'the group wrappers are gone — every group loses its corners');
+  // Between one wrapper and the next, every section belongs to that wrapper. A section
+  // before the first wrapper belongs to none.
+  const orphans = (SRC.split('<div class="ems-list">')[0].match(/<details class="ems-section"/g) || []).length;
+  assert.strictEqual(orphans, 0, 'sections sit outside every group wrapper');
+  assert.strictEqual((SRC.match(/<details\b/g) || []).length, (SRC.match(/<\/details>/g) || []).length,
+    'unbalanced <details> — the wrapper insertion cut a section in half');
+});
+
+test('the row separator is inset and the row is tall enough to tap', () => {
+  const css = SRC.slice(0, SRC.indexOf('</style>'));
+  assert.match(css, /\.ems-list > details\.ems-section \+ details\.ems-section > summary::before/,
+    'the inset hairline between rows is gone — the group reads as separate boxes again');
+  const summary = css.slice(css.indexOf('    details.ems-section > summary {'));
+  const rule = summary.slice(0, summary.indexOf('}'));
+  assert.match(rule, /min-height:\s*44px/, 'rows fell below the 44px minimum tap target');
+  assert.doesNotMatch(rule, /background:\s*var\(--c-card-2\)/,
+    'the tinted header bar is back — it belonged to the card that no longer exists');
+});
+
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only
 // 4.02 : 1 against white — fine for Apple's 17px type, not for this page's 12–13px labels.
 // The pair above enforces the outcome; this records why the value looks "wrong".
