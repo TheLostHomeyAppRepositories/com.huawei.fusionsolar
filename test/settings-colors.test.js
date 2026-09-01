@@ -137,6 +137,22 @@ test('the keyboard focus ring survives, and taps get feedback without it', () =>
     'the tap highlight is suppressed with nothing put in its place');
 });
 
+// A grouped list separates its groups with space, and names them with a label that sits
+// quietly above. Drawing a rule beside that label makes it a divider instead of a name,
+// and the page then has two dividers doing one job. The rule is easy to reintroduce —
+// it looks like a tidy flourish — so the absence is asserted rather than assumed.
+test('section headings name their group without ruling it off', () => {
+  const css = SRC.slice(0, SRC.indexOf('</style>'));
+  assert.doesNotMatch(css, /\.ems-group::(after|before)/,
+    'the flexible rule beside the group label is back');
+  for (const cls of ['.ems-group', '.section-title']) {
+    const block = css.slice(css.indexOf('    ' + cls + ' {'));
+    const rule = block.slice(0, block.indexOf('}'));
+    assert.match(rule, /font-size:\s*13px/, `${cls} is no longer 13px`);
+    assert.match(rule, /font-weight:\s*400/, `${cls} is bold again — a heading that competes with its own rows`);
+  }
+});
+
 // iOS's own systemBlue is #007AFF, and it is tempting to use it verbatim. It reaches only
 // 4.02 : 1 against white — fine for Apple's 17px type, not for this page's 12–13px labels.
 // The pair above enforces the outcome; this records why the value looks "wrong".

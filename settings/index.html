@@ -185,14 +185,17 @@
     .conn-item span { font-weight: 600; }
 
     /* ── Section titles ──────────────────────────────────── */
+    /* The same job as .ems-group, one tab over: it names the group beneath it. Kept in
+       step deliberately — two section headings in one settings page that disagree about
+       their own size and weight is exactly the kind of drift that reads as unfinished. */
     .section-title {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 400;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       color: var(--c-label-2);
-      margin-bottom: 6px;
-      margin-top: 14px;
+      margin-bottom: 8px;
+      margin-top: 22px;
     }
     .section-title:first-child { margin-top: 0; }
 
@@ -617,24 +620,23 @@
     .ems-setup-link { color: var(--c-accent); cursor: pointer; text-decoration: none; }
     .ems-setup-link:hover { text-decoration: underline; }
     /* Group heading between the stacked EMS sections */
+    /* A grouped list names its group quietly: the label sits free, with air above it,
+       indented to line up with the rows below rather than with the card edge. It used to
+       trail a flexible rule off to the right — a web convention that turns a name into a
+       divider, which is the one thing this label must not be, because the gap above it is
+       already the divider. 13px regular rather than 11px bold for the same reason: it
+       introduces what follows, it does not compete with it.
+       The colour moved from --c-label-3 to --c-label-2, which is both closer to what iOS
+       uses here and the only one of the two that clears AA at this size on the page. */
     .ems-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 22px 2px 10px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.6px;
+      margin: 26px 0 8px 14px;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.4px;
       text-transform: uppercase;
-      color: var(--c-label-3);
+      color: var(--c-label-2);
     }
-    .ems-group:first-of-type { margin-top: 6px; }
-    .ems-group::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--c-fill);
-    }
+    .ems-group:first-of-type { margin-top: 8px; }
     .ems-hint {
       font-size: 11px;
       color: var(--c-label-2);
