@@ -25,7 +25,7 @@ const {
   SMARTCHARGER_REGISTERS,
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
-const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
+const { probeModbusUnit, withHostLock, readDeviceIdentification } = require('./lib/modbus-client');
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
 // Which trigger cards does the EMS never fire? Not a list kept here — a list here would
@@ -791,7 +791,23 @@ module.exports = {
           log(`    Raw registers: ${JSON.stringify(data)}`);
         }
 
-        results.push({ unitId, responds: true, data, identified });
+        // Only where the registers recognised nothing. A device this app knows needs no
+        // introduction, and asking costs another TCP session on hardware that generally
+        // permits one. Three seconds is enough: the reply is a handful of bytes, and a
+        // device without support answers "Illegal Function" immediately rather than going
+        // quiet. Read Device Identification is optional in the Modbus spec, so silence
+        // here says nothing about the device — it is extra information when offered, never
+        // evidence when withheld.
+        let deviceId = null;
+        if (!identified.anyConfirmed) {
+          deviceId = await readDeviceIdentification(host, parseInt(port, 10), unitId, 3000);
+          if (deviceId) {
+            log(`  Unit ${unitId}: identifies itself as `
+              + `${deviceId.vendorName || '?'} ${deviceId.productCode || ''}`.trim());
+          }
+        }
+
+        results.push({ unitId, responds: true, data, identified, deviceId });
       }
     } finally {
       // Always resume polling — even if probe threw

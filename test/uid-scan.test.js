@@ -149,3 +149,15 @@ test('recognised and merely-answering IDs are reported separately', () => {
     assert.match(t.scanUnknown, /\{\{ids\}\}/, `${lang}: scanUnknown lost its placeholder`);
   }
 });
+
+// Read Device Identification is asked only where the registers recognised nothing. A
+// device this app already knows needs no introduction, and asking costs a second TCP
+// session on hardware that generally permits one.
+test('the device-identification probe is a fallback, not a second pass', () => {
+  const scan = API.slice(API.indexOf('async scanModbus'));
+  const body = scan.slice(0, scan.indexOf('\n  /**'));
+  assert.match(body, /if \(!identified\.anyConfirmed\) \{\s*\n\s*deviceId = await readDeviceIdentification/,
+    'the identification probe runs for every unit ID, doubling the sessions opened');
+  assert.match(body, /readDeviceIdentification\(host, parseInt\(port, 10\), unitId, 3000\)/,
+    'the short timeout is gone — this probe must not cost as much as a register read');
+});
