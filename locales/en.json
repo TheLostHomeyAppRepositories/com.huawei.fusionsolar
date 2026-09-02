@@ -930,7 +930,6 @@
       }
     },
     "emsInfo": {
-      "title": "Energy Management System",
       "reloadDevices": "↻ Reload devices",
       "summary": "How does the EMS work? — Setup & Flow-based control",
       "details": "▼ Details",

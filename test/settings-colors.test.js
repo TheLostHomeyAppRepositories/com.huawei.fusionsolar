@@ -77,8 +77,11 @@ test('section icons live in the markup, not in the translations', () => {
   const fs2 = require('fs');
   const keys = [...SRC.matchAll(/class="ems-section-label" data-i18n="([^"]+)"/g)].map((m) => m[1]);
   assert.ok(keys.length >= 15, 'the section headings moved — this test found almost none');
-  assert.strictEqual((SRC.match(/class="ems-icon"/g) || []).length, keys.length,
-    'a section heading has no icon tile, or a tile has no heading');
+  // Counted as the pair, not as two totals: tiles are used elsewhere too — the live
+  // status row carries one — so a bare count of .ems-icon would drift with any new use.
+  const paired = (SRC.match(/<summary><span class="ems-icon"[^>]*>.*?<span class="ems-section-label"/g) || []).length;
+  assert.strictEqual(paired, keys.length,
+    `${paired} of ${keys.length} section headings are preceded by an icon tile`);
 
   const pictograph = /\p{Extended_Pictographic}/u;
   for (const lang of ['en', 'de', 'nl']) {
@@ -299,4 +302,30 @@ test('the row separator is inset and the row is tall enough to tap', () => {
 test('the accent is not iOS systemBlue, and that is deliberate', () => {
   assert.notStrictEqual(LIGHT['--c-accent'], '#007aff',
     'systemBlue fails AA at this page\'s type sizes — see the contrast pairs above');
+});
+
+// The EMS tab holds four grouped lists; wrapping them in another card put a card inside a
+// card, which a grouped list never does. The class itself is still right for the Modbus
+// and OpenAPI tabs, where a single panel of controls is exactly what it describes.
+test('the grouped lists are not nested inside another card', () => {
+  // The EMS tab sits between openapi and logs in the file, not in tab-bar order.
+  const from = SRC.indexOf('<div id="tab-ems">');
+  const to   = SRC.indexOf('<div id="tab-logs"');
+  assert.ok(from >= 0 && to > from, 'the tab containers moved — this slice is meaningless');
+  const tab = SRC.slice(from, to);
+  assert.ok(tab.includes('class="ems-list"'), 'the EMS tab lost its groups — wrong slice?');
+  assert.ok(!tab.includes('class="tool-card"'),
+    'the groups are wrapped in a .tool-card again — a card inside a card');
+  assert.ok(SRC.includes('class="tool-card"'),
+    'the class was deleted outright; the other tabs still need it');
+});
+
+// Each reading is a phrase whose length changes as the house switches between drawing and
+// feeding in ("Bezug 20 W" against "Einspeisung 48 W"). Letting one break mid-phrase made
+// the row change height every few seconds. The wrapper wraps; the parts must not.
+test('a live reading never breaks in the middle', () => {
+  const css = SRC.slice(0, SRC.indexOf('</style>'));
+  const rule = css.slice(css.indexOf('    .ems-live-vals > span {'));
+  assert.match(rule.slice(0, rule.indexOf('}')), /white-space:\s*nowrap/,
+    'the readings can break mid-phrase again, so the row will jump as the values change');
 });

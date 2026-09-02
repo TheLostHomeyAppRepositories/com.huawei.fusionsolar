@@ -930,7 +930,6 @@
       }
     },
     "emsInfo": {
-      "title": "Energiebeheersysteem",
       "reloadDevices": "↻ Apparaten herladen",
       "summary": "Hoe werkt de EMS? — Instellen & flow-gebaseerde besturing",
       "details": "▼ Details",

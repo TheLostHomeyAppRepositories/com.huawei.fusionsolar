@@ -930,7 +930,6 @@
       }
     },
     "emsInfo": {
-      "title": "Energy Management System",
       "reloadDevices": "↻ Geräte neu laden",
       "summary": "Wie funktioniert das EMS? — Einrichtung & flow-basierte Steuerung",
       "details": "▼ Details",
