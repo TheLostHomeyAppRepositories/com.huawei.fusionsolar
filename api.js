@@ -588,7 +588,14 @@ module.exports = {
     // Running in parallel causes all-but-one connections to be rejected immediately, and
     // the device then enters a half-open state that blocks the NEXT probe too.
     // Sequential + gap (1 s) gives the device time to close the previous session cleanly.
-    const PROBE_TIMEOUT_MS  = 4000; // per unit ID — local LAN responds in < 1.5 s; non-responding cut off fast
+    // 12 s per unit ID, matching the single-driver check that has always worked. 4 s was
+    // the original figure and it was shorter than the connect timeout alone (10 s) and
+    // than one response (5 s) — so a device needing a fresh session could not answer in
+    // time however healthy it was. Field-caught: a scan found the SDongle at unit 100,
+    // whose registers are small and quick, and missed the SUN2000 at unit 1, which has to
+    // return a fifteen-register model-name string. The scan was not detecting devices, it
+    // was measuring which ones happened to be fast.
+    const PROBE_TIMEOUT_MS  = 12000;
     const INTER_UNIT_GAP_MS = 2000; // give the device time to fully close the previous TCP session
 
     // Every unit ID gets the same register set.

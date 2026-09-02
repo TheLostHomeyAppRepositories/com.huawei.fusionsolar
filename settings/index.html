@@ -2901,7 +2901,12 @@
     // 0-16 covers what real installations use (inverter usually 1, EMMA 0 or 1, meters
     // often 11 or 16); 100 and 101 are the SDongle's. A full 1-247 sweep would take about
     // 25 minutes, which is not a feature anyone would use twice.
-    const UID_SCAN_LIST  = [...Array(17).keys()].concat([100, 101]);
+    // Eight IDs, not nineteen. The per-ID budget had to go from 4 s to 12 s so a SUN2000
+    // can finish its model-name read, and at that price a speculative sweep of 0-16 costs
+    // four and a half minutes. These are the addresses that actually occur: 0-3 for
+    // inverters and EMMA, 11 and 16 for meters, 100 and 101 for the SDongle. Fewer IDs,
+    // each given long enough to answer, finds more than many IDs cut off too early did.
+    const UID_SCAN_LIST  = [0, 1, 2, 3, 11, 16, 100, 101];
     const UID_SCAN_BLOCK = 4;
     let   _uidScanAbort  = false;
 

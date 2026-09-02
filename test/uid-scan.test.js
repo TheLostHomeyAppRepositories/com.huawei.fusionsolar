@@ -50,9 +50,19 @@ test('the scan covers the IDs real installations actually use', () => {
 // being held busy — not a feature anyone would use twice, and it blocks polling meanwhile.
 test('the scan stays inside a length someone will actually sit through', () => {
   const list = scanList();
-  const timeout = Number((API.match(/const PROBE_TIMEOUT_MS\s*=\s*(\d+); \/\/ per unit ID/) || [])[1]);
-  const gap = Number((API.match(/const INTER_UNIT_GAP_MS\s*=\s*(\d+)/) || [])[1]);
-  assert.ok(timeout && gap, 'the probe timings moved — this estimate is meaningless');
+  // Both constants are read as a pair, because they sit together in scanModbus and there
+  // is a second PROBE_TIMEOUT_MS elsewhere in the file for the single-driver check. An
+  // earlier version of this anchored on a trailing comment and broke the moment the
+  // comment moved — the estimate then silently became NaN.
+  const m = API.match(/PROBE_TIMEOUT_MS\s*=\s*(\d+);[\s\S]{0,200}?INTER_UNIT_GAP_MS\s*=\s*(\d+)/);
+  assert.ok(m, 'the probe timings moved — this estimate is meaningless');
+  const timeout = Number(m[1]);
+  const gap = Number(m[2]);
+  // Long enough for a device that has to open a session first: the connect timeout alone
+  // is 10 s. Anything shorter measures which device is fastest, not which exist.
+  assert.ok(timeout >= 10_000,
+    `${timeout} ms per ID is below the 10 s a fresh connection may take, so a slow but `
+    + 'healthy device is cut off before it can answer');
   const worstCaseMs = list.length * timeout + (list.length - 1) * gap;
   assert.ok(worstCaseMs <= 3 * 60_000,
     `worst case is ${Math.round(worstCaseMs / 1000)} s for ${list.length} IDs; `
