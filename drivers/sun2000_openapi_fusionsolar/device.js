@@ -9,7 +9,7 @@ const DEV_TYPE_METER                = 17; // Grid meter (DTSU666)
 const DEV_TYPE_POWER_SENSOR         = 47; // Power sensor
 
 const REQUIRED_CAPABILITIES = [
-  'measure_power',                // AC active power (W) — primary for Homey Energy dashboard
+  'measure_power',                // PV generation (W) — the solar figure for Homey Energy
   'measure_power.mppt',           // MPPT DC input power (W)
   'measure_power.active_power',   // AC active power sum (W)
   'measure_temperature.invertor', // internal temperature (°C)
@@ -135,7 +135,36 @@ class FusionSolarInverterDevice extends Device {
     };
 
     const activePowerW = sumW('active_power');
-    await this._set('measure_power',              activePowerW);  // primary — used by Homey Energy dashboard
+    const mpptPowerW   = sumW('mppt_power');
+
+    // measure_power is the solar figure, because this driver's class is solarpanel and that
+    // is the capability Homey Energy files under "Solar panels". So it has to be generation
+    // and nothing else.
+    //
+    // It used to be active_power — the inverter's AC output. On a hybrid SUN2000 that is
+    // whatever the inverter is putting out, from whichever side it came. Reported in #25
+    // with two captures hours after sunset: SUN2000 +2.35 kW against LUNA2000 -2.35 kW, and
+    // again +587 W against -587 W, with PV at zero both times. Homey duly filed the battery
+    // discharge under solar. The household total still came out right, because the two
+    // cancelled, which is why this could sit there unnoticed.
+    //
+    // mppt_power is the DC input from the strings: the generation itself, before the
+    // inverter turns it into AC and before anything from the battery joins it. It reads a
+    // couple of per cent above the AC figure for exactly that reason.
+    //
+    // The fallback is deliberate rather than lazy. An inverter that does not report
+    // mppt_power keeps what it has always shown instead of losing its power reading, and on
+    // an inverter with no battery the AC output IS the generation, so nothing is misfiled.
+    // The AC figure has not gone anywhere either — it is measure_power.active_power, and
+    // that is still what the power-changed flow card reports, so existing flows keep
+    // meaning what they meant.
+    const solarPowerW = mpptPowerW ?? activePowerW;
+    if (mpptPowerW === null && activePowerW !== null && !this._mpptFallbackLogged) {
+      this._mpptFallbackLogged = true;
+      this.log('mppt_power not reported by this inverter — measure_power falls back to '
+        + 'active_power, which on a hybrid inverter can include battery discharge');
+    }
+    await this._set('measure_power',              solarPowerW);   // solar — used by Homey Energy
     await this._set('measure_power.active_power', activePowerW);
     await this._set('measure_temperature.invertor', avg('temperature'));
 
@@ -151,7 +180,7 @@ class FusionSolarInverterDevice extends Device {
     await this._set('measure_current.pv2',     avg('pv2_i'));
     await this._set('meter_power.inv_daily',   sumKwh('day_cap'));
     await this._set('meter_power.inv_total',   sumKwh('total_cap'));
-    await this._set('measure_power.mppt',      sumW('mppt_power'));
+    await this._set('measure_power.mppt',      mpptPowerW);
     await this._set('openapi_inverter_efficiency', avg('efficiency'));
     await this._set('measure_frequency',       avg('elec_freq'));
 
