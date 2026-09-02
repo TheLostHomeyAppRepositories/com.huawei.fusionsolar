@@ -5,6 +5,24 @@ const capabilitySet = require('../../lib/capability-set');
 
 const DEV_TYPE_METER        = 17; // Grid meter (DTSU666)
 const DEV_TYPE_POWER_SENSOR = 47; // Power sensor
+// EMMA-A02 energy manager. It reports the grid connection point, so it serves this device
+// where no separate meter is registered — an EMMA installation has no type 17 or 47 at
+// all, which is why the device sat empty: the coordinator was never asked for 23070.
+//
+// It is NOT a drop-in for the power-sensor mapping above, and the two differences both
+// fail silently, so they are handled in their own branch rather than by widening that one:
+//
+//   Unit      EMMA reports active_power in kW, the power sensor in W. Reusing sumW() would
+//             have turned a 1.3 kW export into "1 W". The same split already exists inside
+//             the SUN2000 driver, which converts kW→W for the inverter and not for the
+//             meter — the API is simply not consistent across device types.
+//   Direction EMMA's active_cap is IMPORT and reverse_active_cap is EXPORT. The power
+//             sensor branch maps those the other way round. Verified against one owner's
+//             FusionSolar lifetime totals (issue #25): active_cap 5298.26 kWh against a
+//             portal import of 5.31 MWh, reverse_active_cap 912.84 kWh against an export
+//             of 917.61 kWh. Whether the power sensor's opposite mapping is right for its
+//             own hardware is untested here, so it is left exactly as it was.
+const DEV_TYPE_EMMA         = 23070;
 
 const REQUIRED_CAPABILITIES = [
   'measure_power',        // grid active power (W): positive = import, negative = export
@@ -67,7 +85,7 @@ class FusionSolarMeterDevice extends Device {
 
   // ─── Coordinator interface ─────────────────────────────────────────────────
 
-  getDevTypes() { return [DEV_TYPE_METER, DEV_TYPE_POWER_SENSOR]; }
+  getDevTypes() { return [DEV_TYPE_METER, DEV_TYPE_POWER_SENSOR, DEV_TYPE_EMMA]; }
 
   async onPollData({ kpiByType }) {
     const num    = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
@@ -83,6 +101,47 @@ class FusionSolarMeterDevice extends Device {
       const vals = maps.map((m) => num(m[key])).filter((v) => v !== null);
       return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
     };
+
+    // EMMA (type 23070) — checked first: where one exists it IS the grid connection point,
+    // and such an installation carries no type 17 or 47 to fall back to anyway.
+    const emmaMaps = kpiByType[DEV_TYPE_EMMA] || [];
+    if (emmaMaps.length) {
+      const sumKw = (maps, key) => {
+        const vals = maps.map((m) => num(m[key])).filter((v) => v !== null);
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) * 1000) : null; // kW → W
+      };
+      // Sign matches this device's convention already: positive = import, negative = export.
+      const activePower = sumKw(emmaMaps, 'active_power');
+      await this._set('measure_power', activePower);
+      if (activePower !== null) {
+        const gridWatts = Math.round(Math.abs(activePower));
+        const label = activePower < 0 ? 'Export' : 'Import';
+        await this._set('powermeter_state_string', gridWatts === 0 ? '0 W' : `${gridWatts} W ${label}`);
+      }
+      this._fireExportImportTriggers(activePower);
+      await this._set('meter_power',          sumKwh(emmaMaps, 'active_cap'));
+      await this._set('meter_power.exported', sumKwh(emmaMaps, 'reverse_active_cap'));
+
+      // Everything the power sensor offers except the frequency, which EMMA does not
+      // report — adding that capability would leave a permanently empty row on the tile.
+      for (const cap of EXTRA_CAPABILITIES) {
+        if (cap === 'measure_frequency') continue;
+        if (!this.hasCapability(cap)) await this.addCapability(cap).catch(() => {});
+      }
+
+      // Phase A is a_u / a_i here; the power sensor calls the same two meter_u / meter_i.
+      await this._set('measure_voltage.meter_u', avg(emmaMaps, 'a_u'));
+      await this._set('measure_voltage.b_u',     avg(emmaMaps, 'b_u'));
+      await this._set('measure_voltage.c_u',     avg(emmaMaps, 'c_u'));
+      await this._set('measure_current.meter_i', avg(emmaMaps, 'a_i'));
+      await this._set('measure_current.b_i',     avg(emmaMaps, 'b_i'));
+      await this._set('measure_current.c_i',     avg(emmaMaps, 'c_i'));
+      await this._set('measure_power.phase1',    sumKw(emmaMaps, 'active_power_a'));
+      await this._set('measure_power.phase2',    sumKw(emmaMaps, 'active_power_b'));
+      await this._set('measure_power.phase3',    sumKw(emmaMaps, 'active_power_c'));
+
+      return;
+    }
 
     // Power sensor (type 47) — preferred, full data set
     const psMaps = kpiByType[DEV_TYPE_POWER_SENSOR] || [];
