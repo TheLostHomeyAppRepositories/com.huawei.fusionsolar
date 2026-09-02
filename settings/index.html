@@ -2929,6 +2929,12 @@
       // device that would not let us in) versus sessions that opened and returned nothing
       // — and they call for opposite next steps.
       let noConnection = 0;
+      // How many of the app's own polls the endpoint managed to pause. It has always been
+      // in the reply and never shown. It is the question worth asking when a scan comes up
+      // empty on hardware that is known to work: these devices allow one connection, so if
+      // the app is still polling this address throughout, it holds the only session and
+      // the scan loses every race. Zero here, on a device the app polls, IS the answer.
+      let pausedCount = null;
 
       try {
         for (let i = 0; i < UID_SCAN_LIST.length; i += UID_SCAN_BLOCK) {
@@ -2947,6 +2953,7 @@
             return;
           }
 
+          if (res && typeof res.pausedCount === 'number') pausedCount = res.pausedCount;
           for (const r of (res && res.results) || []) {
             // `responds` only means the TCP session opened — and in Modbus TCP the
             // connection is made to the HOST, not to a unit ID, so every ID on a host with
@@ -3001,6 +3008,10 @@
           : _H.__(noConnection >= UID_SCAN_LIST.length
             ? 'settings.tester.scanNoConnection'   // not one session opened
             : 'settings.tester.scanNone');         // sessions opened, nothing behind them
+        // Only worth saying when the scan found nothing — otherwise it is noise.
+        if (!parts.length && pausedCount === 0) {
+          out.textContent += ' ' + _H.__('settings.tester.scanNotPaused');
+        }
       } finally {
         btn.dataset.running = '';
         btn.textContent = _H.__('settings.tester.scanUids');

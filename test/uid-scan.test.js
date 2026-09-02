@@ -197,3 +197,32 @@ test('an empty result says which kind of empty it was', () => {
     assert.strictEqual(typeof t.scanNoConnection, 'string', `${lang}: scanNoConnection is missing`);
   }
 });
+
+// The endpoint has always returned how many of the app's own polls it paused, and the page
+// has always thrown that number away. It is the question worth asking when a scan comes up
+// empty on hardware the owner knows works: these devices allow one connection at a time, so
+// if the app keeps polling the address throughout, it holds the only session and the scan
+// loses every race. Zero paused, on an address the app polls, is the answer rather than a
+// detail.
+test('an empty scan says whether the app was still polling the address', () => {
+  assert.match(SRC, /if \(res && typeof res\.pausedCount === 'number'\) pausedCount = res\.pausedCount;/,
+    'the pausedCount from the endpoint is discarded again');
+  assert.match(SRC, /if \(!parts\.length && pausedCount === 0\)/,
+    'the note is shown regardless of the outcome, or not at all');
+  for (const lang of ['en', 'de', 'nl']) {
+    const t = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'))
+      .settings.tester;
+    assert.strictEqual(typeof t.scanNotPaused, 'string', `${lang}: scanNotPaused is missing`);
+  }
+});
+
+// The empty-result text used to send the reader to check IP and port — in the one case
+// where connections had demonstrably opened, so the address was the one thing proven fine.
+test('the empty-result message does not blame the address that just worked', () => {
+  for (const lang of ['en', 'de', 'nl']) {
+    const t = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'))
+      .settings.tester;
+    assert.doesNotMatch(t.scanNone, /Check the IP|Prüfe zuerst IP|Controleer eerst IP/,
+      `${lang}: scanNone sends the reader to check an address the scan just connected to`);
+  }
+});
