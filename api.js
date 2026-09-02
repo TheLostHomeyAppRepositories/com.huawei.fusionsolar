@@ -25,7 +25,7 @@ const {
   SMARTCHARGER_REGISTERS,
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
-const { probeModbusUnit, withHostLock, readDeviceIdentification } = require('./lib/modbus-client');
+const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
 // Which trigger cards does the EMS never fire? Not a list kept here — a list here would
@@ -791,30 +791,17 @@ module.exports = {
           log(`    Raw registers: ${JSON.stringify(data)}`);
         }
 
-        // Only where the registers recognised nothing. A device this app knows needs no
-        // introduction, and asking costs another TCP session on hardware that generally
-        // permits one. Three seconds is enough: the reply is a handful of bytes, and a
-        // device without support answers "Illegal Function" immediately rather than going
-        // quiet. Read Device Identification is optional in the Modbus spec, so silence
-        // here says nothing about the device — it is extra information when offered, never
-        // evidence when withheld.
-        let deviceId = null;
-        if (!identified.anyConfirmed) {
-          // The same gap the loop keeps between unit IDs, for the same reason — this is a
-          // SECOND TCP session to a device that generally permits one, and opening it the
-          // instant the register probe closed its own is what the gap exists to prevent.
-          // Left out at first, and it did not merely fail: the device was left half-open
-          // and the NEXT unit ID failed too, so a scan that had been finding the SDongle
-          // came back empty. Every new session waits, not every new unit ID.
-          await new Promise((r) => setTimeout(r, INTER_UNIT_GAP_MS)); // eslint-disable-line no-promise-executor-return
-          deviceId = await readDeviceIdentification(host, parseInt(port, 10), unitId, 3000);
-          if (deviceId) {
-            log(`  Unit ${unitId}: identifies itself as `
-              + `${deviceId.vendorName || '?'} ${deviceId.productCode || ''}`.trim());
-          }
-        }
-
-        results.push({ unitId, responds: true, data, identified, deviceId });
+        // Read Device Identification (FC 0x2B) was asked here for unit IDs the registers
+        // did not recognise, on the theory that a device could at least name itself.
+        // Measured against the hardware this app exists for, on 2026-09-02: neither the
+        // SDongle at unit 100 nor the SUN2000 at unit 1 answers it at all. It is optional
+        // in the Modbus spec and Huawei does not implement it. The probe therefore bought
+        // nothing here while costing a second TCP session plus a gap for every
+        // unrecognised ID — on a gateway that is demonstrably fragile about sessions.
+        // lib/modbus-client.js keeps the function, tested, for foreign hardware and for a
+        // "who are you?" that a person asks once, deliberately, rather than eight times a
+        // scan.
+        results.push({ unitId, responds: true, data, identified });
       }
     } finally {
       // Always resume polling — even if probe threw

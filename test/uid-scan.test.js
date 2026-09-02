@@ -152,50 +152,22 @@ test('recognised and merely-answering IDs are reported separately', () => {
   }
 });
 
-// Read Device Identification is asked only where the registers recognised nothing. A
-// device this app already knows needs no introduction, and asking costs a second TCP
-// session on hardware that generally permits one.
-test('the device-identification probe is a fallback, not a second pass', () => {
-  const scan = API.slice(API.indexOf('async scanModbus'));
-  const body = scan.slice(0, scan.indexOf('\n  /**'));
-  // Asserted as "the call sits inside the not-confirmed branch", not as "the two lines are
-  // adjacent" — the gap that has to precede the session now stands between them, and a
-  // test that pins the exact shape breaks on every correct edit.
-  const branch = body.slice(body.indexOf('if (!identified.anyConfirmed) {'));
-  assert.ok(branch.startsWith('if (!identified.anyConfirmed) {'),
-    'the identification probe is no longer guarded by the not-confirmed branch');
-  assert.match(branch.slice(0, branch.indexOf('\n        }')), /readDeviceIdentification/,
-    'the identification probe runs for every unit ID, doubling the sessions opened');
-  assert.match(body, /readDeviceIdentification\(host, parseInt\(port, 10\), unitId, 3000\)/,
-    'the short timeout is gone — this probe must not cost as much as a register read');
-});
-
-// Regression, self-inflicted in 1.2.204: the identification probe opened a SECOND TCP
-// session the instant the register probe closed its own. On hardware that permits one
-// session that is not a slow path, it is the half-open state the gap exists to prevent —
-// and it took the NEXT unit ID down with it, so a scan that had been finding the SDongle
-// came back completely empty. Every new session waits, not every new unit ID.
-test('the identification probe waits before opening its own session', () => {
-  const scan = API.slice(API.indexOf('async scanModbus'));
-  const body = scan.slice(0, scan.indexOf('\n  /**'));
-  assert.match(body,
-    /await new Promise\(\(r\) => setTimeout\(r, INTER_UNIT_GAP_MS\)\);[\s\S]{0,120}?readDeviceIdentification/,
-    'the second session is opened with no gap after the first, which leaves the device '
-    + 'half-open and breaks the probe that follows');
-});
-
-// "Nothing answered" covers two situations that call for opposite next steps: no session
-// opened at all (wrong address or port), or sessions opened with nothing behind them.
-test('an empty result says which kind of empty it was', () => {
-  assert.match(SRC, /let noConnection = 0;/, 'connection failures are no longer counted');
-  assert.match(SRC, /if \(!r\.responds\) \{ noConnection\+\+; continue; \}/,
-    'a failed connection is not distinguished from an empty response');
-  assert.match(SRC, /settings\.tester\.scanNoConnection/, 'the "nothing connected" message is gone');
-  for (const lang of ['en', 'de', 'nl']) {
-    const t = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'))
-      .settings.tester;
-    assert.strictEqual(typeof t.scanNoConnection, 'string', `${lang}: scanNoConnection is missing`);
-  }
+// Read Device Identification (FC 0x2B) was wired into the scan and then taken back out,
+// which is worth an assertion rather than a silent absence. Measured on 2026-09-02 against
+// the hardware this app exists for: neither the SDongle at unit 100 nor the SUN2000 at unit
+// 1 answers it. It is optional in the Modbus spec and Huawei does not implement it, so in
+// the scan it bought nothing while costing a second TCP session and a gap for every
+// unrecognised ID — on a gateway that is demonstrably fragile about sessions.
+//
+// The function itself stays in lib/modbus-client.js with its own tests: it is right for
+// foreign hardware, and for a question a person asks once rather than eight times a scan.
+test('the scan does not ask every unrecognised ID to identify itself', () => {
+  assert.doesNotMatch(API, /await readDeviceIdentification\(/,
+    'FC 43 is back in the scan path — measured against Huawei hardware it never answers, '
+    + 'and each attempt costs another session on a device that permits one');
+  const lib = fs.readFileSync(path.join(__dirname, '..', 'lib', 'modbus-client.js'), 'utf8');
+  assert.match(lib, /function readDeviceIdentification\(/,
+    'the function was deleted outright; it is still right for hardware that answers it');
 });
 
 // The endpoint has always returned how many of the app's own polls it paused, and the page

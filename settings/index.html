@@ -2968,14 +2968,8 @@
               (v) => v !== null && v !== undefined && v !== '');
             if (!confirmed && !anyValue) continue;
 
-            // What the device calls itself, when it was willing to say. This is the whole
-            // point of asking: "answered, nothing recognised" is a dead end, "answered —
-            // Foobar Model X" tells you whose device is sitting at that address.
-            const who = r.deviceId
-              ? [r.deviceId.vendorName, r.deviceId.productCode].filter(Boolean).join(' ')
-              : '';
             found.push({
-              unitId: r.unitId, confirmed, who,
+              unitId: r.unitId, confirmed,
               type: (r.identified && r.identified.type) || '',
             });
             // Only a recognised device earns a button. An ID that returned some register
@@ -3001,7 +2995,7 @@
         }
         if (maybe.length) {
           parts.push(_H.__('settings.tester.scanUnknown')
-            .replace('{{ids}}', maybe.map((f) => (f.who ? `${f.unitId} (${f.who})` : String(f.unitId))).join(', ')));
+            .replace('{{ids}}', maybe.map((f) => f.unitId).join(', ')));
         }
         out.textContent = parts.length
           ? parts.join(' ')
