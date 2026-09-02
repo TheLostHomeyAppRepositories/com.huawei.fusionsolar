@@ -68,11 +68,60 @@ const LOG_PALETTE = new Set([
   '#ff6b64', '#8a5250', '#888',                           // errors, dimmed, system
 ]);
 
+// Every section heading gets its icon from the markup, not from its own text. The emoji
+// used to live inside the translation strings — "☀️ Solar Inverter" — which put an icon
+// in the hands of whoever translates the sentence, where it can be dropped or reordered
+// without anyone noticing. Both halves are asserted: the tile exists, and the title stays
+// free of pictographs in all three languages.
+test('section icons live in the markup, not in the translations', () => {
+  const fs2 = require('fs');
+  const keys = [...SRC.matchAll(/class="ems-section-label" data-i18n="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 15, 'the section headings moved — this test found almost none');
+  assert.strictEqual((SRC.match(/class="ems-icon"/g) || []).length, keys.length,
+    'a section heading has no icon tile, or a tile has no heading');
+
+  const pictograph = /\p{Extended_Pictographic}/u;
+  for (const lang of ['en', 'de', 'nl']) {
+    const s = JSON.parse(fs2.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'));
+    for (const key of keys) {
+      const title = key.split('.').reduce((a, k) => (a == null ? a : a[k]), s.settings);
+      assert.strictEqual(typeof title, 'string', `${lang}: ${key} is missing`);
+      assert.doesNotMatch(title, pictograph,
+        `${lang}/${key} carries an icon in its text again: ${JSON.stringify(title)}`);
+    }
+  }
+});
+
+// The section icon tiles are the second exception, for a different reason than the log
+// panel: these are categorical identity colours, not surfaces. A token per tile would be
+// thirteen tokens no theme will ever redefine. What matters about them is not where they
+// are declared but that the white glyph stays legible on each — measured below.
+const ICON_PALETTE = new Set([
+  '#007aff', '#00a39c', '#2b9eb3', '#2ca74b', '#2d9ccf', '#5856d6', '#8e8e93',
+  '#a2845e', '#af52de', '#b28f00', '#d67d00', '#ff2d55', '#ff3b30',
+]);
+
+// A white line-drawing on a coloured tile is a graphical object, so it needs 3:1 — and
+// several of Apple's own system colours do not reach it. systemOrange manages 2.20 against
+// white and systemGreen 2.22; Settings.app uses them anyway. Each tile here keeps Apple's
+// hue and gives up some lightness instead, the same trade already made for the accent.
+test('a white glyph is legible on every icon tile', () => {
+  const tiles = [...new Set([...SRC.matchAll(/class="ems-icon" style="background:(#[0-9a-f]{6})"/g)]
+    .map((m) => m[1]))];
+  assert.ok(tiles.length >= 10, 'the icon tiles moved — this test found almost none');
+  for (const tile of tiles) {
+    const r = contrast('#ffffff', tile);
+    assert.ok(r >= 3.0, `white on ${tile} is ${r.toFixed(2)} : 1, needs 3.0 for a glyph`);
+  }
+  assert.deepStrictEqual(tiles.filter((t) => !ICON_PALETTE.has(t)), [],
+    'a tile colour appeared that the raw-colour exemption does not know about');
+});
+
 test('no component rule carries a raw colour any more', () => {
   const body = SRC.slice(SRC.indexOf('/* ── Header'));
   const offenders = [...new Set([...body.matchAll(/(background|color)\s*:\s*(#[0-9a-fA-F]{3,6})\b/g)]
     .map((m) => m[2].toLowerCase())
-    .filter((hex) => !LOG_PALETTE.has(hex)))];
+    .filter((hex) => !LOG_PALETTE.has(hex) && !ICON_PALETTE.has(hex)))];
   assert.deepStrictEqual(offenders, [],
     'these would stay light when the page goes dark: ' + offenders.join(', '));
 });
@@ -217,6 +266,26 @@ test('the row separator is inset and the row is tall enough to tap', () => {
   const css = SRC.slice(0, SRC.indexOf('</style>'));
   assert.match(css, /\.ems-list > details\.ems-section \+ details\.ems-section > summary::before/,
     'the inset hairline between rows is gone — the group reads as separate boxes again');
+
+  // Where the line starts is not a free choice: it has to clear the icon tile, or the
+  // list stops reading as a column of labels. Derived from the three values it depends on
+  // so that resizing the tile fails here instead of quietly looking wrong.
+  const px = (rule, prop) => {
+    const m = rule.match(new RegExp(prop + ':\\s*(\\d+)px'));
+    return m ? Number(m[1]) : null;
+  };
+  const iconRule = css.slice(css.indexOf('    .ems-icon {'));
+  const tile = px(iconRule.slice(0, iconRule.indexOf('}')), 'width');
+  const sumRule = css.slice(css.indexOf('    details.ems-section > summary {'));
+  const sum = sumRule.slice(0, sumRule.indexOf('}'));
+  const padLeft = Number((sum.match(/padding:\s*\d+px\s+(\d+)px/) || [])[1]);
+  const gap = px(sum, 'gap');
+  const beforeRule = css.slice(css.indexOf('summary::before {'));
+  const inset = px(beforeRule.slice(0, beforeRule.indexOf('}')), 'left');
+  assert.ok(tile && padLeft && gap && inset, 'one of the four measurements could not be read');
+  assert.strictEqual(inset, padLeft + tile + gap,
+    `the hairline starts at ${inset}px but the label starts at ${padLeft + tile + gap}px `
+    + `(${padLeft} padding + ${tile} tile + ${gap} gap) — it cuts through the icon column`);
   const summary = css.slice(css.indexOf('    details.ems-section > summary {'));
   const rule = summary.slice(0, summary.indexOf('}'));
   assert.match(rule, /min-height:\s*44px/, 'rows fell below the 44px minimum tap target');

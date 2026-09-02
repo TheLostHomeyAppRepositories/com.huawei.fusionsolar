@@ -222,7 +222,7 @@
       "diagnostics": "Diagnostics"
     },
     "devicePriority": {
-      "title": "⚖️ Device Priority",
+      "title": "Device Priority",
       "evalOrder": {
         "title": "Evaluation order",
         "desc": "Drag to reorder. Devices higher in the list get first claim on available solar surplus."
@@ -237,7 +237,7 @@
       "moveDown": "Move down"
     },
     "scheduler": {
-      "title": "⏱ Scheduler",
+      "title": "Scheduler",
       "addButton": "+ Add task",
       "noFlowsFoundInFolder": "No flows found in _Huawei EMS folder",
       "selectFlow": "Select flow…",
@@ -262,7 +262,7 @@
       "staleWarn": "⚠ stale — price-optimised charging falls back to continuous"
     },
     "price": {
-      "title": "💶 Electricity Price",
+      "title": "Electricity Price",
       "intro": "The current electricity price is exposed as a device value (tile, Insights, flow token). Choose the tariff model:",
       "tariffModel": "Tariff model",
       "currency": "Currency",
@@ -338,12 +338,12 @@
         "title": "Control loop interval",
         "desc": "How often the EMS reads its meters and decides. Shorter reacts sooner but reads the inverter, meter and battery correspondingly more often; longer eases the load, and the battery floor and grid-import ceiling take longer to bite. Electricity price, car state of charge and solar forecast do not depend on the interval — each follows its own rhythm, the Solcast fetch for instance at most every 3 hours. Leave at 15 seconds unless the diagnostics below give you a reason."
       },
-      "title": "🩺 EMS Diagnostics",
+      "title": "EMS Diagnostics",
       "subtitle": "live tick health",
       "autoRefresh": "Auto-refreshes every 3 s while open"
     },
     "history": {
-      "title": "📋 EMS History",
+      "title": "EMS History",
       "subtitle": "recent events",
       "copy": "⧉ Copy",
       "yesterday": "Yesterday",
@@ -398,7 +398,7 @@
       "exportLimitOff": "Export limit deactivated"
     },
     "chargeSessions": {
-      "title": "🔌 Charge Sessions",
+      "title": "Charge Sessions",
       "subtitle": "energy & cost per charge",
       "hint": "One entry per “plug in → unplug” period, any charging mode. A session still running is listed first, with the energy counted so far.",
       "noneYet": "No completed charge sessions yet.",
@@ -740,7 +740,7 @@
     "pvForecast": {
       "subtitleOff": "off",
       "subtitleOn": "active",
-      "title": "🌤 Solar Forecast (Solcast)",
+      "title": "Solar Forecast (Solcast)",
       "enableLabel": "Enable Solcast PV forecast",
       "apiKeyLabel": "API key",
       "apiKeyPlaceholder": "Solcast API key",
@@ -755,7 +755,7 @@
       "chartUnconfigured": "No API key or site ID saved yet"
     },
     "evChargers": {
-      "title": "🚗 EV Chargers",
+      "title": "EV Chargers",
       "subtitle": "solar surplus & tariff",
       "addButton": "+ Add charger",
       "compare": {
@@ -800,7 +800,7 @@
       "rowEnabledHint": "When off, the EMS leaves this device alone entirely — it is neither started nor stopped."
     },
     "cars": {
-      "title": "🚙 Cars",
+      "title": "Cars",
       "subtitle": "electric or hybrid",
       "intro": "Add one or more vehicles. Per car, the current charge level (read from the selected device) and the target charge (set via flow) are exposed as their own device values (tile, Insights, flow tokens). Use each car's <em>Flow setup</em> to apply the target charge to the vehicle.",
       "addButton": "+ Add car"
@@ -812,44 +812,44 @@
       }
     },
     "heatPumps": {
-      "title": "♨️ Heat Pumps",
+      "title": "Heat Pumps",
       "hint": "Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).",
       "addButton": "+ Add heat pump"
     },
     "boilers": {
-      "title": "🚿 Boilers / Immersion Heaters",
+      "title": "Boilers / Immersion Heaters",
       "hint": "Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.",
       "addButton": "+ Add boiler / heater"
     },
     "pool": {
-      "title": "💧 Pool / Whirlpool",
+      "title": "Pool / Whirlpool",
       "hint": "Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
       "addButton": "+ Add pool / whirlpool"
     },
     "dehumidifier": {
-      "title": "💨 Dehumidifier",
+      "title": "Dehumidifier",
       "hint": "Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.",
       "addButton": "+ Add dehumidifier"
     },
     "aircon": {
-      "title": "❄️ Air Conditioner",
+      "title": "Air Conditioner",
       "hint": "Add your air conditioner. EMS will run it whenever sufficient solar surplus is available. Use the start and stop flows to switch it.",
       "addButton": "+ Add air conditioner"
     },
     "inverter": {
-      "title": "☀️ Solar Inverter",
+      "title": "Solar Inverter",
       "subtitle": "solar production source",
       "desc": "The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.",
       "addButton": "+ Add inverter"
     },
     "houseMeter": {
-      "title": "🏠 House Consumption Meter",
+      "title": "House Consumption Meter",
       "subtitle": "Optional. Shows house consumption on the device tile. Without it, house load is derived from solar, grid and battery readings.",
       "desc": "Optional. Used to show house consumption in the device tile. If omitted, house load is derived from solar, grid, and battery readings.",
       "addButton": "+ Add house meter"
     },
     "homeBatteries": {
-      "title": "🔋 Home Batteries",
+      "title": "Home Batteries",
       "subtitle": "Optional but recommended. Supplies the battery SOC used for battery protection: below the minimum the EMS stops surplus devices and throttles charging.",
       "desc": "Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.",
       "addButton": "+ Add battery",
@@ -965,7 +965,7 @@
       "offpeakTip": "<b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ."
     },
     "gridMeter": {
-      "title": "⚡ Grid Meter",
+      "title": "Grid Meter",
       "subtitle": "grid import / export source",
       "desc": "The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.",
       "addButton": "+ Add meter",

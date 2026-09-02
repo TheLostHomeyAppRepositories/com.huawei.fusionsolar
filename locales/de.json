@@ -222,7 +222,7 @@
       "diagnostics": "Diagnose"
     },
     "devicePriority": {
-      "title": "⚖️ Geräte-Priorität",
+      "title": "Geräte-Priorität",
       "evalOrder": {
         "title": "Auswertungsreihenfolge",
         "desc": "Zum Umsortieren ziehen. Geräte weiter oben in der Liste erhalten zuerst Zugriff auf verfügbaren Solarüberschuss."
@@ -237,7 +237,7 @@
       "moveDown": "Nach unten"
     },
     "scheduler": {
-      "title": "⏱ Zeitplaner",
+      "title": "Zeitplaner",
       "addButton": "+ Aufgabe hinzufügen",
       "noFlowsFoundInFolder": "Keine Flows im Ordner _Huawei EMS gefunden",
       "selectFlow": "Flow wählen…",
@@ -262,7 +262,7 @@
       "staleWarn": "⚠ veraltet — preisoptimiertes Laden fällt auf Dauerladen zurück"
     },
     "price": {
-      "title": "💶 Strompreis",
+      "title": "Strompreis",
       "intro": "Der aktuelle Strompreis wird als Gerätewert bereitgestellt (Kachel, Insights, Flow-Token). Tarifmodell wählen:",
       "tariffModel": "Tarifmodell",
       "currency": "Währung",
@@ -338,12 +338,12 @@
         "title": "Takt der Regelschleife",
         "desc": "Wie oft das EMS seine Zähler liest und entscheidet. Kürzer reagiert früher, liest Wechselrichter, Zähler und Batterie aber entsprechend häufiger aus; länger entlastet, dafür greifen Batterie-Untergrenze und Netzbezugs-Obergrenze später. Strompreis, Fahrzeug-Ladestand und Solarprognose hängen nicht am Takt — sie folgen ihrem eigenen Rhythmus, die Solcast-Abfrage etwa höchstens alle 3 Stunden. Bei 15 Sekunden belassen, solange die Diagnose darunter keinen Anlass gibt."
       },
-      "title": "🩺 EMS Diagnose",
+      "title": "EMS Diagnose",
       "subtitle": "Live-Tick-Status",
       "autoRefresh": "Aktualisiert sich alle 3 s automatisch, solange geöffnet"
     },
     "history": {
-      "title": "📋 EMS-Verlauf",
+      "title": "EMS-Verlauf",
       "subtitle": "letzte Ereignisse",
       "copy": "⧉ Kopieren",
       "yesterday": "Gestern",
@@ -398,7 +398,7 @@
       "exportLimitOff": "Einspeiselimit deaktiviert"
     },
     "chargeSessions": {
-      "title": "🔌 Lade-Sessions",
+      "title": "Lade-Sessions",
       "subtitle": "Energie & Kosten pro Ladevorgang",
       "hint": "Ein Eintrag pro „Einstecken → Ausstecken“-Zeitraum, unabhängig vom Lademodus. Eine noch laufende Sitzung steht zuoberst, mit der bisher gezählten Energie.",
       "noneYet": "Noch keine abgeschlossenen Lade-Sessions.",
@@ -740,7 +740,7 @@
     "pvForecast": {
       "subtitleOff": "aus",
       "subtitleOn": "aktiv",
-      "title": "🌤 Solarprognose (Solcast)",
+      "title": "Solarprognose (Solcast)",
       "enableLabel": "Solcast-PV-Prognose aktivieren",
       "apiKeyLabel": "API-Schlüssel",
       "apiKeyPlaceholder": "Solcast API-Schlüssel",
@@ -755,7 +755,7 @@
       "chartUnconfigured": "Noch kein API-Schlüssel oder keine Standort-ID gespeichert"
     },
     "evChargers": {
-      "title": "🚗 EV-Lader",
+      "title": "EV-Lader",
       "subtitle": "Solarüberschuss & Tarif",
       "addButton": "+ Lader hinzufügen",
       "compare": {
@@ -800,7 +800,7 @@
       "rowEnabledHint": "Wenn aus, lässt das EMS dieses Gerät völlig in Ruhe — es wird weder ein- noch ausgeschaltet."
     },
     "cars": {
-      "title": "🚙 Fahrzeuge",
+      "title": "Fahrzeuge",
       "subtitle": "elektrisch oder hybrid",
       "intro": "Ein oder mehrere Fahrzeuge hinzufügen. Pro Fahrzeug werden der aktuelle Ladestand (vom gewählten Gerät gelesen) und der Zielladestand (per Flow gesetzt) als eigene Gerätewerte bereitgestellt (Kachel, Insights, Flow-Tokens). Nutze das <em>Flow-Setup</em> jedes Fahrzeugs, um den Zielladestand ans Fahrzeug zu übermitteln.",
       "addButton": "+ Fahrzeug hinzufügen"
@@ -812,44 +812,44 @@
       }
     },
     "heatPumps": {
-      "title": "♨️ Wärmepumpen",
+      "title": "Wärmepumpen",
       "hint": "Jede Wärmepumpe hinzufügen, die das EMS steuern soll. Mindest-Solarüberschuss zum Starten festlegen, optional eine Einschaltverzögerung (Überschuss muss so viele Sekunden anhalten, bevor das EMS einschaltet) und eine Ausschaltverzögerung (Überschuss darf so viele Sekunden fehlen, bevor das EMS ausschaltet — verhindert Kurzläufe).",
       "addButton": "+ Wärmepumpe hinzufügen"
     },
     "boilers": {
-      "title": "🚿 Boiler / Heizstäbe",
+      "title": "Boiler / Heizstäbe",
       "hint": "Jeden Boiler oder Heizstab hinzufügen, den das EMS steuern soll. Mindest-Solarüberschuss zum Einschalten festlegen, optional eine Ein- und Ausschaltverzögerung gegen schnelles Schalten.",
       "addButton": "+ Boiler / Heizstab hinzufügen"
     },
     "pool": {
-      "title": "💧 Pool / Whirlpool",
+      "title": "Pool / Whirlpool",
       "hint": "Die Pool- oder Whirlpool-Pumpe hinzufügen. Das EMS lässt sie laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
       "addButton": "+ Pool / Whirlpool hinzufügen"
     },
     "dehumidifier": {
-      "title": "💨 Entfeuchter",
+      "title": "Entfeuchter",
       "hint": "Den Entfeuchter hinzufügen. Das EMS lässt ihn laufen, sobald ausreichend Solarüberschuss vorhanden ist. Ein-/Ausschaltverzögerungen nutzen, um schnelles Schalten zu vermeiden.",
       "addButton": "+ Entfeuchter hinzufügen"
     },
     "aircon": {
-      "title": "❄️ Klimaanlage",
+      "title": "Klimaanlage",
       "hint": "Füge deine Klimaanlage hinzu. Das EMS lässt sie laufen, sobald genug Solarüberschuss vorhanden ist. Zum Schalten dienen die Start- und Stopp-Flows.",
       "addButton": "+ Klimaanlage hinzufügen"
     },
     "inverter": {
-      "title": "☀️ Solar-Wechselrichter",
+      "title": "Solar-Wechselrichter",
       "subtitle": "Quelle für Solarproduktion",
       "desc": "Das EMS liest hier die Solarproduktion (W), um den verfügbaren Überschuss zu berechnen. Mehrere Wechselrichter werden summiert.",
       "addButton": "+ Wechselrichter hinzufügen"
     },
     "houseMeter": {
-      "title": "🏠 Hausverbrauchszähler",
+      "title": "Hausverbrauchszähler",
       "subtitle": "Optional. Zeigt den Hausverbrauch auf der Gerätekachel. Ohne diesen Zähler wird die Hauslast aus Solar-, Netz- und Batteriewerten abgeleitet.",
       "desc": "Optional. Zeigt den Hausverbrauch auf der Gerätekachel an. Falls nicht angegeben, wird die Hauslast aus Solar-, Netz- und Batteriewerten abgeleitet.",
       "addButton": "+ Hauszähler hinzufügen"
     },
     "homeBatteries": {
-      "title": "🔋 Hausbatterien",
+      "title": "Hausbatterien",
       "subtitle": "Optional, aber empfohlen. Liefert den Batterie-SOC für den Batterieschutz: Fällt er unter das Minimum, stoppt das EMS Überschussgeräte und drosselt das Laden.",
       "desc": "Optional, aber empfohlen. Das EMS nutzt den Batterie-SOC zum Batterieschutz — fällt der SOC unter das Minimum, werden Überschussgeräte gestoppt und das EV-Laden gedrosselt oder pausiert.",
       "addButton": "+ Batterie hinzufügen",
@@ -965,7 +965,7 @@
       "offpeakTip": "<b>💡 Tipp — Off-Peak-Laden:</b> <em>Offpeak charging</em> am EMS-Gerät in Homey aktivieren, um EVs mit voller Leistung während günstiger Nachttarife zu laden, wenn der Solarüberschuss nicht ausreicht. Solarüberschuss hat weiterhin Priorität, wenn verfügbar (konfigurierbar), und Wochentag-/Wochenend-Fenster können unterschiedlich sein."
     },
     "gridMeter": {
-      "title": "⚡ Netzzähler",
+      "title": "Netzzähler",
       "subtitle": "Quelle für Netzbezug / -einspeisung",
       "desc": "Das EMS liest hier die Netzleistung, um den verfügbaren Überschuss zu berechnen. Positiv = Bezug, negativ = Einspeisung. Mehrere Zähler werden summiert.",
       "addButton": "+ Zähler hinzufügen",

@@ -222,7 +222,7 @@
       "diagnostics": "Diagnose"
     },
     "devicePriority": {
-      "title": "⚖️ Apparaatprioriteit",
+      "title": "Apparaatprioriteit",
       "evalOrder": {
         "title": "Evaluatievolgorde",
         "desc": "Sleep om de volgorde te wijzigen. Apparaten hoger in de lijst krijgen als eerste recht op het beschikbare zonneoverschot."
@@ -237,7 +237,7 @@
       "moveDown": "Omlaag verplaatsen"
     },
     "scheduler": {
-      "title": "⏱ Planner",
+      "title": "Planner",
       "addButton": "+ Taak toevoegen",
       "noFlowsFoundInFolder": "Geen flows gevonden in map _Huawei EMS",
       "selectFlow": "Selecteer flow…",
@@ -262,7 +262,7 @@
       "staleWarn": "⚠ verouderd — prijsgeoptimaliseerd laden valt terug op continu laden"
     },
     "price": {
-      "title": "💶 Elektriciteitsprijs",
+      "title": "Elektriciteitsprijs",
       "intro": "De huidige elektriciteitsprijs wordt weergegeven als apparaatwaarde (tegel, Insights, flow-token). Kies het tariefmodel:",
       "tariffModel": "Tariefmodel",
       "currency": "Valuta",
@@ -338,12 +338,12 @@
         "title": "Interval van de regelkring",
         "desc": "Hoe vaak het EMS zijn meters uitleest en beslist. Korter reageert sneller maar leest omvormer, meter en batterij navenant vaker uit; langer ontlast, waardoor de batterijondergrens en de netafnamelimiet later ingrijpen. Stroomprijs, laadtoestand van het voertuig en zonneprognose hangen niet aan het interval — elk volgt zijn eigen ritme, de Solcast-opvraging bijvoorbeeld hooguit elke 3 uur. Laat op 15 seconden staan tenzij de diagnose hieronder aanleiding geeft."
       },
-      "title": "🩺 EMS-diagnose",
+      "title": "EMS-diagnose",
       "subtitle": "live tick-status",
       "autoRefresh": "Ververst automatisch elke 3 s zolang geopend"
     },
     "history": {
-      "title": "📋 EMS-geschiedenis",
+      "title": "EMS-geschiedenis",
       "subtitle": "recente gebeurtenissen",
       "copy": "⧉ Kopiëren",
       "yesterday": "Gisteren",
@@ -398,7 +398,7 @@
       "exportLimitOff": "Exportlimiet gedeactiveerd"
     },
     "chargeSessions": {
-      "title": "🔌 Laadsessies",
+      "title": "Laadsessies",
       "subtitle": "energie & kosten per laadbeurt",
       "hint": "Eén regel per „inpluggen → uitpluggen”-periode, ongeacht de laadmodus. Een nog lopende sessie staat bovenaan, met de tot nu toe getelde energie.",
       "noneYet": "Nog geen afgeronde laadsessies.",
@@ -740,7 +740,7 @@
     "pvForecast": {
       "subtitleOff": "uit",
       "subtitleOn": "actief",
-      "title": "🌤 Zonprognose (Solcast)",
+      "title": "Zonprognose (Solcast)",
       "enableLabel": "Solcast PV-prognose inschakelen",
       "apiKeyLabel": "API-sleutel",
       "apiKeyPlaceholder": "Solcast API-sleutel",
@@ -755,7 +755,7 @@
       "chartUnconfigured": "Nog geen API-sleutel of locatie-ID opgeslagen"
     },
     "evChargers": {
-      "title": "🚗 EV-laders",
+      "title": "EV-laders",
       "subtitle": "zonneoverschot & tarief",
       "addButton": "+ Lader toevoegen",
       "compare": {
@@ -800,7 +800,7 @@
       "rowEnabledHint": "Staat dit uit, dan laat het EMS dit apparaat volledig met rust — het wordt niet in- of uitgeschakeld."
     },
     "cars": {
-      "title": "🚙 Auto's",
+      "title": "Auto's",
       "subtitle": "elektrisch of hybride",
       "intro": "Voeg één of meer voertuigen toe. Per auto worden het huidige laadniveau (uitgelezen van het geselecteerde apparaat) en de streefwaarde (ingesteld via flow) weergegeven als eigen apparaatwaarden (tegel, Insights, flow-tokens). Gebruik de <em>Flow instellen</em> van elke auto om de streefwaarde op het voertuig toe te passen.",
       "addButton": "+ Auto toevoegen"
@@ -812,44 +812,44 @@
       }
     },
     "heatPumps": {
-      "title": "♨️ Warmtepompen",
+      "title": "Warmtepompen",
       "hint": "Voeg elke warmtepomp toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om te starten, en optioneel een startvertraging (overschot moet dit aantal seconden aanhouden voordat de EMS inschakelt) en een stopvertraging (overschot mag dit aantal seconden wegvallen voordat de EMS uitschakelt — voorkomt snel schakelen).",
       "addButton": "+ Warmtepomp toevoegen"
     },
     "boilers": {
-      "title": "🚿 Boilers / Elektrische boilers",
+      "title": "Boilers / Elektrische boilers",
       "hint": "Voeg elke boiler of elektrische boiler toe die de EMS moet aansturen. Stel het minimaal benodigde zonneoverschot in om in te schakelen, en optioneel een start- en stopvertraging om snel schakelen te voorkomen.",
       "addButton": "+ Boiler / heater toevoegen"
     },
     "pool": {
-      "title": "💧 Zwembad / Whirlpool",
+      "title": "Zwembad / Whirlpool",
       "hint": "Voeg je zwembad- of whirlpoolpomp toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
       "addButton": "+ Zwembad / whirlpool toevoegen"
     },
     "dehumidifier": {
-      "title": "💨 Ontvochtiger",
+      "title": "Ontvochtiger",
       "hint": "Voeg je ontvochtiger toe. De EMS laat deze draaien zodra er voldoende zonneoverschot beschikbaar is. Gebruik de start- en stopvertraging om kort aan/uit schakelen te voorkomen.",
       "addButton": "+ Ontvochtiger toevoegen"
     },
     "aircon": {
-      "title": "❄️ Airco",
+      "title": "Airco",
       "hint": "Voeg je airco toe. Het EMS laat hem draaien zodra er voldoende zonneoverschot is. Gebruik de start- en stopflows om hem te schakelen.",
       "addButton": "+ Airco toevoegen"
     },
     "inverter": {
-      "title": "☀️ Zonne-omvormer",
+      "title": "Zonne-omvormer",
       "subtitle": "bron van zonneproductie",
       "desc": "De EMS leest de zonneproductie (W) van dit apparaat om het beschikbare overschot te berekenen. Meerdere omvormers worden opgeteld.",
       "addButton": "+ Omvormer toevoegen"
     },
     "houseMeter": {
-      "title": "🏠 Huisverbruiksmeter",
+      "title": "Huisverbruiksmeter",
       "subtitle": "Optioneel. Toont het huisverbruik op de apparaattegel. Zonder deze meter wordt de huisbelasting afgeleid van zon, net en batterij.",
       "desc": "Optioneel. Wordt gebruikt om het huisverbruik op de apparaattegel te tonen. Indien weggelaten wordt de huisbelasting afgeleid van de metingen van zon, net en batterij.",
       "addButton": "+ Huismeter toevoegen"
     },
     "homeBatteries": {
-      "title": "🔋 Thuisbatterijen",
+      "title": "Thuisbatterijen",
       "subtitle": "Optioneel maar aanbevolen. Levert de batterij-SOC voor batterijbescherming: onder het minimum stopt het EMS overschotapparaten en remt het laden af.",
       "desc": "Optioneel maar aanbevolen. De EMS gebruikt de batterij-SOC om de batterij te beschermen — wanneer de SOC onder het minimum zakt, worden overschotapparaten gestopt en wordt EV-laden gedrosseld of gepauzeerd.",
       "addButton": "+ Batterij toevoegen",
@@ -965,7 +965,7 @@
       "offpeakTip": "<b>💡 Tip — Daltarief laden:</b> Schakel <em>Daltarief laden</em> in op het EMS-apparaat in Homey om EV's op vol vermogen te laden tijdens goedkope nachttarieven wanneer het zonneoverschot ontoereikend is. Zonneoverschot krijgt nog steeds prioriteit indien beschikbaar (configureerbaar), en de vensters voor doordeweeks/weekend kunnen verschillen."
     },
     "gridMeter": {
-      "title": "⚡ Netmeter",
+      "title": "Netmeter",
       "subtitle": "bron van net-import/export",
       "desc": "De EMS leest hier het netvermogen om te bepalen hoeveel overschot beschikbaar is. Positief = kopen, negatief = verkopen. Meerdere meters worden opgeteld.",
       "addButton": "+ Meter toevoegen",

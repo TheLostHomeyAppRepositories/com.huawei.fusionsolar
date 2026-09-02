@@ -510,7 +510,7 @@
       position: relative;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 10px;
       min-height: 44px;
       padding: 8px 14px;
       background: none;
@@ -526,11 +526,40 @@
     .ems-list > details.ems-section + details.ems-section > summary::before {
       content: '';
       position: absolute;
-      left: 14px;
+      /* 14 padding + 29 tile + 10 gap: the line starts at the label, not at the icon.
+         iOS insets it exactly this far, and it is what stops a list of tiles from
+         reading as a stack of separate rows again. Tied to the tile size below — change
+         one and the other has to follow. */
+      left: 53px;
       right: 0;
       top: 0;
       height: 1px;
       background: var(--c-fill);
+    }
+    /* ── Section icons ───────────────────────────────────── */
+    /* A rounded square with a single white line-drawing, the way a settings list names
+       its rows. These replace emoji that lived in the TRANSLATION strings — an icon is
+       not translatable content, and keeping it there meant a translator could drop it.
+       The tile colours are all >= 3:1 against white; several of Apple's own system
+       colours are not, and Settings.app quietly falls short there. Hue kept, lightness
+       lowered until the glyph is legible. */
+    .ems-icon {
+      width: 29px;
+      height: 29px;
+      border-radius: 8px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ems-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     details.ems-section[open] > summary { border-bottom-color: var(--c-fill); }
     details.ems-section > summary::-webkit-details-marker { display: none; }
@@ -908,6 +937,26 @@
   </style>
 </head>
 <body>
+  <svg id="ems-icon-sprite" width="0" height="0" aria-hidden="true" style="position:absolute">
+    <symbol id="emsi-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="emsi-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
+    <symbol id="emsi-house" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+    <symbol id="emsi-battery" viewBox="0 0 24 24"><rect x="2" y="7" width="17" height="10" rx="3"/><path d="M22 10v4"/><path d="M6 11v2M10 11v2M14 11v2"/></symbol>
+    <symbol id="emsi-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-.9-1.7-1.5-3-1.5-1.9 0-3 1-3 2s1 1.5 3 2 3 1 3 2-1.1 2-3 2c-1.3 0-2.4-.6-3-1.5"/><path d="M12 6v12"/></symbol>
+    <symbol id="emsi-cloudsun" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M3.4 3.4l1 1M2 8h1.5M12.6 3.4l-1 1"/><path d="M8 19h9a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.6-1A3.5 3.5 0 0 0 8 19z"/></symbol>
+    <symbol id="emsi-charger" viewBox="0 0 24 24"><rect x="4" y="3" width="11" height="18" rx="2"/><path d="M9 7v3M9 14v3"/><path d="M15 9h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0v-7l-2-2"/></symbol>
+    <symbol id="emsi-car" viewBox="0 0 24 24"><path d="M4 15h16"/><path d="M5 15l1.6-5.2A2 2 0 0 1 8.5 8.4h7a2 2 0 0 1 1.9 1.4L19 15"/><path d="M4 15v3M20 15v3"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></symbol>
+    <symbol id="emsi-heat" viewBox="0 0 24 24"><path d="M7 20c-2-2-2-4 0-6s2-4 0-6"/><path d="M12 20c-2-2-2-4 0-6s2-4 0-6"/><path d="M17 20c-2-2-2-4 0-6s2-4 0-6"/></symbol>
+    <symbol id="emsi-droplet" viewBox="0 0 24 24"><path d="M12 3c3.5 4.2 5.5 7 5.5 9.5A5.5 5.5 0 0 1 6.5 12.5C6.5 10 8.5 7.2 12 3z"/></symbol>
+    <symbol id="emsi-waves" viewBox="0 0 24 24"><path d="M2 9c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0"/><path d="M2 15c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0"/></symbol>
+    <symbol id="emsi-dehum" viewBox="0 0 24 24"><path d="M12 3c3.5 4.2 5.5 7 5.5 9.5A5.5 5.5 0 0 1 6.5 12.5C6.5 10 8.5 7.2 12 3z"/><path d="M4 20 20 4"/></symbol>
+    <symbol id="emsi-snowflake" viewBox="0 0 24 24"><path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10"/><path d="M12 6l-2.5-2M12 6l2.5-2M12 18l-2.5 2M12 18l2.5 2"/></symbol>
+    <symbol id="emsi-priority" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h6"/></symbol>
+    <symbol id="emsi-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="emsi-pulse" viewBox="0 0 24 24"><path d="M2 12h4l3 8 5-17 3 9h5"/></symbol>
+    <symbol id="emsi-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+    <symbol id="emsi-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></symbol>
+  </svg>
 
   <!-- Boot splash — removed by bootFinish() once devices + config have landed. -->
   <div id="boot-splash">
@@ -1117,7 +1166,7 @@
       <div class="ems-group" data-i18n="group.dataSources">Data sources</div>
       <div class="ems-list">
       <details class="ems-section" id="ems-sec-inverter">
-        <summary><span class="ems-section-label" data-i18n="inverter.title" data-i18n-title="inverter.subtitle">☀️ Solar Inverter</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#d67d00"><svg aria-hidden="true"><use href="#emsi-sun"/></svg></span><span class="ems-section-label" data-i18n="inverter.title" data-i18n-title="inverter.subtitle">☀️ Solar Inverter</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:12px;color:var(--c-label-2);margin:0 0 8px;line-height:1.5" data-i18n="inverter.desc">The EMS reads solar production (W) from this device to calculate available surplus. Multiple inverters are summed.</p>
           <div id="ems-inverter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1203,7 +1252,7 @@
 
       <!-- Power Meter (P1) -->
       <details class="ems-section" id="ems-sec-gridmeter">
-        <summary><span class="ems-section-label" data-i18n="gridMeter.title" data-i18n-title="gridMeter.subtitle">⚡ Grid Meter</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#007aff"><svg aria-hidden="true"><use href="#emsi-bolt"/></svg></span><span class="ems-section-label" data-i18n="gridMeter.title" data-i18n-title="gridMeter.subtitle">⚡ Grid Meter</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:12px;color:var(--c-label-2);margin:0 0 8px;line-height:1.5" data-i18n="gridMeter.desc">The EMS reads grid power from here to determine how much surplus is available. Positive = buying, negative = selling. Multiple meters are summed.</p>
           <div id="ems-meter-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1227,7 +1276,7 @@
 
       <!-- House Consumption Meter -->
       <details class="ems-section" id="ems-sec-housemeter">
-        <summary><span class="ems-section-label" data-i18n="houseMeter.title" data-i18n-title="houseMeter.subtitle">🏠 House Consumption Meter</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#5856d6"><svg aria-hidden="true"><use href="#emsi-house"/></svg></span><span class="ems-section-label" data-i18n="houseMeter.title" data-i18n-title="houseMeter.subtitle">🏠 House Consumption Meter</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:12px;color:var(--c-label-2);margin:0 0 8px;line-height:1.5" data-i18n="houseMeter.desc">Optional. Used to show house consumption in the device tile. If omitted, house load is derived from solar, grid, and battery readings.</p>
           <div id="ems-house-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1237,7 +1286,7 @@
 
       <!-- Home Batteries -->
       <details class="ems-section" id="ems-sec-batteries">
-        <summary><span class="ems-section-label" data-i18n="homeBatteries.title" data-i18n-title="homeBatteries.subtitle">🔋 Home Batteries</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#2ca74b"><svg aria-hidden="true"><use href="#emsi-battery"/></svg></span><span class="ems-section-label" data-i18n="homeBatteries.title" data-i18n-title="homeBatteries.subtitle">🔋 Home Batteries</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p style="font-size:12px;color:var(--c-label-2);margin:0 0 8px;line-height:1.5" data-i18n="homeBatteries.desc">Optional but recommended. The EMS uses battery SOC to protect the battery — when SOC falls below the minimum, surplus devices are stopped and EV charging is throttled or paused.</p>
           <div id="ems-battery-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1312,7 +1361,7 @@
 
       <!-- Solar forecast (Solcast) -->
       <details class="ems-section" onToggle="if(this.open) emsPriceForecastLoad()">
-        <summary><span class="ems-section-label" data-i18n="price.title">💶 Electricity Price</span><span class="ems-section-state"><span id="ems-price-subtitle">fixed</span></span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#a2845e"><svg aria-hidden="true"><use href="#emsi-coin"/></svg></span><span class="ems-section-label" data-i18n="price.title">💶 Electricity Price</span><span class="ems-section-state"><span id="ems-price-subtitle">fixed</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
           <div class="tab-intro" style="margin-top:0" data-i18n="price.intro">
             The current electricity price is exposed as a device value (tile, Insights, flow token). Choose the tariff model:
@@ -1408,7 +1457,7 @@
         </div>
       </details>
       <details class="ems-section" id="ems-pvforecast-section">
-        <summary><span class="ems-section-label" data-i18n="pvForecast.title">🌤 Solar Forecast (Solcast)</span><span class="ems-section-state"><span id="ems-pvforecast-subtitle">off</span></span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#2d9ccf"><svg aria-hidden="true"><use href="#emsi-cloudsun"/></svg></span><span class="ems-section-label" data-i18n="pvForecast.title">🌤 Solar Forecast (Solcast)</span><span class="ems-section-state"><span id="ems-pvforecast-subtitle">off</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px">
             <input type="checkbox" id="ems-pvforecast-enabled" onchange="emsPvForecastToggle()">
@@ -1436,7 +1485,7 @@
       <div class="ems-group" data-i18n="group.controlledDevices">Controlled devices</div>
       <div class="ems-list">
       <details class="ems-section" id="ems-sec-chargers">
-        <summary><span class="ems-section-label" data-i18n="evChargers.title" data-i18n-title="evChargers.subtitle">🚗 EV Chargers</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#af52de"><svg aria-hidden="true"><use href="#emsi-charger"/></svg></span><span class="ems-section-label" data-i18n="evChargers.title" data-i18n-title="evChargers.subtitle">🚗 EV Chargers</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <details class="ems-callout" style="font-size:12px;line-height:1.6;margin-bottom:10px">
             <summary style="cursor:pointer;font-weight:600;color:var(--c-label-strong)" data-i18n="evChargers.compare.summary">Which "Charging mode" should I pick?</summary>
@@ -1529,7 +1578,7 @@
 
       <!-- Cars -->
       <details class="ems-section" id="ems-sec-cars">
-        <summary><span class="ems-section-label" data-i18n="cars.title" data-i18n-title="cars.subtitle">🚙 Cars</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#ff2d55"><svg aria-hidden="true"><use href="#emsi-car"/></svg></span><span class="ems-section-label" data-i18n="cars.title" data-i18n-title="cars.subtitle">🚙 Cars</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
           <div class="tab-intro" style="margin-top:0" data-i18n-html="cars.intro">
             Add one or more vehicles. Per car, the current charge level (read from the selected device) and the target charge (set via flow) are exposed as their own device values (tile, Insights, flow tokens). Use each car's <em>Flow setup</em> to apply the target charge to the vehicle.
@@ -1541,7 +1590,7 @@
 
       <!-- Heat Pumps -->
       <details class="ems-section" id="ems-sec-heatpumps">
-        <summary><span class="ems-section-label" data-i18n="heatPumps.title" data-i18n-title="simpleDevice.subtitle">♨️ Heat Pumps</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#ff3b30"><svg aria-hidden="true"><use href="#emsi-heat"/></svg></span><span class="ems-section-label" data-i18n="heatPumps.title" data-i18n-title="simpleDevice.subtitle">♨️ Heat Pumps</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="heatPumps.hint">Add each heat pump you want EMS to control. Set the minimum solar surplus required to start it, and optionally a start delay (surplus must hold that many seconds before EMS turns it on) and a stop delay (surplus may drop for that many seconds before EMS turns it off — avoids short cycling).</p>
           <div id="ems-heatpump-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1551,7 +1600,7 @@
 
       <!-- Boilers / Immersion Heaters -->
       <details class="ems-section" id="ems-sec-boilers">
-        <summary><span class="ems-section-label" data-i18n="boilers.title" data-i18n-title="simpleDevice.subtitle">🚿 Boilers / Immersion Heaters</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#2b9eb3"><svg aria-hidden="true"><use href="#emsi-droplet"/></svg></span><span class="ems-section-label" data-i18n="boilers.title" data-i18n-title="simpleDevice.subtitle">🚿 Boilers / Immersion Heaters</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="boilers.hint">Add each boiler or immersion heater you want EMS to control. Set the minimum solar surplus required to turn it on, and optionally a start delay and a stop delay to prevent rapid switching.</p>
           <div id="ems-boiler-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1561,7 +1610,7 @@
 
       <!-- Pool / Whirlpool -->
       <details class="ems-section" id="ems-sec-pool">
-        <summary><span class="ems-section-label" data-i18n="pool.title" data-i18n-title="simpleDevice.subtitle">💧 Pool / Whirlpool</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#00a39c"><svg aria-hidden="true"><use href="#emsi-waves"/></svg></span><span class="ems-section-label" data-i18n="pool.title" data-i18n-title="simpleDevice.subtitle">💧 Pool / Whirlpool</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="pool.hint">Add your pool or whirlpool pump. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-pool-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1571,7 +1620,7 @@
 
       <!-- Dehumidifier -->
       <details class="ems-section" id="ems-sec-dehumidifier">
-        <summary><span class="ems-section-label" data-i18n="dehumidifier.title" data-i18n-title="simpleDevice.subtitle">💨 Dehumidifier</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#b28f00"><svg aria-hidden="true"><use href="#emsi-dehum"/></svg></span><span class="ems-section-label" data-i18n="dehumidifier.title" data-i18n-title="simpleDevice.subtitle">💨 Dehumidifier</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="dehumidifier.hint">Add your dehumidifier. EMS will run it whenever sufficient solar surplus is available. Use the start and stop delays to avoid short on/off cycles.</p>
           <div id="ems-dehumidifier-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1581,7 +1630,7 @@
 
       <!-- Air Conditioner -->
       <details class="ems-section" id="ems-sec-aircon">
-        <summary><span class="ems-section-label" data-i18n="aircon.title" data-i18n-title="simpleDevice.subtitle">❄️ Air Conditioner</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#2d9ccf"><svg aria-hidden="true"><use href="#emsi-snowflake"/></svg></span><span class="ems-section-label" data-i18n="aircon.title" data-i18n-title="simpleDevice.subtitle">❄️ Air Conditioner</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body">
           <p class="ems-hint" data-i18n="aircon.hint">Add your air conditioner. EMS will run it whenever sufficient solar surplus is available. Use the start and stop flows to switch it.</p>
           <div id="ems-aircon-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -1591,7 +1640,7 @@
 
       <!-- Device Priority -->
       <details class="ems-section">
-        <summary><span class="ems-section-label" data-i18n="devicePriority.title">⚖️ Device Priority</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#8e8e93"><svg aria-hidden="true"><use href="#emsi-priority"/></svg></span><span class="ems-section-label" data-i18n="devicePriority.title">⚖️ Device Priority</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px">
         <span class="ems-toggle-title" data-i18n="devicePriority.evalOrder.title">Evaluation order</span>
@@ -1606,7 +1655,7 @@
       <div class="ems-group" data-i18n="group.tariffAutomation">Automation</div>
       <div class="ems-list">
       <details class="ems-section">
-        <summary><span class="ems-section-label" data-i18n="scheduler.title">⏱ Scheduler</span><span class="ems-section-state"><span id="ems-scheduler-count">no tasks</span></span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#8e8e93"><svg aria-hidden="true"><use href="#emsi-clock"/></svg></span><span class="ems-section-label" data-i18n="scheduler.title">⏱ Scheduler</span><span class="ems-section-state"><span id="ems-scheduler-count">no tasks</span></span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:14px">
           <div id="ems-scheduler-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
           <button class="btn-secondary" onclick="emsAddSchedulerTask()" style="font-size:12px;padding:4px 12px" data-i18n="scheduler.addButton">+ Add task</button>
@@ -1623,7 +1672,7 @@
       <!-- EMS Diagnostics (live tick health + last decision) -->
       <div class="ems-list">
       <details class="ems-section" id="ems-diag-section" onToggle="emsDiagToggle(this)">
-        <summary><span class="ems-section-label" data-i18n="diag.title" data-i18n-title="diag.subtitle">🩺 EMS Diagnostics</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#8e8e93"><svg aria-hidden="true"><use href="#emsi-pulse"/></svg></span><span class="ems-section-label" data-i18n="diag.title" data-i18n-title="diag.subtitle">🩺 EMS Diagnostics</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <span style="font-size:12px;color:var(--c-label-2)" data-i18n="diag.autoRefresh">Auto-refreshes every 3 s while open</span>
@@ -1654,7 +1703,7 @@
       </details>
       <!-- EMS History -->
       <details class="ems-section" id="ems-history-section" onToggle="if(this.open) emsHistoryLoad()">
-        <summary><span class="ems-section-label" data-i18n="history.title" data-i18n-title="history.subtitle">📋 EMS History</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#8e8e93"><svg aria-hidden="true"><use href="#emsi-list"/></svg></span><span class="ems-section-label" data-i18n="history.title" data-i18n-title="history.subtitle">📋 EMS History</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -1674,7 +1723,7 @@
       </details>
       <!-- Charge Sessions — energy + cost per completed EV charging session, any charge mode -->
       <details class="ems-section" id="ems-sessions-section" onToggle="if(this.open) emsChargeSessionsLoad()">
-        <summary><span class="ems-section-label" data-i18n="chargeSessions.title" data-i18n-title="chargeSessions.subtitle">🔌 Charge Sessions</span><span class="ems-section-chevron">▼</span></summary>
+        <summary><span class="ems-icon" style="background:#af52de"><svg aria-hidden="true"><use href="#emsi-plug"/></svg></span><span class="ems-section-label" data-i18n="chargeSessions.title" data-i18n-title="chargeSessions.subtitle">🔌 Charge Sessions</span><span class="ems-section-chevron">▼</span></summary>
         <div class="ems-section-body" style="padding-bottom:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
             <span style="font-size:12px;color:var(--c-label-2)" data-i18n="chargeSessions.hint">One entry per "plug in → unplug" period, any charging mode</span>
