@@ -50,20 +50,30 @@ test('the scan covers the IDs real installations actually use', () => {
 // being held busy — not a feature anyone would use twice, and it blocks polling meanwhile.
 test('the scan stays inside a length someone will actually sit through', () => {
   const list = scanList();
-  // Both constants are read as a pair, because they sit together in scanModbus and there
-  // is a second PROBE_TIMEOUT_MS elsewhere in the file for the single-driver check. An
-  // earlier version of this anchored on a trailing comment and broke the moment the
+  // All three timings are read as a group, because they sit together in scanModbus and
+  // there is a second PROBE_TIMEOUT_MS elsewhere in the file for the single-driver check.
+  // An earlier version of this anchored on a trailing comment and broke the moment the
   // comment moved — the estimate then silently became NaN.
-  const m = API.match(/PROBE_TIMEOUT_MS\s*=\s*(\d+);[\s\S]{0,200}?INTER_UNIT_GAP_MS\s*=\s*(\d+)/);
+  const m = API.match(/PROBE_TIMEOUT_MS\s*=\s*(\d+);[\s\S]{0,900}?EMMA_TIMEOUT_MS\s*=\s*(\d+);[\s\S]{0,200}?INTER_UNIT_GAP_MS\s*=\s*(\d+)/);
   assert.ok(m, 'the probe timings moved — this estimate is meaningless');
   const timeout = Number(m[1]);
-  const gap = Number(m[2]);
+  const emmaTimeout = Number(m[2]);
+  const gap = Number(m[3]);
   // Long enough for a device that has to open a session first: the connect timeout alone
   // is 10 s. Anything shorter measures which device is fastest, not which exist.
   assert.ok(timeout >= 10_000,
     `${timeout} ms per ID is below the 10 s a fresh connection may take, so a slow but `
     + 'healthy device is cut off before it can answer');
-  const worstCaseMs = list.length * timeout + (list.length - 1) * gap;
+  // Stage two runs against an address that has already answered, so it waits for a
+  // response and not for a connection. Measured: 1.2 s for a device answering its own
+  // EMMA registers. Below two seconds this would start cutting off a healthy one.
+  assert.ok(emmaTimeout >= 2_000 && emmaTimeout <= timeout,
+    `${emmaTimeout} ms for the second stage is either too short for a device that does `
+    + 'answer, or so long it may as well not be a separate budget');
+  // Both stages count. An estimate that forgot the second one would have gone on reading
+  // as comfortably inside the limit while the scan quietly took half again as long.
+  const perId = timeout + gap + emmaTimeout;
+  const worstCaseMs = list.length * perId + (list.length - 1) * gap;
   assert.ok(worstCaseMs <= 3 * 60_000,
     `worst case is ${Math.round(worstCaseMs / 1000)} s for ${list.length} IDs; `
     + 'past about three minutes the scan stops being something a person waits for');
@@ -103,6 +113,43 @@ test('stopping is offered, and the running block is allowed to finish', () => {
   // session short is exactly what leaves the device half-open.
   assert.match(SRC, /for \(let i = 0; i < UID_SCAN_LIST\.length; i \+= UID_SCAN_BLOCK\) \{\s*\n\s*if \(_uidScanAbort\) break;/,
     'the abort is not checked between blocks, so it either never stops or stops mid-session');
+});
+
+// Measured 2026-09-02 against the plant this app was written for, and the reason the probe
+// is split in two. The SUN2000 at unit 1 answered the five direct-Modbus registers in
+// 1.6 s and returned all five. Asked the four EMMA addresses instead, the same inverter
+// hung for 10.3 s and returned none — register 30354 timed out and the two after it came
+// back Server Device Busy. Asked all nine together it answered nothing at all inside the
+// twelve-second budget. So the inverter the owner kept telling us was there really was
+// there; the scan was spending its whole budget on addresses that address does not have.
+//
+// The second stage still runs, because a real EMMA needs those four registers — but only
+// for an address the first stage did not recognise, which a recognised device never is.
+test('the cheap registers are asked first, on their own', () => {
+  assert.match(API, /const PROBE_REGISTERS_DIRECT = \{/,
+    'the register set is no longer split, so every ID pays for the EMMA addresses again');
+  const direct = API.slice(API.indexOf('const PROBE_REGISTERS_DIRECT'),
+                           API.indexOf('const PROBE_REGISTERS_EMMA'));
+  assert.doesNotMatch(direct, /\bemma/i,
+    'an EMMA register crept back into the first stage — that is the group that hangs a SUN2000');
+  for (const reg of ['30000', '47750', '37410', '37500', '37100']) {
+    assert.ok(direct.includes(reg),
+      `register ${reg} left the first stage; it is one of the five that identify a direct device`);
+  }
+  assert.match(API, /probeModbusUnit\(host, parseInt\(port, 10\), unitId, PROBE_REGISTERS_DIRECT,/,
+    'the scan probes something other than the first stage first');
+});
+
+test('the second stage is skipped for an address that was already recognised', () => {
+  assert.match(API, /if \(data !== null && !identifyFromData\(unitId, data\)\.anyConfirmed\) \{/,
+    'the EMMA group is asked unconditionally, which puts the 10 s hang back on every device');
+  // Without the gap this opens a second session the instant the first closed. That exact
+  // mistake shipped once already, in 1.2.204, and left the gateway half-open.
+  const stage2 = API.slice(API.indexOf('if (data !== null && !identifyFromData'));
+  const call = stage2.indexOf('PROBE_REGISTERS_EMMA, EMMA_TIMEOUT_MS');
+  const wait = stage2.indexOf('setTimeout(r, INTER_UNIT_GAP_MS)');
+  assert.ok(wait > 0 && call > wait,
+    'the second session is opened without waiting out the gap after the first');
 });
 
 // Field-caught the day after this shipped: the scan reported unit IDs 16, 100 and 101 on a

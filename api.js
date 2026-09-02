@@ -596,22 +596,44 @@ module.exports = {
     // return a fifteen-register model-name string. The scan was not detecting devices, it
     // was measuring which ones happened to be fast.
     const PROBE_TIMEOUT_MS  = 12000;
+    // Stage two gets a shorter budget on purpose. Twelve seconds exists to cover a fresh
+    // connection (CONNECT_TIMEOUT_MS alone is 10 s), and by stage two this address has
+    // already proven it connects — what is left to wait for is a response, so the budget is
+    // the response budget. Measured 2026-09-02: a device answering its own EMMA registers
+    // took 1.2 s, while a SUN2000 asked the same four hung for 10.3 s before giving up.
+    // Five seconds separates those two cases cleanly and matches RESPONSE_TIMEOUT_MS.
+    const EMMA_TIMEOUT_MS   = 5000;
     const INTER_UNIT_GAP_MS = 2000; // give the device time to fully close the previous TCP session
 
     // Every unit ID gets the same register set.
     // Identification is based purely on register values — not on unit ID —
     // so users who change the default unit IDs are still recognised correctly.
-    const PROBE_REGISTERS = {
+    // Split in two on purpose, and asked in two stages.
+    //
+    // Measured on 2026-09-02 against a live SDongle: the full nine-group set takes six to
+    // eight seconds for the inverter behind the gateway, against roughly one second for the
+    // direct-Modbus group alone. Six seconds sits close enough to the twelve-second budget
+    // that ordinary contention with the app's own polling pushes it over — which is why the
+    // same address answered on one run and not the next.
+    //
+    // The EMMA group is also where the false positives came from: an SDongle answers those
+    // addresses with a plain 0 rather than an exception, and a zero used to be proof enough.
+    // Asking them only when nothing else matched removes that collision as a side effect,
+    // because a recognised device never reaches the second stage.
+    const PROBE_REGISTERS_DIRECT = {
       modelName:            [30000, 15, 'STRING', 'Model Name (SUN2000)', 0],
+      luna2000Modules:      [47750,  1, 'UINT16', 'Battery modules unit 1 (> 0 = LUNA2000 present)', 0],
+      sdongleConnType:      [37410,  1, 'UINT16', 'SDongle Connection Type', 0],
+      sdongleLoadPower:     [37500,  2, 'UINT32', 'SDongle Load Power (W)', 0],  // house consumption
+      dtsuMeterStatus:      [37100,  1, 'UINT16', 'DTSU666 Meter Status (1 = online)', 0],
+    };
+    const PROBE_REGISTERS_EMMA = {
       emmaPvPower:          [30354,  2, 'UINT32', 'EMMA PV Power (W)', 0],
       emmaFeedInPower:      [30358,  2, 'INT32',  'EMMA Feed-in Power (W)', 0],     // powermeter_emma_modbus
       emmaBatteryCapacity:  [30369,  2, 'UINT32', 'EMMA ESS Chargeable Capacity (kWh)', -3], // luna2000_emma_modbus
       emmaChargerRatedPow:  [30076,  2, 'UINT32', 'Smart Charger Rated Power (W)', -1], // smartcharger_emma_modbus
-      luna2000Modules:      [47750,  1, 'UINT16', 'Battery modules unit 1 (> 0 = LUNA2000 present)', 0],
-      sdongleConnType:      [37410,  1, 'UINT16', 'SDongle Connection Type', 0],
-      sdongleLoadPower:     [37500,  2, 'UINT32', 'SDongle Load Power (W)', 0],  // house consumption — always present, day & night
-      dtsuMeterStatus:      [37100,  1, 'UINT16', 'DTSU666 Meter Status (1 = online)', 0],
     };
+    const PROBE_REGISTERS = { ...PROBE_REGISTERS_DIRECT, ...PROBE_REGISTERS_EMMA };
 
     const CONN_TYPE_LABEL = { 0: 'N/A', 2: 'WLAN', 3: '4G', 4: 'WLAN-FE', 5: 'WLAN-FE' };
 
@@ -630,9 +652,27 @@ module.exports = {
 
       const lunaConf      = typeof lunaModules === 'number' && lunaModules > 0;
       const dtsuConf      = dtsuStatus === 1;
-      const emmaConf      = emmaPvPow !== null && emmaPvPow !== undefined && emmaPvPow < 1e9;
-      const lunaEmmaConf  = typeof emmaBatCap === 'number' && emmaBatCap !== null;
-      const meterEmmaConf = emmaFeedIn !== null && emmaFeedIn !== undefined && Math.abs(emmaFeedIn) < 1e9;
+
+      // The EMMA group needs a shared gate, and here is why. Measured on 2026-09-02 against
+      // an SDongle at unit 100: it answers all four EMMA addresses — no exception, just a
+      // plain 0 for each. The old test asked only whether a number came back, so four zeroes
+      // read as three confirmed EMMA drivers on a plant that has no EMMA at all.
+      //
+      // A zero is therefore not proof on its own. At least one address in the group has to
+      // carry something, which is the same discipline sdongleConf already applies below and
+      // for the same reason. Not free of risk: an EMMA at night, with no battery, no charger
+      // and exactly 0 W crossing the meter would fall through this and read as unidentified.
+      // That is the direction to be wrong in — the tester shows unconfirmed drivers with a
+      // retry, whereas a wrong green sends someone off to add hardware they do not own.
+      const emmaLive = [emmaPvPow, emmaFeedIn, emmaBatCap, chargerPow]
+        .some((v) => typeof v === 'number' && Number.isFinite(v) && v !== 0);
+
+      const emmaConf      = emmaLive && typeof emmaPvPow === 'number' && emmaPvPow < 1e9;
+      // Untested for want of the hardware: whether an EMMA without a battery answers 30369
+      // with a 0 or with an exception. If it answers 0, this still reports a LUNA2000 that
+      // is not there — narrower than the bug above, and not something to guess a fix for.
+      const lunaEmmaConf  = emmaLive && typeof emmaBatCap === 'number' && Number.isFinite(emmaBatCap);
+      const meterEmmaConf = emmaLive && typeof emmaFeedIn === 'number' && Math.abs(emmaFeedIn) < 1e9;
       const chargerConf   = typeof chargerPow === 'number' && chargerPow > 0 && chargerPow < 100000;
       // SDongle: connection type must be an active type (≥ 2 = WLAN/4G/WLAN-FE),
       // AND PV power register 37498 must return a plausible value.
@@ -647,6 +687,11 @@ module.exports = {
       const sdongleConf    = ct !== null && ct !== undefined && ct >= 2 && ct <= 5
                           && sdongleLoadPow !== null && sdongleLoadPow !== undefined
                           && sdongleLoadPow > 0 && sdongleLoadPow < 1e9;
+
+      // The scan asks the EMMA group only when the cheap group recognised nothing, so an
+      // absent key means "never asked" and a null means "asked, no answer". Printing both
+      // as "not found" would report a measurement that was never taken.
+      const shown = (v) => (v === undefined ? 'not queried' : `${v ?? 'null'} — not found`);
 
       const compatible = [
         // ── Direct Modbus drivers ─────────────────────────────────────────────
@@ -684,28 +729,28 @@ module.exports = {
           confirmed: emmaConf,
           detail:    emmaConf
             ? `Register 30354 (PV power) = ${emmaPvPow} W`
-            : `Register 30354 (PV power) = ${emmaPvPow ?? 'null'} — not found`,
+            : `Register 30354 (PV power) = ${shown(emmaPvPow)}`,
         },
         {
           driver:    `luna2000_emma_modbus (Unit ID ${unitId})`,
           confirmed: lunaEmmaConf,
           detail:    lunaEmmaConf
             ? `Register 30369 (ESS chargeable capacity) = ${emmaBatCap} kWh`
-            : `Register 30369 (ESS chargeable capacity) = ${emmaBatCap ?? 'null'} — not found`,
+            : `Register 30369 (ESS chargeable capacity) = ${shown(emmaBatCap)}`,
         },
         {
           driver:    `powermeter_emma_modbus (Unit ID ${unitId})`,
           confirmed: meterEmmaConf,
           detail:    meterEmmaConf
             ? `Register 30358 (feed-in power) = ${emmaFeedIn} W`
-            : `Register 30358 (feed-in power) = ${emmaFeedIn ?? 'null'} — not found`,
+            : `Register 30358 (feed-in power) = ${shown(emmaFeedIn)}`,
         },
         {
           driver:    `smartcharger_emma_modbus (Unit ID ${unitId})`,
           confirmed: chargerConf,
           detail:    chargerConf
             ? `Register 30076 (charger rated power) = ${chargerPow} W`
-            : `Register 30076 (charger rated power) = ${chargerPow ?? 'null'} — not found`,
+            : `Register 30076 (charger rated power) = ${shown(chargerPow)}`,
         },
       ];
 
@@ -773,7 +818,18 @@ module.exports = {
         // or null when the connection itself failed (timeout / refused / error).
         // Individual register exceptions inside the session are captured as null values
         // in the returned object — that still counts as "responds: true".
-        const data = await probeModbusUnit(host, parseInt(port, 10), unitId, PROBE_REGISTERS, PROBE_TIMEOUT_MS);
+        // Stage one: the direct-Modbus registers, which is what nearly every address turns
+        // out to be. About a second where the full set took six.
+        let data = await probeModbusUnit(host, parseInt(port, 10), unitId, PROBE_REGISTERS_DIRECT, PROBE_TIMEOUT_MS);
+
+        // Stage two, only when stage one recognised nothing: the EMMA group. It costs
+        // another session, so it waits the same gap the loop keeps between addresses —
+        // opening one the instant the last closed is what leaves these gateways half-open.
+        if (data !== null && !identifyFromData(unitId, data).anyConfirmed) {
+          await new Promise((r) => setTimeout(r, INTER_UNIT_GAP_MS)); // eslint-disable-line no-promise-executor-return
+          const emma = await probeModbusUnit(host, parseInt(port, 10), unitId, PROBE_REGISTERS_EMMA, EMMA_TIMEOUT_MS);
+          if (emma) data = { ...data, ...emma };
+        }
 
         if (data === null) {
           log(`  Unit ${unitId}: no response (connection failed / timeout)`);
