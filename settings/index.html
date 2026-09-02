@@ -2927,7 +2927,7 @@
           out.textContent = _H.__('settings.tester.scanProgress')
             .replace('{{done}}', String(i))
             .replace('{{total}}', String(UID_SCAN_LIST.length))
-            .replace('{{found}}', String(found.length));
+            .replace('{{found}}', String(found.filter((f) => f.confirmed).length));
 
           let res;
           try {
@@ -2938,10 +2938,24 @@
           }
 
           for (const r of (res && res.results) || []) {
-            if (!r.responds) continue;
-            found.push(r.unitId);
-            // Add it as a chip so the driver checks below can be run against it right
-            // away — finding an ID is only half of what the user came for.
+            // `responds` only means the TCP session opened — and in Modbus TCP the
+            // connection is made to the HOST, not to a unit ID, so every ID on a host with
+            // port 502 open "responds". Reporting that as a find listed three unit IDs on
+            // a plant that has one device. What counts is whether registers came back with
+            // content: anyConfirmed when a driver was recognised, otherwise at least one
+            // non-empty value. All-null is an open socket and nothing behind it.
+            if (!r.responds || !r.data) continue;
+            const confirmed = !!(r.identified && r.identified.anyConfirmed);
+            const anyValue  = Object.values(r.data).some(
+              (v) => v !== null && v !== undefined && v !== '');
+            if (!confirmed && !anyValue) continue;
+
+            found.push({ unitId: r.unitId, confirmed, type: (r.identified && r.identified.type) || '' });
+            // Only a recognised device earns a button. An ID that returned some register
+            // content without matching a driver is worth reporting — it may be a model
+            // this app does not know — but silently offering it for a driver check would
+            // send the user down a path that cannot succeed.
+            if (!confirmed) continue;
             const chips = document.getElementById(`${cfgId}-chips`);
             if (chips && !chips.querySelector(`[data-uid="${r.unitId}"]`)) {
               chips.appendChild(makeChip(r.unitId, cfgId, false));
@@ -2949,9 +2963,20 @@
           }
         }
 
-        out.textContent = found.length
-          ? _H.__('settings.tester.scanFound').replace('{{ids}}', found.join(', '))
-          : _H.__('settings.tester.scanNone');
+        // Two different findings, reported as two different sentences. Lumping them
+        // together is what made an open socket look like a device.
+        const sure  = found.filter((f) => f.confirmed);
+        const maybe = found.filter((f) => !f.confirmed);
+        const parts = [];
+        if (sure.length) {
+          parts.push(_H.__('settings.tester.scanFound')
+            .replace('{{ids}}', sure.map((f) => `${f.unitId} (${f.type})`).join(', ')));
+        }
+        if (maybe.length) {
+          parts.push(_H.__('settings.tester.scanUnknown')
+            .replace('{{ids}}', maybe.map((f) => f.unitId).join(', ')));
+        }
+        out.textContent = parts.length ? parts.join(' ') : _H.__('settings.tester.scanNone');
       } finally {
         btn.dataset.running = '';
         btn.textContent = _H.__('settings.tester.scanUids');

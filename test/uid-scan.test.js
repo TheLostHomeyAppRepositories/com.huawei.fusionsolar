@@ -94,3 +94,48 @@ test('stopping is offered, and the running block is allowed to finish', () => {
   assert.match(SRC, /for \(let i = 0; i < UID_SCAN_LIST\.length; i \+= UID_SCAN_BLOCK\) \{\s*\n\s*if \(_uidScanAbort\) break;/,
     'the abort is not checked between blocks, so it either never stops or stops mid-session');
 });
+
+// Field-caught the day after this shipped: the scan reported unit IDs 16, 100 and 101 on a
+// plant with one device. `responds` from POST /scan/modbus only means the TCP session
+// opened — and in Modbus TCP the connection is made to the HOST, not to a unit ID, so on a
+// host with port 502 open EVERY id "responds". The register values are what separate a
+// device from an open socket, and the endpoint's own comment says so:
+//   "Individual register exceptions ... are captured as null values in the returned
+//    object — that still counts as responds: true."
+test('an open socket is not reported as a device', () => {
+  assert.match(SRC, /if \(!r\.responds \|\| !r\.data\) continue;/,
+    'a result without register data is treated as a find again');
+  assert.match(SRC, /anyConfirmed/,
+    'the scan no longer looks at whether a driver was actually recognised');
+  // The GUARD, not the calculation. Computing anyValue and then not acting on it reads
+  // perfectly well and lets every open socket through — which is the mistake this test
+  // exists for, so asserting that the variable is merely present proves nothing.
+  assert.match(SRC, /const anyValue\s+= Object\.values\(r\.data\)\.some\(/,
+    'nothing works out whether any register came back with content');
+  assert.match(SRC, /if \(!confirmed && !anyValue\) continue;/,
+    'the all-null case is computed but no longer skipped, so an open socket counts as a hit');
+});
+
+// A button invites a driver check. Offering one for an ID that answered but matched no
+// driver sends the user down a path that cannot succeed — it is worth reporting, not
+// worth offering.
+test('only a recognised device earns a button', () => {
+  const fn = SRC.slice(SRC.indexOf('async function scanUnitIds'));
+  const body = fn.slice(0, fn.indexOf('\n    function addCustomUid'));
+  const guard = body.indexOf('if (!confirmed) continue;');
+  const chip  = body.indexOf('chips.appendChild(makeChip(');
+  assert.ok(guard > 0 && chip > guard,
+    'the chip is added before the confirmed check, so unidentified IDs get buttons too');
+});
+
+// The two findings mean different things and are reported as different sentences. One
+// combined "found" line is exactly what made an open port look like hardware.
+test('recognised and merely-answering IDs are reported separately', () => {
+  assert.match(SRC, /settings\.tester\.scanUnknown/, 'the "answered but unknown" case has no message');
+  for (const lang of ['en', 'de', 'nl']) {
+    const t = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'))
+      .settings.tester;
+    assert.strictEqual(typeof t.scanUnknown, 'string', `${lang}: scanUnknown is missing`);
+    assert.match(t.scanUnknown, /\{\{ids\}\}/, `${lang}: scanUnknown lost its placeholder`);
+  }
+});
