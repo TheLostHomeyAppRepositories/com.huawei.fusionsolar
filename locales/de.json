@@ -159,6 +159,7 @@
       "scanFound": "Gefunden: {{ids}} — oben als Knöpfe hinzugefügt",
       "scanUnknown": "Antwort ohne erkanntes Gerät bei: {{ids}} (ein offener Port ist noch kein Gerät).",
       "scanNone": "Keine Unit-ID hat geantwortet. Prüfe zuerst IP und Port.",
+      "scanNoConnection": "Zu keiner Unit-ID kam eine Verbindung zustande. Vermutlich stimmen Adresse oder Port nicht, oder das Gerät hat jede Sitzung abgelehnt.",
       "scanFailed": "Scan fehlgeschlagen:",
       "noteDownHint": "<strong>IP-Adresse, Port und Unit-ID</strong> bestätigter Treiber notieren — diese Werte werden beim Koppeln des Geräts in Homey benötigt.",
       "detectionNotGuaranteed": "<strong>Erkennung ist nicht garantiert.</strong> Ergebnisse basieren auf Registerwerten, die je nach Firmware-Version oder individueller Konfiguration variieren können. Das Gerät nach dem Koppeln immer verifizieren.",

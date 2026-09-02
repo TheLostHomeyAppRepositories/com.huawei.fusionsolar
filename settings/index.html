@@ -2924,6 +2924,11 @@
       btn.textContent = _H.__('settings.tester.scanStop');
       out.style.display = '';
       const found = [];
+      // Counted so an empty result can say WHICH kind of empty it was. "Nothing answered"
+      // covers two very different situations — no TCP session at all (wrong address, or a
+      // device that would not let us in) versus sessions that opened and returned nothing
+      // — and they call for opposite next steps.
+      let noConnection = 0;
 
       try {
         for (let i = 0; i < UID_SCAN_LIST.length; i += UID_SCAN_BLOCK) {
@@ -2949,7 +2954,8 @@
             // a plant that has one device. What counts is whether registers came back with
             // content: anyConfirmed when a driver was recognised, otherwise at least one
             // non-empty value. All-null is an open socket and nothing behind it.
-            if (!r.responds || !r.data) continue;
+            if (!r.responds) { noConnection++; continue; }
+            if (!r.data) continue;
             const confirmed = !!(r.identified && r.identified.anyConfirmed);
             const anyValue  = Object.values(r.data).some(
               (v) => v !== null && v !== undefined && v !== '');
@@ -2990,7 +2996,11 @@
           parts.push(_H.__('settings.tester.scanUnknown')
             .replace('{{ids}}', maybe.map((f) => (f.who ? `${f.unitId} (${f.who})` : String(f.unitId))).join(', ')));
         }
-        out.textContent = parts.length ? parts.join(' ') : _H.__('settings.tester.scanNone');
+        out.textContent = parts.length
+          ? parts.join(' ')
+          : _H.__(noConnection >= UID_SCAN_LIST.length
+            ? 'settings.tester.scanNoConnection'   // not one session opened
+            : 'settings.tester.scanNone');         // sessions opened, nothing behind them
       } finally {
         btn.dataset.running = '';
         btn.textContent = _H.__('settings.tester.scanUids');

@@ -159,6 +159,7 @@
       "scanFound": "Gevonden: {{ids}} — hierboven als knoppen toegevoegd",
       "scanUnknown": "Antwoord zonder herkend apparaat bij: {{ids}} (een open poort is nog geen apparaat).",
       "scanNone": "Geen enkele unit-ID reageerde. Controleer eerst IP en poort.",
+      "scanNoConnection": "Naar geen enkele unit-ID kwam een verbinding tot stand. Waarschijnlijk klopt het adres of de poort niet, of het apparaat weigerde elke sessie.",
       "scanFailed": "Scan mislukt:",
       "noteDownHint": "<strong>Noteer het IP-adres, de poort en de eenheid-ID</strong> van bevestigde drivers — deze waarden heb je nodig bij het koppelen van het apparaat in Homey.",
       "detectionNotGuaranteed": "<strong>Detectie is niet gegarandeerd.</strong> Resultaten zijn gebaseerd op registerwaarden die kunnen variëren tussen firmwareversies of aangepaste configuraties. Controleer het apparaat altijd na het koppelen.",

@@ -159,6 +159,7 @@
       "scanFound": "Found: {{ids}} — added as buttons above",
       "scanUnknown": "Answered without a recognised device: {{ids}} (an open port is not a device).",
       "scanNone": "No unit ID responded. Check the IP and port first.",
+      "scanNoConnection": "No connection to any unit ID. The address or port is likely wrong, or the device refused every session.",
       "scanFailed": "Scan failed:",
       "noteDownHint": "<strong>Note down the IP address, Port and Unit ID</strong> of confirmed drivers — you will need these values when pairing the device in Homey.",
       "detectionNotGuaranteed": "<strong>Detection is not guaranteed.</strong> Results are based on register values that may vary between firmware versions or custom configurations. Always verify the device after pairing.",

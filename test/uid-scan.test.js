@@ -113,7 +113,9 @@ test('stopping is offered, and the running block is allowed to finish', () => {
 //   "Individual register exceptions ... are captured as null values in the returned
 //    object — that still counts as responds: true."
 test('an open socket is not reported as a device', () => {
-  assert.match(SRC, /if \(!r\.responds \|\| !r\.data\) continue;/,
+  assert.match(SRC, /if \(!r\.responds\)[^\n]*continue;/,
+    'a result whose connection failed is treated as a find again');
+  assert.match(SRC, /if \(!r\.data\) continue;/,
     'a result without register data is treated as a find again');
   assert.match(SRC, /anyConfirmed/,
     'the scan no longer looks at whether a driver was actually recognised');
@@ -156,8 +158,42 @@ test('recognised and merely-answering IDs are reported separately', () => {
 test('the device-identification probe is a fallback, not a second pass', () => {
   const scan = API.slice(API.indexOf('async scanModbus'));
   const body = scan.slice(0, scan.indexOf('\n  /**'));
-  assert.match(body, /if \(!identified\.anyConfirmed\) \{\s*\n\s*deviceId = await readDeviceIdentification/,
+  // Asserted as "the call sits inside the not-confirmed branch", not as "the two lines are
+  // adjacent" — the gap that has to precede the session now stands between them, and a
+  // test that pins the exact shape breaks on every correct edit.
+  const branch = body.slice(body.indexOf('if (!identified.anyConfirmed) {'));
+  assert.ok(branch.startsWith('if (!identified.anyConfirmed) {'),
+    'the identification probe is no longer guarded by the not-confirmed branch');
+  assert.match(branch.slice(0, branch.indexOf('\n        }')), /readDeviceIdentification/,
     'the identification probe runs for every unit ID, doubling the sessions opened');
   assert.match(body, /readDeviceIdentification\(host, parseInt\(port, 10\), unitId, 3000\)/,
     'the short timeout is gone — this probe must not cost as much as a register read');
+});
+
+// Regression, self-inflicted in 1.2.204: the identification probe opened a SECOND TCP
+// session the instant the register probe closed its own. On hardware that permits one
+// session that is not a slow path, it is the half-open state the gap exists to prevent —
+// and it took the NEXT unit ID down with it, so a scan that had been finding the SDongle
+// came back completely empty. Every new session waits, not every new unit ID.
+test('the identification probe waits before opening its own session', () => {
+  const scan = API.slice(API.indexOf('async scanModbus'));
+  const body = scan.slice(0, scan.indexOf('\n  /**'));
+  assert.match(body,
+    /await new Promise\(\(r\) => setTimeout\(r, INTER_UNIT_GAP_MS\)\);[\s\S]{0,120}?readDeviceIdentification/,
+    'the second session is opened with no gap after the first, which leaves the device '
+    + 'half-open and breaks the probe that follows');
+});
+
+// "Nothing answered" covers two situations that call for opposite next steps: no session
+// opened at all (wrong address or port), or sessions opened with nothing behind them.
+test('an empty result says which kind of empty it was', () => {
+  assert.match(SRC, /let noConnection = 0;/, 'connection failures are no longer counted');
+  assert.match(SRC, /if \(!r\.responds\) \{ noConnection\+\+; continue; \}/,
+    'a failed connection is not distinguished from an empty response');
+  assert.match(SRC, /settings\.tester\.scanNoConnection/, 'the "nothing connected" message is gone');
+  for (const lang of ['en', 'de', 'nl']) {
+    const t = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8'))
+      .settings.tester;
+    assert.strictEqual(typeof t.scanNoConnection, 'string', `${lang}: scanNoConnection is missing`);
+  }
 });

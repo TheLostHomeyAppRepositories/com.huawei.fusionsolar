@@ -800,6 +800,13 @@ module.exports = {
         // evidence when withheld.
         let deviceId = null;
         if (!identified.anyConfirmed) {
+          // The same gap the loop keeps between unit IDs, for the same reason — this is a
+          // SECOND TCP session to a device that generally permits one, and opening it the
+          // instant the register probe closed its own is what the gap exists to prevent.
+          // Left out at first, and it did not merely fail: the device was left half-open
+          // and the NEXT unit ID failed too, so a scan that had been finding the SDongle
+          // came back empty. Every new session waits, not every new unit ID.
+          await new Promise((r) => setTimeout(r, INTER_UNIT_GAP_MS)); // eslint-disable-line no-promise-executor-return
           deviceId = await readDeviceIdentification(host, parseInt(port, 10), unitId, 3000);
           if (deviceId) {
             log(`  Unit ${unitId}: identifies itself as `
