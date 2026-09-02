@@ -2882,6 +2882,83 @@
       return btn;
     }
 
+    // ── Unit-ID scan ──────────────────────────────────────────────────────────
+    // The probing itself already existed: POST /scan/modbus walks a list of unit IDs and
+    // identifies the driver from register VALUES, so a device whose ID was changed from
+    // the factory default is still recognised. Only the list was fixed at five.
+    //
+    // Two constraints shape this, and neither is a matter of taste:
+    //
+    //   Serial only. Huawei devices generally allow ONE TCP session on port 502, so the
+    //   endpoint probes sequentially with a 2 s gap. Probing in parallel does not merely
+    //   fail — it leaves the device half-open and blocks the next attempt too.
+    //
+    //   In blocks. At 4 s timeout plus 2 s gap, a silent ID costs six seconds; nineteen of
+    //   them is close to two minutes. One request that only answers at the end would run
+    //   into the API timeout and show nothing meanwhile. Four IDs per call keeps each
+    //   request short, lets the list fill in as it goes, and makes stopping possible.
+    //
+    // 0-16 covers what real installations use (inverter usually 1, EMMA 0 or 1, meters
+    // often 11 or 16); 100 and 101 are the SDongle's. A full 1-247 sweep would take about
+    // 25 minutes, which is not a feature anyone would use twice.
+    const UID_SCAN_LIST  = [...Array(17).keys()].concat([100, 101]);
+    const UID_SCAN_BLOCK = 4;
+    let   _uidScanAbort  = false;
+
+    async function scanUnitIds(host, port, cfgId) {
+      const btn = document.getElementById(`${cfgId}-uidscan-btn`);
+      const out = document.getElementById(`${cfgId}-uidscan`);
+      if (!btn || !out) return;
+
+      // Second click stops it. The block in flight still has to finish — the device is
+      // mid-session and cutting it short is what leaves it half-open.
+      if (btn.dataset.running === '1') { _uidScanAbort = true; btn.textContent = _H.__('settings.tester.scanStopping'); return; }
+
+      _uidScanAbort = false;
+      btn.dataset.running = '1';
+      btn.textContent = _H.__('settings.tester.scanStop');
+      out.style.display = '';
+      const found = [];
+
+      try {
+        for (let i = 0; i < UID_SCAN_LIST.length; i += UID_SCAN_BLOCK) {
+          if (_uidScanAbort) break;
+          const block = UID_SCAN_LIST.slice(i, i + UID_SCAN_BLOCK);
+          out.textContent = _H.__('settings.tester.scanProgress')
+            .replace('{{done}}', String(i))
+            .replace('{{total}}', String(UID_SCAN_LIST.length))
+            .replace('{{found}}', String(found.length));
+
+          let res;
+          try {
+            res = await apiPost('/scan/modbus', { host, port, unitIds: block.join(',') });
+          } catch (e) {
+            out.textContent = _H.__('settings.tester.scanFailed') + ' ' + (e && e.message ? e.message : '');
+            return;
+          }
+
+          for (const r of (res && res.results) || []) {
+            if (!r.responds) continue;
+            found.push(r.unitId);
+            // Add it as a chip so the driver checks below can be run against it right
+            // away — finding an ID is only half of what the user came for.
+            const chips = document.getElementById(`${cfgId}-chips`);
+            if (chips && !chips.querySelector(`[data-uid="${r.unitId}"]`)) {
+              chips.appendChild(makeChip(r.unitId, cfgId, false));
+            }
+          }
+        }
+
+        out.textContent = found.length
+          ? _H.__('settings.tester.scanFound').replace('{{ids}}', found.join(', '))
+          : _H.__('settings.tester.scanNone');
+      } finally {
+        btn.dataset.running = '';
+        btn.textContent = _H.__('settings.tester.scanUids');
+        _uidScanAbort = false;
+      }
+    }
+
     function addCustomUid(cfgId) {
       const input = document.getElementById(`${cfgId}-custom`);
       const val   = parseInt(input.value, 10);
@@ -2913,7 +2990,10 @@
             onkeydown="if(event.key==='Enter') addCustomUid('${cfgId}')">
           <button class="btn-secondary" style="font-size:12px;padding:3px 10px"
             onclick="addCustomUid('${cfgId}')">${_H.__('settings.tester.addPlus')}</button>
+          <button class="btn-secondary" id="${cfgId}-uidscan-btn" style="font-size:12px;padding:3px 10px"
+            onclick="scanUnitIds('${escHtml(host)}', ${port}, '${cfgId}')">${_H.__('settings.tester.scanUids')}</button>
         </div>
+        <div id="${cfgId}-uidscan" style="display:none;font-size:12px;color:var(--c-label-2);margin-top:6px"></div>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--c-fill);
                     display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:600;color:var(--c-label-strong)">${_H.__('settings.tester.driversColon')}</span>
