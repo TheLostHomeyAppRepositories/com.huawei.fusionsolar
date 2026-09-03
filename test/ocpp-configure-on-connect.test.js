@@ -35,8 +35,9 @@ const SRC = fs.readFileSync(path.join(__dirname, '..', 'lib', 'ocpp-server.js'),
 // name — a call site reads just like one and slices in the wrong place, which is how the
 // first version of this file managed to fail against correct code.
 function block(name) {
-  const at = SRC.indexOf(`\n  ${name} {`);
-  assert.ok(at > 0, `${name} is gone or renamed`);
+  const at = [`\n  ${name} {`, `\n  async ${name} {`]
+    .map((needle) => SRC.indexOf(needle)).find((i) => i > 0);
+  assert.ok(at !== undefined, `${name} is gone or renamed`);
   const end = SRC.indexOf('\n  }\n', at);
   assert.ok(end > at, `could not find the end of ${name}`);
   return SRC.slice(at, end);
@@ -59,9 +60,9 @@ test('a real boot still reconfigures', () => {
 // which is exactly the blank device the owner reported.
 test('the configuration asks for the readings the device shows', () => {
   const body = block('_configureCharger(stationId, ws)');
-  assert.match(body, /key:\s*'MeterValuesSampledData'/,
+  assert.match(body, /'MeterValuesSampledData'/,
     'the charger is no longer told which measurements to sample');
-  assert.match(body, /key:\s*'MeterValueSampleInterval'/,
+  assert.match(body, /'MeterValueSampleInterval'/,
     'the charger is no longer told how often to send them');
   for (const measurand of ['Power.Active.Import', 'Current.Import', 'Voltage']) {
     assert.ok(body.includes(measurand),
@@ -71,7 +72,36 @@ test('the configuration asks for the readings the device shows', () => {
 
 // Sending into a socket that is closing throws, and this runs on a timer after the event.
 test('configuration checks the socket is still open before writing to it', () => {
-  const body = block('_configureCharger(stationId, ws)');
-  assert.match(body, /if \(!ws \|\| ws\.readyState !== ws\.OPEN\) return;/,
-    'a charger that disconnected inside the delay would be written to anyway');
+  // Both places: once on entry, and again per key, because the keys are sent with pauses
+  // between them and a charger can disconnect inside one.
+  assert.match(block('_configureCharger(stationId, ws)'),
+    /if \(!ws \|\| ws\.readyState !== ws\.OPEN\) return;/,
+    'a charger that disconnected before configuration would be written to anyway');
+  assert.match(block('_configureKey(stationId, ws, key, value)'),
+    /if \(!ws \|\| ws\.readyState !== ws\.OPEN\) return/,
+    'a charger that disconnected between two keys would be written to anyway');
+});
+
+// The field question this came from: can Temperature be added to the sampled list? OCPP 1.6
+// makes a charger reject the WHOLE list when it does not recognise one measurand in it, so
+// the answer has to come from the charger rather than from a guess — and it can only come
+// from the reply, which this code used to send and forget.
+test('the answer to each setting is read, not discarded', () => {
+  const body = block('_configureKey(stationId, ws, key, value)');
+  assert.match(body, /_sendCallAsync\(ws, 'ChangeConfiguration'/,
+    'configuration is sent fire-and-forget again, so a refused setting looks like a set one');
+  assert.match(body, /res\.status/,
+    'the reply is awaited but its status is never looked at');
+  assert.match(body, /ChangeConfiguration \$\{key\} . \$\{status\}/,
+    'the status is read but never logged, so nobody can see which settings the charger took');
+});
+
+// One key that will not answer must not cost the ones after it. The sample interval matters
+// more to this app than the measurand list, and it is sent second.
+test('a setting that fails does not abandon the ones after it', () => {
+  const body = block('_configureKey(stationId, ws, key, value)');
+  assert.match(body, /catch \(err\)/,
+    'a charger that never answers now aborts the whole configuration');
+  assert.doesNotMatch(body, /throw err/,
+    'the failure is rethrown, so every remaining key is skipped');
 });
