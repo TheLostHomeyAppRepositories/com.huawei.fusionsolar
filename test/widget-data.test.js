@@ -124,3 +124,82 @@ test('getPowerData — a paired home meter wins over the derived balance', () =>
   }));
   assert.strictEqual(d.housePower, 2222, 'a measured figure beats a computed one');
 });
+
+// ─── Reachability ───────────────────────────────────────────────────────────
+//
+// Homey marks a device it cannot reach as unavailable, and shows that everywhere — except
+// in these widgets, which read the capability values straight out and drew them as though
+// they had just arrived. A dashboard went on reporting "47%, discharging at 2.3 kW" for a
+// battery that had dropped off the network an hour earlier. Same failure as the 0-versus-
+// null one above, one layer further out: a reading that is not current, presented as one.
+
+const { isReachable } = require('../lib/widget-data');
+
+// `available` defaults to true so the existing stand-ins above keep meaning what they meant.
+function fakeDevice(values, { available = true, noAvailableMethod = false } = {}) {
+  const d = { getCapabilityValue: (c) => (c in values ? values[c] : null) };
+  if (!noAvailableMethod) d.getAvailable = () => available;
+  return d;
+}
+
+test('isReachable — absent, broken and old devices are judged on the safe side', () => {
+  assert.strictEqual(isReachable(null), false, 'no device is not a reachable one');
+  assert.strictEqual(isReachable(fakeDevice({}, { available: false })), false);
+  assert.strictEqual(isReachable(fakeDevice({}, { available: true })), true);
+  // A stand-in without the method, or one that throws, must not be read as unreachable —
+  // that would blank widgets that work perfectly today.
+  assert.strictEqual(isReachable(fakeDevice({}, { noAvailableMethod: true })), true,
+    'a device object without getAvailable is treated as unreachable, blanking live widgets');
+  assert.strictEqual(isReachable({ getAvailable: () => { throw new Error('boom'); } }), true,
+    'a throwing getAvailable blanks the widget instead of being ignored');
+  // Only an explicit false counts against a device. A device that has not yet said either
+  // way — mid-init, or a Homey version that answers with undefined — keeps reporting;
+  // treating "not yet known" as "unreachable" would blank a dashboard at every app restart.
+  assert.strictEqual(isReachable({ getAvailable: () => undefined }), true,
+    'a device that has not yet reported its availability is treated as unreachable');
+});
+
+test('an unreachable device contributes no live reading', () => {
+  const dead = fakeDevice({ measure_power: 2300, measure_battery: 47 }, { available: false });
+  assert.strictEqual(cap(dead, 'measure_power'), null,
+    'a power reading from an unreachable device is drawn as though it were current');
+  assert.strictEqual(cap(dead, 'measure_battery'), null);
+  const live = fakeDevice({ measure_power: 2300 });
+  assert.strictEqual(cap(live, 'measure_power'), 2300, 'a reachable device still reports');
+});
+
+// Running totals are the deliberate exception: "charged 8.4 kWh today" stays true about
+// today when the battery goes quiet, while "discharging at 2.3 kW" stops being true the
+// moment the readings stop.
+test('running totals survive an unreachable device', () => {
+  const dead = fakeDevice({
+    'meter_power': 1107.62,
+    'meter_power.today_batt_input': 8.4,
+    'measure_power': 2300,
+  }, { available: false });
+  assert.strictEqual(cap(dead, 'meter_power'), 1107.62,
+    'the lifetime total was withheld, which throws away a figure that is not stale');
+  assert.strictEqual(cap(dead, 'meter_power.today_batt_input'), 8.4);
+  assert.strictEqual(cap(dead, 'measure_power'), null,
+    'the live reading came through alongside the totals');
+});
+
+// The fallback chains get better as a side effect: an unreachable first choice no longer
+// beats a reachable one further down.
+test('a chain falls through an unreachable device to a reachable one', () => {
+  const homey = {
+    drivers: {
+      getDriver(id) {
+        const table = {
+          sun2000_modbus:      { available: false, values: { measure_power: 4200 } },
+          sun2000_emma_modbus: { available: true,  values: { measure_power: 3100 } },
+        };
+        if (!(id in table)) throw new Error('no such driver: ' + id);
+        const { available, values } = table[id];
+        return { getDevices: () => [fakeDevice(values, { available })] };
+      },
+    },
+  };
+  assert.strictEqual(getPowerData(homey).pvPower, 3100,
+    'the unreachable inverter still won the chain, hiding the one that is answering');
+});
