@@ -14,6 +14,8 @@ const OFFLINE_AFTER_MS    = 180_000;
 const LOW_POWER_W         = 100;
 const LOW_POWER_FINISH_MS = 180_000;
 
+// This app's own vocabulary for what the charger is doing. It drives _computeSessionStatus
+// and the session_status capability, which is ours and accepts these words.
 const OCPP_STATUS_MAP = {
   'Available':     'idle',
   'Preparing':     'connected',
@@ -24,6 +26,46 @@ const OCPP_STATUS_MAP = {
   'Reserved':      'idle',
   'Unavailable':   'error',
   'Faulted':       'error',
+};
+
+// Homey's vocabulary, which is a different thing entirely. evcharger_charging_state is a
+// built-in enum accepting exactly these five words; anything else is rejected outright.
+//
+// Field-caught 2026-09-03, in a log that showed the app writing 'idle':
+//   _set(evcharger_charging_state, idle) failed: Invalid enum capability value: idle.
+//   Expected: plugged_in_charging,plugged_in_discharging,plugged_in_paused,plugged_in,plugged_out
+//
+// Every word in the map above is in the same position - none of idle, connected, charging
+// or error is a member of that enum - so the capability was never once written
+// successfully, on any installation, since it was added. It read as "-" for ever, and the
+// places comparing against it read null and fell through to their idle branch.
+const HOMEY_EV_STATE = {
+  idle:      'plugged_out',
+  connected: 'plugged_in',
+  charging:  'plugged_in_charging',
+  // No member of the enum means "faulted". Writing plugged_out would state that the cable
+  // is out, which is not something a lost connection tells us. The fault is reported by
+  // session_status and by setUnavailable, both of which say it plainly.
+  error:     null,
+};
+
+// Reading back the other way, so the state survives a restart. Deliberately lossy:
+// plugged_in_paused comes back as 'connected', because this app has no paused state of its
+// own - pausing is tracked on the session, not here.
+const INTERNAL_FROM_HOMEY = {
+  plugged_out:            'idle',
+  plugged_in:             'connected',
+  plugged_in_paused:      'connected',
+  plugged_in_charging:    'charging',
+  plugged_in_discharging: 'charging',
+};
+
+// Where OCPP is more specific than this app's own vocabulary, say so to Homey. Both
+// Suspended states mean the cable is in and nothing is flowing, which is exactly what
+// plugged_in_paused is for; internally they stay 'connected'.
+const OCPP_HOMEY_STATE = {
+  'SuspendedEVSE': 'plugged_in_paused',
+  'SuspendedEV':   'plugged_in_paused',
 };
 
 const REQUIRED_CAPABILITIES = [
@@ -239,7 +281,7 @@ class SmartChargerOcppDevice extends Device {
 
     // After restart, if the device was charging, suppress the idle guard
     // until the charger reconnects and sends a StatusNotification.
-    const wasCharging = this.getCapabilityValue('evcharger_charging_state') === 'charging';
+    const wasCharging = this._chargingState() === 'charging';
     this.assumeActiveFromRestart = wasCharging;
 
     // Charging automation lives in the Energy Management System device —
@@ -304,7 +346,7 @@ class SmartChargerOcppDevice extends Device {
 
     if (changedKeys.includes('auto_start_charging')) {
       this._startIdleGuard();
-      const currentState = this.getCapabilityValue('evcharger_charging_state') || 'idle';
+      const currentState = this._chargingState();
       this._updateSessionStatus(currentState, autoStart).catch(() => {});
 
       if (!autoStart) {
@@ -397,7 +439,7 @@ class SmartChargerOcppDevice extends Device {
     this._autoStartBlocked = false;
     this._set('ocpp_server_status', 'waiting').catch(() => {});
     // 'error' not 'idle': connectivity loss must be visible to the user
-    this._set('evcharger_charging_state', 'error').catch(() => {});
+    this._setChargingState('error').catch(() => {});
     this._updateSessionStatus('error').catch(() => {});
     this._set('measure_power', 0).catch(() => {});
   }
@@ -427,7 +469,7 @@ class SmartChargerOcppDevice extends Device {
     // the restart-guard so the idle guard can run normally from here on.
     this.assumeActiveFromRestart = false;
 
-    this._set('evcharger_charging_state', homeyState).catch(() => {});
+    this._setChargingState(homeyState, OCPP_HOMEY_STATE[rawStatus]).catch(() => {});
     this._set('ocpp_last_message', 'Status: ' + rawStatus).catch(() => {});
 
     if (rawStatus === 'Charging' && !this._autoStartBlocked) {
@@ -603,7 +645,7 @@ class SmartChargerOcppDevice extends Device {
             }
 
             // Low-power streak: Charging but ~0W for 3 min → 'finishing'
-            if (this._txnId && this.getCapabilityValue('evcharger_charging_state') === 'charging') {
+            if (this._txnId && this._chargingState() === 'charging') {
               if (powerW < LOW_POWER_W) {
                 if (!this._lowPowerSince) this._lowPowerSince = Date.now();
               } else {
@@ -695,7 +737,7 @@ class SmartChargerOcppDevice extends Device {
       } catch (e) { this.log('[OCPP] Block TxProfile failed:', e.message); }
 
       await this._set('evcharger_charging', false);
-      await this._set('evcharger_charging_state', 'connected');
+      await this._setChargingState('connected');
       await this._set('ocpp_last_message', 'Car connected — waiting for start');
       await this._saveSession();
       await this._updateSessionStatus('connected');
@@ -708,7 +750,7 @@ class SmartChargerOcppDevice extends Device {
       this._autoStartBlocked = false;
       await this._saveSession();
       await this._set('evcharger_charging', true);
-      await this._set('evcharger_charging_state', 'charging');
+      await this._setChargingState('charging');
       await this._set('ocpp_last_message', isMaskedResume ? 'Charging resumed' : 'Charging started');
       await this._updateSessionStatus('charging');
       this._updateChargingProfile().catch(() => {});
@@ -794,7 +836,7 @@ class SmartChargerOcppDevice extends Device {
       this.sessionPhaseOverride = null;
       await this.setStoreValue('activeSession', null).catch(() => {});
       await this._set('evcharger_charging', false);
-      await this._set('evcharger_charging_state', 'connected');
+      await this._setChargingState('connected');
 
       const stationId = this.getSetting('station_id');
       this.homey.setTimeout(() => {
@@ -851,11 +893,11 @@ class SmartChargerOcppDevice extends Device {
 
     await this._set('evcharger_charging', false);
     const settledState = (() => {
-      const cur = this.getCapabilityValue('evcharger_charging_state');
+      const cur = this._chargingState();
       if (cur && cur !== 'charging') return cur;
       return 'connected';
     })();
-    await this._set('evcharger_charging_state', settledState);
+    await this._setChargingState(settledState);
     await this._set('measure_power', 0);
     if (meterStop) await this._set('meter_power', parseFloat((meterStop / 1000).toFixed(3)));
     await this._set('ocpp_last_message', 'Charging stopped');
@@ -944,7 +986,7 @@ class SmartChargerOcppDevice extends Device {
       const unblockResp = await server.setTxProfileAsync(stationId, this._txnId, targetAmps, this._getPhases());
       this.log(`[OCPP] Unblock TxProfile response: ${JSON.stringify(unblockResp)}`);
       await this._set('evcharger_charging', true);
-      await this._set('evcharger_charging_state', 'charging');
+      await this._setChargingState('charging');
       await this._set('ocpp_last_message', 'Charging started');
       await this._updateSessionStatus('charging');
       this._updateChargingProfile().catch(() => {});
@@ -1293,7 +1335,7 @@ class SmartChargerOcppDevice extends Device {
       this.chargerOffline = true;
       this.log(`[OCPP] Charger OFFLINE: ${silentMs === null ? 'never connected' : Math.round(silentMs / 1000) + 's silent'}`);
       await this.setUnavailable('Charger offline — no OCPP messages received').catch(() => {});
-      await this._updateSessionStatus(this.getCapabilityValue('evcharger_charging_state') || 'idle');
+      await this._updateSessionStatus(this._chargingState());
 
       const expected = Date.now() < this._expectedOfflineUntil;
       if (!expected) {
@@ -1313,7 +1355,7 @@ class SmartChargerOcppDevice extends Device {
       await this.setStoreValue('chargerWasOffline', false).catch(() => {});
       this.log('[OCPP] Charger back ONLINE');
       await this.setAvailable().catch(() => {});
-      await this._updateSessionStatus(this.getCapabilityValue('evcharger_charging_state') || 'idle');
+      await this._updateSessionStatus(this._chargingState());
 
       if (this._offlineWasAlerted) {
         await this._postNotification('📡', 'Charger Online', 'Charger back online');
@@ -1551,6 +1593,23 @@ class SmartChargerOcppDevice extends Device {
   }
 
   // ─── Session status capability ────────────────────────────────────────────
+
+  // What the charger is doing, in this app's own words. Held in memory while running and
+  // recovered from the Homey capability after a restart - which is why that capability has
+  // to carry a value Homey will actually accept; see HOMEY_EV_STATE for why it did not.
+  _chargingState() {
+    if (this._internalChargingState) return this._internalChargingState;
+    return INTERNAL_FROM_HOMEY[this.getCapabilityValue('evcharger_charging_state')] || 'idle';
+  }
+
+  // Writes both: this app's word is kept as it is, Homey's is translated. `homeyOverride`
+  // lets a caller that knows more than the internal vocabulary can express - a paused
+  // connector, say - pass the more precise enum value.
+  async _setChargingState(internal, homeyOverride) {
+    this._internalChargingState = internal;
+    const homeyState = homeyOverride || HOMEY_EV_STATE[internal];
+    if (homeyState) await this._set('evcharger_charging_state', homeyState);
+  }
 
   _computeSessionStatus(chargingState, autoStartOverride) {
     if (this.chargerOffline) return 'offline';
