@@ -12,8 +12,29 @@ const modbusPolling = require('../../lib/modbus-polling');
 const DEFAULT_INTERVAL_S = 30;
 const MIN_INTERVAL_S     = 10;
 
+// Homey's evcharger_charging_state is a fixed enum and accepts only these five words:
+// plugged_in_charging, plugged_in_discharging, plugged_in_paused, plugged_in, plugged_out.
+// This driver used to write its own two, 'charging' and 'idle', and Homey rejected every
+// one of them — so the capability was never set on any installation, and getWidgetStatus()
+// read it back as null and reported "not connected" while a car was charging. The same
+// mistake lived in the OCPP driver and was fixed there in 1.2.201.
+//
+// Only two of the five are reachable here, and that is a property of the hardware rather
+// than a shortcut. This charger is read through the EMMA gateway, which offers voltage,
+// power, temperature and a lifetime meter — and nothing that reports a connected cable
+// while no current flows. A car waiting to start, or paused, therefore reads as unplugged.
+// Guessing plugged_in instead would claim a cable no register ever mentioned.
+const HOMEY_EV_STATE = {
+  charging: 'plugged_in_charging',
+  idle:     'plugged_out',
+};
+
 const REQUIRED_CAPABILITIES = [
   'measure_power',              // real-time charging power (W) — required by Homey evCharger
+  // Read-only here (setable: false in app.json): this driver has no write path at all, and
+  // a switch that cannot switch is worse than none. It is declared because Homey documents
+  // it for EV chargers and generates the "is charging" Flow condition from it.
+  'evcharger_charging',
   'evcharger_charging_state',   // current charging state      — required by Homey evCharger
   'meter_power',                // total energy charged (kWh)
   'measure_voltage.phase1',     // Phase A voltage (V)
@@ -164,7 +185,9 @@ class SmartChargerModbusDevice extends Device {
         || (d.phaseBVoltage ?? 0) > 10
         || (d.phaseCVoltage ?? 0) > 10;
       const chargingState = hasVoltage ? 'charging' : 'idle';
-      await this._set('evcharger_charging_state', chargingState);
+      // This driver's own word drives everything below; Homey gets the translated one.
+      await this._set('evcharger_charging_state', HOMEY_EV_STATE[chargingState]);
+      await this._set('evcharger_charging', chargingState === 'charging');
 
       // measure_power: estimated while charging, 0 while idle
       if (chargingState !== 'charging') this._powerEstW = 0;
@@ -217,10 +240,13 @@ class SmartChargerModbusDevice extends Device {
   // no requested amps/limit, no pause — nulls degrade gracefully in the UI.
 
   getWidgetStatus() {
+    // Compared against Homey's word, not this driver's. It used to read 'charging', which
+    // the capability never held — every write of that value was rejected — so the widget
+    // reported "not connected" throughout a live charging session.
     const state = this.getCapabilityValue('evcharger_charging_state');
     let sessionStatus;
     if (!this.getAvailable()) sessionStatus = 'offline';
-    else if (state === 'charging') sessionStatus = 'charging';
+    else if (state === HOMEY_EV_STATE.charging) sessionStatus = 'charging';
     else sessionStatus = 'not_connected';
 
     // Active phase count from voltage presence (1P or 3P wiring)

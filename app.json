@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.206",
+  "version": "1.2.207",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1907,6 +1907,7 @@
       },
       "capabilities": [
         "measure_power",
+        "evcharger_charging",
         "evcharger_charging_state",
         "meter_power",
         "measure_voltage.phase1",
@@ -1917,6 +1918,14 @@
         "smartcharger_offering_name"
       ],
       "capabilitiesOptions": {
+        "evcharger_charging": {
+          "setable": false,
+          "title": {
+            "en": "Charging",
+            "de": "Lädt",
+            "nl": "Laadt"
+          }
+        },
         "measure_power": {
           "title": {
             "en": "Charging Power",

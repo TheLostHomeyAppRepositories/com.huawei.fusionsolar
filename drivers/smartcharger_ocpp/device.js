@@ -311,6 +311,7 @@ class SmartChargerOcppDevice extends Device {
     server.setCredentials(stationId, this.getSetting('ocpp_username'), this.getSetting('ocpp_password'));
 
     await this._set('ocpp_server_status', 'starting');
+    await this._applyTargetPowerRange();
     this._registerCapabilityListeners();
     this._registerFlowActions();
     this._registerFlowConditions();
@@ -410,6 +411,43 @@ class SmartChargerOcppDevice extends Device {
 
     if (changedKeys.includes('number_of_phases')) {
       this._updateChargingProfile().catch(() => {});
+      // newSettings, not the stored value: Homey persists after this resolves.
+      this._applyTargetPowerRange(parseInt(newSettings.number_of_phases, 10)).catch(() => {});
+    }
+  }
+
+  // Homey's target_power slider speaks watts, and which watt values mean anything depends
+  // on how many phases are wired. The pilot signal (IEC 61851) cannot express less than
+  // 6 A, and Huawei's firmware ignores the phase count inside a charging profile and
+  // spreads the watt limit across every physical phase — so on a three-phase unit the
+  // smallest deliverable power is 6 A on each of the three, about 4140 W, not 1380 W.
+  //
+  // The options were fixed at the single-phase figures: a dead zone up to 1380 W and a
+  // 230 W step. On a three-phase charger Homey would therefore offer 2000 W as a valid
+  // request, and the driver would raise it to its 6 A minimum without saying so — asking
+  // for less than half of what actually flowed. Homey's own documentation scales both with
+  // the phase count, and this does the same.
+  //
+  // Existing options are read and spread rather than replaced, so the titles declared in
+  // app.json survive whatever the merge semantics turn out to be.
+  async _applyTargetPowerRange(phaseOverride) {
+    if (!this.hasCapability('target_power')) return;
+    const phases = (phaseOverride === 1 || phaseOverride === 3) ? phaseOverride : this._devicePhases();
+    const step   = phases * 230;
+    try {
+      const current = this.getCapabilityOptions('target_power') || {};
+      await this.setCapabilityOptions('target_power', {
+        ...current,
+        min:        0,               // this charger does not discharge
+        max:        MAX_AMPS * step,
+        step,
+        excludeMin: 0,
+        excludeMax: MIN_AMPS * step, // below this the charger cannot deliver at all
+      });
+      this.log(`[OCPP] target_power range: 0–${MAX_AMPS * step} W, step ${step} W, `
+        + `nothing below ${MIN_AMPS * step} W (${phases}-phase)`);
+    } catch (err) {
+      this.error('setCapabilityOptions(target_power) failed:', err.message);
     }
   }
 
