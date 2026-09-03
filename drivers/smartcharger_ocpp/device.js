@@ -1526,13 +1526,32 @@ class SmartChargerOcppDevice extends Device {
     this.registerMultipleCapabilityListener(
       ['evcharger_charging', 'target_power', 'target_power_mode'],
       async ({ evcharger_charging, target_power, target_power_mode }) => {
+        // Who is in charge. Homey's documentation is explicit: in "device" mode the
+        // charger runs its own logic and target power values from Homey are ignored; in
+        // "homey" mode Homey is in control and the device does what it is told.
+        //
+        // This used to be logged and otherwise disregarded, which made the mode picker
+        // decorative — Homey could show "Automatic" while the app acted on every value it
+        // was handed. Honouring it costs nothing at the moment it matters: Homey sends the
+        // mode together with the value whenever it takes control, which is precisely why
+        // these three capabilities share one debounced listener.
+        const previousMode = this.getCapabilityValue('target_power_mode');
         if (target_power_mode !== undefined) {
-          // This charger's automation lives in the EMS device, so Homey is always
-          // the effective controller — the mode is accepted but informational.
           this.log(`[OCPP] target_power_mode → ${target_power_mode}`);
+          // The documentation also asks that a switch back to device mode discard the
+          // setpoint and resume internal logic. What is deliberately NOT done here is
+          // yanking a session that is already running: this charger's automation lives in
+          // the EMS device, which sets its own limit on the next decision anyway, and
+          // cutting a car's charge because someone changed a picker would be its own bug.
+          if (previousMode === 'homey' && target_power_mode !== 'homey') {
+            this.log('[OCPP] Homey handed control back; the running limit stands until the '
+              + 'charger or the EMS sets its own');
+          }
         }
+        const effectiveMode = target_power_mode ?? previousMode ?? 'homey';
 
-        // Explicit stop wins over everything else.
+        // Explicit stop wins over everything else. This is the on/off switch rather than a
+        // power target, so it is honoured in either mode.
         if (evcharger_charging === false) {
           await this.stopCharging();
           return;
@@ -1540,6 +1559,11 @@ class SmartChargerOcppDevice extends Device {
 
         // A watt target translates to an amp limit (0 / dead-zone → stop).
         if (target_power !== undefined && target_power !== null) {
+          if (effectiveMode !== 'homey') {
+            this.log(`[OCPP] target_power ${target_power} W ignored — mode is `
+              + `"${effectiveMode}", so the charger is in control`);
+            return;
+          }
           const amps = this._wattsToAmps(target_power);
           if (amps <= 0) {
             await this.stopCharging();
@@ -1625,72 +1649,52 @@ class SmartChargerOcppDevice extends Device {
   // ─── Flow actions ─────────────────────────────────────────────────────────
 
   _registerFlowActions() {
+    // Every listener acts on args.device, never on `this`.
+    //
+    // These used to call the methods on `this` and guard with
+    // `if (args.device.id !== this.id) return;`. That works for one charger and stops
+    // working, silently, for two: Homey keeps only the LAST run listener registered on a
+    // card, and each device registers over the previous one. The survivor's guard then
+    // rejects every device except itself, so an action pointed at the other charger does
+    // nothing at all — no error, no log line, just a Flow step that appears to succeed.
+    //
+    // Taking the device from the arguments removes the need for a guard: whichever
+    // instance happened to register last, the listener operates on the charger the Flow
+    // actually names. The registration is still per device, which is now harmless.
     this.homey.flow.getActionCard('ocpp_set_max_current')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.setChargingLimit(args.amperes);
-      });
+      .registerRunListener(async (args) => args.device.setChargingLimit(args.amperes));
 
     this.homey.flow.getActionCard('ocpp_remote_start')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.startCharging();
-      });
+      .registerRunListener(async (args) => args.device.startCharging());
 
     this.homey.flow.getActionCard('ocpp_start_charging_at')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.startCharging(args.amperes);
-      });
+      .registerRunListener(async (args) => args.device.startCharging(args.amperes));
 
     this.homey.flow.getActionCard('ocpp_start_charging_at_phase')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.startCharging(args.amperes, parseInt(args.phases, 10));
-      });
+      .registerRunListener(async (args) =>
+        args.device.startCharging(args.amperes, parseInt(args.phases, 10)));
 
     this.homey.flow.getActionCard('ocpp_set_charging_limit_at_phase')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.setChargingLimit(args.amperes, parseInt(args.phases, 10));
-      });
+      .registerRunListener(async (args) =>
+        args.device.setChargingLimit(args.amperes, parseInt(args.phases, 10)));
 
     this.homey.flow.getActionCard('ocpp_remote_stop')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.stopCharging();
-      });
+      .registerRunListener(async (args) => args.device.stopCharging());
 
     this.homey.flow.getActionCard('ocpp_pause_charging')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.pauseCharging();
-      });
+      .registerRunListener(async (args) => args.device.pauseCharging());
 
     this.homey.flow.getActionCard('ocpp_resume_charging')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.resumeCharging();
-      });
+      .registerRunListener(async (args) => args.device.resumeCharging());
 
     this.homey.flow.getActionCard('ocpp_release_charger')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.releaseCharger();
-      });
+      .registerRunListener(async (args) => args.device.releaseCharger());
 
     this.homey.flow.getActionCard('ocpp_reboot_charger')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.rebootCharger(args.type || 'Soft');
-      });
+      .registerRunListener(async (args) => args.device.rebootCharger(args.type || 'Soft'));
 
     this.homey.flow.getActionCard('ocpp_charge_now')
-      .registerRunListener(async (args) => {
-        if (args.device.id !== this.id) return;
-        await this.chargeNow();
-      });
-
+      .registerRunListener(async (args) => args.device.chargeNow());
   }
 
   // ─── Capabilities management ─────────────────────────────────────────────
