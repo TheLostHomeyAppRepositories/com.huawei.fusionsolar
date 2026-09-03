@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.204",
+  "version": "1.2.205",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -7668,6 +7668,64 @@
         ]
       },
       {
+        "id": "ocpp_charger_fault",
+        "title": {
+          "en": "Charger reported a fault (OCPP)",
+          "de": "Ladestation meldet einen Fehler (OCPP)",
+          "nl": "Laadpunt meldt een storing (OCPP)"
+        },
+        "hint": {
+          "en": "Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature.",
+          "de": "Wird ausgelöst, wenn die Ladestation einen eigenen Fehler meldet. Der Fehlercode stammt von der Ladestation, nicht von der App — etwa GroundFailure, OverCurrentFailure oder HighTemperature.",
+          "nl": "Wordt geactiveerd wanneer het laadpunt een eigen storing meldt. De foutcode komt van het laadpunt, niet van de app — bijvoorbeeld GroundFailure, OverCurrentFailure of HighTemperature."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "error_code",
+            "type": "string",
+            "title": {
+              "en": "Error code",
+              "de": "Fehlercode",
+              "nl": "Foutcode"
+            }
+          },
+          {
+            "name": "vendor_error_code",
+            "type": "string",
+            "title": {
+              "en": "Vendor error code",
+              "de": "Herstellerfehlercode",
+              "nl": "Fabrikantfoutcode"
+            }
+          },
+          {
+            "name": "info",
+            "type": "string",
+            "title": {
+              "en": "Details",
+              "de": "Einzelheiten",
+              "nl": "Details"
+            }
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "Connector status",
+              "de": "Anschlussstatus",
+              "nl": "Aansluitstatus"
+            }
+          }
+        ]
+      },
+      {
         "id": "ocpp_charging_started",
         "title": {
           "en": "EV charging started (OCPP)",
@@ -11948,6 +12006,174 @@
       }
     ],
     "conditions": [
+      {
+        "id": "ocpp_charger_is_online",
+        "title": {
+          "en": "Charger !{{is|is not}} online",
+          "de": "Ladestation !{{ist|ist nicht}} online",
+          "nl": "Lader !{{is|is niet}} online"
+        },
+        "hint": {
+          "en": "True while OCPP messages are arriving from the charger. Worth checking before any charging action — they all fail on an offline charger.",
+          "de": "Wahr, solange OCPP-Nachrichten von der Ladestation eintreffen. Vor jeder Ladeaktion sinnvoll — sie scheitern alle an einer offline Ladestation.",
+          "nl": "Waar zolang er OCPP-berichten van het laadpunt binnenkomen. De moeite waard voor elke laadactie — die mislukken allemaal bij een offline laadpunt."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_is_charging",
+        "title": {
+          "en": "Charger is !{{charging|not charging}}",
+          "de": "Ladestation !{{lädt|lädt nicht}}",
+          "nl": "Lader !{{laadt|laadt niet}}"
+        },
+        "hint": {
+          "en": "True while current is actually flowing to the car, as opposed to the cable merely being connected.",
+          "de": "Wahr, solange tatsächlich Strom ins Auto fliesst — im Unterschied zu einem bloss eingesteckten Kabel.",
+          "nl": "Waar zolang er werkelijk stroom naar de auto loopt, in tegenstelling tot een enkel aangesloten kabel."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_car_is_plugged_in",
+        "title": {
+          "en": "Car !{{is|is not}} plugged in",
+          "de": "Auto !{{ist|ist nicht}} eingesteckt",
+          "nl": "Auto !{{is|is niet}} aangesloten"
+        },
+        "hint": {
+          "en": "True whenever the cable is connected — including while charging, while paused, and while waiting for a start.",
+          "de": "Wahr, sobald das Kabel steckt — auch während des Ladens, während einer Pause und während auf den Start gewartet wird.",
+          "nl": "Waar zodra de kabel is aangesloten — ook tijdens het laden, tijdens een pauze en terwijl op de start wordt gewacht."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          }
+        ]
+      },
+      {
+        "id": "ocpp_session_status_is",
+        "title": {
+          "en": "Session status !{{is|is not}}",
+          "de": "Sitzungsstatus !{{ist|ist nicht}}",
+          "nl": "Sessiestatus !{{is|is niet}}"
+        },
+        "titleFormatted": {
+          "en": "Session status !{{is|is not}} [[status]]",
+          "de": "Sitzungsstatus !{{ist|ist nicht}} [[status]]",
+          "nl": "Sessiestatus !{{is|is niet}} [[status]]"
+        },
+        "hint": {
+          "en": "The status shown on the device, for the cases the plainer conditions do not separate — finishing, fully charged, waiting for a start.",
+          "de": "Der auf dem Gerät angezeigte Status, für die Fälle, die die einfacheren Bedingungen nicht trennen — Abschluss, vollständig geladen, Warten auf den Start.",
+          "nl": "De status zoals op het apparaat getoond, voor de gevallen die de eenvoudiger voorwaarden niet onderscheiden — afronden, volledig geladen, wachten op de start."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=smartcharger_ocpp"
+          },
+          {
+            "type": "dropdown",
+            "name": "status",
+            "title": {
+              "en": "Status",
+              "de": "Status",
+              "nl": "Status"
+            },
+            "values": [
+              {
+                "id": "not_connected",
+                "title": {
+                  "en": "Not Connected",
+                  "de": "Nicht verbunden",
+                  "nl": "Niet verbonden"
+                }
+              },
+              {
+                "id": "connected",
+                "title": {
+                  "en": "Connected",
+                  "de": "Verbunden",
+                  "nl": "Verbonden"
+                }
+              },
+              {
+                "id": "smart_charging",
+                "title": {
+                  "en": "Smart Charging",
+                  "de": "Smartladen",
+                  "nl": "Smart laden"
+                }
+              },
+              {
+                "id": "charging",
+                "title": {
+                  "en": "Charging",
+                  "de": "Lädt",
+                  "nl": "Aan het laden"
+                }
+              },
+              {
+                "id": "finishing",
+                "title": {
+                  "en": "Finishing",
+                  "de": "Abschluss",
+                  "nl": "Afronden"
+                }
+              },
+              {
+                "id": "paused",
+                "title": {
+                  "en": "Paused",
+                  "de": "Pausiert",
+                  "nl": "Gepauzeerd"
+                }
+              },
+              {
+                "id": "fully_charged",
+                "title": {
+                  "en": "Fully Charged",
+                  "de": "Vollständig geladen",
+                  "nl": "Volledig geladen"
+                }
+              },
+              {
+                "id": "offline",
+                "title": {
+                  "en": "Offline",
+                  "de": "Offline",
+                  "nl": "Offline"
+                }
+              },
+              {
+                "id": "error",
+                "title": {
+                  "en": "Error",
+                  "de": "Fehler",
+                  "nl": "Fout"
+                }
+              }
+            ]
+          }
+        ]
+      },
       {
         "id": "ems_pv_forecast_today",
         "title": {

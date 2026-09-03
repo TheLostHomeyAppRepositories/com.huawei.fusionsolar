@@ -313,6 +313,7 @@ class SmartChargerOcppDevice extends Device {
     await this._set('ocpp_server_status', 'starting');
     this._registerCapabilityListeners();
     this._registerFlowActions();
+    this._registerFlowConditions();
     this._startIdleGuard();
 
     // Offline watchdog — fires every 30 s
@@ -504,6 +505,38 @@ class SmartChargerOcppDevice extends Device {
     this.homey.flow.getDeviceTriggerCard('ocpp_charging_state_changed')
       .trigger(this, { state: homeyState })
       .catch(() => {});
+
+    this._fireFaultTrigger(payload, rawStatus);
+  }
+
+  // Every StatusNotification carries errorCode, and it used to go no further than the log
+  // line above. A fault did reach a flow — as state "error" on the state-changed trigger —
+  // but WHICH fault did not, so a ground fault and an over-temperature shutdown were
+  // indistinguishable to anyone building an alert.
+  //
+  // Fired on the error code rather than on the connector status: a charger can report a
+  // fault while the connector still reads Available or Charging, and NoError is the normal
+  // value on every healthy notification. Repeats are suppressed, because a charger that is
+  // faulted says so on every status change until it clears.
+  _fireFaultTrigger(payload, rawStatus) {
+    const code = (payload.errorCode || '').trim();
+    const faulted = code && code !== 'NoError';
+    if (!faulted) {
+      this._lastFaultCode = null;
+      return;
+    }
+    if (this._lastFaultCode === code) return;
+    this._lastFaultCode = code;
+
+    this.log(`[OCPP] Charger fault: ${code}${payload.info ? ` — ${payload.info}` : ''}`);
+    this.homey.flow.getDeviceTriggerCard('ocpp_charger_fault')
+      .trigger(this, {
+        error_code:        code,
+        vendor_error_code: payload.vendorErrorCode || '',
+        info:              payload.info || '',
+        status:            rawStatus,
+      })
+      .catch((err) => this.log('[OCPP] Trigger ocpp_charger_fault failed:', err.message));
   }
 
   async _handleStateChange(newState, rawStatus) {
@@ -1515,6 +1548,40 @@ class SmartChargerOcppDevice extends Device {
       });
     }
 
+  }
+
+  // ─── Flow conditions ──────────────────────────────────────────────────────
+  //
+  // These answer questions rather than issue commands, which this driver could not do at
+  // all until now — it had ten triggers and eleven actions and no conditions, alone among
+  // the drivers in this app. "Is the charger online" is the one that was most missed:
+  // every one of those eleven actions fails on an offline charger, and there was no way to
+  // ask first.
+  //
+  // Read through args.device, not `this`. The action cards above register once per device
+  // instance and then filter on the id, which works for one charger and quietly stops
+  // working for two — Homey keeps only the last run listener registered on a card, so the
+  // survivor's filter rejects every other device. Taking the device from the arguments
+  // needs no filter and is correct however many chargers exist.
+  _registerFlowConditions() {
+    this.homey.flow.getConditionCard('ocpp_charger_is_online')
+      .registerRunListener(async (args) => !args.device.chargerOffline);
+
+    this.homey.flow.getConditionCard('ocpp_is_charging')
+      .registerRunListener(async (args) => args.device._chargingState() === 'charging');
+
+    // Plugged in covers everything from the cable going in to it coming out: waiting for a
+    // start, charging, paused. Only 'idle' and 'error' are not plugged in — and 'error'
+    // means the charger stopped telling us, which is not the same as an empty socket.
+    this.homey.flow.getConditionCard('ocpp_car_is_plugged_in')
+      .registerRunListener(async (args) => {
+        const state = args.device._chargingState();
+        return state === 'connected' || state === 'charging';
+      });
+
+    this.homey.flow.getConditionCard('ocpp_session_status_is')
+      .registerRunListener(async (args) =>
+        args.device.getCapabilityValue('session_status') === args.status);
   }
 
   // ─── Flow actions ─────────────────────────────────────────────────────────
