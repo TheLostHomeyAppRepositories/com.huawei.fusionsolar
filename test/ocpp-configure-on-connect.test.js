@@ -2,20 +2,24 @@
 
 // When the charger is told what to measure. Run: node --test
 //
-// Field-caught 2026-09-03, alongside the charging-state bug, in the same log:
+// From a field log of 2026-09-03:
 //
-//   [OcppServer] Client connected: OtthoniTolto (::ffff:192.168.0.121)
-//   [OCPP] Charger connected
+//   [OcppServer] Client connected: OtthoniTolto
 //   ← StatusNotification  (status: Available)
 //   → SetChargingProfile
-//   ← Heartbeat  ×N
+//   ← Heartbeat  xN
 //
 // No BootNotification anywhere. A charger sends that when IT boots, and this one had been
-// running for hours — the Homey app had restarted, so the charger merely reconnected its
-// WebSocket. Configuration hung off the boot message alone, so MeterValuesSampledData and
-// MeterValueSampleInterval were never sent, and a charger that is never told what to sample
-// sends no MeterValues at all. Every current, voltage and temperature stayed blank, with no
-// error anywhere to explain it.
+// running for hours - the Homey app had restarted, so the charger merely reconnected its
+// WebSocket. Configuration hung off the boot message alone, so it never ran.
+//
+// What that costs is worth stating precisely, because the first version of this file
+// overstated it. It is NOT the difference between data and no data: Huawei chargers send
+// MeterValues during a transaction whether asked or not, and a comparable app that sends no
+// ChangeConfiguration at all works fine. What is lost is the ten-second sample interval this
+// app asks for, which is what makes its solar-surplus control loop responsive. A charger
+// left on its own default reports less often and the app reacts more slowly, with nothing
+// visibly wrong to explain it.
 //
 // Asserted on the source rather than by running a WebSocket server: what matters is which
 // events lead to the call, and that is a question about wiring.
