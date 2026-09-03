@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.203",
+  "version": "1.2.204",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2365,6 +2365,21 @@
             "en": "When enabled, charging begins automatically as soon as the car plugs in. When disabled, use the 'Start charging' flow action or the on/off button to start manually.",
             "de": "Wenn aktiviert, beginnt der Ladevorgang automatisch sobald das Auto angeschlossen wird. Wenn deaktiviert, mit der Flow-Aktion 'Laden starten' oder dem Ein/Aus-Schalter manuell starten.",
             "nl": "Indien ingeschakeld begint het laden automatisch zodra de auto wordt aangesloten. Indien uitgeschakeld, gebruik de flow-actie 'Starten met laden' of de aan/uit-knop om handmatig te starten."
+          }
+        },
+        {
+          "id": "show_vehicle_soc",
+          "type": "checkbox",
+          "label": {
+            "en": "Show vehicle battery level",
+            "de": "Batteriestand des Fahrzeugs anzeigen",
+            "nl": "Accuniveau van het voertuig tonen"
+          },
+          "value": true,
+          "hint": {
+            "en": "The charger can only report the car's state of charge if the car sends it over OCPP, and many cars do not. Turn this off to remove the tile instead of leaving it empty.",
+            "de": "Die Ladestation kann den Ladestand des Autos nur melden, wenn das Auto ihn über OCPP sendet — viele Autos tun das nicht. Ausschalten entfernt die Kachel, statt sie leer stehen zu lassen.",
+            "nl": "Het laadpunt kan het laadniveau van de auto alleen melden als de auto dit via OCPP verstuurt, en veel auto’s doen dat niet. Uitschakelen verwijdert de tegel in plaats van hem leeg te laten staan."
           }
         },
         {

@@ -68,6 +68,15 @@ const OCPP_HOMEY_STATE = {
   'SuspendedEV':   'plugged_in_paused',
 };
 
+// Capabilities the user can turn off. A charger reports the car's state of charge only if
+// the car sends it over OCPP, and many cars never do — leaving a tile that shows "-" for
+// the life of the device. An empty tile is not information, so it can be removed; the
+// setting is opt-out rather than opt-in because a car that does report SoC should show it
+// without anyone having to find a switch first.
+const OPTIONAL_CAPABILITIES = {
+  vehicle_soc: 'show_vehicle_soc',
+};
+
 const REQUIRED_CAPABILITIES = [
   'evcharger_charging',
   'target_power',
@@ -334,6 +343,13 @@ class SmartChargerOcppDevice extends Device {
     const ocppPort  = parseInt(newSettings.ocpp_port, 10) || 8887;
     const server    = OcppServer.getInstance(this.homey, ocppPort);
     server.setCredentials(stationId, newSettings.ocpp_username, newSettings.ocpp_password);
+
+    // newSettings, not getSetting(): Homey persists only after this method resolves, so
+    // reading the stored value here would still give the old one and the tile would appear
+    // or disappear one save too late.
+    if (changedKeys.some((k) => Object.values(OPTIONAL_CAPABILITIES).includes(k))) {
+      await this._applyOptionalCapabilities(newSettings);
+    }
 
     const amps      = parseInt(newSettings.default_charging_amps, 10) || 16;
     const autoStart = newSettings.auto_start_charging !== false;
@@ -1576,6 +1592,9 @@ class SmartChargerOcppDevice extends Device {
 
   async _ensureCapabilities() {
     for (const cap of REQUIRED_CAPABILITIES) {
+      // An optional capability that is switched off is handled below, not here — adding it
+      // and removing it again on every start would churn the device for no reason.
+      if (OPTIONAL_CAPABILITIES[cap] && !this._optionalWanted(cap)) continue;
       if (!this.hasCapability(cap)) {
         try {
           await this.addCapability(cap);
@@ -1583,6 +1602,30 @@ class SmartChargerOcppDevice extends Device {
         } catch (err) {
           this.error(`addCapability(${cap}) failed:`, err.message);
         }
+      }
+    }
+    await this._applyOptionalCapabilities();
+  }
+
+  // Defaults to on when the setting has never been written — an existing device that was
+  // paired before the switch existed keeps the tile it already has.
+  _optionalWanted(cap) {
+    return this.getSetting(OPTIONAL_CAPABILITIES[cap]) !== false;
+  }
+
+  // Brings the device in line with the switches. Called at startup and whenever one of them
+  // changes, so the tile appears and disappears without needing the device re-paired.
+  async _applyOptionalCapabilities(settings) {
+    for (const [cap, key] of Object.entries(OPTIONAL_CAPABILITIES)) {
+      const wanted = settings ? settings[key] !== false : this._optionalWanted(cap);
+      const has    = this.hasCapability(cap);
+      if (wanted === has) continue;
+      try {
+        if (wanted) await this.addCapability(cap);
+        else        await this.removeCapability(cap);
+        this.log(`[OCPP] ${wanted ? 'Added' : 'Removed'} optional capability: ${cap}`);
+      } catch (err) {
+        this.error(`${wanted ? 'add' : 'remove'}Capability(${cap}) failed:`, err.message);
       }
     }
   }
