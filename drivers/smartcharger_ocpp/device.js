@@ -315,13 +315,14 @@ class SmartChargerOcppDevice extends Device {
     // reboot, not on Homey app restart — this catches the restart case).
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
-    this.homey.setTimeout(() => {
+    this.homey.setTimeout(async () => {
       if (this._txnId && !this._autoStartBlocked) return; // live session — leave alone
       const initAmps = autoStart ? defaultAmps : BLOCK_AMPS;
       try {
-        OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), initAmps, this._getPhases());
-        this.log(`[OCPP] Init profile applied: ${initAmps}A`);
-      } catch (e) { /* charger may not be connected yet */ }
+        const r = await OcppServer.getInstance(this.homey)
+          .setMaxCurrentAsync(this.getSetting('station_id'), initAmps, this._getPhases());
+        this.log(`[OCPP] Init profile ${initAmps}A → ${(r && r.status) || 'no status'}`);
+      } catch (e) { this.log(`[OCPP] Init profile ${initAmps}A failed: ${e.message}`); }
     }, 3000);
 
     this._updateChargingProfile().catch(() => {});
@@ -451,11 +452,12 @@ class SmartChargerOcppDevice extends Device {
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const bootAmps    = autoStart ? defaultAmps : BLOCK_AMPS;
-    this.homey.setTimeout(() => {
+    this.homey.setTimeout(async () => {
       try {
-        OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), bootAmps, this._getPhases());
-        this.log(`[OCPP] Boot profile applied: ${bootAmps}A`);
-      } catch (e) { /* charger may not be ready yet */ }
+        const r = await OcppServer.getInstance(this.homey)
+          .setMaxCurrentAsync(this.getSetting('station_id'), bootAmps, this._getPhases());
+        this.log(`[OCPP] Boot profile ${bootAmps}A → ${(r && r.status) || 'no status'}`);
+      } catch (e) { this.log(`[OCPP] Boot profile ${bootAmps}A failed: ${e.message}`); }
     }, 3000);
   }
 
@@ -733,7 +735,9 @@ class SmartChargerOcppDevice extends Device {
       this._txnAmps = BLOCK_AMPS;
       this.log(`[OCPP] Auto-start OFF — blocking with ${BLOCK_AMPS}A TxProfile`);
       try {
-        OcppServer.getInstance(this.homey).setTxProfile(this.getSetting('station_id'), txnId, BLOCK_AMPS, this._getPhases());
+        const r = await OcppServer.getInstance(this.homey)
+          .setTxProfileAsync(this.getSetting('station_id'), txnId, BLOCK_AMPS, this._getPhases());
+        this.log(`[OCPP] Block TxProfile → ${(r && r.status) || 'no status'}`);
       } catch (e) { this.log('[OCPP] Block TxProfile failed:', e.message); }
 
       await this._set('evcharger_charging', false);
@@ -805,11 +809,12 @@ class SmartChargerOcppDevice extends Device {
       await this._set('evcharger_charging', false);
       await this._updateSessionStatus('connected');
 
-      this.homey.setTimeout(() => {
+      this.homey.setTimeout(async () => {
         try {
-          OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
-          this.log(`[OCPP] Masked pause: ${BLOCK_AMPS}A hold applied for paused gap`);
-        } catch (e) { /* ignore */ }
+          const r = await OcppServer.getInstance(this.homey)
+            .setMaxCurrentAsync(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
+          this.log(`[OCPP] Masked pause: ${BLOCK_AMPS}A hold → ${(r && r.status) || 'no status'}`);
+        } catch (e) { this.log(`[OCPP] Masked pause hold failed: ${e.message}`); }
       }, 2000);
       return;
     }
@@ -839,13 +844,15 @@ class SmartChargerOcppDevice extends Device {
       await this._setChargingState('connected');
 
       const stationId = this.getSetting('station_id');
-      this.homey.setTimeout(() => {
+      this.homey.setTimeout(async () => {
         try {
           this._manualStartRequested = true;
           this.sessionPhaseOverride = retryPhases;
-          OcppServer.getInstance(this.homey).setMaxCurrent(stationId, retryAmps, retryPhases || this._devicePhases());
-          OcppServer.getInstance(this.homey).remoteStart(stationId);
-          this.log('[OCPP] Quick-abort retry sent');
+          const server = OcppServer.getInstance(this.homey);
+          const limit = await server.setMaxCurrentAsync(stationId, retryAmps, retryPhases || this._devicePhases());
+          const start = await server.remoteStartAsync(stationId);
+          this.log(`[OCPP] Quick-abort retry: profile → ${(limit && limit.status) || 'no status'}, `
+            + `start → ${(start && start.status) || 'no status'}`);
         } catch (e) { this.log('[OCPP] Retry failed:', e.message); }
       }, 3000);
       return;
@@ -907,8 +914,12 @@ class SmartChargerOcppDevice extends Device {
     const autoStart   = this.getSetting('auto_start_charging') !== false;
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
     const restoreAmps = autoStart ? defaultAmps : BLOCK_AMPS;
-    this.homey.setTimeout(() => {
-      try { OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), restoreAmps, this._getPhases()); } catch (e) { /* ignore */ }
+    this.homey.setTimeout(async () => {
+      try {
+        const r = await OcppServer.getInstance(this.homey)
+          .setMaxCurrentAsync(this.getSetting('station_id'), restoreAmps, this._getPhases());
+        this.log(`[OCPP] Restore profile ${restoreAmps}A → ${(r && r.status) || 'no status'}`);
+      } catch (e) { this.log(`[OCPP] Restore profile ${restoreAmps}A failed: ${e.message}`); }
     }, 2000);
 
     if (!wasBlocked) {
@@ -1379,9 +1390,10 @@ class SmartChargerOcppDevice extends Device {
         if (this._startInFlight || this.assumeActiveFromRestart) return;
         if (!this._txnId) {
           try {
-            OcppServer.getInstance(this.homey).setMaxCurrent(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
-            this.log('[OCPP] Idle guard: refreshed 0A TxDefaultProfile');
-          } catch (e) { /* charger may be offline */ }
+            const r = await OcppServer.getInstance(this.homey)
+              .setMaxCurrentAsync(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
+            this.log(`[OCPP] Idle guard: refreshed 0A TxDefaultProfile → ${(r && r.status) || 'no status'}`);
+          } catch (e) { this.log(`[OCPP] Idle guard refresh failed: ${e.message}`); }
         }
       }, IDLE_GUARD_MS);
       this.log('[OCPP] Idle guard started (auto-start OFF)');
