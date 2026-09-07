@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.219",
+  "version": "1.2.220",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -5725,7 +5725,7 @@
             "nl": "minuten"
           },
           "value": 5,
-          "min": 1,
+          "min": 5,
           "max": 60,
           "hint": {
             "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
@@ -6044,7 +6044,7 @@
             "nl": "minuten"
           },
           "value": 5,
-          "min": 1,
+          "min": 5,
           "max": 60,
           "hint": {
             "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
@@ -6321,7 +6321,7 @@
             "nl": "minuten"
           },
           "value": 5,
-          "min": 1,
+          "min": 5,
           "max": 60,
           "hint": {
             "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
@@ -6571,7 +6571,7 @@
             "nl": "minuten"
           },
           "value": 5,
-          "min": 1,
+          "min": 5,
           "max": 60,
           "hint": {
             "en": "How often to fetch data (minutes). Default: 5. Values below 5 may trigger Huawei rate limiting (HTTP 407) and cause temporary data gaps.",
