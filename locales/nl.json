@@ -152,7 +152,6 @@
       "addPlus": "+ Toevoegen",
       "driversColon": "Drivers:",
       "checkAll": "⚡ Alles controleren",
-      "scanFailed": "Scan mislukt:",
       "noteDownHint": "<strong>Noteer het IP-adres, de poort en de eenheid-ID</strong> van bevestigde drivers — deze waarden heb je nodig bij het koppelen van het apparaat in Homey.",
       "detectionNotGuaranteed": "<strong>Detectie is niet gegarandeerd.</strong> Resultaten zijn gebaseerd op registerwaarden die kunnen variëren tussen firmwareversies of aangepaste configuraties. Controleer het apparaat altijd na het koppelen.",
       "recheck": "↻ Opnieuw controleren",
@@ -214,7 +213,12 @@
       "typePrefix": "Type",
       "realtimeKpi": "Real-time KPI",
       "deviceIdColon": "Apparaat-ID:",
-      "noDataReturned": "Geen gegevens ontvangen"
+      "noDataReturned": "Geen gegevens ontvangen",
+      "saveCredentials": "Opslaan",
+      "savedCredentials": "Inloggegevens op deze Homey opgeslagen.",
+      "clearedCredentials": "Opgeslagen inloggegevens gewist.",
+      "saveFailed": "Opslaan mislukt:",
+      "loadedSaved": "Opgeslagen inloggegevens geladen."
     },
     "group": {
       "dataSources": "Gegevensbronnen",

@@ -152,7 +152,6 @@
       "addPlus": "+ Add",
       "driversColon": "Drivers:",
       "checkAll": "⚡ Check All",
-      "scanFailed": "Scan failed:",
       "noteDownHint": "<strong>Note down the IP address, Port and Unit ID</strong> of confirmed drivers — you will need these values when pairing the device in Homey.",
       "detectionNotGuaranteed": "<strong>Detection is not guaranteed.</strong> Results are based on register values that may vary between firmware versions or custom configurations. Always verify the device after pairing.",
       "recheck": "↻ Re-check",
@@ -214,7 +213,12 @@
       "typePrefix": "Type",
       "realtimeKpi": "Real-time KPI",
       "deviceIdColon": "Device ID:",
-      "noDataReturned": "No data returned"
+      "noDataReturned": "No data returned",
+      "saveCredentials": "Save",
+      "savedCredentials": "Credentials saved on this Homey.",
+      "clearedCredentials": "Saved credentials cleared.",
+      "saveFailed": "Could not save:",
+      "loadedSaved": "Loaded saved credentials."
     },
     "group": {
       "dataSources": "Data sources",

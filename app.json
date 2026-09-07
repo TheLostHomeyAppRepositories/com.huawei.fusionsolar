@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.220",
+  "version": "1.2.221",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -46,6 +46,14 @@
     "fetchOpenapiDebug": {
       "method": "POST",
       "path": "/debug/openapi"
+    },
+    "getOpenapiSaved": {
+      "method": "GET",
+      "path": "/debug/openapi-saved"
+    },
+    "putOpenapiSaved": {
+      "method": "PUT",
+      "path": "/debug/openapi-saved"
     },
     "getEmsDevices": {
       "method": "GET",

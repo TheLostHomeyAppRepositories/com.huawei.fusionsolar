@@ -2157,6 +2157,43 @@ module.exports = {
     return { ok: true };
   },
 
+  /**
+   * GET /debug/openapi-saved — the credentials this page was last told to remember.
+   *
+   * They live in app settings rather than being re-read from a device every time, because
+   * "Pre-fill from device" only works once a device is paired, and the diagnostic exists
+   * partly for people whose pairing has not worked yet. Nothing else reads this key, and no
+   * diagnostic export walks the settings store, so it stays where it was put.
+   */
+  async getOpenapiSaved({ homey }) {
+    const saved = homey.settings.get('openapi_debug_credentials') || {};
+    return {
+      baseUrl:    saved.baseUrl    || '',
+      username:   saved.username   || '',
+      systemCode: saved.systemCode || '',
+    };
+  },
+
+  /**
+   * PUT /debug/openapi-saved — remember them, or forget them.
+   *
+   * An empty username and system code clears the entry rather than storing two empty
+   * strings, so "forget these" is the same button with the fields emptied.
+   */
+  async putOpenapiSaved({ homey, body }) {
+    const { baseUrl, username, systemCode } = body || {};
+    if (!username && !systemCode) {
+      homey.settings.unset('openapi_debug_credentials');
+      return { saved: false };
+    }
+    homey.settings.set('openapi_debug_credentials', {
+      baseUrl:    (baseUrl    || '').trim(),
+      username:   (username   || '').trim(),
+      systemCode: (systemCode || '').trim(),
+    });
+    return { saved: true };
+  },
+
   async fetchOpenapiDebug({ body }) {
     const { baseUrl, username, systemCode } = body || {};
     if (!baseUrl || !username || !systemCode) {

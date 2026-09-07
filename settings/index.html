@@ -1064,6 +1064,7 @@
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
         <button class="btn-primary" id="oa-fetch-btn" onclick="fetchOpenApi()" data-i18n="openapi.fetchAll">Fetch All</button>
+        <button class="btn-secondary" id="oa-save-btn" onclick="saveOpenApi()" data-i18n="openapi.saveCredentials">Save</button>
         <button class="btn-secondary" id="oa-prefill-btn" onclick="prefillOpenApi()" data-i18n="openapi.prefillFromDevice">Pre-fill from device</button>
         <span id="oa-status" style="font-size:12px;color:var(--c-label-2)"></span>
       </div>
@@ -2331,7 +2332,9 @@
       if (name === 'ems') emsLiveStart(); else emsLiveStop();
       if (name !== 'ems') { emsShowSaveStatus(''); emsShowLoadStatus(''); }
       if (name === 'logs') logsStart(); else logsStop();
-      if (name !== 'openapi') {
+      if (name === 'openapi') {
+        loadSavedOpenApi();
+      } else {
         var _oaStatus = document.getElementById('oa-status');
         if (_oaStatus) _oaStatus.textContent = '';
       }
@@ -2521,6 +2524,47 @@
       60014: 'Lithium Battery Rack', 60043: 'SSU Group', 60044: 'SSU',
       60092: 'Power Converter', 23070: 'SmartAssistant',
     };
+
+    // Saved credentials are loaded once the page is up, and again whenever the tab is
+    // opened — the fields are the only place they are shown, so filling them late would
+    // look like they had not been kept.
+    let _oaLoadedSaved = false;
+
+    function loadSavedOpenApi() {
+      if (_oaLoadedSaved) return;
+      _oaLoadedSaved = true;
+      _H.api('GET', '/debug/openapi-saved', null, (err, res) => {
+        if (err || !res || !res.username) return;
+        if (res.baseUrl) { document.getElementById('oa-url').value = res.baseUrl; oaSyncServerSelect(); }
+        document.getElementById('oa-user').value = res.username;
+        if (res.systemCode) document.getElementById('oa-code').value = res.systemCode;
+        const status = document.getElementById('oa-status');
+        status.textContent = _H.__('settings.openapi.loadedSaved');
+        status.style.color = 'var(--c-label-2)';
+      });
+    }
+
+    function saveOpenApi() {
+      const status = document.getElementById('oa-status');
+      const body = {
+        baseUrl:    document.getElementById('oa-url').value.trim().replace(/\/$/, ''),
+        username:   document.getElementById('oa-user').value.trim(),
+        systemCode: document.getElementById('oa-code').value.trim(),
+      };
+      _H.api('PUT', '/debug/openapi-saved', body, (err, res) => {
+        if (err) {
+          status.textContent = _H.__('settings.openapi.saveFailed') + ' ' + err.message;
+          status.style.color = 'var(--c-danger-text)';
+          return;
+        }
+        // Emptying both fields and pressing Save is how they are forgotten, so the two
+        // outcomes are worth telling apart rather than both reading "saved".
+        status.textContent = res && res.saved
+          ? _H.__('settings.openapi.savedCredentials')
+          : _H.__('settings.openapi.clearedCredentials');
+        status.style.color = 'var(--c-success-text)';
+      });
+    }
 
     function prefillOpenApi() {
       const status = document.getElementById('oa-status');

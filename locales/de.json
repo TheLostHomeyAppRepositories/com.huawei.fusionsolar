@@ -152,7 +152,6 @@
       "addPlus": "+ Hinzufügen",
       "driversColon": "Treiber:",
       "checkAll": "⚡ Alle prüfen",
-      "scanFailed": "Scan fehlgeschlagen:",
       "noteDownHint": "<strong>IP-Adresse, Port und Unit-ID</strong> bestätigter Treiber notieren — diese Werte werden beim Koppeln des Geräts in Homey benötigt.",
       "detectionNotGuaranteed": "<strong>Erkennung ist nicht garantiert.</strong> Ergebnisse basieren auf Registerwerten, die je nach Firmware-Version oder individueller Konfiguration variieren können. Das Gerät nach dem Koppeln immer verifizieren.",
       "recheck": "↻ Erneut prüfen",
@@ -214,7 +213,12 @@
       "typePrefix": "Typ",
       "realtimeKpi": "Echtzeit-KPI",
       "deviceIdColon": "Geräte-ID:",
-      "noDataReturned": "Keine Daten zurückgegeben"
+      "noDataReturned": "Keine Daten zurückgegeben",
+      "saveCredentials": "Speichern",
+      "savedCredentials": "Zugangsdaten auf diesem Homey gespeichert.",
+      "clearedCredentials": "Gespeicherte Zugangsdaten gelöscht.",
+      "saveFailed": "Speichern fehlgeschlagen:",
+      "loadedSaved": "Gespeicherte Zugangsdaten geladen."
     },
     "group": {
       "dataSources": "Datenquellen",
