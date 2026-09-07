@@ -137,8 +137,19 @@ test('the button row wraps, so the status text cannot overflow the card', () => 
     'without min-width:0 a flex item refuses to shrink below its content and overflows anyway');
 });
 
+// `false && ...` in front of the condition leaves every token in place, so a loose regex
+// still matches while nothing is ever labelled. The assignment is anchored at its start.
+test('the report labels where each reading came from', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'settings', 'index.html'), 'utf8');
+  assert.match(src, /^\s*const srcNote = kpiSrc && kpiSrc\.source === 'poll'/m,
+    'the source label is disabled or gone, so a polled reading looks freshly fetched');
+  assert.match(src, /settings\.openapi\.fromLastPoll/,
+    'the age is drawn without a word saying what it is the age of');
+});
+
 test('the new strings exist in all three languages', () => {
-  const keys = ['saveCredentials', 'savedCredentials', 'clearedCredentials', 'saveFailed', 'loadedSaved'];
+  const keys = ['saveCredentials', 'savedCredentials', 'clearedCredentials', 'saveFailed',
+    'loadedSaved', 'fromLastPoll'];
   for (const lang of ['en', 'de', 'nl']) {
     const oa = require(path.join(ROOT, 'locales', `${lang}.json`)).settings.openapi;
     for (const k of keys) {

@@ -218,7 +218,8 @@
       "savedCredentials": "Zugangsdaten auf diesem Homey gespeichert.",
       "clearedCredentials": "Gespeicherte Zugangsdaten gelöscht.",
       "saveFailed": "Speichern fehlgeschlagen:",
-      "loadedSaved": "Gespeicherte Zugangsdaten geladen."
+      "loadedSaved": "Gespeicherte Zugangsdaten geladen.",
+      "fromLastPoll": "aus dem letzten Abruf, vor"
     },
     "group": {
       "dataSources": "Datenquellen",

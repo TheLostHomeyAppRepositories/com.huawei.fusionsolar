@@ -11,7 +11,11 @@ const {
   getDevRealKpi:       openapiGetDevRealKpi,
 } = require('./lib/openapi-client');
 
-const { INTER_REQUEST_DELAY: OPENAPI_INTER_REQUEST_DELAY } = require('./lib/openapi-coordinator');
+const {
+  INTER_REQUEST_DELAY: OPENAPI_INTER_REQUEST_DELAY,
+  DEV_KPI_WINDOW_MS:   OPENAPI_DEV_KPI_WINDOW_MS,
+  devKpiAllowance:     openapiDevKpiAllowance,
+} = require('./lib/openapi-coordinator');
 
 const {
   REGISTERS,
@@ -2194,7 +2198,7 @@ module.exports = {
     return { saved: true };
   },
 
-  async fetchOpenapiDebug({ body }) {
+  async fetchOpenapiDebug({ homey, body }) {
     const { baseUrl, username, systemCode } = body || {};
     if (!baseUrl || !username || !systemCode) {
       return { error: 'Missing baseUrl, username or systemCode' };
@@ -2244,47 +2248,101 @@ module.exports = {
         }
 
         stationResult.kpiByType = {};
+        stationResult.kpiSource = {};   // typeId -> { source: 'poll' | 'live', ageMs }
         const kpiEntries = Object.entries(byType);
 
-        // Sequential, and spaced by the same delay the poller uses.
+        // The poller's readings first; the API only for what it has not got.
         //
-        // This used to fire every device type at once through Promise.allSettled, which is
-        // precisely what lib/openapi-coordinator.js spaces its own calls out to avoid — the
-        // constant there says so in as many words. Huawei answered the first type and
-        // refused the rest with failCode 407, and until 1.2.218 that refusal was discarded,
-        // so the report simply said "0 device(s)".
+        // getDevRealKpi allows Σ Roundup(devices per type / 100) calls every five minutes —
+        // one per device type on a household plant — and the poller already spends one per
+        // type per cycle. A diagnostic that re-fetches the same types asks for a second
+        // helping of a budget exactly one helping wide, and Huawei refuses the surplus with
+        // failCode 407. Before that refusal was surfaced it arrived as an empty list, which
+        // reads as a missing device: issue #28 spent days hunting a battery that was
+        // answering the poller perfectly well the whole time.
         //
-        // Reported in #28 as a battery the API would not hand over. It was our own burst:
-        // the device polls normally, and the same plant's battery shows a live state of
-        // charge on the dashboard at the same time. A diagnostic that provokes the fault it
-        // is being used to investigate is worse than none — it sent that issue several
-        // rounds down the wrong path.
-        //
-        // Four types at 1.5 s is six seconds of waiting for a report a user asked for once.
-        const kpiResults = [];
+        // So the readings the drivers are already working from are shown as they are, with
+        // their age beside them, and the allowance is spent only on types nobody polls.
+        const snapshot = (() => {
+          try { return homey.app.getCoordinator().snapshotFor(code) || null; } catch { return null; }
+        })();
+
+        const allowance = openapiDevKpiAllowance(byType);
+        const fromPoll  = [];
+        const toFetch   = [];
         for (const [typeId, ids] of kpiEntries) {
-          if (kpiResults.length > 0) await new Promise((r) => setTimeout(r, OPENAPI_INTER_REQUEST_DELAY));
-          kpiResults.push(await openapiGetDevRealKpi(baseUrl, token, ids, Number(typeId))
-            .then(({ devices: kpiDevices, failCode, failMessage }) => ({ typeId, kpiDevices, failCode, failMessage, ok: true }))
-            .catch((err) => ({ typeId, error: err.message, ok: false })));
+          const held = snapshot && snapshot.kpiByType[typeId];
+          if (held && Array.isArray(held.maps) && held.maps.length) fromPoll.push([typeId, held]);
+          else toFetch.push([typeId, ids]);
         }
 
-        for (const r of kpiResults) {
+        for (const [typeId, held] of fromPoll) {
+          const ageMs = Date.now() - held.at;
+          stationResult.kpiByType[typeId] = held.maps.map((m) => ({ dataItemMap: m }));
+          stationResult.kpiSource[typeId] = { source: 'poll', ageMs };
+          result.steps.push({
+            step: `getDevRealKpi(type=${typeId})`,
+            ok: true,
+            data: `${held.maps.length} device(s) — from the last poll, ${Math.round(ageMs / 1000)}s ago (no API call)`,
+          });
+        }
+
+        // The rest is fetched back to back, at the poller's own 1.5 s spacing.
+        //
+        // Not at the documented sustainable rate. That rate is the five-minute window
+        // divided by the allowance — 75 s a call on a four-type plant — and two attempts at
+        // honouring it inside this handler both made the report worse. The first ran for
+        // nearly four minutes and the page's request timed out, so the caller reported a
+        // broken response instead of a report. The second cut the run short at twenty
+        // seconds and returned one device type out of four, with three lines explaining what
+        // it had declined to fetch.
+        //
+        // A rate limit is not the failure it looked like before 1.2.218. It arrives as
+        // failCode 407, the report says so, and a plant that trips it still gets every type
+        // that fits — strictly more than a run which refuses to ask. The way to stay under
+        // the limit is to ask for less, which is what the snapshot above does. Pacing what
+        // remains buys nothing back from a window the poller has already spent from.
+        let spent = 0;
+        for (const [typeId, ids] of toFetch) {
+          if (spent > 0) await new Promise((r) => setTimeout(r, OPENAPI_INTER_REQUEST_DELAY));
+          spent += 1;
+          const r = await openapiGetDevRealKpi(baseUrl, token, ids, Number(typeId))
+            .then(({ devices: kpiDevices, failCode, failMessage }) => ({ kpiDevices, failCode, failMessage, ok: true }))
+            .catch((err) => ({ error: err.message, ok: false }));
+
           if (r.ok) {
-            stationResult.kpiByType[r.typeId] = r.kpiDevices;
-            // An empty answer carries its reason into the report. "0 device(s)" on its own
-            // cannot distinguish a refusal from an outage, which cost issue #28 several
-            // rounds of guessing about a battery FusionSolar was showing at the same moment.
+            stationResult.kpiByType[typeId] = r.kpiDevices;
+            stationResult.kpiSource[typeId] = { source: 'live' };
+            // An empty answer carries its reason. "0 device(s)" on its own cannot tell a
+            // refusal from an outage, which cost issue #28 several rounds of guessing about
+            // a battery FusionSolar was showing at the same moment.
             const why = r.kpiDevices.length === 0
               ? (r.failCode
                 ? ` — failCode ${r.failCode}: ${r.failMessage}`
                 : ' — no failure code returned; the API answered successfully with an empty list')
               : '';
-            result.steps.push({ step: `getDevRealKpi(type=${r.typeId})`, ok: true, data: `${r.kpiDevices.length} device(s)${why}` });
+            result.steps.push({ step: `getDevRealKpi(type=${typeId})`, ok: true, data: `${r.kpiDevices.length} device(s)${why}` });
           } else {
-            stationResult.kpiByType[r.typeId] = { error: r.error };
-            result.steps.push({ step: `getDevRealKpi(type=${r.typeId})`, ok: false, data: r.error });
+            stationResult.kpiByType[typeId] = { error: r.error };
+            stationResult.kpiSource[typeId] = { source: 'live' };
+            result.steps.push({ step: `getDevRealKpi(type=${typeId})`, ok: false, data: r.error });
           }
+        }
+
+        // The arithmetic, in the report rather than only in the app log, because this is
+        // where someone looks when a type comes back empty.
+        result.steps.push({
+          step: 'call allowance',
+          ok: true,
+          data: `${allowance} getDevRealKpi call(s) per 5 min for this plant; `
+              + `${fromPoll.length} type(s) served from the last poll, ${spent} fetched live`
+              + (spent > 0 ? ` — ${Math.max(0, allowance - spent)} call(s) of headroom left in this window` : ''),
+        });
+
+        // The poller is held off for the window this run has just spent from, so its next
+        // cycle does not land inside it and collect the 407 this one avoided.
+        if (spent > 0) {
+          try { homey.app.getCoordinator().pauseAll(OPENAPI_DEV_KPI_WINDOW_MS); } catch { /* no coordinator */ }
         }
 
         result.stationDetails.push(stationResult);

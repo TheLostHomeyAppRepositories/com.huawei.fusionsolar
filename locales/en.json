@@ -218,7 +218,8 @@
       "savedCredentials": "Credentials saved on this Homey.",
       "clearedCredentials": "Saved credentials cleared.",
       "saveFailed": "Could not save:",
-      "loadedSaved": "Loaded saved credentials."
+      "loadedSaved": "Loaded saved credentials.",
+      "fromLastPoll": "from the last poll,"
     },
     "group": {
       "dataSources": "Data sources",

@@ -218,7 +218,8 @@
       "savedCredentials": "Inloggegevens op deze Homey opgeslagen.",
       "clearedCredentials": "Opgeslagen inloggegevens gewist.",
       "saveFailed": "Opslaan mislukt:",
-      "loadedSaved": "Opgeslagen inloggegevens geladen."
+      "loadedSaved": "Opgeslagen inloggegevens geladen.",
+      "fromLastPoll": "uit de laatste ophaalronde,"
     },
     "group": {
       "dataSources": "Gegevensbronnen",
