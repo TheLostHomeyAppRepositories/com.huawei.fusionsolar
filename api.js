@@ -11,6 +11,8 @@ const {
   getDevRealKpi:       openapiGetDevRealKpi,
 } = require('./lib/openapi-client');
 
+const { INTER_REQUEST_DELAY: OPENAPI_INTER_REQUEST_DELAY } = require('./lib/openapi-coordinator');
+
 const {
   REGISTERS,
   POWER_METER_REGISTERS,
@@ -2206,15 +2208,31 @@ module.exports = {
 
         stationResult.kpiByType = {};
         const kpiEntries = Object.entries(byType);
-        const kpiResults = await Promise.allSettled(
-          kpiEntries.map(([typeId, ids]) =>
-            openapiGetDevRealKpi(baseUrl, token, ids, Number(typeId))
-              .then(({ devices: kpiDevices, failCode, failMessage }) => ({ typeId, kpiDevices, failCode, failMessage, ok: true }))
-              .catch((err) => ({ typeId, error: err.message, ok: false })),
-          ),
-        );
-        for (const settled of kpiResults) {
-          const r = settled.status === 'fulfilled' ? settled.value : { typeId: '?', ok: false, error: settled.reason?.message };
+
+        // Sequential, and spaced by the same delay the poller uses.
+        //
+        // This used to fire every device type at once through Promise.allSettled, which is
+        // precisely what lib/openapi-coordinator.js spaces its own calls out to avoid — the
+        // constant there says so in as many words. Huawei answered the first type and
+        // refused the rest with failCode 407, and until 1.2.218 that refusal was discarded,
+        // so the report simply said "0 device(s)".
+        //
+        // Reported in #28 as a battery the API would not hand over. It was our own burst:
+        // the device polls normally, and the same plant's battery shows a live state of
+        // charge on the dashboard at the same time. A diagnostic that provokes the fault it
+        // is being used to investigate is worse than none — it sent that issue several
+        // rounds down the wrong path.
+        //
+        // Four types at 1.5 s is six seconds of waiting for a report a user asked for once.
+        const kpiResults = [];
+        for (const [typeId, ids] of kpiEntries) {
+          if (kpiResults.length > 0) await new Promise((r) => setTimeout(r, OPENAPI_INTER_REQUEST_DELAY));
+          kpiResults.push(await openapiGetDevRealKpi(baseUrl, token, ids, Number(typeId))
+            .then(({ devices: kpiDevices, failCode, failMessage }) => ({ typeId, kpiDevices, failCode, failMessage, ok: true }))
+            .catch((err) => ({ typeId, error: err.message, ok: false })));
+        }
+
+        for (const r of kpiResults) {
           if (r.ok) {
             stationResult.kpiByType[r.typeId] = r.kpiDevices;
             // An empty answer carries its reason into the report. "0 device(s)" on its own
