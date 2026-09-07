@@ -78,19 +78,32 @@ test('an empty but successful answer is reported as having no failure code', asy
 });
 
 test("the retry's failure code is what comes back", async () => {
-  const r = await call(OK([]), FAIL(20001, 'Permission denied'));
+  const r = await call(OK([]), FAIL(20001, 'raw text from Huawei'));
   assert.strictEqual(r.failCode, 20001);
-  assert.strictEqual(r.failMessage, 'Permission denied',
+  // The app's own wording wins over the raw text, and 20001 means the Northbound account
+  // does not exist — not "permission denied", which is what this table said until the
+  // published error list was read against it and sent people to check plant permissions.
+  assert.strictEqual(r.failMessage, 'This Northbound API account does not exist',
     'the caller still has to guess why a device type is empty');
   assert.deepStrictEqual(r.devices, []);
 });
 
 // A known code is translated; the mapping is what turns a number into something a user can
-// act on. 20009 is the one a silent device type is most likely to carry.
+// act on. 20009 is the one a silent device type is most likely to carry, and it says
+// something specific — the readings are not configured for that plant — where the app used
+// to render it as the far vaguer "No data available".
 test('a known code is given its plain-language message', async () => {
   const r = await call(OK([]), FAIL(20009, null));
   assert.strictEqual(r.failCode, 20009);
-  assert.strictEqual(r.failMessage, 'No data available');
+  assert.strictEqual(r.failMessage,
+    'The requested readings are not configured in FusionSolar for this plant');
+});
+
+// The one from the field: a SDongle answering getDevRealKpi, which returns device readings
+// that a communication dongle does not have.
+test('the device-type refusal names the device type as the problem', async () => {
+  const r = await call(OK([]), FAIL(20013, null));
+  assert.strictEqual(r.failMessage, 'This interface does not support that device type');
 });
 
 test("an unknown code keeps Huawei's own wording rather than being swallowed", async () => {
@@ -102,9 +115,9 @@ test("an unknown code keeps Huawei's own wording rather than being swallowed", a
 // The first attempt is the one that explains why a retry was needed. Losing it would hide
 // the case where the numeric form is rejected and the string form merely returns nothing.
 test('where only the first attempt complained, its code is the one reported', async () => {
-  const r = await call(FAIL(20001, 'Permission denied'), OK([]));
+  const r = await call(FAIL(20001, 'raw text from Huawei'), OK([]));
   assert.strictEqual(r.failCode, 20001);
-  assert.strictEqual(r.failMessage, 'Permission denied');
+  assert.strictEqual(r.failMessage, 'This Northbound API account does not exist');
   assert.deepStrictEqual(r.devices, []);
 });
 
@@ -129,6 +142,30 @@ test('an expired session on the retry is still an expiry, not a plain failure', 
   const r = await call(OK([]), FAIL(306, null));
   assert.strictEqual(r.expired, true, 'the poll will not re-login, so the type stays empty for good');
   assert.strictEqual(r.failCode, 306);
+});
+
+// The codes this app can actually meet, checked against Huawei's published list rather than
+// against what the number looks like it ought to mean. Two entries were wrong that way for a
+// long time and pointed users at the wrong thing entirely.
+test('the traffic and request-shape codes read as what they are', async () => {
+  const say = async (code) => (await call(OK([]), FAIL(code, null))).failMessage;
+
+  // Traffic: 407 is this account's own frequency on one interface; 403 and 429 are the
+  // service being busy; 20618 is a daily ceiling, which no amount of waiting a minute fixes.
+  assert.match(await say(407),   /reduce poll frequency/);
+  assert.match(await say(403),   /wait 1 minute/);
+  assert.match(await say(429),   /wait 1 minute/);
+  assert.match(await say(20618), /used up its API calls for today/);
+  assert.match(await say(20200), /busy/);
+
+  // Request shape. 20016/20017 is the hundred-device ceiling on a single getDevRealKpi call.
+  assert.match(await say(20016), /100 devices/);
+  assert.match(await say(20017), /100 devices/);
+
+  // Account rather than plant: 401 is the interface permission, 20001 the account itself.
+  assert.match(await say(401),   /permission/i);
+  assert.match(await say(20001), /does not exist/);
+  assert.match(await say(20403), /restricted/);
 });
 
 // ── The two places the reason has to surface ─────────────────────────────────
