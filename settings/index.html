@@ -1062,11 +1062,15 @@
         <input id="oa-code" type="password" placeholder="System code (password)" data-i18n-placeholder="openapi.systemCodePlaceholder"
           style="padding:6px 10px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none">
       </div>
-      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <!-- Wrapping, because three buttons and a sentence do not fit one line in every
+           language: in German the status was squeezed into a column a few characters wide
+           and spilled out of the card. The status takes a whole line of its own once the
+           buttons have used the width, and sits beside them when there is room. -->
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
         <button class="btn-primary" id="oa-fetch-btn" onclick="fetchOpenApi()" data-i18n="openapi.fetchAll">Fetch All</button>
         <button class="btn-secondary" id="oa-save-btn" onclick="saveOpenApi()" data-i18n="openapi.saveCredentials">Save</button>
         <button class="btn-secondary" id="oa-prefill-btn" onclick="prefillOpenApi()" data-i18n="openapi.prefillFromDevice">Pre-fill from device</button>
-        <span id="oa-status" style="font-size:12px;color:var(--c-label-2)"></span>
+        <span id="oa-status" style="font-size:12px;color:var(--c-label-2);flex:1 1 200px;min-width:0"></span>
       </div>
     </div>
     <div id="oa-results"></div>

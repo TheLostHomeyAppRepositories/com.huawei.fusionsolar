@@ -123,6 +123,20 @@ test('the page offers a Save button and loads what was saved when the tab opens'
     'the credentials are re-fetched on every tab switch, overwriting what is being typed');
 });
 
+// Three buttons and a sentence do not fit one line in every language. In German the status
+// was squeezed into a column a few characters wide and spilled out of the card.
+test('the button row wraps, so the status text cannot overflow the card', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'settings', 'index.html'), 'utf8');
+  const from = src.indexOf('id="oa-fetch-btn"');
+  const row  = src.slice(src.lastIndexOf('<div style="display:flex', from), src.indexOf('</div>', from));
+  assert.match(row, /flex-wrap:wrap/,
+    'the row is fixed to one line again; a longer translation pushes the status out of the card');
+  assert.match(row, /id="oa-status"[^>]*flex:1 1 200px/,
+    'the status has no width of its own, so it is squeezed into whatever the buttons leave');
+  assert.match(row, /id="oa-status"[^>]*min-width:0/,
+    'without min-width:0 a flex item refuses to shrink below its content and overflows anyway');
+});
+
 test('the new strings exist in all three languages', () => {
   const keys = ['saveCredentials', 'savedCredentials', 'clearedCredentials', 'saveFailed', 'loadedSaved'];
   for (const lang of ['en', 'de', 'nl']) {
