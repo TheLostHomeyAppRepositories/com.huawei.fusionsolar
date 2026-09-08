@@ -9,6 +9,7 @@ const {
   getStationRealKpiRaw: openapiGetStationRealKpiRaw,
   getDevList:          openapiGetDevList,
   getDevRealKpi:       openapiGetDevRealKpi,
+  DEV_KPI_TYPES:       OPENAPI_DEV_KPI_TYPES,
 } = require('./lib/openapi-client');
 
 const {
@@ -2228,9 +2229,18 @@ module.exports = {
         const stationResult = { stationCode: code, stationName: station.plantName ?? station.stationName ?? code };
 
         try {
-          const { raw } = await openapiGetStationRealKpiRaw(baseUrl, token, code);
+          const { raw, failCode, failMessage } = await openapiGetStationRealKpiRaw(baseUrl, token, code);
           stationResult.stationKpi = raw;
-          result.steps.push({ step: `getStationRealKpi(${code})`, ok: true, data: raw ? 'data received' : 'no data' });
+          // Only one call every five minutes is allowed here for a single-plant account, and
+          // the poller already spends it — so a refusal is the likeliest reason for an empty
+          // answer, and the likeliest reason deserves to be named rather than shown as "no
+          // data", which reads as a plant with nothing to say.
+          result.steps.push({
+            step: `getStationRealKpi(${code})`,
+            ok: true,
+            data: raw ? 'data received'
+              : (failCode ? `no data — failCode ${failCode}: ${failMessage}` : 'no data'),
+          });
         } catch (err) {
           stationResult.stationKpi = null;
           result.steps.push({ step: `getStationRealKpi(${code})`, ok: false, data: err.message });
@@ -2241,10 +2251,25 @@ module.exports = {
         result.steps.push({ step: `getDevList(${code})`, ok: true, data: `${devices.length} device(s)` });
 
         const byType = {};
+        const unsupported = [];
         for (const d of devices) {
           const t = Number(d.devTypeId);
+          // A type this interface does not serve costs a call to be told so — see
+          // DEV_KPI_TYPES in lib/openapi-client.js. It stays in the report, named, because a
+          // device silently missing from a diagnostic is worse than one that says why.
+          if (!OPENAPI_DEV_KPI_TYPES.has(t)) {
+            if (!unsupported.includes(t)) unsupported.push(t);
+            continue;
+          }
           if (!byType[t]) byType[t] = [];
           byType[t].push(String(d.id));
+        }
+        for (const t of unsupported) {
+          result.steps.push({
+            step: `getDevRealKpi(type=${t})`,
+            ok: true,
+            data: 'not queried — getDevRealKpi does not serve this device type (failCode 20013)',
+          });
         }
 
         stationResult.kpiByType = {};

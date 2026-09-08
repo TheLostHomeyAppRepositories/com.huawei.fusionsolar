@@ -31,6 +31,7 @@ const { DEV_KPI_WINDOW_MS, devKpiAllowance } = require(path.join(ROOT, 'lib', 'o
 // ── A stubbed client, so the timing measured is the report's own ─────────────
 
 const calls = [];
+let stationAnswer = { raw: { day_power: 1 }, failCode: null, failMessage: null };
 let devList = [
   { id: 1001, devTypeId: 1 }, { id: 1002, devTypeId: 39 },
   { id: 1003, devTypeId: 47 }, { id: 1004, devTypeId: 62 },
@@ -41,12 +42,15 @@ Module._load = function (request, parent, isMain) {
     return {
       login:                async () => 'tok',
       getStationList:       async () => ({ stations: [{ stationCode: 'NE=1', stationName: 'test' }] }),
-      getStationRealKpiRaw: async () => ({ raw: { day_power: 1 } }),
+      getStationRealKpiRaw: async () => stationAnswer,
       getDevList:           async () => ({ devices: devList }),
       getDevRealKpi: async (baseUrl, token, ids, devTypeId) => {
         calls.push({ devTypeId, at: Date.now() });
         return { devices: [{ dataItemMap: { live: true } }], failCode: null, failMessage: null };
       },
+      // The types the interface serves, per section 3.2.6 — the dongle in the fixture below
+      // is deliberately not among them, and is expected to be reported rather than asked for.
+      DEV_KPI_TYPES: new Set([1, 10, 17, 38, 39, 41, 47, 23070]),
     };
   }
   return origLoad.call(this, request, parent, isMain);
@@ -115,16 +119,16 @@ test('the polled readings are rendered in the same shape as fetched ones', async
   const report = await run(homey);
   assert.deepStrictEqual(report.stationDetails[0].kpiByType['1'], [{ dataItemMap: { day_cap: 26 } }],
     'the page renders dev.dataItemMap, so a bare map would show as an empty table');
-  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [39, 47, 62],
+  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [39, 47],
     'an empty snapshot entry was taken for a reading and no call was made');
 });
 
 test('only the unpolled types are fetched', async () => {
-  const homey = fakeHomey({ polled: { 1: [{ day_cap: 26 }], 39: [{ battery_soc: 67 }], 47: [{ a: 1 }] } });
+  const homey = fakeHomey({ polled: { 1: [{ day_cap: 26 }], 39: [{ battery_soc: 67 }] } });
   const report = await run(homey);
-  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [62],
+  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [47],
     'the allowance was spent on types the poller had already read');
-  assert.strictEqual(report.stationDetails[0].kpiSource['62'].source, 'live');
+  assert.strictEqual(report.stationDetails[0].kpiSource['47'].source, 'live');
   assert.deepStrictEqual(homey.paused, [DEV_KPI_WINDOW_MS],
     'the poller was not held off, so its next cycle lands in the window this run spent from');
 });
@@ -132,9 +136,31 @@ test('only the unpolled types are fetched', async () => {
 test('no coordinator at all still produces a report, by fetching everything', async () => {
   const homey = { app: { getCoordinator: () => { throw new Error('no coordinator'); } } };
   const report = await run(homey);
-  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [1, 39, 47, 62],
+  assert.deepStrictEqual(calls.map((c) => c.devTypeId), [1, 39, 47],
     'an unpaired plant — the case the page exists for — got no data');
   assert.strictEqual(report.stationDetails[0].kpiSource['1'].source, 'live');
+});
+
+// getStationRealKpi allows Roundup(plants/100) calls every five minutes — one, for a
+// single-plant account, which the poller already spends. So a refusal is the likeliest
+// reason for an empty station reading, and "no data" reads instead as a plant with nothing
+// to say. Same conflation as the device interface before 1.2.218, one function along.
+test('a refused station reading is reported with its reason', async () => {
+  const saved = stationAnswer;
+  stationAnswer = { raw: null, failCode: 407, failMessage: 'Rate limit exceeded' };
+  try {
+    const report = await run(fakeHomey());
+    const line = report.steps.find((st) => /^getStationRealKpi/.test(st.step));
+    assert.match(line.data, /no data — failCode 407: Rate limit exceeded/,
+      'the report says only "no data", which reads as a plant with nothing to report');
+  } finally { stationAnswer = saved; }
+});
+
+test('a station reading that arrives says nothing about failures', async () => {
+  const report = await run(fakeHomey());
+  const line = report.steps.find((st) => /^getStationRealKpi/.test(st.step));
+  assert.strictEqual(line.data, 'data received',
+    'a good reading is annotated with a failure that did not happen');
 });
 
 // The state right after an app restart: the poller has not filled its snapshot yet, so every
@@ -145,15 +171,21 @@ test('no coordinator at all still produces a report, by fetching everything', as
 test('a run with an empty snapshot still fetches every type', async () => {
   const homey = fakeHomey();          // nothing polled: four types, allowance four
   const report = await run(homey);
-  assert.strictEqual(calls.length, 4,
+  assert.strictEqual(calls.length, 3,
     'types were skipped rather than asked for — a 407 says more than a refusal to ask');
   assert.ok(report.steps.every((s) => !/not fetched/.test(s.data || '')),
     'the report explains what it declined to fetch instead of fetching it');
 
   const line = report.steps.find((s) => s.step === 'call allowance');
   assert.ok(line, 'the report no longer states what it was allowed to spend');
-  assert.match(line.data, /4 getDevRealKpi call\(s\) per 5 min/);
-  assert.match(line.data, /0 type\(s\) served from the last poll, 4 fetched live/);
+  // Three, not four: the dongle is filtered out before the allowance is worked out, so it
+  // neither costs a call nor counts towards one.
+  assert.match(line.data, /3 getDevRealKpi call\(s\) per 5 min/);
+  assert.match(line.data, /0 type\(s\) served from the last poll, 3 fetched live/);
+
+  const skipped = report.steps.find((st) => st.step === 'getDevRealKpi(type=62)');
+  assert.ok(skipped, 'the dongle vanished from the report rather than being explained');
+  assert.match(skipped.data, /does not serve this device type/);
 });
 
 // The allowance is never the constraint: it is a sum of Roundup(devices per type / 100),
