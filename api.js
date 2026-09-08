@@ -17,6 +17,7 @@ const {
   DEV_KPI_WINDOW_MS:   OPENAPI_DEV_KPI_WINDOW_MS,
   devKpiAllowance:     openapiDevKpiAllowance,
 } = require('./lib/openapi-coordinator');
+const { fromPairedDevice: openapiFromPairedDevice } = require('./lib/openapi-credentials');
 
 const {
   REGISTERS,
@@ -710,28 +711,19 @@ module.exports = {
 
   // ─── OpenAPI Debugger ──────────────────────────────────────────────────────
 
+  /**
+   * GET /debug/openapi-credentials — what an already paired OpenAPI device polls with.
+   *
+   * Devices only, deliberately: this is the "Pre-fill from device" button, and the tab has
+   * a separate Save of its own. The pairing dialogs ask a helper that tries both sources.
+   *
+   * The driver list used to be spelled out here and named three of the seven OpenAPI
+   * drivers, so an account with only iSitePower devices was told nothing was found. It now
+   * comes from lib/openapi-credentials.js, which every caller shares.
+   */
   async getOpenapiCredentials({ homey }) {
-    const OPENAPI_DRIVER_IDS = [
-      'sun2000_openapi_fusionsolar',
-      'luna2000_openapi_fusionsolar',
-      'powermeter_openapi_fusionsolar',
-    ];
-    for (const driverId of OPENAPI_DRIVER_IDS) {
-      let driver;
-      try { driver = homey.drivers.getDriver(driverId); } catch { continue; }
-      for (const device of driver.getDevices()) {
-        const s = device.getSettings();
-        if (s.username && s.system_code) {
-          return {
-            baseUrl:     s.base_url || 'https://eu5.fusionsolar.huawei.com',
-            username:    s.username,
-            systemCode:  s.system_code,
-            stationCode: s.station_code || '',
-          };
-        }
-      }
-    }
-    return { baseUrl: 'https://eu5.fusionsolar.huawei.com', username: '', systemCode: '', stationCode: '' };
+    return openapiFromPairedDevice(homey)
+      ?? { baseUrl: '', username: '', systemCode: '', stationCode: '' };
   },
 
   // ─── EMS settings API ─────────────────────────────────────────────────────────

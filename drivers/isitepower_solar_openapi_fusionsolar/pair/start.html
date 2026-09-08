@@ -53,6 +53,7 @@
       line-height: 1.5;
     }
     .status.success { background: #edf7f1; border: 1px solid #b2dfcb; color: #1a6638; display: block; }
+    .status.info    { background: #f3f5f7; border: 1px solid #dce1e6; color: #4a5560; display: block; }
     .status.error   { background: #fdf0ee; border: 1px solid #f5c2ba; color: #8b1a0e; display: block; }
 
     button.primary {
@@ -164,6 +165,8 @@
         defaultName:    'iSitePower-M Solar (OpenAPI)',
         errNoStations:  'No stations found for this account.',
         successLogin:   '✓ Login successful',
+        prefillSaved:   'Filled in from the credentials saved in app settings.',
+        prefillDevice:  'Filled in from an OpenAPI device already added.',
       },
       de: {
         title:          'FusionSolar OpenAPI',
@@ -189,6 +192,8 @@
         defaultName:    'iSitePower-M Solar (OpenAPI)',
         errNoStations:  'Keine Anlagen für dieses Konto gefunden.',
         successLogin:   '✓ Anmeldung erfolgreich',
+        prefillSaved:   'Aus den in den App-Einstellungen gespeicherten Zugangsdaten übernommen.',
+        prefillDevice:  'Aus einem bereits hinzugefügten OpenAPI-Gerät übernommen.',
       },
     };
 
@@ -246,11 +251,21 @@
         inp.style.display = 'none';
       });
 
+      syncServerSelect();
+    })();
+
+    // Moves the dropdown to whatever the text field holds. Called once on load, and again
+    // after a prefill writes a URL into it — without it a prefilled regional server would
+    // still show as "Other", which reads as an unrecognised address.
+    function syncServerSelect() {
+      const sel = document.getElementById('base-url-select');
+      const inp = document.getElementById('base-url');
+      if (!sel || !inp) return;
       const url   = inp.value.trim().replace(/\/$/, '');
       const known = OA_SERVERS.some((s) => s.url === url);
       sel.value = known ? url : OA_CUSTOM;
       inp.style.display = known ? 'none' : '';
-    })();
+    }
     document.getElementById('label-username').textContent = t.labelUsername;
     document.getElementById('label-password').textContent = t.labelPassword;
     document.getElementById('hint-password').textContent  = t.hintPassword;
@@ -261,6 +276,37 @@
     document.getElementById('label-station').textContent  = t.labelStation;
     document.getElementById('btn-add-label').textContent  = t.btnAdd;
     document.getElementById('device-name').value          = t.defaultName;
+
+    // One FusionSolar account serves every OpenAPI device here, so the dialog opens with
+    // what the app already knows instead of asking for the system code once per driver.
+    //
+    // It says which source it used. A password appearing in a field nobody typed into needs
+    // to account for itself — and the two sources differ in a way that matters: settings are
+    // what somebody chose to save, a device is what is actually being polled with.
+    //
+    // Nothing is filled in that would overwrite this page's own defaults with blanks, and no
+    // call is made to Huawei: the sign-in button still has to be pressed. Logging in on open
+    // would spend one of the five logins per ten minutes the API allows.
+    (async function prefill() {
+      let c;
+      try {
+        c = await Homey.emit('credentials', null);
+      } catch (err) {
+        return; // an older app, or no handler — the form simply stays empty
+      }
+      if (!c || !c.username) return;
+
+      if (c.baseUrl) {
+        document.getElementById('base-url').value = c.baseUrl;
+        syncServerSelect();
+      }
+      document.getElementById('username').value    = c.username;
+      document.getElementById('system-code').value = c.systemCode || '';
+
+      document.getElementById('status-login').className = 'status info';
+      document.getElementById('status-login-text').textContent =
+        c.source === 'settings' ? t.prefillSaved : t.prefillDevice;
+    })();
 
     let _stations = [];
     let _baseUrl  = '';
