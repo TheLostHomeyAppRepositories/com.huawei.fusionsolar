@@ -7,6 +7,8 @@ const {
   CONTROL_REGISTERS,
   isPowerMeterDataValid,
   statusLabel,
+  pvStringRegisters,
+  MAX_PV_STRINGS,
 } = require('../../lib/modbus-registers');
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 const { logPollOk, logPollError } = require('../../lib/poll-log');
@@ -26,6 +28,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_voltage.pv2',
   'measure_current.pv1',
   'measure_current.pv2',
+  'measure_frequency',
   'huawei_status',
   'sun2000_software_version',
   'activepower_controlmode',
@@ -110,6 +113,7 @@ class SUN2000ModbusDevice extends Device {
     this._controlPollCounter        = 4; // start at 4 so first poll immediately reads control registers
     this._powerHistory              = [];
     this._ratedPowerW               = null; // populated by first poll, used to compute output_limit_w "no-cap" default
+    this._pvStringCount              = null; // populated by first poll from register 30071
     this._lastPollStart             = 0;
     await this._ensureCapabilities();
     this._registerControlListeners();
@@ -598,7 +602,17 @@ class SUN2000ModbusDevice extends Device {
     const abort = () => this._writeInProgress;
 
     try {
-      const data = await readModbusRegisters(address, port, modbusId, REGISTERS, abort);
+      // Built per poll rather than fixed: the strings past PV2 are only asked for once the
+      // inverter has said it has them, so they arrive from the second poll on. Guessing at
+      // the number instead would put unimplemented addresses in the same batch as PV1 and
+      // PV2 — see pvStringRegisters() for why that is not a harmless waste.
+      const data = await readModbusRegisters(
+        address, port, modbusId,
+        { ...REGISTERS, ...pvStringRegisters(this._pvStringCount ?? 0) },
+        abort,
+      );
+
+      await this._updatePvStringCapabilities(data.pvStringCount);
 
       if (typeof data.ratedPower === 'number' && data.ratedPower > 0) {
         this._ratedPowerW = data.ratedPower;
@@ -616,6 +630,11 @@ class SUN2000ModbusDevice extends Device {
       await this._set('measure_voltage.pv2',        data.pv2Voltage ?? null);
       await this._set('measure_current.pv1',        data.pv1Current ?? null);
       await this._set('measure_current.pv2',        data.pv2Current ?? null);
+      await this._set('measure_frequency',          data.gridFrequency ?? null);
+      for (let i = 3; i <= (this._pvStringCount ?? 0); i++) {
+        await this._set(`measure_voltage.pv${i}`, data[`pv${i}Voltage`] ?? null);
+        await this._set(`measure_current.pv${i}`, data[`pv${i}Current`] ?? null);
+      }
       await this._updateOptimizerCapabilities(data.totalOptimizers, data.onlineOptimizers);
 
       if (data.deviceStatus !== null && data.deviceStatus !== undefined) {
@@ -667,6 +686,44 @@ class SUN2000ModbusDevice extends Device {
       }
     } finally {
       this._fetchInProgress = false;
+    }
+  }
+
+  /**
+   * Adds a row per PV string the inverter reports, beyond the two every model has.
+   *
+   * Register 30071 holds the count, and the spec is explicit that the host is meant to read
+   * that many strings. This driver read PV1 and PV2 and stopped, so a four-string inverter
+   * showed half its strings — not a wrong number, a missing one. Production was never
+   * affected: 32064 is the total DC input across all strings whatever their number.
+   *
+   * Read once and then left alone, unlike the optimizer count next door. Two reasons, and
+   * only the second is about caution: the count decides which registers the next poll asks
+   * for, so re-deciding it every poll would make the read table flap; and 30071 is the kind
+   * of register that answers 0 while the inverter is restarting, which taken at face value
+   * would strip the rows off a working four-string install. A string count changes when
+   * somebody rewires the roof, and that is what re-pairing the device is for.
+   */
+  async _updatePvStringCapabilities(count) {
+    if (this._pvStringCount !== null) return;
+    if (typeof count !== 'number' || !Number.isFinite(count) || count < 1) return;
+
+    this._pvStringCount = Math.min(count, MAX_PV_STRINGS);
+    if (count > MAX_PV_STRINGS) {
+      this.log(`Inverter reports ${count} PV strings, the spec defines ${MAX_PV_STRINGS} — reading that many`);
+    }
+    this.log(`PV strings reported: ${this._pvStringCount}`);
+
+    for (let i = 3; i <= this._pvStringCount; i++) {
+      for (const cap of [`measure_voltage.pv${i}`, `measure_current.pv${i}`]) {
+        if (!this.hasCapability(cap)) {
+          try {
+            await this.addCapability(cap);
+          } catch (err) {
+            this.error(`addCapability(${cap}) failed:`, err.message);
+          }
+        }
+      }
     }
   }
 

@@ -217,8 +217,9 @@ Direct Modbus TCP connection to the SUN2000 inverter or SDongle.
 | Heat sink temperature       | Internal inverter temperature (°C)                        |
 | Total yield                 | Cumulative total yield (kWh)                              |
 | Daily yield                 | Today's energy yield (kWh)                                |
-| PV1 / PV2 voltage           | DC voltage of PV strings (V)                              |
-| PV1 / PV2 current           | DC current of PV strings (A)                              |
+| PVn voltage                 | DC voltage per PV string (V) — as many as the inverter has |
+| PVn current                 | DC current per PV string (A) — as many as the inverter has |
+| Grid frequency              | Mains frequency (Hz)                                      |
 | Inverter status             | Operating state as text                                   |
 | Active power control mode   | Configurable feed-in limit                                |
 | Grid active power           | Current (W) — only when DTSU666 is connected              |

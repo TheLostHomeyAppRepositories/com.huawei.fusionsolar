@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.225",
+  "version": "1.2.226",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2641,6 +2641,7 @@
         "measure_voltage.pv2",
         "measure_current.pv1",
         "measure_current.pv2",
+        "measure_frequency",
         "huawei_status",
         "sun2000_software_version",
         "activepower_controlmode"
@@ -2715,6 +2716,366 @@
             "en": "PV2 Current",
             "de": "Strom PV2",
             "nl": "Stroom PV2"
+          },
+          "insights": true
+        },
+        "measure_frequency": {
+          "title": {
+            "en": "Grid Frequency",
+            "de": "Netzfrequenz",
+            "nl": "Netfrequentie"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv3": {
+          "title": {
+            "en": "PV3 Voltage",
+            "de": "Spannung PV3",
+            "nl": "Spanning PV3"
+          },
+          "insights": true
+        },
+        "measure_current.pv3": {
+          "title": {
+            "en": "PV3 Current",
+            "de": "Strom PV3",
+            "nl": "Stroom PV3"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv4": {
+          "title": {
+            "en": "PV4 Voltage",
+            "de": "Spannung PV4",
+            "nl": "Spanning PV4"
+          },
+          "insights": true
+        },
+        "measure_current.pv4": {
+          "title": {
+            "en": "PV4 Current",
+            "de": "Strom PV4",
+            "nl": "Stroom PV4"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv5": {
+          "title": {
+            "en": "PV5 Voltage",
+            "de": "Spannung PV5",
+            "nl": "Spanning PV5"
+          },
+          "insights": true
+        },
+        "measure_current.pv5": {
+          "title": {
+            "en": "PV5 Current",
+            "de": "Strom PV5",
+            "nl": "Stroom PV5"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv6": {
+          "title": {
+            "en": "PV6 Voltage",
+            "de": "Spannung PV6",
+            "nl": "Spanning PV6"
+          },
+          "insights": true
+        },
+        "measure_current.pv6": {
+          "title": {
+            "en": "PV6 Current",
+            "de": "Strom PV6",
+            "nl": "Stroom PV6"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv7": {
+          "title": {
+            "en": "PV7 Voltage",
+            "de": "Spannung PV7",
+            "nl": "Spanning PV7"
+          },
+          "insights": true
+        },
+        "measure_current.pv7": {
+          "title": {
+            "en": "PV7 Current",
+            "de": "Strom PV7",
+            "nl": "Stroom PV7"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv8": {
+          "title": {
+            "en": "PV8 Voltage",
+            "de": "Spannung PV8",
+            "nl": "Spanning PV8"
+          },
+          "insights": true
+        },
+        "measure_current.pv8": {
+          "title": {
+            "en": "PV8 Current",
+            "de": "Strom PV8",
+            "nl": "Stroom PV8"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv9": {
+          "title": {
+            "en": "PV9 Voltage",
+            "de": "Spannung PV9",
+            "nl": "Spanning PV9"
+          },
+          "insights": true
+        },
+        "measure_current.pv9": {
+          "title": {
+            "en": "PV9 Current",
+            "de": "Strom PV9",
+            "nl": "Stroom PV9"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv10": {
+          "title": {
+            "en": "PV10 Voltage",
+            "de": "Spannung PV10",
+            "nl": "Spanning PV10"
+          },
+          "insights": true
+        },
+        "measure_current.pv10": {
+          "title": {
+            "en": "PV10 Current",
+            "de": "Strom PV10",
+            "nl": "Stroom PV10"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv11": {
+          "title": {
+            "en": "PV11 Voltage",
+            "de": "Spannung PV11",
+            "nl": "Spanning PV11"
+          },
+          "insights": true
+        },
+        "measure_current.pv11": {
+          "title": {
+            "en": "PV11 Current",
+            "de": "Strom PV11",
+            "nl": "Stroom PV11"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv12": {
+          "title": {
+            "en": "PV12 Voltage",
+            "de": "Spannung PV12",
+            "nl": "Spanning PV12"
+          },
+          "insights": true
+        },
+        "measure_current.pv12": {
+          "title": {
+            "en": "PV12 Current",
+            "de": "Strom PV12",
+            "nl": "Stroom PV12"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv13": {
+          "title": {
+            "en": "PV13 Voltage",
+            "de": "Spannung PV13",
+            "nl": "Spanning PV13"
+          },
+          "insights": true
+        },
+        "measure_current.pv13": {
+          "title": {
+            "en": "PV13 Current",
+            "de": "Strom PV13",
+            "nl": "Stroom PV13"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv14": {
+          "title": {
+            "en": "PV14 Voltage",
+            "de": "Spannung PV14",
+            "nl": "Spanning PV14"
+          },
+          "insights": true
+        },
+        "measure_current.pv14": {
+          "title": {
+            "en": "PV14 Current",
+            "de": "Strom PV14",
+            "nl": "Stroom PV14"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv15": {
+          "title": {
+            "en": "PV15 Voltage",
+            "de": "Spannung PV15",
+            "nl": "Spanning PV15"
+          },
+          "insights": true
+        },
+        "measure_current.pv15": {
+          "title": {
+            "en": "PV15 Current",
+            "de": "Strom PV15",
+            "nl": "Stroom PV15"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv16": {
+          "title": {
+            "en": "PV16 Voltage",
+            "de": "Spannung PV16",
+            "nl": "Spanning PV16"
+          },
+          "insights": true
+        },
+        "measure_current.pv16": {
+          "title": {
+            "en": "PV16 Current",
+            "de": "Strom PV16",
+            "nl": "Stroom PV16"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv17": {
+          "title": {
+            "en": "PV17 Voltage",
+            "de": "Spannung PV17",
+            "nl": "Spanning PV17"
+          },
+          "insights": true
+        },
+        "measure_current.pv17": {
+          "title": {
+            "en": "PV17 Current",
+            "de": "Strom PV17",
+            "nl": "Stroom PV17"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv18": {
+          "title": {
+            "en": "PV18 Voltage",
+            "de": "Spannung PV18",
+            "nl": "Spanning PV18"
+          },
+          "insights": true
+        },
+        "measure_current.pv18": {
+          "title": {
+            "en": "PV18 Current",
+            "de": "Strom PV18",
+            "nl": "Stroom PV18"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv19": {
+          "title": {
+            "en": "PV19 Voltage",
+            "de": "Spannung PV19",
+            "nl": "Spanning PV19"
+          },
+          "insights": true
+        },
+        "measure_current.pv19": {
+          "title": {
+            "en": "PV19 Current",
+            "de": "Strom PV19",
+            "nl": "Stroom PV19"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv20": {
+          "title": {
+            "en": "PV20 Voltage",
+            "de": "Spannung PV20",
+            "nl": "Spanning PV20"
+          },
+          "insights": true
+        },
+        "measure_current.pv20": {
+          "title": {
+            "en": "PV20 Current",
+            "de": "Strom PV20",
+            "nl": "Stroom PV20"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv21": {
+          "title": {
+            "en": "PV21 Voltage",
+            "de": "Spannung PV21",
+            "nl": "Spanning PV21"
+          },
+          "insights": true
+        },
+        "measure_current.pv21": {
+          "title": {
+            "en": "PV21 Current",
+            "de": "Strom PV21",
+            "nl": "Stroom PV21"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv22": {
+          "title": {
+            "en": "PV22 Voltage",
+            "de": "Spannung PV22",
+            "nl": "Spanning PV22"
+          },
+          "insights": true
+        },
+        "measure_current.pv22": {
+          "title": {
+            "en": "PV22 Current",
+            "de": "Strom PV22",
+            "nl": "Stroom PV22"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv23": {
+          "title": {
+            "en": "PV23 Voltage",
+            "de": "Spannung PV23",
+            "nl": "Spanning PV23"
+          },
+          "insights": true
+        },
+        "measure_current.pv23": {
+          "title": {
+            "en": "PV23 Current",
+            "de": "Strom PV23",
+            "nl": "Stroom PV23"
+          },
+          "insights": true
+        },
+        "measure_voltage.pv24": {
+          "title": {
+            "en": "PV24 Voltage",
+            "de": "Spannung PV24",
+            "nl": "Spanning PV24"
+          },
+          "insights": true
+        },
+        "measure_current.pv24": {
+          "title": {
+            "en": "PV24 Current",
+            "de": "Strom PV24",
+            "nl": "Stroom PV24"
           },
           "insights": true
         },
