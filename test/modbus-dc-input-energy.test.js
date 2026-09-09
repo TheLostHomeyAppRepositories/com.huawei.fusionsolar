@@ -1,6 +1,9 @@
 'use strict';
 
-// Register 32108 on the SUN2000, read but not yet published. Run: node --test
+// The yield block at 32106-32119 on the SUN2000, read but not published. Run: node --test
+//
+// The file is named after 32108 because that register is why the block was opened up; it now
+// covers all seven addresses in it.
 //
 // Why it is here: Homey Energy files this driver's solar generation from meter_power, which
 // holds register 32106 — the energy the inverter DELIVERED on the AC side. On a hybrid that
@@ -79,6 +82,67 @@ test('it carries a label, because that label is what the settings tab shows', ()
   assert.match(label, /kWh/, 'the unit belongs in the label — the register list shows no other');
 });
 
+// ── the rest of the block ────────────────────────────────────────────────
+
+const BLOCK = [
+  ['accumulatedYieldEnergy', 32106, -2],
+  ['totalDcInputEnergy',     32108, -2],
+  ['generationStatsTime',    32110,  0],
+  ['hourlyYieldEnergy',      32112, -2],
+  ['dailyYieldEnergy',       32114, -2],
+  ['monthlyYieldEnergy',     32116, -2],
+  ['yearlyYieldEnergy',      32118, -2],
+];
+
+test('every address in the block is declared where wlcrs puts it', () => {
+  for (const [name, address, decimalPower] of BLOCK) {
+    const def = REGISTERS[name];
+    assert.ok(def, `${name} is missing from the register table`);
+    assert.strictEqual(def[0], address, `${name} address`);
+    assert.strictEqual(def[1], 2, `${name} is a two-word register`);
+    assert.strictEqual(def[2], 'UINT32', `${name} type`);
+    assert.strictEqual(def[4], decimalPower, `${name} scale`);
+  }
+});
+
+test('the block is contiguous, so no address is silently skipped', () => {
+  const sorted = [...BLOCK].sort((a, b) => a[1] - b[1]);
+  for (let i = 1; i < sorted.length; i++) {
+    assert.strictEqual(sorted[i][1], sorted[i - 1][1] + 2,
+      `gap or overlap between ${sorted[i - 1][0]} and ${sorted[i][0]}`);
+  }
+});
+
+// A timestamp divided by a hundred is not an earlier date, it is nonsense. The rest of the
+// block is kWh with gain 100, so this one is the odd entry that a bulk edit would break.
+test('the statistics timestamp is not scaled like the energy counters around it', () => {
+  assert.strictEqual(REGISTERS.generationStatsTime[4], 0);
+});
+
+test('the whole block still travels in one request', () => {
+  const without = { ...REGISTERS };
+  for (const [name] of BLOCK) delete without[name];
+  const withoutExtras = { ...REGISTERS };
+  for (const [name] of BLOCK.slice(2)) delete withoutExtras[name];
+
+  assert.strictEqual(buildReadPlan(REGISTERS).length, buildReadPlan(withoutExtras).length,
+    'reading the rest of the block added a request');
+
+  const groups = buildReadPlan(REGISTERS)
+    .filter((g) => g.some((r) => BLOCK.some(([name]) => r.name === name)));
+  assert.strictEqual(groups.length, 1, 'the block was split across requests');
+  assert.strictEqual(groups[0].filter((r) => BLOCK.some(([n]) => n === r.name)).length,
+    BLOCK.length);
+});
+
+test('the yearly counter decodes as kWh with two decimals', async () => {
+  const raw = 526000; // 5 260.00 kWh
+  const data = await readRegisters(
+    { yearlyYieldEnergy: REGISTERS.yearlyYieldEnergy },
+    fakeClient({ 32118: raw >>> 16, 32119: raw & 0xFFFF }));
+  assert.strictEqual(data.yearlyYieldEnergy, 5260);
+});
+
 // ── the scope of this version ────────────────────────────────────────────────
 
 // Deliberately pinning what was NOT done. Pointing Homey Energy at a different counter
@@ -96,6 +160,9 @@ test('nothing is published from it yet, and Homey Energy still reads the AC coun
 
   const src = fs.readFileSync(
     path.join(__dirname, '..', 'drivers', 'sun2000_modbus', 'device.js'), 'utf8');
-  assert.ok(!src.includes('totalDcInputEnergy'),
-    'the driver publishes it — decide what it means before it reaches Energy');
+  for (const [name] of BLOCK) {
+    if (name === 'accumulatedYieldEnergy' || name === 'dailyYieldEnergy') continue; // long published
+    assert.ok(!src.includes(name),
+      `the driver publishes ${name} — decide what it means before it reaches Energy`);
+  }
 });
