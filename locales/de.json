@@ -281,13 +281,15 @@
         "fixed": "Fest",
         "dual": "Niedrig-/Hochtarif",
         "variable": "Variabel (via Flow)",
-        "forecast": "Preisprognose (Day-ahead)"
+        "forecast": "Preisprognose (Day-ahead)",
+        "zones": "Zeitzonen (3+ Tarife)"
       },
       "subtitle": {
         "fixed": "fest",
         "dual": "Niedrig-/Hochtarif",
         "variable": "variabel",
-        "forecast": "Preisprognose"
+        "forecast": "Preisprognose",
+        "zones": "Zeitzonen"
       },
       "variable": {
         "setup": "<strong>Einrichtung:</strong> Eine externe App (z. B. Tibber, EPEX Spot, dynamischer Tarif) setzt den aktuellen Preis über die Flow-Aktion <em>\"EMS: set electricity price (per kWh)\"</em>. Der zuletzt gesetzte Wert gilt als aktueller Preis. <strong>Liefert deine Preisquelle stattdessen eine vollständige Day-ahead-Stundenprognose</strong> (z. B. \"Power by the Hour\")? Dann unten <em>\"Preisprognose (Day-ahead)\"</em> nutzen — kein separater Flow für den aktuellen Preis nötig.",
@@ -303,7 +305,18 @@
         "refresh": "↻ Aktualisieren"
       },
       "feedInPerKwh": "Einspeisevergütung / kWh",
-      "feedInHint": "Was dir eine eingespeiste kWh einbringt. Leer lassen, wenn du es nicht weisst — Solarstrom, den ein ladendes Auto nimmt, bleibt dann wie bisher unbepreist. Trägst du sie ein, rechnen die Ladesessions diesen Solarstrom mit der entgangenen Vergütung statt als gratis."
+      "feedInHint": "Was dir eine eingespeiste kWh einbringt. Leer lassen, wenn du es nicht weisst — Solarstrom, den ein ladendes Auto nimmt, bleibt dann wie bisher unbepreist. Trägst du sie ein, rechnen die Ladesessions diesen Solarstrom mit der entgangenen Vergütung statt als gratis.",
+      "zonesIntro": "Für Tarife mit mehr als zwei Zeiträumen — etwa Standard, Hochtarif, Nachttarif und ein günstiges Fenster fürs Autoladen. Jede Stunde, die keine Zone abdeckt, kostet den Standardtarif. Ein Fenster über Mitternacht (23:00–08:00) ist erlaubt, und ein Fenster innerhalb eines anderen gewinnt — so trägt man die günstige Ladestunde innerhalb des Nachttarifs ein.",
+      "zonesDefaultPrice": "Standardtarif / kWh",
+      "zonesAdd": "+ Zone hinzufügen",
+      "zonesName": "Name",
+      "zonesFrom": "von",
+      "zonesTo": "bis",
+      "zonesPrice": "Preis",
+      "zonesDays": "Tage",
+      "zonesRemove": "Entfernen",
+      "zonesEmpty": "Noch keine Zonen — alles kostet den Standardtarif.",
+      "zonesUse": "Dieser Fahrplan steuert auch das Netzladen der Batterie in den günstigsten Stunden, die Reserve für die teuersten und das preisgesteuerte Autoladen."
     },
     "exportLimit": {
       "title": "📤 Einspeiselimit-Koordinator",

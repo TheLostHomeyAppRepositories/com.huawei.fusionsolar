@@ -281,13 +281,15 @@
         "fixed": "Vast",
         "dual": "Laag / hoog tarief",
         "variable": "Variabel (via flow)",
-        "forecast": "Prijsprognose (day-ahead)"
+        "forecast": "Prijsprognose (day-ahead)",
+        "zones": "Tijdzones (3+ tarieven)"
       },
       "subtitle": {
         "fixed": "vast",
         "dual": "laag/hoog tarief",
         "variable": "variabel",
-        "forecast": "prijsprognose"
+        "forecast": "prijsprognose",
+        "zones": "tijdzones"
       },
       "variable": {
         "setup": "<strong>Instellen:</strong> Een externe app (bijv. Tibber, EPEX spot, dynamisch tarief) stelt de huidige prijs in via de flowactie <em>\"EMS: elektriciteitsprijs instellen (per kWh)\"</em>. De laatst ingestelde waarde wordt als huidige prijs gebruikt. <strong>Kan je prijsbron in plaats daarvan een volledige day-ahead uurprognose leveren</strong> (bijv. \"Power by the Hour\")? Gebruik dan hieronder <em>\"Prijsprognose (day-ahead)\"</em> — geen aparte flow nodig voor de huidige prijs.",
@@ -303,7 +305,18 @@
         "refresh": "↻ Vernieuwen"
       },
       "feedInPerKwh": "Terugleververgoeding / kWh",
-      "feedInHint": "Wat je krijgt per teruggeleverde kWh. Leeg laten als je het niet weet — zonnestroom die een ladende auto opneemt blijft dan zoals voorheen zonder prijs. Vul je hem in, dan rekenen laadsessies die zonnestroom tegen de gemiste opbrengst in plaats van als gratis."
+      "feedInHint": "Wat je krijgt per teruggeleverde kWh. Leeg laten als je het niet weet — zonnestroom die een ladende auto opneemt blijft dan zoals voorheen zonder prijs. Vul je hem in, dan rekenen laadsessies die zonnestroom tegen de gemiste opbrengst in plaats van als gratis.",
+      "zonesIntro": "Voor tarieven met meer dan twee periodes — standaard, piek, nacht en bijvoorbeeld een goedkoop venster voor het laden van de auto. Elk uur dat geen zone dekt, kost het standaardtarief. Een venster over middernacht (23:00–08:00) mag, en een venster binnen een ander venster wint — zo leg je het goedkope laaduur binnen het nachttarief vast.",
+      "zonesDefaultPrice": "Standaardtarief / kWh",
+      "zonesAdd": "+ Zone toevoegen",
+      "zonesName": "Naam",
+      "zonesFrom": "van",
+      "zonesTo": "tot",
+      "zonesPrice": "Prijs",
+      "zonesDays": "Dagen",
+      "zonesRemove": "Verwijderen",
+      "zonesEmpty": "Nog geen zones — alles kost het standaardtarief.",
+      "zonesUse": "Dit schema stuurt ook het netladen van de accu in de goedkoopste uren, de reserve voor de duurste uren en het prijsgestuurde laden van de auto."
     },
     "exportLimit": {
       "title": "📤 Exportlimiet-coördinator",

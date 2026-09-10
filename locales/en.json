@@ -281,13 +281,15 @@
         "fixed": "Fixed",
         "dual": "Low / high tariff",
         "variable": "Variable (via flow)",
-        "forecast": "Price forecast (day-ahead)"
+        "forecast": "Price forecast (day-ahead)",
+        "zones": "Time zones (3+ tariffs)"
       },
       "subtitle": {
         "fixed": "fixed",
         "dual": "low/high tariff",
         "variable": "variable",
-        "forecast": "price forecast"
+        "forecast": "price forecast",
+        "zones": "time zones"
       },
       "variable": {
         "setup": "<strong>Setup:</strong> An external app (e.g. Tibber, EPEX spot, dynamic tariff) sets the current price via the flow action <em>\"EMS: set electricity price (per kWh)\"</em>. The last value set is used as the current price. <strong>Can your price source instead provide a full day-ahead hourly forecast</strong> (e.g. \"Power by the Hour\")? Then use <em>\"Price forecast (day-ahead)\"</em> below instead — no separate flow needed for the current price.",
@@ -303,7 +305,18 @@
         "refresh": "↻ Refresh"
       },
       "feedInPerKwh": "Feed-in tariff / kWh",
-      "feedInHint": "What you are paid per exported kWh. Leave empty if you do not know — solar a charging car takes is then left unpriced, as before. Entering it makes charge sessions count that solar at the revenue you gave up instead of as free."
+      "feedInHint": "What you are paid per exported kWh. Leave empty if you do not know — solar a charging car takes is then left unpriced, as before. Entering it makes charge sessions count that solar at the revenue you gave up instead of as free.",
+      "zonesIntro": "For tariffs with more than two periods — standard, peak, night, and a cheap window for EV charging, for example. Every hour not covered by a zone costs the standard rate. A window across midnight (23:00–08:00) is allowed, and a window inside another one wins: that is how a cheap EV hour inside the night rate is expressed.",
+      "zonesDefaultPrice": "Standard rate / kWh",
+      "zonesAdd": "+ Add zone",
+      "zonesName": "Name",
+      "zonesFrom": "from",
+      "zonesTo": "to",
+      "zonesPrice": "Price",
+      "zonesDays": "Days",
+      "zonesRemove": "Remove",
+      "zonesEmpty": "No zones yet — everything costs the standard rate.",
+      "zonesUse": "This schedule also drives battery grid-charging in the cheapest hours, the reserve for the most expensive ones, and price-based EV charging."
     },
     "exportLimit": {
       "title": "📤 Export Limit Coordinator",

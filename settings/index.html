@@ -1399,6 +1399,7 @@
                 style="width:100%;padding:7px 10px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none;background:var(--c-card)">
                 <option value="fixed" data-i18n="price.mode.fixed">Fixed</option>
                 <option value="dual" data-i18n="price.mode.dual">Low / high tariff</option>
+                <option value="zones" data-i18n="price.mode.zones">Time zones (3+ tariffs)</option>
                 <option value="variable" data-i18n="price.mode.variable">Variable (via flow)</option>
                 <option value="forecast" data-i18n="price.mode.forecast">Price forecast (day-ahead)</option>
               </select>
@@ -1448,6 +1449,27 @@
               High-tariff time window per weekday (HH:MM). Outside the window the low tariff applies. A day with no times = low tariff all day. A window across midnight (e.g. 22:00–06:00) is allowed.
             </div>
             <div id="ems-price-day-windows" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <!-- Time zones. The low/high model above carries one high window per weekday,
+               which cannot express standard / peak / night. Reported from Ireland, where
+               three periods are usual and a cheap EV window often sits inside the night
+               one. Produces the same hourly slots as the day-ahead forecast, so everything
+               price-driven works from it without knowing where the slots came from. -->
+          <div id="ems-price-zones-rows" style="display:none">
+            <div class="tab-intro" style="margin-top:0;margin-bottom:10px" data-i18n="price.zonesIntro">
+              For tariffs with more than two periods.
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:var(--c-label-2);display:block;margin-bottom:4px" data-i18n="price.zonesDefaultPrice">Standard rate / kWh</label>
+              <input id="ems-price-zones-default" type="number" step="0.001" min="0" value="0.30"
+                style="width:140px;padding:7px 10px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none;background:var(--c-card)">
+            </div>
+            <div id="ems-price-zone-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px"></div>
+            <button class="btn-secondary" onclick="emsPriceZoneAdd()" style="padding:4px 12px;font-size:13px" data-i18n="price.zonesAdd">+ Add zone</button>
+            <div class="ems-callout" style="margin-top:12px">
+              <span data-i18n="price.zonesUse">This schedule also drives battery grid-charging in the cheapest hours, the reserve for the most expensive ones, and price-based EV charging.</span>
+            </div>
           </div>
 
           <!-- Variable -->
@@ -3837,10 +3859,11 @@
       emsUpdateExportLimitGates();
       document.getElementById('ems-price-fixed-row').style.display     = mode === 'fixed'    ? '' : 'none';
       document.getElementById('ems-price-dual-rows').style.display     = mode === 'dual'     ? '' : 'none';
+      document.getElementById('ems-price-zones-rows').style.display    = mode === 'zones'    ? '' : 'none';
       document.getElementById('ems-price-variable-info').style.display = mode === 'variable' ? '' : 'none';
       document.getElementById('ems-price-forecast-info').style.display = mode === 'forecast' ? '' : 'none';
       document.getElementById('ems-price-forecast-section').style.display = mode === 'forecast' ? '' : 'none';
-      var sub = { fixed: _H.__('settings.price.subtitle.fixed'), dual: _H.__('settings.price.subtitle.dual'), variable: _H.__('settings.price.subtitle.variable'), forecast: _H.__('settings.price.subtitle.forecast') }[mode] || mode;
+      var sub = { fixed: _H.__('settings.price.subtitle.fixed'), dual: _H.__('settings.price.subtitle.dual'), zones: _H.__('settings.price.subtitle.zones'), variable: _H.__('settings.price.subtitle.variable'), forecast: _H.__('settings.price.subtitle.forecast') }[mode] || mode;
       emsSetSectionState('ems-price-subtitle', sub, true);
       if (mode === 'variable') emsPriceCurrentValueLoad();
       if (mode === 'forecast') emsPriceForecastLoad();
@@ -3942,6 +3965,97 @@
       });
     }
 
+    // ── Time-zone tariff editor ──────────────────────────────────────
+    // One row per zone. Days are checkboxes rather than something to type, because "which
+    // days" is the part people get wrong when they have to spell it; none ticked means
+    // every day, the same reading the engine uses (lib/ems/tariff-zones.js).
+    function emsPriceZoneRow(zone) {
+      zone = zone || {};
+      var days = Array.isArray(zone.days) ? zone.days.map(Number) : [];
+      var row = document.createElement('div');
+      row.className = 'ems-price-zone-row';
+      row.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--c-separator);border-radius:8px;background:var(--c-card-2)';
+
+      var dayBoxes = _EMS_PRICE_DAYS.map(function(d) {
+        return '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--c-label-2)">' +
+          '<input type="checkbox" class="ems-price-zone-day" value="' + d.idx + '"' +
+          (days.indexOf(d.idx) >= 0 ? ' checked' : '') + '>' + d.label + '</label>';
+      }).join('');
+
+      var inp = 'padding:5px 8px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none;background:var(--c-card)';
+      row.innerHTML =
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+          '<input type="text" class="ems-price-zone-name" placeholder="' + escHtml(_H.__('settings.price.zonesName')) + '" value="' + escHtml(String(zone.name || '')) + '" style="' + inp + ';flex:1 1 120px;min-width:0">' +
+          '<span style="font-size:12px;color:var(--c-label-2)">' + escHtml(_H.__('settings.price.zonesFrom')) + '</span>' +
+          '<input type="time" class="ems-price-zone-start" value="' + escHtml(String(zone.start || '')) + '" style="' + inp + '">' +
+          '<span style="font-size:12px;color:var(--c-label-2)">' + escHtml(_H.__('settings.price.zonesTo')) + '</span>' +
+          '<input type="time" class="ems-price-zone-end" value="' + escHtml(String(zone.end || '')) + '" style="' + inp + '">' +
+          '<input type="number" step="0.001" min="0" class="ems-price-zone-price" placeholder="' + escHtml(_H.__('settings.price.zonesPrice')) + '" value="' + (zone.price === undefined || zone.price === null ? '' : escHtml(String(zone.price))) + '" style="' + inp + ';width:90px">' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
+          '<span style="font-size:12px;color:var(--c-label-2)">' + escHtml(_H.__('settings.price.zonesDays')) + '</span>' +
+          dayBoxes +
+          '<button class="btn-secondary" style="padding:2px 10px;font-size:12px;margin-left:auto" onclick="this.closest(\'.ems-price-zone-row\').remove();emsPriceZoneEmptyNote()">' + escHtml(_H.__('settings.price.zonesRemove')) + '</button>' +
+        '</div>';
+      return row;
+    }
+
+    function emsPriceZoneAdd(zone) {
+      var host = document.getElementById('ems-price-zone-list');
+      if (!host) return;
+      var note = host.querySelector('.ems-price-zone-empty');
+      if (note) note.remove();
+      host.appendChild(emsPriceZoneRow(zone));
+    }
+
+    function emsPriceZoneEmptyNote() {
+      var host = document.getElementById('ems-price-zone-list');
+      if (!host) return;
+      if (host.querySelector('.ems-price-zone-row')) return;
+      if (host.querySelector('.ems-price-zone-empty')) return;
+      var p = document.createElement('div');
+      p.className = 'ems-price-zone-empty';
+      p.style.cssText = 'font-size:12px;color:var(--c-label-2)';
+      p.textContent = _H.__('settings.price.zonesEmpty');
+      host.appendChild(p);
+    }
+
+    function emsPriceRenderZones(zones) {
+      var host = document.getElementById('ems-price-zone-list');
+      if (!host) return;
+      host.innerHTML = '';
+      (Array.isArray(zones) ? zones : []).forEach(function(z) { host.appendChild(emsPriceZoneRow(z)); });
+      emsPriceZoneEmptyNote();
+    }
+
+    // Only rows with both times valid are stored. A half-filled row is not a zone, and
+    // saving it would put an hour at a price nobody chose — same rule as the dual windows.
+    function emsPriceCollectZones() {
+      var reTime = /^([01]\d|2[0-3]):[0-5]\d$/;
+      var out = [];
+      document.querySelectorAll('#ems-price-zone-list .ems-price-zone-row').forEach(function(row) {
+        var start = (row.querySelector('.ems-price-zone-start') || {}).value || '';
+        var end   = (row.querySelector('.ems-price-zone-end')   || {}).value || '';
+        if (!reTime.test(start) || !reTime.test(end)) return;
+        var days = [];
+        row.querySelectorAll('.ems-price-zone-day:checked').forEach(function(cb) { days.push(parseInt(cb.value, 10)); });
+        var rawPrice = String((row.querySelector('.ems-price-zone-price') || {}).value || '').trim();
+        var price = parseFloat(rawPrice);
+        var zone = {
+          name:  String((row.querySelector('.ems-price-zone-name') || {}).value || '').trim(),
+          start: start,
+          end:   end,
+          days:  days,
+        };
+        // An empty price box means "charge the standard rate", which the engine already
+        // does for a zone that names no price — so leave the key off instead of storing 0,
+        // which would mean "this hour is free".
+        if (rawPrice !== '' && isFinite(price) && price >= 0) zone.price = price;
+        out.push(zone);
+      });
+      return out;
+    }
+
     function emsGetPriceConfig() {
       var mode = document.getElementById('ems-price-mode').value;
       var windows = {};
@@ -3964,6 +4078,8 @@
         // an unset price to PAY is 0 either way.
         price_feed_in: emsPriceFeedInValue(),
         high_windows: windows,
+        zones_default_price: parseFloat(document.getElementById('ems-price-zones-default').value) || 0,
+        zones: emsPriceCollectZones(),
       };
     }
 
@@ -3987,7 +4103,11 @@
       if (pc.price_fixed !== undefined) document.getElementById('ems-price-fixed').value = pc.price_fixed;
       if (pc.price_low   !== undefined) document.getElementById('ems-price-low').value   = pc.price_low;
       if (pc.price_high  !== undefined) document.getElementById('ems-price-high').value  = pc.price_high;
+      if (pc.zones_default_price !== undefined && pc.zones_default_price !== null) {
+        document.getElementById('ems-price-zones-default').value = pc.zones_default_price;
+      }
       emsPriceRenderDayWindows(pc.high_windows);
+      emsPriceRenderZones(pc.zones);
       emsPriceModeChange();
     }
 
