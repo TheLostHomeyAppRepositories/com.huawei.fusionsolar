@@ -114,6 +114,7 @@ class EmsDevice extends Device {
       const ts = this.getStoreValue('carTargets');
       if (ts && typeof ts === 'object') this._carTargets = ts;
     } catch (e) { /* ignore */ }
+    await this._migrateCarTargetsIntoConfig();
 
     // Solcast PV forecast — restore cached forecast + last-fetch time (rate-limit safe).
     await this._restorePvForecast();
@@ -292,9 +293,76 @@ class EmsDevice extends Device {
 
   // Called from settings/index.html (via HomeyLocalApi POST /config) when the user saves EMS
   // configuration. Restarts the tick loop so the new settings take effect immediately.
+  /**
+   * Forget a flow-set charge target for any car whose settings now name one.
+   *
+   * There are two places a virtual target can come from — the number in the car's settings
+   * and the ems_set_car_target_soc flow — and without this the flow's value would outrank
+   * the field for ever, so typing 100 into a settings page that already had a stored 80
+   * would appear to do nothing at all. Saving the page is the user stating the target in
+   * the place it is configured, so it wins from that moment; a later flow run overrides it
+   * again until the next save.
+   */
+  _dropCarTargetOverrides(cfg) {
+    let changed = false;
+    for (const car of cfg.car_devices || []) {
+      const raw = car?.target_soc;
+      const named = raw !== null && raw !== undefined && raw !== '' && Number(raw) > 0;
+      if (named && car.id && this._carTargets[car.id] !== undefined) {
+        delete this._carTargets[car.id];
+        changed = true;
+      }
+    }
+    if (changed) this.setStoreValue('carTargets', this._carTargets).catch(() => {});
+  }
+
+  /**
+   * Moves a virtual charge target out of the device store and into the car's settings, once.
+   *
+   * Until this version the EMS wrote an 80 into that store the first time it saw a car with
+   * no target capability, and then held the charger at 80% — a limit nobody had chosen. The
+   * seeding is gone, but the number it already wrote is still sitting in the store of every
+   * install that has such a car, so removing the code alone would leave the fault exactly
+   * where it was and the new settings field would look broken: type nothing, nothing
+   * changes.
+   *
+   * Moving it makes it visible and editable instead of silently deleting it, because the
+   * store cannot tell an invented 80 from a deliberate one somebody set through the flow
+   * action. Whatever it was, it was the effective target, so it becomes the stated one.
+   *
+   * Once, guarded by a store flag: afterwards the flow action's value is an override again,
+   * and is not written into the settings behind the user's back.
+   */
+  async _migrateCarTargetsIntoConfig() {
+    try {
+      if (this.getStoreValue('carTargetsMigrated')) return;
+    } catch (e) { return; }
+
+    const cfg  = this._getConfig();
+    const cars = cfg.car_devices || [];
+    let moved = 0;
+    for (const car of cars) {
+      if (!car.id) continue;
+      const stored = this._carTargets[car.id];
+      if (typeof stored !== 'number') continue;
+      const named = car.target_soc !== null && car.target_soc !== undefined && car.target_soc !== '';
+      if (!named) car.target_soc = stored;
+      delete this._carTargets[car.id];
+      moved += 1;
+    }
+
+    if (moved) {
+      this.log(`[EMS] moved ${moved} virtual charge target(s) from the store into the car settings`);
+      this.homey.settings.set('ems_config', cfg);
+      await this.setStoreValue('carTargets', this._carTargets).catch(() => {});
+    }
+    await this.setStoreValue('carTargetsMigrated', true).catch(() => {});
+  }
+
   onConfigChanged() {
     const cfg = this._getConfig();
     if (this._validateConfig(cfg)) this.homey.settings.set('ems_config', cfg);
+    this._dropCarTargetOverrides(cfg);
     this._syncCarCapabilities(cfg).catch((e) => this.error('[EMS] car cap sync:', e.message));
     this._syncPvForecastCapabilities(cfg).catch((e) => this.error('[EMS] pv cap sync:', e.message));
     this._priceUnitApplied = null; // currency may have changed → re-apply unit next tick

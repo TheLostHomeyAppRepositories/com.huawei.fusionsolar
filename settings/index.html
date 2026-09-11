@@ -4577,13 +4577,25 @@
       var tgtVal = document.createElement('span');
       tgtVal.style.cssText = 'font-size:12px;color:var(--c-label-2);white-space:nowrap;flex-shrink:0;min-width:32px;text-align:right';
       tgtVal.title = _H.__('settings.carRow.liveReadingTitle');
-      tgtRow.appendChild(tgtLbl); tgtRow.appendChild(tgtSel); tgtRow.appendChild(tgtVal);
+      // The number to use when the vehicle has no target capability of its own. It lives
+      // here rather than only in a flow action because this is where the car is being
+      // configured — and because the EMS used to invent an 80 for exactly this case and
+      // then stop every such car at 80%.
+      var tgtNum = document.createElement('input');
+      tgtNum.type = 'number'; tgtNum.min = '1'; tgtNum.max = '100'; tgtNum.step = '1';
+      tgtNum.className = 'ems-car-target-soc';
+      tgtNum.placeholder = _H.__('settings.carRow.targetSocNoLimit');
+      tgtNum.value = (stored.target_soc === undefined || stored.target_soc === null) ? '' : stored.target_soc;
+      tgtNum.style.cssText = 'width:120px;padding:6px 8px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none;background:var(--c-card)';
+      tgtRow.appendChild(tgtLbl); tgtRow.appendChild(tgtSel); tgtRow.appendChild(tgtNum); tgtRow.appendChild(tgtVal);
       var tgtHint = document.createElement('div');
       tgtHint.style.cssText = 'font-size:12px;color:var(--c-label-2);line-height:1.4;padding-left:118px';
       capsInfo.appendChild(socRow); capsInfo.appendChild(tgtRow); capsInfo.appendChild(tgtHint);
 
       function _updateTgtHint() {
-        tgtHint.textContent = tgtSel.value
+        var fromVehicle = !!tgtSel.value;
+        tgtNum.style.display = fromVehicle ? 'none' : '';
+        tgtHint.textContent = fromVehicle
           ? _H.__('settings.carRow.readFromVehicle')
           : _H.__('settings.carRow.noCapabilitySelected');
       }
@@ -4621,6 +4633,16 @@
       if (sel.value) emsRenderCarFlows(flowSection, entry.dataset.carId, sel.value, entry);
     }
 
+    // An empty box means "no limit", so it must survive the round trip as empty rather
+    // than becoming 0 — the two say opposite things to the charger.
+    function emsCarTargetValue(entry) {
+      var el = entry.querySelector('.ems-car-target-soc');
+      var rawValue = el ? String(el.value).trim() : '';
+      if (rawValue === '') return null;
+      var n = parseInt(rawValue, 10);
+      return (isFinite(n) && n > 0 && n <= 100) ? n : null;
+    }
+
     function emsGetCars() {
       var result = [];
       document.querySelectorAll('#ems-car-list .ems-entry').forEach(function(entry) {
@@ -4641,6 +4663,9 @@
           ready_by:             readyBy,
           soc_capability:       socC,
           target_soc_capability: tgtC,
+          // Empty stays empty. Zero would be a target of 0%, and a default would be the
+          // invented limit this replaces — nothing entered means the car is not held back.
+          target_soc:           emsCarTargetValue(entry),
           set_actions:          setActions,
         });
       });

@@ -673,8 +673,9 @@
       "targetSoc": "Streefwaarde SOC (%)",
       "liveReadingTitle": "Huidige live-waarde van deze capability",
       "readFromVehicle": "Uitgelezen van het voertuig.",
-      "noCapabilitySelected": "Geen capability geselecteerd — de EMS houdt de streefwaarde virtueel bij. Wijzig dit met de flowactie \"EMS: streefwaarde laden auto instellen\" (80 / 90 / 100 %).",
-      "selectCapability": "— selecteer capability —"
+      "noCapabilitySelected": "Het voertuig meldt geen streefwaarde, dus geldt het getal hierboven. Laat je het leeg, dan wordt zonder limiet geladen. De flowactie \"EMS: streefwaarde laden auto instellen\" overschrijft het tot deze pagina opnieuw wordt opgeslagen.",
+      "selectCapability": "— selecteer capability —",
+      "targetSocNoLimit": "geen limiet"
     },
     "batteryFlowRows": {
       "forceCharge": "Force Charge:",

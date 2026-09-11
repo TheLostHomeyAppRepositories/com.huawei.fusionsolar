@@ -673,8 +673,9 @@
       "targetSoc": "Target SOC (%)",
       "liveReadingTitle": "Current live reading from this capability",
       "readFromVehicle": "Read from the vehicle.",
-      "noCapabilitySelected": "No capability selected — the EMS keeps the target charge virtually. Change it with the flow action \"EMS: set car target charge\" (80 / 90 / 100 %).",
-      "selectCapability": "— select capability —"
+      "noCapabilitySelected": "The vehicle reports no target, so the EMS uses the number above. Leave it empty and the car is charged without a limit. The flow action \"EMS: set car target charge\" overrides it until the next time this page is saved.",
+      "selectCapability": "— select capability —",
+      "targetSocNoLimit": "no limit"
     },
     "batteryFlowRows": {
       "forceCharge": "Force Charge:",

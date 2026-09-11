@@ -673,8 +673,9 @@
       "targetSoc": "Ziel-SOC (%)",
       "liveReadingTitle": "Aktueller Live-Wert dieser Capability",
       "readFromVehicle": "Vom Fahrzeug gelesen.",
-      "noCapabilitySelected": "Keine Capability gewählt — das EMS führt den Zielladestand virtuell. Änderbar über die Flow-Aktion \"EMS: set car target charge\" (80 / 90 / 100 %).",
-      "selectCapability": "— Capability wählen —"
+      "noCapabilitySelected": "Das Fahrzeug meldet keinen Zielwert, also gilt die Zahl oben. Lässt du sie leer, wird ohne Begrenzung geladen. Die Flow-Aktion „EMS: set car target charge“ überschreibt sie bis zum nächsten Speichern dieser Seite.",
+      "selectCapability": "— Capability wählen —",
+      "targetSocNoLimit": "keine Grenze"
     },
     "batteryFlowRows": {
       "forceCharge": "Force Charge:",
