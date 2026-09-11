@@ -23,9 +23,16 @@ const App    = require('../app.js');
 
 // Minimal fake device: one recorded capability (measure_power) and one that must be
 // ignored (onoff is not numeric / not "meaningful").
+//
+// getData().id deliberately differs from getId(). Series are keyed by the Homey device id
+// because the app-minted one is shared by every OpenAPI device of a plant (issue #29), and
+// a regression to it would make the keys below wrong here too, not only in
+// test/sensor-chart-series.test.js.
 function fakeDevice(id) {
   return {
-    getData: () => ({ id }),
+    getId: () => id,
+    getData: () => ({ id: `app-minted:${id}` }),
+    getName: () => id,
     getCapabilities: () => ['measure_power', 'onoff'],
     getCapabilityValue: () => 1234.567,
   };

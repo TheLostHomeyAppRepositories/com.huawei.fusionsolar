@@ -194,16 +194,19 @@ var DICTS = (function() {
   var de = {
     label1:'PV-Ausgabe', label2:'Batterie', label3:'Netz', label4:'Leistungsaufnahme',
     noData:'Noch keine Daten – wird gesammelt…',
+    reselect:'Reihen bitte in den Widget-Einstellungen neu auswählen',
     noSetting:'Bitte Gerät in den Widget-Einstellungen auswählen',
   };
   var nl = {
     label1:'PV-uitvoer', label2:'Batterij', label3:'Net', label4:'Stroomverbruik',
     noData:'Nog geen gegevens – wordt verzameld…',
+    reselect:'Selecteer de reeksen opnieuw in de widget-instellingen',
     noSetting:'Selecteer een apparaat in de widget-instellingen',
   };
   var en = {
     label1:'PV Output', label2:'Battery', label3:'Grid', label4:'Power Consumption',
     noData:'No data yet – collecting…',
+    reselect:'Please pick the series again in the widget settings',
     noSetting:'Select a device in widget settings',
   };
   return { de: de, nl: nl, en: en };
@@ -341,9 +344,13 @@ function renderChart(series, hours) {
   series.forEach(function(s) { if (s && s.points) allPts = allPts.concat(s.points); });
 
   if (!allPts.length) {
+    // "No data yet" invites waiting, and waiting is exactly wrong for a series saved
+    // against the old key format: nothing will ever arrive under that key. The API says
+    // which case it is, so the widget can ask for the one thing that fixes it.
+    var stale = series.length > 0 && series.every(function(s) { return s && s.known === false; });
     var old = wrap.querySelector('svg'); if (old) old.remove();
     var nd  = wrap.querySelector('.no-data') || document.createElement('div');
-    nd.className = 'no-data'; nd.textContent = T.noData;
+    nd.className = 'no-data'; nd.textContent = stale ? T.reselect : T.noData;
     if (!nd.parentNode) wrap.insertAdjacentElement('afterbegin', nd);
     G.ready = false; return;
   }

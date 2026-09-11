@@ -400,6 +400,40 @@ class FusionSolarApp extends App {
    * status enums, module counts, etc.
    */
   /** Capabilities tracked and offered in the Sensor Chart autocomplete. */
+  /**
+   * The history key for one capability of one device.
+   *
+   * device.getId() and NOT device.getData().id. The data id is the app's own identifier,
+   * unique only within its driver — and all seven OpenAPI drivers mint the same one for a
+   * plant: `openapi:<server>:<stationCode>`. The inverter, the battery and the power sensor
+   * of one plant therefore shared a single key, each overwriting the other's measure_power
+   * once a minute, and every chart drew whichever wrote last. Reported as #29: three
+   * widgets, three devices, one curve.
+   *
+   * getId() is Homey's own device id and is unique across the installation by construction,
+   * so the ambiguity cannot come back by picking a different string.
+   */
+  static _seriesKey(device, capId) {
+    return `${device.getId()}::${capId}`;
+  }
+
+  /**
+   * What to call a series in the picker and the legend.
+   *
+   * The device name alone is not enough: a device contributes one entry per capability, so
+   * a list of rows all reading "Power Sensor (OpenAPI)" is unpickable — and once picked,
+   * the legend said as little. The capability's own title is what tells them apart.
+   */
+  static _seriesLabel(device, capId) {
+    const name = device.getName();
+    let title = null;
+    try {
+      const t = device.getCapabilityOptions(capId)?.title;
+      title = typeof t === 'string' ? t : (t?.en ?? null);
+    } catch (e) { /* no options set for this capability */ }
+    return title ? `${name} · ${title}` : `${name} · ${capId}`;
+  }
+
   static _isMeaningfulCap(capId) {
     return capId === 'measure_power'
         || capId === 'measure_power.load';
@@ -420,17 +454,13 @@ class FusionSolarApp extends App {
           for (const driver of Object.values(drivers)) {
             try {
               for (const device of driver.getDevices()) {
-                const deviceId   = device.getData().id;
-                const deviceName = device.getName();
-                if (!deviceId) continue;
-
                 for (const capId of device.getCapabilities()) {
                   if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
                   const val = device.getCapabilityValue(capId);
                   if (typeof val !== 'number') continue;
 
-                  const id   = `${deviceId}::${capId}`;
-                  const name = deviceName; // device name as label suggestion
+                  const id   = FusionSolarApp._seriesKey(device, capId);
+                  const name = FusionSolarApp._seriesLabel(device, capId);
 
                   if (!query || query.length === 0
                       || name.toLowerCase().includes(query.toLowerCase())) {
@@ -555,13 +585,10 @@ class FusionSolarApp extends App {
       for (const driver of Object.values(drivers)) {
         try {
           for (const device of driver.getDevices()) {
-            const deviceId = device.getData().id;
-            if (!deviceId) continue;
-
             for (const capId of device.getCapabilities()) {
               if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
 
-              const logId = `${deviceId}::${capId}`;
+              const logId = FusionSolarApp._seriesKey(device, capId);
               validLogIds.add(logId);
               const raw   = this.homey.settings.get(`sch_hist_${logId}`);
               if (!Array.isArray(raw) || raw.length === 0) continue;
@@ -659,15 +686,12 @@ class FusionSolarApp extends App {
       for (const driver of Object.values(drivers)) {
         try {
           for (const device of driver.getDevices()) {
-            const deviceId = device.getData().id;
-            if (!deviceId) continue;
-
             for (const capId of device.getCapabilities()) {
               if (!FusionSolarApp._isMeaningfulCap(capId)) continue;
               const val = device.getCapabilityValue(capId);
               if (typeof val !== 'number') continue;
 
-              const logId = `${deviceId}::${capId}`;
+              const logId = FusionSolarApp._seriesKey(device, capId);
               let pts = this._capHistory.get(logId);
               if (!pts) { pts = []; this._capHistory.set(logId, pts); }
 
@@ -698,9 +722,14 @@ class FusionSolarApp extends App {
       const id = query[key];
       if (!id) continue;
 
-      const points   = this._capHistory ? (this._capHistory.get(id) || []) : [];
+      // A series whose key the history has never heard of is not one that is still filling
+      // up — it is one saved against the old key format, and no amount of waiting will make
+      // it appear. Saying which of the two it is turns a permanently empty chart into an
+      // instruction; the widget shows "pick this series again".
+      const known    = !!(this._capHistory && this._capHistory.has(id));
+      const points   = known ? this._capHistory.get(id) : [];
       const filtered = points.filter((p) => p.t >= cutoff);
-      series.push({ id, points: filtered });
+      series.push({ id, points: filtered, known });
     }
 
     return { series };
