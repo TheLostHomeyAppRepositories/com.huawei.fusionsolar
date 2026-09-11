@@ -273,21 +273,11 @@ test('an install with nothing to move writes no config', async () => {
   assert.strictEqual(d.store.carTargetsMigrated, true, 'it will try again on every restart');
 });
 
-// ── what makes "no target" mean "no limit" ──────────────────────────────────
-
-// The hold lives inside _evaluateEvChargers, which is too entangled to drive here. What
-// makes a null target safe is one condition, and this is the thing that would have to
-// change for a car with no limit to start being held again.
-test('the charger only holds a car it has a figure to hold against', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'lib', 'ems', 'chargerControl.js'), 'utf8');
-  assert.match(src, /if \(car && car\.soc !== null && car\.target !== null\)/);
-});
-
-test('a car with no target is not reported as unreadable', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'lib', 'ems', 'chargerControl.js'), 'utf8');
-  assert.match(src, /car\.targetConfigured === false/);
-  assert.match(src, /has no charge target/);
-});
+// What the charger then does with a null target — hold or let go — was pinned here as two
+// assertions about the source text, because the logic sat inside _evaluateEvChargers and
+// could not be driven from a test. That was not enough: 1.2.233 had to fix a standing hold
+// that no longer had a target to release it, and neither assertion noticed. The block now
+// lives in _updateTargetHold and is tested for real in test/ems-target-hold.test.js.
 
 // ── the settings tab ────────────────────────────────────────────────────────
 
