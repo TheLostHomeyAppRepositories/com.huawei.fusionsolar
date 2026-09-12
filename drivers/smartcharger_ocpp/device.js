@@ -7,6 +7,11 @@ const MIN_AMPS            = 6;
 const MAX_AMPS            = 32;
 const AMPS_TO_WATTS       = (amps, phases = 3) => Math.round(amps * phases * 230);
 const BLOCK_AMPS          = 0; // server converts 0A → 1W (Huawei firmware bug workaround)
+// How long after sending the starting current a second attempt is treated as the same one.
+// The restart timer and the connect handler can both fire on a restart with the charger
+// still attached; wide enough to cover the gap between them, short enough that a charger
+// reconnecting minutes later is served again.
+const INIT_PROFILE_DEDUP_MS = 10_000;
 const IDLE_GUARD_MS       = 300_000;
 const QUICK_ABORT_MS      = 2000;
 const MAX_SESSION_HIST    = 10;
@@ -180,6 +185,7 @@ class SmartChargerOcppDevice extends Device {
     this._txnMeterStart        = 0;
     this._txnAmps              = null;
     this._autoStartBlocked     = false;
+    this._initialProfileAt     = null;  // when the starting current was last sent
     this._manualStartRequested = false;
     this._quickAbortCount      = 0;
     this.sessionPhaseOverride  = null;
@@ -322,18 +328,11 @@ class SmartChargerOcppDevice extends Device {
       this._checkChargerOnline().catch((err) => this.log(`[OCPP] Watchdog error: ${err.message}`));
     }, 30_000);
 
-    // Send initial profile 3 s after init (BootNotification only fires on charger
-    // reboot, not on Homey app restart — this catches the restart case).
-    const autoStart   = this.getSetting('auto_start_charging') !== false;
-    const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
-    this.homey.setTimeout(async () => {
-      if (this._txnId && !this._autoStartBlocked) return; // live session — leave alone
-      const initAmps = autoStart ? defaultAmps : BLOCK_AMPS;
-      try {
-        const r = await OcppServer.getInstance(this.homey)
-          .setMaxCurrentAsync(this.getSetting('station_id'), initAmps, this._getPhases());
-        this.log(`[OCPP] Init profile ${initAmps}A → ${(r && r.status) || 'no status'}`);
-      } catch (e) { this.log(`[OCPP] Init profile ${initAmps}A failed: ${e.message}`); }
+    // Three seconds after init, for the charger that was already connected when the app
+    // restarted. A charger that turns up later is served by onOcppConnected instead — see
+    // _applyInitialProfile for why one timer alone was not enough.
+    this.homey.setTimeout(() => {
+      this._applyInitialProfile('app restart').catch(() => {});
     }, 3000);
 
     this._updateChargingProfile().catch(() => {});
@@ -487,6 +486,51 @@ class SmartChargerOcppDevice extends Device {
   onOcppConnected() {
     this.log('[OCPP] Charger connected');
     this._set('ocpp_server_status', 'connected').catch(() => {});
+    // A moment to settle before being told anything, the same two seconds the server waits
+    // before configuring the sampling interval.
+    this.homey.setTimeout(() => {
+      this._applyInitialProfile('charger connected').catch(() => {});
+    }, 2000);
+  }
+
+  /**
+   * Send the configured starting current to the charger.
+   *
+   * It used to be one shot, three seconds after the app started — which serves a charger
+   * that is already connected and nobody else. After a Homey restart the charger reconnects
+   * on its own schedule, often well past that mark, and then never received the current at
+   * all: it kept whatever limit it had. Invisible to anyone running the EMS, because the
+   * next tick writes a value anyway; the people it actually cost are those using
+   * auto_start_charging with a default of their own.
+   *
+   * So it now runs on connect as well. Both paths share this method, which is also the only
+   * place that decides whether sending is worth trying at all:
+   *
+   * A charger that is not connected gets nothing and no complaint. The device has already
+   * said it is "waiting for charger (quietly)"; announcing three seconds later that a send
+   * failed because the charger is not there contradicts that, and it was the only error
+   * line in the log of the report that prompted this — so it read as the fault itself.
+   */
+  async _applyInitialProfile(reason) {
+    if (this._txnId && !this._autoStartBlocked) return; // live session — leave alone
+
+    const server    = OcppServer.getInstance(this.homey);
+    const stationId = this.getSetting('station_id');
+    if (!server.isConnected(stationId)) return;
+
+    // On an app restart with the charger still attached, both paths fire within a couple of
+    // seconds of each other. Sending the same profile twice is harmless and says nothing.
+    if (this._initialProfileAt && Date.now() - this._initialProfileAt < INIT_PROFILE_DEDUP_MS) return;
+    this._initialProfileAt = Date.now();
+
+    const autoStart = this.getSetting('auto_start_charging') !== false;
+    const initAmps  = autoStart ? (parseInt(this.getSetting('default_charging_amps'), 10) || 16) : BLOCK_AMPS;
+    try {
+      const r = await server.setMaxCurrentAsync(stationId, initAmps, this._getPhases());
+      this.log(`[OCPP] Init profile ${initAmps}A (${reason}) → ${(r && r.status) || 'no status'}`);
+    } catch (e) {
+      this.log(`[OCPP] Init profile ${initAmps}A (${reason}) failed: ${e.message}`);
+    }
   }
 
   onOcppDisconnected() {

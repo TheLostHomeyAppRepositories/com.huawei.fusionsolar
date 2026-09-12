@@ -65,10 +65,11 @@ test('the first profile after connecting reports what the charger said', () => {
     'the init log still states the profile was applied rather than what came back');
   assert.doesNotMatch(DEV, /Boot profile applied/,
     'the boot log still states the profile was applied rather than what came back');
-  assert.match(DEV, /Init profile \$\{initAmps\}A . \$\{\(r && r\.status\)/,
-    'the init profile no longer logs the charger response');
   assert.match(DEV, /Boot profile \$\{bootAmps\}A . \$\{\(r && r\.status\)/,
     'the boot profile no longer logs the charger response');
+  // The init profile used to be pinned here the same way. It moved into
+  // _applyInitialProfile in 1.2.234 and can be driven directly now, so
+  // test/ocpp-init-profile.test.js asserts what it logs instead of how it is written.
 });
 
 // A command that goes unanswered must be visible, not swallowed. Several of these run in
