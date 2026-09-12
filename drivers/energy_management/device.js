@@ -951,35 +951,16 @@ class EmsDevice extends Device {
       })),
     ];
     const socStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
-    const activeHpCount           = heatPumps.filter((d)     => this._heatPumpStates.get(d.id)?.isOn).length;
-    const activeBoilerCount       = boilers.filter((d)       => this._boilerStates.get(d.id)?.isOn).length;
-    const activePoolCount         = pools.filter((d)         => this._poolStates.get(d.id)?.isOn).length;
-    const activeDehumidifierCount = dehumidifiers.filter((d) => this._dehumidifierStates.get(d.id)?.isOn).length;
-    const activeAirconCount       = aircons.filter((d)       => this._airconStates.get(d.id)?.isOn).length;
-    const activeCount             = activeHpCount + activeBoilerCount + activePoolCount + activeDehumidifierCount + activeAirconCount;
-    // Name the mode after the single active device type. When several different
-    // types run at once, use the generic 'solar_multi' label — previously this
-    // fell through to 'solar_hp', which read as "Solar heat pump" even when no
-    // heat pump was running (e.g. pool + dehumidifier active together).
-    const activeTypes = [
-      activeHpCount           ? MODES.SOLAR_HP           : null,
-      activeBoilerCount       ? MODES.SOLAR_BOILER       : null,
-      activePoolCount         ? MODES.SOLAR_POOL         : null,
-      activeDehumidifierCount ? MODES.SOLAR_DEHUMIDIFIER : null,
-      activeAirconCount       ? MODES.SOLAR_AIRCON       : null,
-    ].filter(Boolean);
-    const simpleMode = activeTypes.length === 1 ? activeTypes[0] : MODES.SOLAR_MULTI;
-    // List the names of the devices that are actually running, so the history
-    // shows "Pool, Entfeuchter · Bat 100%" instead of a bare "2 Geräte aktiv".
-    const activeNames = [];
-    for (const d of heatPumps)     if (this._heatPumpStates.get(d.id)?.isOn)      activeNames.push(d.name);
-    for (const d of boilers)       if (this._boilerStates.get(d.id)?.isOn)        activeNames.push(d.name);
-    for (const d of pools)         if (this._poolStates.get(d.id)?.isOn)          activeNames.push(d.name);
-    for (const d of dehumidifiers) if (this._dehumidifierStates.get(d.id)?.isOn) activeNames.push(d.name);
-    for (const d of aircons)       if (this._airconStates.get(d.id)?.isOn)       activeNames.push(d.name);
-    const stTextActive = activeNames.length
-      ? `${activeNames.join(', ')}${socStr}`
-      : `${activeCount} Gerät${activeCount > 1 ? 'e' : ''} aktiv${socStr}`;
+    // Which of them the EMS is actually running, and what that is called — see
+    // _simpleActive (lib/ems/simpleDevices.js) for why a device outside EMS control is
+    // left out of the count rather than merely left uncommanded.
+    const active       = this._simpleActive({
+      heat_pump: heatPumps, boiler: boilers, pool: pools,
+      dehumidifier: dehumidifiers, aircon: aircons,
+    }, socStr);
+    const activeCount  = active.count;
+    const simpleMode   = active.mode;
+    const stTextActive = active.text;
 
     if (!chargers.length && !simpleDevicesAll.length) {
       await this._setMode(MODES.NOT_CONFIGURED, 'Konfiguriere EMS in App Settings');
