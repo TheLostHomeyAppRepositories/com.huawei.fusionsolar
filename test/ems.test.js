@@ -4507,3 +4507,53 @@ test('_batteryAnnounceThresholds — agrees with the hard stop _batteryZones der
   assert.strictEqual(d._batteryAnnounceThresholds(cfg).lowSoc,
     d._batteryZones(cfg, { soc: 60 }).minSoc);
 });
+
+// ── Tageszähler für ein Gerät ausserhalb der EMS-Steuerung ───────────────────
+// Aus dem Feld-Export vom 12.09.2026: ein Pool mit enabled:false, dessen Zustandseintrag
+// seit dem letzten App-Start auf isOn:true stand. Die Zähler beschreiben das GERÄT, nicht
+// die Entscheidung — sie zählen also weiter, aber aus dem Messwert statt aus dem Glauben,
+// der für dieses Gerät nicht mehr nachgeführt wird.
+
+test('_trackSimpleDeviceDaily — ein Gerät ohne EMS-Steuerung zählt nach Messwert, nicht nach Glauben', () => {
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily(
+    [{ id: 'p1', powerW: 1260, enabled: false, actualOn: false }],
+    new Map([['p1', { isOn: true }]]),   // eingefroren, seit Stunden falsch
+    3600_000,
+  );
+  assert.deepStrictEqual(d._simpleDeviceDaily('p1'), { kwh: 0, runtimeMs: 0 });
+});
+
+test('_trackSimpleDeviceDaily — und in die andere Richtung ebenso', () => {
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily(
+    [{ id: 'p1', powerW: 1260, enabled: false, actualOn: true }],
+    new Map([['p1', { isOn: false }]]),  // eingefroren, als es aus war
+    3600_000,
+  );
+  assert.deepStrictEqual(d._simpleDeviceDaily('p1'), { kwh: 1.26, runtimeMs: 3600_000 });
+});
+
+test('_trackSimpleDeviceDaily — ein nicht lesbarer Zustand zählt als aus', () => {
+  // actualOn null heisst "unbekannt" — kein Leistungspfad konfiguriert, oder die Steckdose
+  // schweigt. Ein Unbekanntes ist keine Messung und darf keine Laufzeit buchen.
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily(
+    [{ id: 'p1', powerW: 1260, enabled: false, actualOn: null }],
+    new Map([['p1', { isOn: true }]]),
+    3600_000,
+  );
+  assert.deepStrictEqual(d._simpleDeviceDaily('p1'), { kwh: 0, runtimeMs: 0 });
+});
+
+test('_trackSimpleDeviceDaily — ein gesteuertes Gerät zählt weiter nach dem EMS-Zustand', () => {
+  // Gegenprobe: dort ist der Eintrag gepflegt, und er ist die Stelle, die den Anlauf und
+  // die Haltezeiten kennt. Der Messwert allein würde bei jedem Taktsprung flattern.
+  const d = makeWidgetDevice();
+  d._trackSimpleDeviceDaily(
+    [{ id: 'p1', powerW: 2000, enabled: true, actualOn: false }],
+    new Map([['p1', { isOn: true }]]),
+    3600_000,
+  );
+  assert.deepStrictEqual(d._simpleDeviceDaily('p1'), { kwh: 2, runtimeMs: 3600_000 });
+});

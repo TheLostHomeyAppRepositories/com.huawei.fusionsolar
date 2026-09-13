@@ -931,25 +931,8 @@ class EmsDevice extends Device {
     // left a passive state ('holding'/'idle') while e.g. the pool is running,
     // the running simple devices take over the display.
     const simpleDevicesAll = [...heatPumps, ...boilers, ...pools, ...dehumidifiers, ...aircons];
-    // Keep this tick's readings for the diagnostics. They are read once per tick and were
-    // then thrown away, so the configuration export could show what the EMS decided but
-    // not what it decided FROM. Re-reading them at export time would be worse than useless:
-    // it would show a different moment than the decision it is meant to explain.
-    //
-    // Deliberately NOT on _diag: getEmsDiag spreads that object wholesale, so parking them
-    // there published the raw list beside the assembled `devices` rows built from it — the
-    // same figures twice in one export, once in a shape nobody reads.
-    this._deviceReadings = [
-      ...chargers.map((c) => ({
-        id: c.id, kind: 'charger',
-        measured: { powerW: c.rawPowerW ?? null, connected: c.connected, chargeMode: c.chargeMode },
-      })),
-      ...simpleDevicesAll.map((d) => ({
-        id: d.id, name: d.name, kind: 'simple',
-        measured: { powerW: d.powerW ?? null, actualOn: d.actualOn, stateSource: d.stateSource,
-                    minSurplusW: d.minSurplusW },
-      })),
-    ];
+    // This tick's readings, kept for the diagnostics — see _buildDeviceReadings.
+    this._deviceReadings = this._buildDeviceReadings(chargers, simpleDevicesAll);
     const socStr = battery.soc !== null ? ` · Bat ${Math.round(battery.soc)}%` : '';
     // Which of them the EMS is actually running, and what that is called — see
     // _simpleActive (lib/ems/simpleDevices.js) for why a device outside EMS control is
