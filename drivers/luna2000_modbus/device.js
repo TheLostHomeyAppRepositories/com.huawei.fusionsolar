@@ -98,6 +98,15 @@ const STORAGE_CONTROL_REGISTERS = {
   storageUnit2No:                   CONTROL_REGISTERS.storageUnit2No,
 };
 
+// The configured charge/discharge limits, setting id → the capability that mirrors it. A
+// setting is what the user edits; the capability is what a flow can read as a token. Both
+// must say the same thing, and both come from 47075/47077 — never from the battery's own
+// reported maximum (37046/37048), which is a different number (issue #31).
+const MAX_POWER_CAP = {
+  max_charge_power:    'measure_power.chargesetting',
+  max_discharge_power: 'measure_power.dischargesetting',
+};
+
 // Maps writable enum capability → Modbus register address (47xxx)
 const CONTROL_WRITE_MAP = {
   storage_working_mode_settings:        47086,
@@ -184,6 +193,7 @@ class LUNA2000ModbusDevice extends Device {
           const raw = Math.round(parseFloat(newSettings[key]) || 0);
           this.log(`Write ${key}: ${raw} W → reg ${reg}`);
           writeModbusU32(address, port, modbusId, reg, raw)
+            .then(() => this._reflectMaxPower(key, raw))
             .catch((err) => this.error(`${key} write failed:`, err.message));
         }
       }
@@ -271,6 +281,31 @@ class LUNA2000ModbusDevice extends Device {
   }
 
   // ─── Flow actions ──────────────────────────────────────────────────────────
+
+  /**
+   * Bring both views of a charge/discharge limit in line with a value the inverter has just
+   * accepted: the device setting the user edits, and the capability a flow reads.
+   *
+   * Called after a SUCCESSFUL write only. After a failed one both keep what they had, and
+   * that is the truth — the inverter still runs on the old limit. The capability half is
+   * also written by _fetchControl on every control poll, so a change made in Huawei's own
+   * app arrives within five polls; a change made from Homey shows at once through here.
+   */
+  async _reflectMaxPower(settingId, watts) {
+    const cap = MAX_POWER_CAP[settingId];
+    if (!cap || typeof watts !== 'number' || !Number.isFinite(watts)) return;
+    await this._set(cap, watts);
+    const current = parseFloat(this.getSetting(settingId));
+    if (Number.isFinite(current) && Math.abs(current - watts) <= 0.5) return;
+    this._updatingSettingFromModbus = true;
+    try {
+      await this.setSettings({ [settingId]: watts });
+    } catch (err) {
+      this.log(`setSettings(${settingId}) failed:`, err.message);
+    } finally {
+      this._updatingSettingFromModbus = false;
+    }
+  }
 
   _registerFlowActions() {
     const host   = () => this.getSetting('address');
@@ -567,9 +602,7 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusU32(host(), port(), unitId(), 47075, powerW);
             this.log('Max charge power written');
-            this._updatingSettingFromModbus = true;
-            await this.setSettings({ max_charge_power: powerW }).catch(() => {});
-            this._updatingSettingFromModbus = false;
+            await this._reflectMaxPower('max_charge_power', powerW);
           } catch (err) {
             this.error('Set max charge power failed:', err.message);
           } finally {
@@ -589,9 +622,7 @@ class LUNA2000ModbusDevice extends Device {
           try {
             await writeModbusU32(host(), port(), unitId(), 47077, powerW);
             this.log('Max discharge power written');
-            this._updatingSettingFromModbus = true;
-            await this.setSettings({ max_discharge_power: powerW }).catch(() => {});
-            this._updatingSettingFromModbus = false;
+            await this._reflectMaxPower('max_discharge_power', powerW);
           } catch (err) {
             this.error('Set max discharge power failed:', err.message);
           } finally {
@@ -863,6 +894,22 @@ class LUNA2000ModbusDevice extends Device {
         const current = parseFloat(args.device.getSetting('max_charge_power'));
         return Number.isFinite(current) && current < args.power;
       });
+
+    // The discharge pair was missing (issue #31). Without it the only thing a flow could
+    // compare was the capability — which at the time showed the wrong number.
+    this.homey.flow
+      .getConditionCard('luna2000_max_discharge_power_above')
+      .registerRunListener((args) => {
+        const current = parseFloat(args.device.getSetting('max_discharge_power'));
+        return Number.isFinite(current) && current > args.power;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_max_discharge_power_below')
+      .registerRunListener((args) => {
+        const current = parseFloat(args.device.getSetting('max_discharge_power'));
+        return Number.isFinite(current) && current < args.power;
+      });
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
@@ -939,8 +986,10 @@ class LUNA2000ModbusDevice extends Device {
       await this._set('meter_power.discharged',       batt.storageTotalDischarge ?? null);
       await this._set('measure_power.batt_charge',    Math.max(0,  power));
       await this._set('measure_power.batt_discharge',  Math.max(0, -power));
-      await this._set('measure_power.chargesetting',   batt.storageMaxChargePower ?? null);
-      await this._set('measure_power.dischargesetting', batt.storageMaxDischargePower ?? null);
+      // measure_power.chargesetting / .dischargesetting are the configured limits (47075 /
+      // 47077) and are kept by _fetchControl and _reflectMaxPower. Until 1.2.238 they were
+      // written here from the battery's own reported maximum (37046/37048, essMax*), which
+      // does not move when the user changes the limit — issue #31.
       if (batt.storageUnit1Status !== null && batt.storageUnit1Status !== undefined) {
         const statusLabel = UNIT1_STATUS_MAP[batt.storageUnit1Status] ?? `Status ${batt.storageUnit1Status}`;
         await this._set('luna2000_battery_status', statusLabel);
@@ -1129,6 +1178,12 @@ class LUNA2000ModbusDevice extends Device {
           }
         }
       }
+
+      // The same two limits as capabilities, so flows can read them as tokens. Same source
+      // as the settings above; the battery's reported maximum (essMax*) is a different
+      // number and stays out of here.
+      await this._set('measure_power.chargesetting',    ctrl.storageMaxChargePower    ?? null);
+      await this._set('measure_power.dischargesetting', ctrl.storageMaxDischargePower ?? null);
 
       // Register 47242 (active grid charge power set point) only reflects a meaningful
       // value when charge_from_grid is enabled — skip sync when it is disabled.

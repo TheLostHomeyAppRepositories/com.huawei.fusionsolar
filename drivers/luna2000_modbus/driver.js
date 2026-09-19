@@ -24,8 +24,8 @@ class LUNA2000ModbusDriver extends Driver {
       const probeRegisters = {
         storageSOC:               BATTERY_REGISTERS.storageSOC,
         storageChargeDischarge:   BATTERY_REGISTERS.storageChargeDischarge,
-        storageMaxChargePower:    BATTERY_REGISTERS.storageMaxChargePower,
-        storageMaxDischargePower: BATTERY_REGISTERS.storageMaxDischargePower,
+        essMaxChargePower:        BATTERY_REGISTERS.essMaxChargePower,
+        essMaxDischargePower:     BATTERY_REGISTERS.essMaxDischargePower,
         storageDayCharge:         BATTERY_REGISTERS.storageDayCharge,
         storageDayDischarge:      BATTERY_REGISTERS.storageDayDischarge,
       };
@@ -53,8 +53,10 @@ class LUNA2000ModbusDriver extends Driver {
         kpi: {
           storageSOC:               data.storageSOC,
           storageChargeDischarge:   data.storageChargeDischarge,
-          storageMaxChargePower:    data.storageMaxChargePower,
-          storageMaxDischargePower: data.storageMaxDischargePower,
+          // What the battery reports it can do — not the configured limit (that is a
+          // setting, read after pairing). The pair page labels it accordingly.
+          essMaxChargePower:        data.essMaxChargePower,
+          essMaxDischargePower:     data.essMaxDischargePower,
         },
       };
     });

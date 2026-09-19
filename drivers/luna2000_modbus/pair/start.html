@@ -157,12 +157,12 @@
         <div class="kpi-unit">W</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label" id="kpi-label-max-charge">Max Charge</div>
+        <div class="kpi-label" id="kpi-label-max-charge">Battery max. charge</div>
         <div class="kpi-value" id="kpi-max-charge">—</div>
         <div class="kpi-unit">W</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label" id="kpi-label-max-discharge">Max Discharge</div>
+        <div class="kpi-label" id="kpi-label-max-discharge">Battery max. discharge</div>
         <div class="kpi-value" id="kpi-max-discharge">—</div>
         <div class="kpi-unit">W</div>
       </div>
@@ -190,8 +190,8 @@
         defaultName: 'LUNA2000 Battery (Modbus)',
         labelSoc: 'State of Charge',
         labelPower: 'Charge/Discharge',
-        labelMaxCharge: 'Max Charge',
-        labelMaxDischarge: 'Max Discharge',
+        labelMaxCharge: 'Battery max. charge',
+        labelMaxDischarge: 'Battery max. discharge',
         errNoAddress: 'Please enter an IP address.',
         successMsg: '✓ Battery detected',
       },
@@ -210,8 +210,8 @@
         defaultName: 'LUNA2000 Batterie (Modbus)',
         labelSoc: 'Ladezustand',
         labelPower: 'Laden/Entladen',
-        labelMaxCharge: 'Max. Ladeleistung',
-        labelMaxDischarge: 'Max. Entladeleistung',
+        labelMaxCharge: 'Batterie: max. Laden',
+        labelMaxDischarge: 'Batterie: max. Entladen',
         errNoAddress: 'Bitte gib eine IP-Adresse ein.',
         successMsg: '✓ Batterie erkannt',
       },
@@ -262,8 +262,8 @@
         const kpi = result.kpi || {};
         document.getElementById('kpi-soc').textContent          = kpi.storageSOC               ?? '—';
         document.getElementById('kpi-power').textContent        = kpi.storageChargeDischarge   ?? '—';
-        document.getElementById('kpi-max-charge').textContent   = kpi.storageMaxChargePower    ?? '—';
-        document.getElementById('kpi-max-discharge').textContent = kpi.storageMaxDischargePower ?? '—';
+        document.getElementById('kpi-max-charge').textContent   = kpi.essMaxChargePower    ?? '—';
+        document.getElementById('kpi-max-discharge').textContent = kpi.essMaxDischargePower ?? '—';
 
         document.getElementById('kpi-row').style.display = 'grid';
         showStatus('success', t.successMsg);
