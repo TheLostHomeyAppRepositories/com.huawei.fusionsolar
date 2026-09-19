@@ -59,6 +59,10 @@
         "idle": "Idle",
         "full": "Full",
         "empty": "Empty"
+      },
+      "ems": {
+        "present": "Energy Management device added",
+        "absent": "Energy Management device not added"
       }
     }
   },

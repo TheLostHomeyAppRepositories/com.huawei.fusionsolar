@@ -9,6 +9,7 @@ const {
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 const { logPollOk, logPollError } = require('../../lib/poll-log');
 const modbusPolling = require('../../lib/modbus-polling');
+const enumLabel     = require('../../lib/enum-label');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -418,6 +419,32 @@ class LUNA2000EmmaModbusDevice extends Device {
         this._prevExcessPv = newExcessPv;
       }
 
+
+      // The two rows of the "What the battery modes do" group — see the same block in the
+      // luna2000_modbus driver. This device has no remote charge/discharge mode, so it has
+      // no row for one.
+      const infoUpdates = {};
+      const infoRow = (settingId, text) => {
+        if (text && this.getSetting(settingId) !== text) infoUpdates[settingId] = text;
+      };
+
+      infoRow('info_working_mode',
+        this._enumLabel('storage_working_mode_settings', newMode, STORAGE_WORKING_MODE_LABELS));
+      try {
+        const ems = this.homey.drivers.getDriver('energy_management').getDevices().length > 0;
+        infoRow('info_ems_battery', this.homey.__(ems ? 'modbus.battery.ems.present'
+                                                      : 'modbus.battery.ems.absent'));
+      } catch (_) {
+        infoRow('info_ems_battery', this.homey.__('modbus.battery.ems.absent'));
+      }
+
+      if (Object.keys(infoUpdates).length > 0) {
+        this._updatingSettingFromModbus = true;
+        await this.setSettings(infoUpdates)
+          .catch((err) => this.log('setSettings info rows failed:', err.message));
+        this._updatingSettingFromModbus = false;
+      }
+
       // Sync max grid charging power setting if it differs from what the EMMA reports
       if (ctrl.maxGridChargingPower !== null && ctrl.maxGridChargingPower !== undefined) {
         const currentKw = parseFloat(this.getSetting('max_grid_charge_power')) || 0;
@@ -461,6 +488,6 @@ class LUNA2000EmmaModbusDevice extends Device {
 
 }
 
-Object.assign(LUNA2000EmmaModbusDevice.prototype, modbusPolling);
+Object.assign(LUNA2000EmmaModbusDevice.prototype, modbusPolling, enumLabel);
 
 module.exports = LUNA2000EmmaModbusDevice;

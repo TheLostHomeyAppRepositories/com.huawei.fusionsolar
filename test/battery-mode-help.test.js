@@ -42,7 +42,10 @@ const labelRow = (driverId, settingId) =>
 // Markers chosen per language rather than one shared word: the point is that each
 // translation carries the meaning, and a German hint that still says "Local Control" has
 // not been translated, it has been copied.
-const LOCAL_CONTROL = { en: 'Local Control', de: 'Lokale Steuerung', nl: 'Lokale besturing' };
+// The exact words the capability's own picker uses — since 1.2.242 the box above the hint
+// shows those, so a hint that said "Lokale besturing" contradicted the "Lokale sturing"
+// beside it. test/enum-label.test.js keeps that from coming back.
+const LOCAL_CONTROL = { en: 'Local Control', de: 'Lokale Steuerung', nl: 'Lokale sturing' };
 const EMS_DEVICE    = { en: 'Energy Management', de: 'Energieverwaltung', nl: 'Energiebeheer' };
 
 // ── the settings page, where he was looking ─────────────────────────────────
@@ -97,15 +100,23 @@ test('both battery drivers point at the EMS for price-driven charging', () => {
   }
 });
 
-// These rows document; they must not quietly become storage. An id shared with a real
-// setting would overwrite it, and a non-empty value would be written to the device.
-test('the explanation rows store nothing and collide with nothing', () => {
+// These rows are read-only and their id must be their own: one shared with a real setting
+// would overwrite it.
+//
+// The value in app.json is a placeholder, not data. Homey renders a label row as a disabled
+// box showing the value, so an empty default — which is what 1.2.237 shipped — reads as a
+// setting with nothing in it for the moment between pairing and the first poll. The driver
+// writes the real text from _applyControl; here we only pin that the default says "nothing
+// yet" rather than nothing at all, and that it is never a hard-coded piece of English.
+test('the explanation rows carry a placeholder, not data, and collide with nothing', () => {
   for (const id of ['luna2000_modbus', 'luna2000_emma_modbus']) {
     const all  = settingsOf(driver(id));
     const info = all.filter((s) => s.type === 'label');
     assert.ok(info.length, `${id} has no label rows`);
     for (const row of info) {
-      assert.strictEqual(row.value, '', `${id}/${row.id} carries a value it would store`);
+      assert.strictEqual(row.value, '—',
+        `${id}/${row.id} defaults to ${JSON.stringify(row.value)}; a label row shows its value, `
+        + 'so that is what a user sees before the first poll');
       assert.strictEqual(all.filter((s) => s.id === row.id).length, 1,
         `${id}/${row.id} shares its id with another setting and would overwrite it`);
     }

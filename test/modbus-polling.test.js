@@ -142,7 +142,11 @@ test('every Modbus driver uses the mixin instead of its own copy', () => {
   for (const d of MODBUS_DRIVERS) {
     const s = fs.readFileSync(path.join('drivers', d, 'device.js'), 'utf8');
     assert.match(s, /require\('\.\.\/\.\.\/lib\/modbus-polling'\)/, `${d}: does not require the mixin`);
-    assert.match(s, /Object\.assign\(\s*\w+\.prototype,\s*modbusPolling\s*\)/, `${d}: does not apply the mixin`);
+    // modbusPolling must be in the Object.assign, but it need not be alone: the two battery
+    // drivers also mix in enum-label. What matters is that the polling mixin is applied, not
+    // that it is the only one.
+    assert.match(s, /Object\.assign\(\s*\w+\.prototype,[^)]*\bmodbusPolling\b[^)]*\)/,
+      `${d}: does not apply the mixin`);
     for (const m of ['_intervalMs', '_startPolling', '_stopPolling', '_set']) {
       assert.doesNotMatch(s, new RegExp('^  (?:async )?' + m + '\\s*\\(', 'm'), `${d}: still defines its own ${m}`);
     }

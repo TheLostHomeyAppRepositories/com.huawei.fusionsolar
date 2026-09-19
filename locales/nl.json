@@ -59,6 +59,10 @@
         "idle": "Inactief",
         "full": "Vol",
         "empty": "Leeg"
+      },
+      "ems": {
+        "present": "Energiebeheersysteem aanwezig",
+        "absent": "Energiebeheersysteem niet toegevoegd"
       }
     }
   },

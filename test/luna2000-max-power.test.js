@@ -101,7 +101,8 @@ function makeDevice() {
   };
   d.settings = { address: '192.168.1.10', port: 502, modbus_id: 1,
     max_charge_power: 5000, max_discharge_power: 5000,
-    charge_from_grid: false, max_grid_charge_power: 2000 };
+    charge_from_grid: false, max_grid_charge_power: 2000,
+    info_working_mode: '—', info_remote_mode: '—', info_ems_battery: '—' };
   d.logs = [];
   d.log = (...a) => d.logs.push(a.join(' '));
   d.error = d.log;
@@ -118,8 +119,15 @@ function makeDevice() {
   d.actions = new Map();
   d.notifications = [];
   d.getName = () => 'LUNA2000';
+  d.emsDevices = [];
   d.homey = {
     __: (k) => k,
+    manifest: require('../app.json'),
+    i18n: { getLanguage: () => 'de' },
+    drivers: { getDriver: (id) => {
+      if (id !== 'energy_management') throw new Error('no such driver');
+      return { getDevices: () => d.emsDevices };
+    } },
     setTimeout, clearTimeout,
     notifications: {
       createNotification: async ({ excerpt }) => { d.notifications.push(excerpt); },

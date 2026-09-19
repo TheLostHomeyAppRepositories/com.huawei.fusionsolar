@@ -11,6 +11,7 @@ const {
 const { readModbusRegisters, writeModbusRegister, writeModbusU32, parseIntSafe, unavailableMessage } = require('../../lib/modbus-client');
 const { logPollOk, logPollError } = require('../../lib/poll-log');
 const modbusPolling = require('../../lib/modbus-polling');
+const enumLabel     = require('../../lib/enum-label');
 
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S = 10;
@@ -1344,6 +1345,46 @@ class LUNA2000ModbusDevice extends Device {
         this._updatingSettingFromModbus = false;
       }
 
+
+      // The three rows of the "What the battery modes do" group. They are settings of type
+      // "label", which Homey renders as a disabled box showing the VALUE — so leaving the
+      // value empty, as 1.2.237 did, put three empty boxes under three headings and read as
+      // three settings with nothing in them. Each now answers the question its heading asks,
+      // and the explanation stays in the hint behind the (i).
+      //
+      // Written in a call of their own, with its own catch, for two reasons. Each row is
+      // gated on the register that feeds it being present in THIS half of the split read —
+      // the working mode rides with the battery data, the remote mode comes round every
+      // fifth poll — so folding them into settingUpdates above would let one half write a
+      // row the other half fed, which is the shape of the 1.2.240 regression. And a string
+      // the store refuses must not take the real settings sync down with it.
+      const infoUpdates = {};
+      const infoRow = (settingId, text) => {
+        if (text && this.getSetting(settingId) !== text) infoUpdates[settingId] = text;
+      };
+
+      infoRow('info_working_mode',
+        this._enumLabel('storage_working_mode_settings', newMode, STORAGE_WORKING_MODE_LABELS));
+      infoRow('info_remote_mode',
+        this._enumLabel('remote_charge_discharge_control_mode', newRemoteMode, REMOTE_MODE_LABELS));
+      // Not a register: whether the device that does price- and forecast-driven charging is
+      // even installed. getDriver throws on an app that has never had one, which is an
+      // answer ("no"), not an error.
+      try {
+        const ems = this.homey.drivers.getDriver('energy_management').getDevices().length > 0;
+        infoRow('info_ems_battery', this.homey.__(ems ? 'modbus.battery.ems.present'
+                                                      : 'modbus.battery.ems.absent'));
+      } catch (_) {
+        infoRow('info_ems_battery', this.homey.__('modbus.battery.ems.absent'));
+      }
+
+      if (Object.keys(infoUpdates).length > 0) {
+        this._updatingSettingFromModbus = true;
+        await this.setSettings(infoUpdates)
+          .catch((err) => this.log('setSettings info rows failed:', err.message));
+        this._updatingSettingFromModbus = false;
+      }
+
       // onSettings refuses to write to the inverter until it has seen the registers it
       // would be overwriting. Gated on the working mode rather than on "the call did not
       // throw": a read whose settings span came back empty tells us nothing, and claiming
@@ -1373,6 +1414,6 @@ class LUNA2000ModbusDevice extends Device {
 
 }
 
-Object.assign(LUNA2000ModbusDevice.prototype, modbusPolling);
+Object.assign(LUNA2000ModbusDevice.prototype, modbusPolling, enumLabel);
 
 module.exports = LUNA2000ModbusDevice;

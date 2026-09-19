@@ -59,6 +59,10 @@
         "idle": "Bereit",
         "full": "Voll",
         "empty": "Leer"
+      },
+      "ems": {
+        "present": "Energiemanagementsystem vorhanden",
+        "absent": "Energiemanagementsystem nicht hinzugefügt"
       }
     }
   },
