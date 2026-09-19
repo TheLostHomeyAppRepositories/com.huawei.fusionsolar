@@ -71,7 +71,7 @@ class LUNA2000EmmaModbusDevice extends Device {
     this._updatingFromModbus         = false;
     this._updatingSettingFromModbus  = false;
     this._writeInProgress            = false;
-    this._controlPollCounter         = 0;
+    this._controlPollCounter         = 4;    // start at 4 so the first poll reads control registers
     this._lastPollStart              = 0;
     await this._ensureCapabilities();
     this._registerControlListeners();

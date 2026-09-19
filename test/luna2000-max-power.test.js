@@ -22,9 +22,22 @@ const _origLoad = Module._load;
 
 // What the inverter answers and what was written to it. One stub serves the device, the
 // driver and the pairing handler; `ctrl` is returned for every read.
+const pollErrors = [];
+
 const modbus = {
-  ctrl: {}, writes: [], fail: null, lastRegs: null,
-  async readModbusRegisters(host, port, unit, regs) { modbus.lastRegs = regs; return modbus.ctrl; },
+  ctrl: {}, writes: [], fail: null, lastRegs: null, reads: [],
+  // Answers only the registers it was asked for. A stub that returns the whole of `ctrl`
+  // for every map hides which read produced which value — and it did: it let the data
+  // poll drop its own _applyControl call without a single test noticing, because the
+  // five-poll read handed the same values over anyway.
+  async readModbusRegisters(host, port, unit, regs) {
+    modbus.lastRegs = regs;
+    modbus.reads.push(regs);
+    if (modbus.fail) throw new Error(modbus.fail);
+    if (modbus.onRead) modbus.onRead(regs);
+    return Object.fromEntries(
+      Object.keys(regs).filter((k) => k in modbus.ctrl).map((k) => [k, modbus.ctrl[k]]));
+  },
   async writeModbusRegister(host, port, unit, reg, value) {
     if (modbus.fail) throw new Error(modbus.fail);
     modbus.writes.push({ reg, value });
@@ -40,7 +53,7 @@ const modbus = {
 Module._load = function (request, parent, isMain) {
   if (request === 'homey') return { Device: class {}, Driver: class {} };
   if (/lib\/modbus-client$/.test(request)) return modbus;
-  if (/lib\/poll-log$/.test(request)) return { logPollOk() {}, logPollError() {} };
+  if (/lib\/poll-log$/.test(request)) return { logPollOk() {}, logPollError(dev, msg) { pollErrors.push(msg); } };
   if (/lib\/pairing-helper$/.test(request)) {
     return {
       pauseDevicesOnHost: async () => [],
@@ -73,7 +86,19 @@ function card(id, into) {
 
 function makeDevice() {
   const d = Object.create(LUNA2000ModbusDevice.prototype);
-  d.caps = { 'measure_power.chargesetting': 5000, 'measure_power.dischargesetting': 5000 };
+  // Every capability the poll and _applyControl write. _set skips a capability the device
+  // does not have, so a short list here would quietly turn assertions into no-ops.
+  d.caps = {
+    'measure_power.chargesetting': 5000, 'measure_power.dischargesetting': 5000,
+    storage_working_mode_settings: null, storage_force_charge_discharge: null,
+    storage_excess_pv_energy_use_in_tou: null, remote_charge_discharge_control_mode: null,
+    luna2000_unit1_installed: null, luna2000_unit2_installed: null,
+    measure_battery_modules: null, luna2000_battery_status: null,
+    measure_power: null, measure_battery: null, battery_state_string: null,
+    'meter_power.charged': null, 'meter_power.discharged': null,
+    'measure_power.batt_charge': null, 'measure_power.batt_discharge': null,
+    'meter_power.today_batt_input': null, 'meter_power.today_batt_output': null,
+  };
   d.settings = { address: '192.168.1.10', port: 502, modbus_id: 1,
     max_charge_power: 5000, max_discharge_power: 5000 };
   d.logs = [];
@@ -110,31 +135,209 @@ function makeDevice() {
   d._writeInProgress = false;
   d._prevWorkingMode = null; d._prevExcessPv = null; d._prevRemoteMode = null;
   d._batteryModulesInitialized = true; // skip the one-off module read in _fetchControl
+  d._controlPollCounter = 4;           // as onInit sets it: the first poll reads control
+  d._failureCount = 0;
+  d._fetchInProgress = false;
+  d._lastPollStart = 0;
+  d.available = true;
+  d.getAvailable = () => d.available;
+  d.setAvailable = async () => { d.available = true; };
+  d.setUnavailable = async () => { d.available = false; };
+  d.addCapability = async (c) => { d.caps[c] = null; };
+  d.removeCapability = async (c) => { delete d.caps[c]; };
+  d.setEnergy = async () => {};
   return d;
 }
 
-function reset() { modbus.ctrl = {}; modbus.writes = []; modbus.fail = null; modbus.lastRegs = null; }
+function reset() {
+  modbus.ctrl = {}; modbus.writes = []; modbus.fail = null; modbus.lastRegs = null;
+  modbus.reads = []; modbus.onRead = null;
+}
+
+// Which addresses a read asked for, so a test can say WHICH registers rode on WHICH
+// connection instead of trusting a stub that answers every map alike.
+const addressesOf = (regs) => Object.values(regs).map((d) => d[0]).sort((a, b) => a - b);
+const asked = (i) => addressesOf(modbus.reads[i]);
 
 // ── the field case: the control poll ────────────────────────────────────────
 
 test('the capabilities follow the setting registers, so a limit of 0 reads as 0', async () => {
   reset();
-  modbus.ctrl = { storageMaxChargePower: 3500, storageMaxDischargePower: 0 };
   const d = makeDevice();
 
-  await d._fetchControl('192.168.1.10', 502, 1);
+  await d._applyControl({ storageMaxChargePower: 3500, storageMaxDischargePower: 0 });
 
   assert.strictEqual(d.caps['measure_power.dischargesetting'], 0, 'the token still shows a number the user never set');
   assert.strictEqual(d.caps['measure_power.chargesetting'], 3500);
   assert.strictEqual(d.settings.max_discharge_power, 0, 'the setting stopped following the inverter');
 });
 
-test('a control poll that did not return the limit leaves the capability alone', async () => {
+test('a read that did not return the limit leaves the capability alone', async () => {
   reset();
-  modbus.ctrl = {}; // nothing came back for these two
   const d = makeDevice();
-  await d._fetchControl('192.168.1.10', 502, 1);
+  await d._applyControl({});   // nothing came back for these two
   assert.strictEqual(d.caps['measure_power.dischargesetting'], 5000, 'an unread register was reported as a value');
+});
+
+// ── which registers ride on which connection ────────────────────────────────
+//
+// A Modbus read is a TCP connection, and a Huawei device wants a full second to settle
+// before the first register may be asked for. That second, not the registers, is what a
+// separate control read costs — so the eleven settings registers at 47075..47108 travel
+// with the battery data, and only the three scattered ones pay for a connection of their
+// own, every fifth poll.
+
+test('the settings registers travel with the battery data, on one connection', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: -300,
+    storageMaxChargePower: 3500, storageMaxDischargePower: 0, storageWorkingMode: 2 };
+  const d = makeDevice();
+
+  await d._fetchAndUpdate();
+
+  const first = asked(0);
+  assert.ok(first.includes(37760), 'the battery SoC is not in the first read');
+  assert.ok(first.includes(47075) && first.includes(47077),
+    'the two power limits still need a connection of their own');
+  assert.ok(first.includes(47086), 'the working mode still needs a connection of its own');
+  assert.ok(!first.includes(47589),
+    'the register the field log shows going silent was put on the every-poll connection');
+  assert.ok(!first.includes(47299) && !first.includes(47242),
+    'a register nothing reads often was put on the every-poll connection');
+});
+
+test('one poll is enough for a limit changed in Huawei’s own app', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: 0, storageMaxDischargePower: 0,
+    storageWorkingMode: 2 };
+  const d = makeDevice();
+
+  await d._fetchAndUpdate();   // ONE poll, not five
+
+  assert.strictEqual(d.caps['measure_power.dischargesetting'], 0);
+  assert.strictEqual(d.settings.max_discharge_power, 0);
+});
+
+test('the scattered three are read on their own, and only those', async () => {
+  reset();
+  modbus.ctrl = { storageExcessPvEnergyUseInTou: 1, remoteChargeDischargeControlMode: 0 };
+  const d = makeDevice();
+
+  await d._fetchControl('192.168.1.10', 502, 1);
+
+  const regs = asked(0);
+  assert.deepStrictEqual(regs, [47242, 47299, 47589]);
+  assert.strictEqual(d.caps['storage_excess_pv_energy_use_in_tou'], '1');
+});
+
+// The counter is what keeps 47589 off the every-poll connection; five polls, one visit.
+test('the scattered three come round once every five polls', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: 0, storageWorkingMode: 2 };
+  const d = makeDevice();
+  d._batteryModulesInitialized = true;
+
+  const rare = () => modbus.reads.filter((r) => addressesOf(r).includes(47589)).length;
+
+  await d._fetchAndUpdate();                       // counter starts at 4 → reads at once
+  assert.strictEqual(rare(), 1,
+    `the first poll did not pick up the scattered three — poll errors: ${JSON.stringify(pollErrors)}`);
+
+  for (let i = 0; i < 4; i++) await d._fetchAndUpdate();
+  assert.strictEqual(rare(), 1, 'the scattered three were read more often than every fifth poll');
+
+  await d._fetchAndUpdate();
+  assert.strictEqual(rare(), 2, 'the scattered three never came round again');
+});
+
+// A write that arrives WHILE the poll is running is the case the guard inside the poll is
+// for; one that was already waiting never gets past the early return at the top. Opening a
+// connection to abort at the first register lays a full second of settle time on exactly
+// the write it is trying to keep out of the way of, and reads nothing for it.
+test('a write that lands mid-poll stops the rare read from starting', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: 0, storageWorkingMode: 2,
+    storageExcessPvEnergyUseInTou: 1 };
+  const d = makeDevice();
+  d._batteryModulesInitialized = true;
+
+  // The flow action sets this the moment it starts writing — here, during the battery read.
+  modbus.onRead = () => { d._writeInProgress = true; };
+
+  await d._fetchAndUpdate();
+
+  assert.strictEqual(modbus.reads.length, 1,
+    'a second connection was opened while a write was waiting, and would abort at register one');
+  assert.strictEqual(d._controlPollCounter, 4,
+    'the counter moved on, so the skipped read comes back in five polls instead of on the next');
+});
+
+// Opening a connection to abort at the first register lays a full second of settle time on
+// exactly the write it is trying to keep out of the way of, and reads nothing for it.
+test('a waiting write is not made to wait for a connection that reads nothing', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: 0, storageWorkingMode: 2 };
+  const d = makeDevice();
+  d._batteryModulesInitialized = true;
+
+  await d._fetchAndUpdate();                       // counter 4 → 0, rare read happens
+  modbus.reads = [];
+  d._writeInProgress = true;
+  await d._fetchAndUpdate();                       // _fetchAndUpdate returns early here
+  d._writeInProgress = false;
+
+  assert.deepStrictEqual(modbus.reads, [], 'a poll ran while a write was waiting');
+});
+
+// ── the flag that lets onSettings write at all ──────────────────────────────
+
+test('settings writes are unlocked by the first poll, not by the fifth', async () => {
+  reset();
+  modbus.ctrl = { storageSOC: 55, storageChargeDischarge: 0, storageWorkingMode: 2 };
+  const d = makeDevice();
+  d._settingsInitialized = false;
+  d._batteryModulesInitialized = true;
+
+  await d._fetchAndUpdate();
+
+  assert.strictEqual(d._settingsInitialized, true,
+    'a settings edit would be dropped silently until the fifth poll');
+});
+
+test('an empty settings span does not unlock writes', async () => {
+  reset();
+  const d = makeDevice();
+  d._settingsInitialized = false;
+
+  await d._applyControl({ storageSOC: 55 });   // battery answered, the 47xxx span did not
+
+  assert.strictEqual(d._settingsInitialized, false,
+    'onSettings would overwrite values the app has never read');
+});
+
+// The two halves arrive separately and neither may erase what the other set.
+test('the half that did not arrive leaves the other half standing', async () => {
+  reset();
+  const d = makeDevice();
+
+  await d._applyControl({ storageMaxDischargePower: 0, storageWorkingMode: 2 });
+  await d._applyControl({ storageExcessPvEnergyUseInTou: 1 });
+
+  assert.strictEqual(d.caps['measure_power.dischargesetting'], 0, 'the second half cleared the first');
+  assert.strictEqual(d.caps['storage_working_mode_settings'], '2');
+  assert.strictEqual(d.caps['storage_excess_pv_energy_use_in_tou'], '1');
+});
+
+// A setting that cannot be read is not a battery that cannot be reached.
+test('a fault on the control side does not count against the device', async () => {
+  reset();
+  const d = makeDevice();
+  d._failureCount = 0;
+  d.setSettings = async () => { throw new Error('store is busy'); };
+
+  await d._applyControl({ storageMaxDischargePower: 1234, storageWorkingMode: 2 });
+
+  assert.strictEqual(d._failureCount, 0, 'a control-side fault was counted as a failed poll');
 });
 
 // ── the write paths: both views move together, and only on success ──────────
@@ -501,4 +704,28 @@ test('the pairing labels call the value the battery’s, in both languages', () 
   // The div is what shows for the instant before the script runs; it must not disagree.
   assert.match(html, /id="kpi-label-max-charge">Battery max\. charge</);
   assert.match(html, /id="kpi-label-max-discharge">Battery max\. discharge</);
+});
+
+// ── the counter that decides when the scattered three are read ──────────────
+//
+// A source read, because onInit cannot be driven here — and this is exactly the defect the
+// EMMA battery driver carried until 1.2.240: its counter started at 0, so the first control
+// read came only on the fifth poll. Left unset entirely it is worse than late, because
+// (undefined + 1) % 5 is NaN and the read then never happens at all, silently, for ever.
+test('every driver with a control poll starts its counter so the first poll reads', () => {
+  const drivers = fs.readdirSync(path.join(__dirname, '..', 'drivers'));
+  let checked = 0;
+  for (const id of drivers) {
+    const file = path.join(__dirname, '..', 'drivers', id, 'device.js');
+    if (!fs.existsSync(file)) continue;
+    const src = fs.readFileSync(file, 'utf8');
+    if (!/_controlPollCounter\s*=\s*\(this\._controlPollCounter/.test(src)) continue; // no control poll
+
+    const init = src.match(/this\._controlPollCounter\s*=\s*(\d+)\s*;/);
+    assert.ok(init, `${id}: uses a control-poll counter and never initialises it — the read never happens`);
+    assert.strictEqual(init[1], '4',
+      `${id}: the counter starts at ${init[1]}, so the first control read waits for poll ${(5 - Number(init[1])) % 5 || 5}`);
+    checked++;
+  }
+  assert.ok(checked >= 3, `only ${checked} drivers checked — the counter moved or the scan is wrong`);
 });

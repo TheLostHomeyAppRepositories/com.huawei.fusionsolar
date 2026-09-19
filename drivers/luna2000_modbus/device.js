@@ -80,22 +80,40 @@ const REQUIRED_CAPABILITIES = [
   // software version capabilities are added/removed dynamically based on register response
 ];
 
-// Only the battery-related control registers
-const STORAGE_CONTROL_REGISTERS = {
-  storageWorkingMode:               CONTROL_REGISTERS.storageWorkingMode,
-  storageForceChargeDischarge:      CONTROL_REGISTERS.storageForceChargeDischarge,
-  storageExcessPvEnergyUseInTou:    CONTROL_REGISTERS.storageExcessPvEnergyUseInTou,
-  remoteChargeDischargeControlMode: CONTROL_REGISTERS.remoteChargeDischargeControlMode,
-  storageMaxChargePower:            CONTROL_REGISTERS.storageMaxChargePower,
-  storageMaxDischargePower:         CONTROL_REGISTERS.storageMaxDischargePower,
-  storageChargingCutoffCapacity:    CONTROL_REGISTERS.storageChargingCutoffCapacity,
-  storageDischargeCutoffCapacity:   CONTROL_REGISTERS.storageDischargeCutoffCapacity,
-  storageChargeFromGrid:            CONTROL_REGISTERS.storageChargeFromGrid,
-  storageGridChargeCutoffSoc:       CONTROL_REGISTERS.storageGridChargeCutoffSoc,
-  storageGridChargePower:           CONTROL_REGISTERS.storageGridChargePower,
-  storageBackupPowerSoc:            CONTROL_REGISTERS.storageBackupPowerSoc,
-  storageUnit1No:                   CONTROL_REGISTERS.storageUnit1No,
-  storageUnit2No:                   CONTROL_REGISTERS.storageUnit2No,
+// The control block, split by what it costs to read — not by what it means.
+//
+// A Modbus read here is one TCP connection, and a Huawei device needs a full second to
+// settle after connect (POST_CONNECT_MS) before the first register may be asked for. Four
+// requests on top of that are ~61 ms each. So a control read of its own costs ~1.25 s, of
+// which roughly 80 % is the connection and 20 % the registers — and the comment that used
+// to sit on the throttle below blamed the registers.
+//
+// 47075..47108 is one contiguous span: eleven registers, including both power limits, the
+// working mode and both cutoff SoCs. Carried along with the battery read it is ONE extra
+// request on a connection that is already open — ~61 ms against ~1.25 s. So it rides
+// along, and the values a flow can see are never more than one poll old.
+const LIVE_CONTROL_REGISTERS = {
+  storageMaxChargePower:            CONTROL_REGISTERS.storageMaxChargePower,          // 47075
+  storageMaxDischargePower:         CONTROL_REGISTERS.storageMaxDischargePower,       // 47077
+  storageChargingCutoffCapacity:    CONTROL_REGISTERS.storageChargingCutoffCapacity,  // 47081
+  storageDischargeCutoffCapacity:   CONTROL_REGISTERS.storageDischargeCutoffCapacity, // 47082
+  storageWorkingMode:               CONTROL_REGISTERS.storageWorkingMode,             // 47086
+  storageChargeFromGrid:            CONTROL_REGISTERS.storageChargeFromGrid,          // 47087
+  storageGridChargeCutoffSoc:       CONTROL_REGISTERS.storageGridChargeCutoffSoc,     // 47088
+  storageForceChargeDischarge:      CONTROL_REGISTERS.storageForceChargeDischarge,    // 47100
+  storageBackupPowerSoc:            CONTROL_REGISTERS.storageBackupPowerSoc,          // 47102
+  storageUnit1No:                   CONTROL_REGISTERS.storageUnit1No,                 // 47107
+  storageUnit2No:                   CONTROL_REGISTERS.storageUnit2No,                 // 47108
+};
+
+// The three that sit far enough away to need a request each, and that nothing reads often.
+// 47589 is the reason the throttle still earns its keep: it is a single-register span, and
+// the field log of 2026-08 shows it going silent for minutes at a time — a silent register
+// holds the host lock for the full RESPONSE_TIMEOUT_MS. Once every five polls, not every one.
+const RARE_CONTROL_REGISTERS = {
+  storageGridChargePower:           CONTROL_REGISTERS.storageGridChargePower,           // 47242
+  storageExcessPvEnergyUseInTou:    CONTROL_REGISTERS.storageExcessPvEnergyUseInTou,    // 47299
+  remoteChargeDischargeControlMode: CONTROL_REGISTERS.remoteChargeDischargeControlMode, // 47589
 };
 
 // The configured charge/discharge limits, setting id → the capability that mirrors it. A
@@ -993,7 +1011,8 @@ class LUNA2000ModbusDevice extends Device {
     const abort = () => this._writeInProgress;
 
     try {
-      const batt = await readModbusRegisters(address, port, modbusId, BATTERY_REGISTERS, abort);
+      const batt = await readModbusRegisters(
+        address, port, modbusId, { ...BATTERY_REGISTERS, ...LIVE_CONTROL_REGISTERS }, abort);
 
       if (!isBatteryDataValid(batt)) {
         this._failureCount += 1;
@@ -1061,11 +1080,19 @@ class LUNA2000ModbusDevice extends Device {
       await this._syncStringCap('luna2000_unit1_software_version', batt.storageUnit1SoftwareVer);
       await this._syncStringCap('luna2000_unit2_software_version', batt.storageUnit2SoftwareVer);
 
-      // Read control registers every 5th poll — they change rarely and the read
-      // adds ~1 s of connection time that delays pending writes.
-      this._controlPollCounter = (this._controlPollCounter + 1) % 5;
-      if (this._controlPollCounter === 0) {
-        await this._fetchControl(address, port, modbusId);
+      // The eleven settings registers came with the battery data on the same connection.
+      await this._applyControl(batt);
+
+      // The remaining three need a connection of their own — see RARE_CONTROL_REGISTERS.
+      // Skipped outright while a write is waiting: opening a connection only to abort at the
+      // first register would lay a full second of settle time on exactly the write it is
+      // trying to stay out of the way of, and read nothing. The counter is left alone so the
+      // attempt comes back on the next poll rather than in five.
+      if (!this._writeInProgress) {
+        this._controlPollCounter = (this._controlPollCounter + 1) % 5;
+        if (this._controlPollCounter === 0) {
+          await this._fetchControl(address, port, modbusId);
+        }
       }
 
       if (prevSoc !== soc) {
@@ -1149,10 +1176,64 @@ class LUNA2000ModbusDevice extends Device {
     await this.removeCapability(capId);
   }
 
+  /**
+   * The three control registers that do not ride along with the battery data, plus the
+   * one-off battery module count. Everything it reads is handed to _applyControl, which is
+   * the same code the data poll runs — it takes whatever registers it was given and leaves
+   * the rest alone.
+   */
   async _fetchControl(address, port, modbusId) {
     try {
-      const ctrl = await readModbusRegisters(address, port, modbusId, STORAGE_CONTROL_REGISTERS, () => this._writeInProgress);
+      const ctrl = await readModbusRegisters(address, port, modbusId, RARE_CONTROL_REGISTERS, () => this._writeInProgress);
+      await this._applyControl(ctrl);
+    } catch (err) {
+      this.log('Control register read skipped:', err.message);
+    }
 
+    // Battery module count — read once at startup, then locked permanently.
+    // Registers 47750–47755 are unreliable during operation (return transient 0 or
+    // wrong counts) and battery modules are never added/removed during normal use.
+    // Retries automatically on each control-poll cycle until a non-zero count is seen.
+    if (this._batteryModulesInitialized) return;
+    try {
+      const mods  = await readModbusRegisters(address, port, modbusId, BATTERY_MODULE_REGISTERS, () => this._writeInProgress);
+      const count = BATTERY_MODULE_KEYS.filter((k) => mods[k] !== null && mods[k] !== undefined && mods[k] !== 0).length;
+      await this._set('measure_battery_modules', count);
+
+      if (count > 0) {
+        this._batteryModulesInitialized = true;
+        this._batteryModuleCount        = count;
+        const batteries = Array(count).fill('INTERNAL');
+        await this.setEnergy({
+          batteries,
+          homeBattery:                    true,
+          meterPowerImportedCapability:   'meter_power.charged',
+          meterPowerExportedCapability:   'meter_power.discharged',
+        }).catch((err) => this.log('setEnergy failed:', err.message));
+        this.log(`Battery modules: ${count} → energy.batteries locked to ${JSON.stringify(batteries)}`);
+      } else {
+        this.log('Battery modules: read returned 0 — will retry on next control poll');
+      }
+    } catch (err) {
+      this.log('Battery module register read skipped:', err.message);
+    }
+  }
+
+  /**
+   * Turn whatever control registers were read into capabilities, triggers and settings.
+   *
+   * Called twice per five polls with different halves: every poll with the eleven that came
+   * with the battery data, and every fifth with the three that needed their own connection.
+   * Every branch below already tolerates a missing register — toEnum gives null, _set skips
+   * null, and the settings sync only collects values that are present — so the two halves
+   * need no bookkeeping between them.
+   *
+   * It carries its own try/catch on purpose. Running inside the data poll would otherwise
+   * let a control-side fault count toward _failureCount and take the device offline; a
+   * setting that could not be read is not a battery that cannot be reached.
+   */
+  async _applyControl(ctrl) {
+    try {
       const toEnum = (v) => (v !== null && v !== undefined) ? String(v) : null;
 
       this._updatingFromModbus = true;
@@ -1251,40 +1332,16 @@ class LUNA2000ModbusDevice extends Device {
         this._updatingSettingFromModbus = false;
       }
 
-      // Battery module count — read once at startup, then locked permanently.
-      // Registers 47750–47755 are unreliable during operation (return transient 0 or
-      // wrong counts) and battery modules are never added/removed during normal use.
-      // Retries automatically on each control-poll cycle until a non-zero count is seen.
-      if (!this._batteryModulesInitialized) {
-        try {
-          const mods  = await readModbusRegisters(address, port, modbusId, BATTERY_MODULE_REGISTERS, () => this._writeInProgress);
-          const count = BATTERY_MODULE_KEYS.filter((k) => mods[k] !== null && mods[k] !== undefined && mods[k] !== 0).length;
-          await this._set('measure_battery_modules', count);
-
-          if (count > 0) {
-            this._batteryModulesInitialized = true;
-            this._batteryModuleCount        = count;
-            const batteries = Array(count).fill('INTERNAL');
-            await this.setEnergy({
-              batteries,
-              homeBattery:                    true,
-              meterPowerImportedCapability:   'meter_power.charged',
-              meterPowerExportedCapability:   'meter_power.discharged',
-            }).catch((err) => this.log('setEnergy failed:', err.message));
-            this.log(`Battery modules: ${count} → energy.batteries locked to ${JSON.stringify(batteries)}`);
-          } else {
-            this.log('Battery modules: read returned 0 — will retry on next control poll');
-          }
-        } catch (err) {
-          this.log('Battery module register read skipped:', err.message);
-        }
+      // onSettings refuses to write to the inverter until it has seen the registers it
+      // would be overwriting. Gated on the working mode rather than on "the call did not
+      // throw": a read whose settings span came back empty tells us nothing, and claiming
+      // otherwise would let the first settings edit write over values never read.
+      if (ctrl.storageWorkingMode !== null && ctrl.storageWorkingMode !== undefined) {
+        this._settingsInitialized = true;
       }
 
-      // Mark settings as initialised — onSettings writes are now safe
-      this._settingsInitialized = true;
-
     } catch (err) {
-      this.log('Control register read skipped:', err.message);
+      this.log('Control register handling skipped:', err.message);
     } finally {
       this._updatingFromModbus         = false;
       this._updatingSettingFromModbus  = false;
