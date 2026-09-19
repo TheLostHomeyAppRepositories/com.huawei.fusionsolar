@@ -107,6 +107,19 @@ const MAX_POWER_CAP = {
   max_discharge_power: 'measure_power.dischargesetting',
 };
 
+// Setting id → the name a person would recognise, for the timeline note when a write is
+// refused. Only used there; the log keeps the raw id.
+const SETTING_LABEL = {
+  charge_from_grid:          'Charge battery from grid',
+  grid_charge_cutoff_soc:    'Grid charge cutoff SoC',
+  charging_cutoff_capacity:  'Charging cutoff capacity',
+  discharge_cutoff_capacity: 'Discharge cutoff capacity',
+  backup_power_soc:          'Backup power SoC',
+  max_charge_power:          'Max charge power',
+  max_discharge_power:       'Max discharge power',
+  max_grid_charge_power:     'Max grid charge power',
+};
+
 // Maps writable enum capability → Modbus register address (47xxx)
 const CONTROL_WRITE_MAP = {
   storage_working_mode_settings:        47086,
@@ -146,7 +159,7 @@ class LUNA2000ModbusDevice extends Device {
     });
   }
 
-  async onSettings({ newSettings, changedKeys }) {
+  async onSettings({ oldSettings, newSettings, changedKeys }) {
     if (['address', 'port', 'modbus_id', 'poll_interval'].some((k) => changedKeys.includes(k))) {
       await this._stopPolling();
       await this._startPolling();
@@ -164,7 +177,7 @@ class LUNA2000ModbusDevice extends Device {
         const raw = newSettings.charge_from_grid ? 1 : 0;
         this.log(`Write charge_from_grid: ${raw} → reg 47087`);
         writeModbusRegister(address, port, modbusId, 47087, raw)
-          .catch((err) => this.error('charge_from_grid write failed:', err.message));
+          .catch((err) => this._revertSetting('charge_from_grid', oldSettings, err));
       }
 
       const socSettings = {
@@ -180,7 +193,7 @@ class LUNA2000ModbusDevice extends Device {
           const raw = Math.round((Number.isFinite(val) ? val : 0) * scale);
           this.log(`Write ${key}: ${newSettings[key]} → reg ${reg} raw=${raw}`);
           (u32 ? writeModbusU32 : writeModbusRegister)(address, port, modbusId, reg, raw)
-            .catch((err) => this.error(`${key} write failed:`, err.message));
+            .catch((err) => this._revertSetting(key, oldSettings, err));
         }
       }
 
@@ -194,7 +207,7 @@ class LUNA2000ModbusDevice extends Device {
           this.log(`Write ${key}: ${raw} W → reg ${reg}`);
           writeModbusU32(address, port, modbusId, reg, raw)
             .then(() => this._reflectMaxPower(key, raw))
-            .catch((err) => this.error(`${key} write failed:`, err.message));
+            .catch((err) => this._revertSetting(key, oldSettings, err));
         }
       }
 
@@ -214,7 +227,7 @@ class LUNA2000ModbusDevice extends Device {
           : Promise.resolve();
         ensureEnabled
           .then(() => writeModbusU32(address, port, modbusId, 47242, raw))
-          .catch((err) => this.error('max_grid_charge_power write failed:', err.message));
+          .catch((err) => this._revertSetting('max_grid_charge_power', oldSettings, err));
       }
     }
   }
@@ -281,6 +294,45 @@ class LUNA2000ModbusDevice extends Device {
   }
 
   // ─── Flow actions ──────────────────────────────────────────────────────────
+
+  /**
+   * Put a setting back after the inverter refused the write.
+   *
+   * Homey stores the new number in the settings field BEFORE onSettings runs, and every
+   * write here is fire-and-forget. Until 1.2.239 a refusal was only logged, so the field
+   * kept showing a limit the inverter never took — and the four max-power condition cards
+   * read that field, not the capability. "Max discharge power is below 1" could therefore
+   * answer "blocked" while the battery went on discharging at the old limit, until the next
+   * control poll happened to read the real value back.
+   *
+   * The guard is what stops the revert from being written straight back out: onSettings
+   * skips its whole write block while _updatingSettingFromModbus is set.
+   *
+   * A silent revert would only replace one puzzle with another, so it is also said out
+   * loud — under the same toggle as every other timeline note from this device.
+   */
+  async _revertSetting(settingId, oldSettings, err) {
+    this.error(`${settingId} write failed:`, err.message);
+    const previous = oldSettings ? oldSettings[settingId] : undefined;
+    if (previous === undefined || previous === null) return;
+    if (this.getSetting(settingId) === previous) return;  // nothing drifted
+
+    this._updatingSettingFromModbus = true;
+    try {
+      await this.setSettings({ [settingId]: previous });
+    } catch (e) {
+      this.log(`setSettings(${settingId}) revert failed:`, e.message);
+      return;
+    } finally {
+      this._updatingSettingFromModbus = false;
+    }
+
+    if (this.getSetting('enable_timeline_notifications') === false) return;
+    const label = SETTING_LABEL[settingId] || settingId;
+    this.homey.notifications.createNotification({
+      excerpt: `${this.getName()}: ${label} could not be written (${err.message}) — put back to ${previous}.`,
+    }).catch((e) => this.log('Timeline notification failed:', e.message));
+  }
 
   /**
    * Bring both views of a charge/discharge limit in line with a value the inverter has just

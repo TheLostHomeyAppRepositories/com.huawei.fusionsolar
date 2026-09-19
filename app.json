@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.238",
+  "version": "1.2.239",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -13130,9 +13130,9 @@
           "nl": "Maximaal laadvermogen is !{{boven|niet boven}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter every 5 poll cycles.",
-          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) über dem angegebenen Schwellwert liegt. Wird alle 5 Abfragezyklen synchronisiert.",
-          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) boven de opgegeven drempel ligt. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd."
+          "en": "True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) über dem angegebenen Schwellwert liegt. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) boven de opgegeven drempel ligt. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {
@@ -13150,7 +13150,7 @@
             },
             "min": 0,
             "max": 100000,
-            "step": 100,
+            "step": 1,
             "placeholder": {
               "en": "e.g. 1000",
               "de": "z.B. 1000",
@@ -13172,9 +13172,9 @@
           "nl": "Maximaal laadvermogen is !{{onder|niet onder}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter every 5 poll cycles.",
-          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird alle 5 Abfragezyklen synchronisiert.",
-          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd."
+          "en": "True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {
@@ -13192,7 +13192,7 @@
             },
             "min": 0,
             "max": 100000,
-            "step": 100,
+            "step": 1,
             "placeholder": {
               "en": "e.g. 1000",
               "de": "z.B. 1000",
@@ -13234,7 +13234,7 @@
             },
             "min": 0,
             "max": 100000,
-            "step": 100,
+            "step": 1,
             "placeholder": {
               "en": "e.g. 1000",
               "de": "z.B. 1000",
@@ -13276,7 +13276,7 @@
             },
             "min": 0,
             "max": 100000,
-            "step": 100,
+            "step": 1,
             "placeholder": {
               "en": "e.g. 1000",
               "de": "z.B. 1000",

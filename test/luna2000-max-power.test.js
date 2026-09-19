@@ -90,9 +90,14 @@ function makeDevice() {
   };
   d.conditions = new Map();
   d.actions = new Map();
+  d.notifications = [];
+  d.getName = () => 'LUNA2000';
   d.homey = {
     __: (k) => k,
     setTimeout, clearTimeout,
+    notifications: {
+      createNotification: async ({ excerpt }) => { d.notifications.push(excerpt); },
+    },
     flow: {
       getDeviceTriggerCard: (id) => card(id, new Map()),
       getConditionCard:     (id) => card(id, d.conditions),
@@ -179,14 +184,144 @@ test('a limit edited in the device settings reaches the capability after the wri
   const d = makeDevice();
   d.settings.max_discharge_power = 0; // Homey has already applied the edit when onSettings runs
 
-  await d.onSettings({ newSettings: { max_discharge_power: 0 }, changedKeys: ['max_discharge_power'] });
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 0 },
+    changedKeys: ['max_discharge_power'],
+  });
   await settle();
 
   assert.deepStrictEqual(modbus.writes, [{ reg: 47077, value: 0 }]);
   assert.strictEqual(d.caps['measure_power.dischargesetting'], 0);
+  assert.strictEqual(d.settings.max_discharge_power, 0, 'the field lost the value that was accepted');
 });
 
-test('a settings edit the inverter refused leaves the capability on the old limit', async () => {
+// The test this file shipped with checked only the capability, and that is exactly how the
+// sentence "a write the inverter refuses changes neither" reached the 1.2.238 changelog: the
+// FIELD kept the refused number. It is the field the condition cards read.
+test('a settings edit the inverter refused is taken back, field included', async () => {
+  reset();
+  modbus.fail = 'ECONNRESET';
+  const d = makeDevice();
+  d.settings.max_discharge_power = 0;   // Homey applied it before onSettings ran
+
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 0 },
+    changedKeys: ['max_discharge_power'],
+  });
+  await settle();
+
+  assert.strictEqual(d.caps['measure_power.dischargesetting'], 5000, 'the capability moved on a refused write');
+  assert.strictEqual(d.settings.max_discharge_power, 5000,
+    'the field still shows a limit the inverter never took \u2014 and the condition cards read the field');
+});
+
+// Putting it back without saying so would only replace one puzzle with another.
+test('the revert is said out loud, once, under the existing toggle', async () => {
+  reset();
+  modbus.fail = 'ECONNRESET';
+  const d = makeDevice();
+  d.settings.max_discharge_power = 0;
+
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 0 },
+    changedKeys: ['max_discharge_power'],
+  });
+  await settle();
+
+  assert.strictEqual(d.notifications.length, 1, `expected one timeline note, got ${d.notifications.length}`);
+  assert.match(d.notifications[0], /Max discharge power/, 'the note does not name the setting');
+  assert.match(d.notifications[0], /ECONNRESET/, 'the note does not say why');
+  assert.match(d.notifications[0], /5000/, 'the note does not say what it was put back to');
+});
+
+test('with timeline notifications off the revert still happens, silently', async () => {
+  reset();
+  modbus.fail = 'ECONNRESET';
+  const d = makeDevice();
+  d.settings.enable_timeline_notifications = false;
+  d.settings.max_discharge_power = 0;
+
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 0 },
+    changedKeys: ['max_discharge_power'],
+  });
+  await settle();
+
+  assert.strictEqual(d.settings.max_discharge_power, 5000, 'the toggle silenced the revert itself');
+  assert.deepStrictEqual(d.notifications, []);
+});
+
+// The revert writes the settings store, and onSettings writes the inverter. Without the
+// guard the revert would be handed straight back to the inverter as a new user edit.
+test('the revert does not travel back out to the inverter', async () => {
+  reset();
+  modbus.fail = 'ECONNRESET';
+  const d = makeDevice();
+  d.settings.max_discharge_power = 0;
+
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 0 },
+    changedKeys: ['max_discharge_power'],
+  });
+  await settle();
+
+  assert.deepStrictEqual(d.setSettingsCalls, [{ max_discharge_power: 5000, _guarded: true }],
+    'setSettings ran without _updatingSettingFromModbus, so onSettings will write it back out');
+  assert.strictEqual(d._updatingSettingFromModbus, false, 'the guard was left set');
+});
+
+// Every write path in onSettings shares the defect, so every one of them shares the cure.
+test('the revert covers the other settings that write to the inverter', async () => {
+  for (const [key, before, after] of [
+    ['charge_from_grid',          false, true],
+    ['grid_charge_cutoff_soc',    50,    90],
+    ['charging_cutoff_capacity',  100,   95],
+    ['discharge_cutoff_capacity', 15,    20],
+    ['backup_power_soc',          0,     30],
+    ['max_charge_power',          5000,  2000],
+    ['max_grid_charge_power',     2000,  1000],
+  ]) {
+    reset();
+    modbus.fail = 'timeout';
+    const d = makeDevice();
+    d.settings[key] = after;
+
+    await d.onSettings({
+      oldSettings: { [key]: before },
+      newSettings: { [key]: after },
+      changedKeys: [key],
+    });
+    await settle();
+
+    assert.strictEqual(d.settings[key], before, `${key}: a refused write was left standing in the field`);
+  }
+});
+
+// Nothing to put back, and nothing to announce.
+test('a write that was never applied to the field is not reverted', async () => {
+  reset();
+  modbus.fail = 'ECONNRESET';
+  const d = makeDevice();
+  d.settings.max_discharge_power = 5000;   // unchanged \u2014 same as oldSettings
+
+  await d.onSettings({
+    oldSettings: { max_discharge_power: 5000 },
+    newSettings: { max_discharge_power: 5000 },
+    changedKeys: ['max_discharge_power'],
+  });
+  await settle();
+
+  assert.deepStrictEqual(d.setSettingsCalls, [], 'the store was written for nothing');
+  assert.deepStrictEqual(d.notifications, [], 'a note about a setting that never moved');
+});
+
+// An older Homey, or a caller that does not pass oldSettings: log and leave it, never guess.
+test('without a previous value nothing is invented', async () => {
   reset();
   modbus.fail = 'ECONNRESET';
   const d = makeDevice();
@@ -195,7 +330,9 @@ test('a settings edit the inverter refused leaves the capability on the old limi
   await d.onSettings({ newSettings: { max_discharge_power: 0 }, changedKeys: ['max_discharge_power'] });
   await settle();
 
-  assert.strictEqual(d.caps['measure_power.dischargesetting'], 5000);
+  assert.strictEqual(d.settings.max_discharge_power, 0, 'a value was made up to revert to');
+  assert.deepStrictEqual(d.notifications, []);
+  assert.ok(d.logs.some((l) => /failed/.test(l)), 'the refusal went unlogged');
 });
 
 // ── the helper itself ───────────────────────────────────────────────────────
@@ -260,6 +397,40 @@ test('a setting never synced yet makes neither condition true', () => {
   const dev = { getSetting: () => null };
   assert.strictEqual(d.conditions.get('luna2000_max_discharge_power_above')({ device: dev, power: 0 }), false);
   assert.strictEqual(d.conditions.get('luna2000_max_discharge_power_below')({ device: dev, power: 100000 }), false);
+});
+
+// 1.2.238 shipped "Use threshold 1" on two cards whose threshold field stepped in 100s, so
+// the number the help text recommends could not be typed. The step is 1 now; this keeps the
+// text and the field agreeing whichever of the two someone changes next.
+test('the threshold the hint recommends can actually be entered', () => {
+  for (const c of manifest.flow.conditions.filter((x) => /^luna2000_max_(dis)?charge_power_/.test(x.id))) {
+    const arg = c.args.find((a) => a.name === 'power');
+    assert.strictEqual(arg.min, 0, `${c.id}: a blocked limit of 0 is out of range`);
+    for (const lang of ['en', 'de', 'nl']) {
+      const m = c.hint[lang].match(/(?:threshold|Schwellwert|drempel) (\\d+)/i);
+      if (!m) continue;                       // the above-cards name no threshold
+      const recommended = Number(m[1]);
+      assert.strictEqual(recommended % arg.step, 0,
+        `${c.id} (${lang}): the hint says ${recommended}, but the field steps in ${arg.step}s`);
+      assert.ok(recommended >= arg.min, `${c.id} (${lang}): ${recommended} is below the field minimum`);
+    }
+  }
+});
+
+// Both pairs are covered by _reflectMaxPower, so both may say so. The charge pair could not
+// until 1.2.238 gave it the helper, and the sentence was not added at the time.
+test('all four cards say how soon a change from Homey shows', () => {
+  const CLAUSE = {
+    en: 'at once after a change made from Homey',
+    de: 'nach einer \u00c4nderung aus Homey sofort',
+    nl: 'direct na een wijziging vanuit Homey',
+  };
+  for (const c of manifest.flow.conditions.filter((x) => /^luna2000_max_(dis)?charge_power_/.test(x.id))) {
+    for (const lang of ['en', 'de', 'nl']) {
+      assert.ok(c.hint[lang].includes(CLAUSE[lang]),
+        `${c.id} (${lang}) does not say a change from Homey shows at once`);
+    }
+  }
 });
 
 test('the discharge cards mirror the charge cards in everything but the words', () => {
