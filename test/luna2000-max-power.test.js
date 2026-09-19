@@ -100,7 +100,8 @@ function makeDevice() {
     'meter_power.today_batt_input': null, 'meter_power.today_batt_output': null,
   };
   d.settings = { address: '192.168.1.10', port: 502, modbus_id: 1,
-    max_charge_power: 5000, max_discharge_power: 5000 };
+    max_charge_power: 5000, max_discharge_power: 5000,
+    charge_from_grid: false, max_grid_charge_power: 2000 };
   d.logs = [];
   d.log = (...a) => d.logs.push(a.join(' '));
   d.error = d.log;
@@ -728,4 +729,73 @@ test('every driver with a control poll starts its counter so the first poll read
     checked++;
   }
   assert.ok(checked >= 3, `only ${checked} drivers checked — the counter moved or the scan is wrong`);
+});
+
+// ── the gate and the value live in different halves ─────────────────────────
+//
+// 47087 (charge from grid) rides with the battery data every poll; 47242 (the grid charge
+// set point it gates) comes round every fifth. Reading the gate from the register alone
+// means no call ever has both, and 1.2.240 stopped syncing max_grid_charge_power entirely —
+// silently, because nothing asserted on it.
+
+test('the grid charge set point still syncs, though its gate rides in the other half', async () => {
+  reset();
+  const d = makeDevice();
+  d.settings.charge_from_grid = true;        // written by the live half, at most one poll ago
+  d.settings.max_grid_charge_power = 2000;
+
+  await d._applyControl({ storageGridChargePower: 1000 });   // the rare half: no gate register
+
+  assert.strictEqual(d.settings.max_grid_charge_power, 1000,
+    'neither half carries both the gate and the value, so nothing was synced');
+});
+
+test('a disabled grid charge still suppresses the sync', async () => {
+  reset();
+  const d = makeDevice();
+  d.settings.charge_from_grid = false;
+  d.settings.max_grid_charge_power = 2000;
+
+  await d._applyControl({ storageGridChargePower: 1000 });
+
+  assert.strictEqual(d.settings.max_grid_charge_power, 2000,
+    'a set point that means nothing while grid charging is off was synced anyway');
+});
+
+// The fallback is for the half that lacks the register, never a replacement for it.
+test('the gate register wins over the setting when this half carried it', async () => {
+  reset();
+  const d = makeDevice();
+  d.settings.charge_from_grid = true;        // stale
+  d.settings.max_grid_charge_power = 2000;
+
+  await d._applyControl({ storageChargeFromGrid: 0, storageGridChargePower: 1000 });
+
+  assert.strictEqual(d.settings.max_grid_charge_power, 2000,
+    'a stale setting overrode the register that was actually read');
+});
+
+// Whatever _applyControl reads must be reachable from one of the two halves, or it is dead.
+test('every register _applyControl reads is in one of the two halves', () => {
+  const src  = fs.readFileSync(
+    path.join(__dirname, '..', 'drivers', 'luna2000_modbus', 'device.js'), 'utf8');
+  const half = (name) => new Set(
+    [...src.slice(src.indexOf(`const ${name} = {`), src.indexOf('};', src.indexOf(`const ${name} = {`)))
+      .matchAll(/(\w+):\s+CONTROL_REGISTERS/g)].map((m) => m[1]));
+  const live = half('LIVE_CONTROL_REGISTERS');
+  const rare = half('RARE_CONTROL_REGISTERS');
+  assert.ok(live.size === 11 && rare.size === 3, `halves are ${live.size}/${rare.size}, expected 11/3`);
+
+  // Bounded forwards from _applyControl: _notifyForceAbort is CALLED by the force cards
+  // long before it is defined, so searching from the start of the file lands on a call and
+  // the slice comes out empty — which read as "no registers used" rather than as a broken test.
+  const start = src.indexOf('async _applyControl(ctrl)');
+  const body  = src.slice(start, src.indexOf('_notifyForceAbort(kind', start));
+  const used = new Set([...body.matchAll(/ctrl\.(\w+)/g)].map((m) => m[1]));
+  assert.ok(used.size >= 8, `only ${used.size} registers used — the scan is looking in the wrong place`);
+
+  for (const key of used) {
+    assert.ok(live.has(key) || rare.has(key),
+      `_applyControl reads ctrl.${key}, which neither half ever provides`);
+  }
 });

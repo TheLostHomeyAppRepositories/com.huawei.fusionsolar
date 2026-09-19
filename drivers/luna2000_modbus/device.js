@@ -161,7 +161,7 @@ class LUNA2000ModbusDevice extends Device {
     this._updatingFromModbus        = false;
     this._updatingSettingFromModbus = false;
     this._writeInProgress           = false;
-    this._settingsInitialized       = false; // true after first successful _fetchControl
+    this._settingsInitialized       = false; // true once _applyControl has seen the working mode
     this._controlPollCounter        = 4;     // start at 4 so first poll immediately reads control registers
     this._forceTimer                = null;  // pending auto-stop timer for timed force charge/discharge
     this._pendingForceMode          = null;  // set after a force charge/discharge write; cleared once poll confirms
@@ -358,8 +358,9 @@ class LUNA2000ModbusDevice extends Device {
    *
    * Called after a SUCCESSFUL write only. After a failed one both keep what they had, and
    * that is the truth — the inverter still runs on the old limit. The capability half is
-   * also written by _fetchControl on every control poll, so a change made in Huawei's own
-   * app arrives within five polls; a change made from Homey shows at once through here.
+   * also written by _applyControl on every poll (47075/47077 ride with the battery data),
+   * so a change made in Huawei's own app arrives on the next poll; this path is for a change
+   * made from Homey, which shows at once rather than waiting for one.
    */
   async _reflectMaxPower(settingId, watts) {
     const cap = MAX_POWER_CAP[settingId];
@@ -1058,9 +1059,10 @@ class LUNA2000ModbusDevice extends Device {
       await this._set('measure_power.batt_charge',    Math.max(0,  power));
       await this._set('measure_power.batt_discharge',  Math.max(0, -power));
       // measure_power.chargesetting / .dischargesetting are the configured limits (47075 /
-      // 47077) and are kept by _fetchControl and _reflectMaxPower. Until 1.2.238 they were
-      // written here from the battery's own reported maximum (37046/37048, essMax*), which
-      // does not move when the user changes the limit — issue #31.
+      // 47077). They are set by _applyControl a few lines below, from the same read this
+      // poll just made, and by _reflectMaxPower right after a write from Homey. Until
+      // 1.2.238 they were written HERE from the battery's own reported maximum (37046/37048,
+      // essMax*), which does not move when the user changes the limit — issue #31.
       if (batt.storageUnit1Status !== null && batt.storageUnit1Status !== undefined) {
         const statusLabel = UNIT1_STATUS_MAP[batt.storageUnit1Status] ?? `Status ${batt.storageUnit1Status}`;
         await this._set('luna2000_battery_status', statusLabel);
@@ -1222,8 +1224,9 @@ class LUNA2000ModbusDevice extends Device {
   /**
    * Turn whatever control registers were read into capabilities, triggers and settings.
    *
-   * Called twice per five polls with different halves: every poll with the eleven that came
-   * with the battery data, and every fifth with the three that needed their own connection.
+   * Called six times per five polls, with different halves: every poll with the eleven that
+   * came with the battery data, and once more every fifth with the three that needed their
+   * own connection.
    * Every branch below already tolerates a missing register — toEnum gives null, _set skips
    * null, and the settings sync only collects values that are present — so the two halves
    * need no bookkeeping between them.
@@ -1320,7 +1323,16 @@ class LUNA2000ModbusDevice extends Device {
 
       // Register 47242 (active grid charge power set point) only reflects a meaningful
       // value when charge_from_grid is enabled — skip sync when it is disabled.
-      if (ctrl.storageChargeFromGrid === 1 && ctrl.storageGridChargePower !== null && ctrl.storageGridChargePower !== undefined) {
+      //
+      // The two sit in different halves of the split read: the gate at 47087 rides with the
+      // battery data every poll, the set point at 47242 comes round every fifth. So neither
+      // call has both, and taking the gate from the register alone stopped max_grid_charge_power
+      // syncing at all in 1.2.240. It is read from the register when this half carried it,
+      // and from the setting otherwise — which the live half wrote at most one poll ago.
+      const gridChargeOn = (ctrl.storageChargeFromGrid !== null && ctrl.storageChargeFromGrid !== undefined)
+        ? ctrl.storageChargeFromGrid === 1
+        : this.getSetting('charge_from_grid') === true;
+      if (gridChargeOn && ctrl.storageGridChargePower !== null && ctrl.storageGridChargePower !== undefined) {
         const v       = ctrl.storageGridChargePower;
         const current = parseFloat(this.getSetting('max_grid_charge_power'));
         if (!Number.isFinite(current) || Math.abs(v - current) > 0.5) settingUpdates.max_grid_charge_power = v;
