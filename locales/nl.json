@@ -178,7 +178,14 @@
       "check": "Controleren",
       "checking": "Controleren…",
       "done": "Klaar",
-      "selectUnitIdFirst": "Selecteer eerst een eenheid-ID."
+      "selectUnitIdFirst": "Selecteer eerst een eenheid-ID.",
+      "macAmbiguous": "dubbelzinnig",
+      "macAmbiguousHint": "Dit MAC-adres antwoordt voor meerdere adressen. Dat is een router die namens hen antwoordt, geen apparaat — daarom staat er geen fabrikant bij.",
+      "movedIntro": "Deze gekoppelde apparaten antwoorden op een ander adres dan hun instellingen aangeven:",
+      "adoptAddress": "Adres overnemen",
+      "adopting": "Overnemen…",
+      "adopted": "Overgenomen — het apparaat meldt zich bij de volgende uitlezing.",
+      "adoptFailed": "Overnemen mislukt:"
     },
     "driverSub": {
       "inverterDirect": "Omvormer — direct Modbus",

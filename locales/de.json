@@ -178,7 +178,14 @@
       "check": "Prüfen",
       "checking": "Prüft…",
       "done": "Fertig",
-      "selectUnitIdFirst": "Bitte zuerst eine Unit-ID wählen."
+      "selectUnitIdFirst": "Bitte zuerst eine Unit-ID wählen.",
+      "macAmbiguous": "mehrdeutig",
+      "macAmbiguousHint": "Diese MAC antwortet für mehrere Adressen. Das ist ein Router, der stellvertretend antwortet, kein Gerät — deshalb steht hier kein Hersteller.",
+      "movedIntro": "Diese gekoppelten Geräte antworten unter einer anderen Adresse, als in ihren Einstellungen steht:",
+      "adoptAddress": "Adresse übernehmen",
+      "adopting": "Übernehme…",
+      "adopted": "Übernommen — das Gerät meldet sich beim nächsten Abruf.",
+      "adoptFailed": "Übernahme fehlgeschlagen:"
     },
     "driverSub": {
       "inverterDirect": "Wechselrichter — direktes Modbus",

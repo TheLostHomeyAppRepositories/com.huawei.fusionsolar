@@ -178,7 +178,14 @@
       "check": "Check",
       "checking": "Checking…",
       "done": "Done",
-      "selectUnitIdFirst": "Please select a unit ID first."
+      "selectUnitIdFirst": "Please select a unit ID first.",
+      "macAmbiguous": "ambiguous",
+      "macAmbiguousHint": "This MAC answers for several addresses. That is a router replying on their behalf, not a device — which is why no manufacturer is shown.",
+      "movedIntro": "These paired devices answer at a different address than their settings say:",
+      "adoptAddress": "Use this address",
+      "adopting": "Setting…",
+      "adopted": "Set — the device reports back at its next poll.",
+      "adoptFailed": "Could not set the address:"
     },
     "driverSub": {
       "inverterDirect": "Inverter — direct Modbus",

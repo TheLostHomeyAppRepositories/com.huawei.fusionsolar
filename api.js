@@ -49,6 +49,18 @@ const SPEC_MAX_GROUPS = 16;
 // the reader bisect its way down to singles, which multiplies the round trips.
 const SPEC_PROBE_TIMEOUT_MS = 20000;
 const { probeModbusUnit, withHostLock, buildReadPlan } = require('./lib/modbus-client');
+const { describeMac, normalizeMac } = require('./lib/mac-vendor');
+const { MAC_ANCHOR_KEY } = require('./lib/modbus-polling');
+
+// A scan of one /24 returns a handful of hosts. This only keeps a malformed call from
+// becoming hundreds of lookups against an API whose per-call cost nobody has measured.
+const MAC_LOOKUP_MAX_HOSTS = 64;
+
+// The budget for the whole MAC phase, not for one host. The settings page gives up at
+// twelve seconds and the scan that precedes this already spends four to five of them.
+const MAC_LOOKUP_BUDGET_MS = 6000;
+
+const IPV4_RE = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
 // Which trigger cards does the EMS never fire? Not a list kept here — a list here would
@@ -295,6 +307,52 @@ async function _postEmsSimpleDeviceSetupFlows({ homey, body, startCardId, stopCa
   return { folderId, ...results };
 }
 
+/**
+ * Every paired Modbus device, with the driver it belongs to. This loop already existed
+ * inline in three places; the MAC work needs it twice more, and a fourth hand-written copy
+ * is how one of them quietly stops matching the others.
+ */
+function* eachModbusDevice(homey) {
+  for (const driverId of MODBUS_DRIVER_IDS) {
+    let driver;
+    try { driver = homey.drivers.getDriver(driverId); } catch { continue; }
+    for (const device of driver.getDevices()) yield { driverId, device };
+  }
+}
+
+/** A device's learned MAC, or null. Never throws — a device may have nothing in its store. */
+function readMacAnchor(device) {
+  try {
+    const anchor = device.getStoreValue(MAC_ANCHOR_KEY);
+    return anchor && anchor.mac ? anchor : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One address to one MAC, with a ceiling on how long the wait may be.
+ *
+ * ManagerArp#getMAC is documented as returning a string and says nothing about an address
+ * nobody answered for — not what comes back, not how long it takes. So the wait is bounded
+ * here, the raw promise keeps its own catch so a late rejection cannot surface as an
+ * unhandled one, and anything that is not a MAC is treated as no answer.
+ */
+async function resolveMac(homey, host, budgetMs) {
+  if (budgetMs <= 0) return null;
+  try {
+    const p = homey.arp.getMAC(host);
+    if (p && typeof p.then === 'function') p.catch(() => {});
+    const raw = await Promise.race([
+      p,
+      new Promise((resolve) => { homey.setTimeout(() => resolve(null), budgetMs); }),
+    ]);
+    return normalizeMac(raw);
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
 
   /**
@@ -333,6 +391,9 @@ module.exports = {
           name:         device.getName(),
           available:    device.getAvailable(),
           settings:     device.getSettings(),
+          // What the device has learned about itself on the network: the MAC behind the
+          // address that last worked. Null until one poll has succeeded since this version.
+          macAnchor:    readMacAnchor(device),
           capabilities,
           registerDefs,
           // The whole specification for this kind of device, listed but not polled. Absent
@@ -719,6 +780,144 @@ module.exports = {
       });
 
     return { hosts };
+  },
+
+  /**
+   * POST /scan/macs
+   * Body: { hosts: ["192.168.1.55", ...] }
+   *
+   * Turns the addresses a port scan just found into "who made this" — and, for devices that
+   * are already paired, into "where did mine go".
+   *
+   * Separate from /scan/ports on purpose. The scan takes four to five seconds and the
+   * settings page gives up at twelve; folding an undocumented lookup into that reply would
+   * risk turning a scan that worked into a scan that reported failure. Asked afterwards, a
+   * slow or silent neighbour table costs the labels and nothing else.
+   */
+  async scanMacs({ homey, body }) {
+    const asked = Array.isArray(body && body.hosts) ? body.hosts : null;
+    if (!asked) return { error: 'Missing hosts' };
+
+    const hosts = [...new Set(asked.filter((h) => typeof h === 'string' && IPV4_RE.test(h)))]
+      .slice(0, MAC_LOOKUP_MAX_HOSTS);
+
+    if (!homey || !homey.arp || typeof homey.arp.getMAC !== 'function') {
+      return { hosts: {}, moved: [], asked: hosts.length, resolved: 0, unavailable: true };
+    }
+
+    // One deadline for the whole phase rather than one timeout per host: the page is waiting
+    // for the last answer, not for the slowest single one.
+    const deadline = Date.now() + MAC_LOOKUP_BUDGET_MS;
+    const found = await Promise.all(hosts.map(async (host) => ({
+      host,
+      mac: await resolveMac(homey, host, deadline - Date.now()),
+    })));
+
+    // A MAC that answers for more than one address is not a device's MAC. It is a router
+    // answering for addresses it forwards (proxy ARP), or a netmask set wider than the
+    // segment really is. Either way it identifies nothing, so it must never be the reason
+    // to tell somebody their battery has moved.
+    const timesSeen = {};
+    for (const { mac } of found) if (mac) timesSeen[mac] = (timesSeen[mac] || 0) + 1;
+
+    const result = {};
+    const byMac  = {};
+    for (const { host, mac } of found) {
+      if (!mac) {
+        result[host] = { mac: null, oui: null, vendor: null, local: false, ambiguous: false };
+        continue;
+      }
+      const ambiguous = timesSeen[mac] > 1;
+      result[host] = { ...describeMac(mac), ambiguous };
+      if (!ambiguous) byMac[mac] = host;
+    }
+
+    // Which paired devices are answering somewhere other than where their settings say?
+    const moved = [];
+    for (const { driverId, device } of eachModbusDevice(homey)) {
+      const anchor = readMacAnchor(device);
+      if (!anchor) continue;
+      const at = byMac[anchor.mac];
+      if (!at) continue;
+      const current = (device.getSetting('address') || '').trim();
+      if (!current || current === at) continue;
+      moved.push({
+        driverId,
+        deviceId: device.getId(),
+        name:     device.getName(),
+        current,
+        foundAt:  at,
+        mac:      anchor.mac,
+      });
+    }
+
+    return { hosts: result, moved, asked: hosts.length, resolved: found.filter((f) => f.mac).length };
+  },
+
+  /**
+   * POST /scan/adopt
+   * Body: { address, devices: [{ driverId, deviceId }, ...] }
+   *
+   * Writes a new address into the devices whose anchor was found there.
+   *
+   * The route checks the anchor again itself instead of trusting the caller. The page asking
+   * has just been told which devices moved, but a route that writes any address into any
+   * device on request is one UI mistake away from pointing a battery at the neighbour's
+   * inverter. Re-reading the MAC costs a single lookup and leaves the route unable to do the
+   * wrong thing even when it is asked to.
+   */
+  async adoptAddress({ homey, body }) {
+    const address = ((body && body.address) || '').trim();
+    const asked   = Array.isArray(body && body.devices) ? body.devices : null;
+    if (!IPV4_RE.test(address)) return { error: 'Missing or malformed address' };
+    if (!asked || !asked.length) return { error: 'Missing devices' };
+    if (!homey || !homey.arp || typeof homey.arp.getMAC !== 'function') {
+      return { error: 'This Homey cannot look up MAC addresses' };
+    }
+
+    const log = (...a) => { try { homey.app.log('[Adopt]', ...a); } catch { /* no-op */ } };
+
+    const macHere = await resolveMac(homey, address, MAC_LOOKUP_BUDGET_MS);
+    if (!macHere) return { error: `Nothing answered for ${address}` };
+
+    const wanted  = new Set(asked.map((d) => `${d && d.driverId}:${d && d.deviceId}`));
+    const results = [];
+
+    for (const { driverId, device } of eachModbusDevice(homey)) {
+      const deviceId = device.getId();
+      if (!wanted.has(`${driverId}:${deviceId}`)) continue;
+
+      const name   = device.getName();
+      const anchor = readMacAnchor(device);
+      if (!anchor || anchor.mac !== macHere) {
+        results.push({ driverId, deviceId, name, ok: false, reason: 'anchor-mismatch' });
+        continue;
+      }
+      if ((device.getSetting('address') || '').trim() === address) {
+        results.push({ driverId, deviceId, name, ok: false, reason: 'unchanged' });
+        continue;
+      }
+
+      try {
+        await device.setSettings({ address });
+        // Homey does not call onSettings for a programmatic write, so the restart that the
+        // eight drivers do there has to happen here instead. Without it the timer keeps its
+        // old schedule and the device stays grey until the next tick — up to five minutes.
+        if (typeof device._stopPolling === 'function')  await device._stopPolling();
+        if (typeof device._startPolling === 'function') await device._startPolling();
+        if (typeof device._fetchAndUpdate === 'function') {
+          device._fetchAndUpdate().catch(() => { /* the next tick tries again */ });
+        }
+        results.push({ driverId, deviceId, name, ok: true });
+        log(`adopted ${address} for ${name} (${driverId})`);
+      } catch (err) {
+        results.push({ driverId, deviceId, name, ok: false, reason: err.message });
+      }
+    }
+
+    // Deliberately not "connected". The immediate poll is a no-op while the previous one is
+    // still running against the old address, so the only honest claim is that it is set.
+    return { address, mac: macHere, results };
   },
 
   /**

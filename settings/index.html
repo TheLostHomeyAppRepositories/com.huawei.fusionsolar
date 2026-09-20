@@ -825,6 +825,14 @@
     .host-row .host-ip { font-family: 'SF Mono', Menlo, monospace; font-size: 13px; font-weight: 600; min-width: 130px; }
     .port-badge { background: var(--c-tint-accent); color: var(--c-link); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
     .probe-btn { padding: 3px 10px; font-size: 12px; }
+    /* Pushed to the right so the manufacturer reads as an annotation to the row rather than
+       as another thing to act on — it says who made the box, never what the box is. */
+    .host-row .host-mac { margin-left: auto; font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--c-label-2); white-space: nowrap; }
+    .host-row .host-mac .vendor { color: var(--c-label); font-weight: 600; font-family: inherit; }
+    .moved-box { border: 1px solid var(--c-separator); border-left: 3px solid var(--c-accent); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+    .moved-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0; }
+    .moved-row .moved-name { font-weight: 600; }
+    .moved-row .moved-where { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--c-label-2); }
 
     /* ── Unit ID selector ────────────────────────────────── */
     .uid-config {
@@ -3118,7 +3126,7 @@
         return;
       }
       status.innerHTML = `${_H.__('settings.tester.found')} <strong>${hosts.length}</strong> ${_H.__('settings.tester.deviceS')}${cacheNote} — ${_H.__('settings.tester.selectOneToProbe')}`;
-      results.innerHTML = hosts.map((h, i) => {
+      results.innerHTML = `<div id="portscan-moved"></div>` + hosts.map((h, i) => {
         const safeHost = escHtml(h.host);
         const cfgId    = `uid-cfg-${i}`;
         return `
@@ -3131,10 +3139,104 @@
                   onclick="showUidConfig('${cfgId}', '${safeHost}', ${p})">
                   ${_H.__('settings.tester.probe')} :${p}
                 </button>`).join('')}
+              <span class="host-mac" id="hostmac-${i}">${macCellHtml(h)}</span>
             </div>
             <div class="uid-config" id="${cfgId}" style="display:none"></div>
           </div>`;
       }).join('');
+
+      annotateMacs(hosts);
+    }
+
+    // ── Who made the box at that address, and where did mine go ──────────────────────
+    //
+    // A port scan answers "something here speaks Modbus". A NAS, a KNX gateway and a heat
+    // pump all answer that too, so the list as it stands is where the guessing starts. The
+    // MAC behind an address says who built the network interface, and for a device that is
+    // already paired it says something better: that the thing at this address is the very
+    // one whose address stopped working.
+    //
+    // Asked for after the results are on screen, never as part of the scan. The scan spends
+    // four to five of the twelve seconds the settings page allows, and a manufacturer name
+    // is not worth turning a scan that worked into one that reported failure.
+
+    function macCellHtml(h) {
+      if (!h || h.mac === undefined) return '';            // not asked yet
+      if (h.mac === null)            return '';            // asked, nothing came back
+      const mac = escHtml(String(h.mac));
+      if (h.ambiguous) {
+        // One MAC answering for several addresses is a router replying on behalf of them,
+        // not a device. Saying "Huawei" here would put a name on the wrong box.
+        return `<span title="${escHtml(_H.__('settings.tester.macAmbiguousHint'))}">${mac} · ${escHtml(_H.__('settings.tester.macAmbiguous'))}</span>`;
+      }
+      if (h.vendor) return `<span class="vendor">${escHtml(String(h.vendor))}</span> · ${mac}`;
+      return mac;
+    }
+
+    function annotateMacs(hosts) {
+      if (!hosts.length) return;
+      // Already annotated — a render from the five-minute cache keeps the labels it had.
+      if (hosts.every(h => h.mac !== undefined)) { renderMovedDevices(hosts._moved || []); return; }
+
+      _H.api('POST', '/scan/macs', { hosts: hosts.map(h => h.host) }, (err, res) => {
+        if (err || !res || res.error) return;  // labels are a bonus; their absence says nothing
+        const info = res.hosts || {};
+        hosts.forEach((h, i) => {
+          const d = info[h.host] || { mac: null };
+          h.mac       = d.mac;
+          h.vendor    = d.vendor;
+          h.ambiguous = !!d.ambiguous;
+          const cell = document.getElementById(`hostmac-${i}`);
+          if (cell) cell.innerHTML = macCellHtml(h);
+        });
+        hosts._moved = res.moved || [];
+        renderMovedDevices(hosts._moved);
+      });
+    }
+
+    function renderMovedDevices(moved) {
+      const box = document.getElementById('portscan-moved');
+      if (!box) return;
+      if (!moved || !moved.length) { box.innerHTML = ''; return; }
+
+      box.innerHTML = `
+        <div class="moved-box">
+          <div style="margin-bottom:6px">${_H.__('settings.tester.movedIntro')}</div>
+          ${moved.map((m, i) => `
+            <div class="moved-row" id="moved-${i}">
+              <span class="moved-name">${escHtml(String(m.name || ''))}</span>
+              <span class="moved-where">${escHtml(String(m.current || ''))} → <strong>${escHtml(String(m.foundAt || ''))}</strong></span>
+              <button class="btn-secondary probe-btn" onclick="adoptMovedAddress(${i})">
+                ${_H.__('settings.tester.adoptAddress')}
+              </button>
+            </div>`).join('')}
+        </div>`;
+      _movedDevices = moved;
+    }
+
+    var _movedDevices = [];
+
+    function adoptMovedAddress(i) {
+      const m = _movedDevices[i];
+      const row = document.getElementById(`moved-${i}`);
+      if (!m || !row) return;
+
+      const btn = row.querySelector('button');
+      if (btn) { btn.disabled = true; btn.textContent = _H.__('settings.tester.adopting'); }
+
+      _H.api('POST', '/scan/adopt',
+        { address: m.foundAt, devices: [{ driverId: m.driverId, deviceId: m.deviceId }] },
+        (err, res) => {
+          const failed = err || !res || res.error || !(res.results || []).some(r => r.ok);
+          if (failed) {
+            const why = err ? err.message : ((res && res.error) || ((res && res.results && res.results[0] && res.results[0].reason) || ''));
+            row.innerHTML = `<span style="color:var(--c-danger-text)">✗ ${escHtml(_H.__('settings.tester.adoptFailed'))} ${escHtml(String(why))}</span>`;
+            return;
+          }
+          // "Set", not "connected": the immediate poll is skipped while the previous one is
+          // still running against the old address, so the device may take a tick to go green.
+          row.innerHTML = `<span style="color:var(--c-success-text)">✓ ${escHtml(_H.__('settings.tester.adopted'))}</span>`;
+        });
     }
 
     function startPortScan(forceRescan = false) {
