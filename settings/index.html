@@ -289,6 +289,38 @@
       border-bottom: 1px solid var(--c-fill);
     }
     .reg-group-title:first-child { margin-top: 0; }
+
+    /* ── Full specification list ─────────────────────────── */
+    .spec-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--c-fill);
+      cursor: pointer;
+    }
+    .spec-title { font-size: 12px; font-weight: 600; color: var(--c-accent); }
+    .spec-note  { font-size: 12px; color: var(--c-label-3); }
+    .spec-body  { display: none; margin-top: 8px; }
+    .spec-body.open { display: block; }
+    .spec-filter {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--c-separator);
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+      background: var(--c-card);
+    }
+    .spec-rw   { margin-left: 6px; font-size: 10px; color: var(--c-label-3); }
+    .spec-unit { margin-left: 6px; font-size: 11px; color: var(--c-label-3); }
+    .badge-polled { background: var(--c-tint-accent); color: var(--c-link); margin-left: 8px; }
+    tr.spec-plain { cursor: default; }
+    tr.spec-plain td { color: var(--c-label-3); }
     .reg-error {
       color: var(--c-danger-text);
       font-size: 12px;
@@ -1029,7 +1061,7 @@
   <!-- ── Tab: Modbus Registers ── -->
   <div id="tab-registers" style="display:none">
     <div class="tab-intro" data-i18n="registers.intro">
-      Lists all Modbus registers the app reads or writes. Click a row to read that single register directly — useful when the Modbus port is busy.
+      Lists all Modbus registers the app reads or writes, and under each device the full Huawei specification for it. Click a row to read that single register directly — useful when the Modbus port is busy.
     </div>
     <div class="tab-toolbar">
       <span id="last-update-reg"></span>
@@ -1965,6 +1997,94 @@
       return html;
     }
 
+    // ── The whole specification, listed but not polled ─────────────────────────
+    //
+    // The groups above are the registers the app itself reads every cycle. This is
+    // everything the Huawei document defines for this kind of device, so the tab can
+    // answer "what else is in there" instead of only showing what we happen to use.
+    //
+    // Nothing here is polled and nothing is read when the card opens: a row is read only
+    // when it is clicked, one register over one connection, exactly as the groups above
+    // already behave. Rows the app does poll are marked, so the two lists do not have to
+    // be compared by eye. Rows whose type the app cannot decode into a single value are
+    // listed but not clickable — a register that cannot be read must not look as if it
+    // could be.
+
+    function buildSpecTable(dev, idx) {
+      const rows = dev.specRegisters;
+      if (!rows || !rows.length) return '';
+
+      const polled = new Set(dev.polledAddresses || []);
+      const drvId  = escHtml(dev.driverId);
+      const devId  = escHtml(dev.deviceId);
+
+      let table = `<table style="table-layout:auto;width:100%"><thead><tr>
+          <th style="white-space:nowrap">${_H.__('settings.tester.regId')}</th>
+          <th>${_H.__('settings.tester.type')}</th>
+          <th style="width:100%">${_H.__('settings.tester.label')}</th>
+          <th style="min-width:80px;white-space:nowrap">${_H.__('settings.tester.liveValue')}</th>
+        </tr></thead><tbody>`;
+
+      for (const r of rows) {
+        const cid      = `sv-${idx}-${r.address}`;
+        const readable = !!r.type;
+        const unit     = r.unit ? `<span class="spec-unit">${escHtml(r.unit)}</span>` : '';
+        const mark     = polled.has(r.address)
+          ? `<span class="badge badge-polled">${_H.__('settings.registers.specPolled')}</span>`
+          : '';
+        const onclick  = readable
+          ? ` onclick="readSingleRegister('${drvId}','${devId}',${r.address},${r.length},'${r.type}',${r.decimalPower},'${cid}')"`
+          : '';
+        const title    = readable
+          ? `${_H.__('settings.tester.clickToReadRegister')} ${r.address}`
+          : _H.__(r.conflict ? 'settings.registers.specTypeConflict'
+                             : 'settings.registers.specNotReadable');
+        const value    = readable
+          ? '<span class="val val-null">—</span>'
+          : `<span class="val val-null">${escHtml(r.specType)}</span>`;
+
+        table += `<tr class="${readable ? 'reg-row' : 'spec-plain'}"${onclick}
+            title="${escHtml(title)}" data-spec="${escHtml(`${r.address} ${r.label}`.toLowerCase())}">
+            <td class="addr-cell">${r.address}<span class="spec-rw">${escHtml(r.rw)}</span></td>
+            <td class="type-cell">${escHtml(r.specType)}</td>
+            <td class="label-cell">${escHtml(r.label)}${unit}${mark}</td>
+            <td id="${cid}">${value}</td>
+          </tr>`;
+      }
+      table += '</tbody></table>';
+
+      return `
+        <div class="spec-head" onclick="toggleSpec(${idx})">
+          <span class="chevron" id="spec-chev-${idx}">▶</span>
+          <span class="spec-title">${_H.__('settings.registers.specTitle')}</span>
+          <span class="spec-note">${rows.length} · ${_H.__('settings.registers.specNote')}</span>
+        </div>
+        <div class="spec-body" id="spec-body-${idx}">
+          <input type="text" class="spec-filter" id="spec-filter-${idx}" oninput="filterSpec(${idx})"
+                 placeholder="${_H.__('settings.registers.specSearch')}">
+          <div class="spec-note" id="spec-empty-${idx}" style="display:none;padding:6px 0">${_H.__('settings.registers.specNoMatch')}</div>
+          ${table}
+        </div>`;
+    }
+
+    function toggleSpec(idx) {
+      const body = document.getElementById(`spec-body-${idx}`);
+      const chev = document.getElementById(`spec-chev-${idx}`);
+      chev.classList.toggle('open', body.classList.toggle('open'));
+    }
+
+    function filterSpec(idx) {
+      const q    = (document.getElementById(`spec-filter-${idx}`).value || '').trim().toLowerCase();
+      const body = document.getElementById(`spec-body-${idx}`);
+      let shown  = 0;
+      for (const tr of body.querySelectorAll('tr[data-spec]')) {
+        const hit = !q || tr.dataset.spec.includes(q);
+        tr.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      }
+      document.getElementById(`spec-empty-${idx}`).style.display = shown ? 'none' : '';
+    }
+
     // ── Live register read — fills value cells in place ────────────────────────
 
     function readRegisters(driverId, deviceId, idx) {
@@ -2086,6 +2206,7 @@
             </div>
             <div id="reg-status-${idx}" style="font-size:12px;margin-bottom:6px;min-height:14px"></div>
             ${regDefsHtml}
+            ${buildSpecTable(dev, idx)}
           </div>
         </div>`;
     }

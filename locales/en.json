@@ -86,7 +86,14 @@
       "exportTextTitle": "Export all values as text"
     },
     "registers": {
-      "intro": "Lists all Modbus registers the app reads or writes. Click a row to read that single register directly — useful when the Modbus port is busy."
+      "intro": "Lists all Modbus registers the app reads or writes, and under each device the full Huawei specification for it. Click a row to read that single register directly — useful when the Modbus port is busy.",
+      "specTitle": "All registers in the Huawei specification",
+      "specNote": "listed, not polled — click a row to read it once",
+      "specPolled": "polled",
+      "specNotReadable": "The specification gives this register a type the app cannot decode into a single value, so it cannot be read here.",
+      "specSearch": "Filter by address or name…",
+      "specNoMatch": "No register matches that.",
+      "specTypeConflict": "The specification gives this register a type that needs more register words than it also allots to it, so a read could only fail."
     },
     "logs": {
       "intro": "Live log of the whole app — every driver and device, the same output as <code>homey app run</code>. Keeps the last 1500 lines; refreshes every 3 seconds while this tab is open.",

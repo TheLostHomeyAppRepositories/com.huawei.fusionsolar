@@ -33,6 +33,7 @@ const {
   SMARTCHARGER_REGISTERS,
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
+const { DRIVER_SPEC_REGISTERS } = require('./lib/modbus-spec-registers');
 const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
@@ -174,6 +175,15 @@ const DRIVER_REGISTER_SETS = {
 
 const MODBUS_DRIVER_IDS = Object.keys(DRIVER_REGISTER_SETS);
 
+// Which addresses of a driver's specification list the app actually polls, so the
+// Registers tab can mark them rather than leaving the reader to compare two lists by eye.
+const POLLED_ADDRESSES = Object.fromEntries(
+  Object.entries(DRIVER_REGISTER_SETS).map(([driverId, groups]) => [
+    driverId,
+    [...new Set(Object.values(groups).flatMap((g) => Object.values(g).map((def) => def[0])))],
+  ]),
+);
+
 // ─── API handlers ─────────────────────────────────────────────────────────────
 
 async function _getEmsSimpleDeviceFlows({ homey, startCardId, stopCardId, startTokenName }) {
@@ -275,6 +285,11 @@ module.exports = {
           settings:     device.getSettings(),
           capabilities,
           registerDefs,
+          // The whole specification for this kind of device, listed but not polled. Absent
+          // for the EMMA drivers, the SDongle and the charger, which are documented
+          // elsewhere — the tab then shows the app's own list alone, as before.
+          specRegisters:   DRIVER_SPEC_REGISTERS[driverId] || null,
+          polledAddresses: POLLED_ADDRESSES[driverId] || [],
         });
       }
     }

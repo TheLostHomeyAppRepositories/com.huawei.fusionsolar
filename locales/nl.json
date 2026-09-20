@@ -86,7 +86,14 @@
       "exportTextTitle": "Exporteer alle waarden als tekst"
     },
     "registers": {
-      "intro": "Toont alle Modbus-registers die de app leest of schrijft. Klik op een rij om dat register direct te lezen — handig wanneer de Modbus-poort bezet is."
+      "intro": "Toont alle Modbus-registers die de app leest of schrijft, en onder elk apparaat de volledige Huawei-specificatie ervan. Klik op een regel om dat ene register direct te lezen — handig wanneer de Modbus-poort bezet is.",
+      "specTitle": "Alle registers uit de Huawei-specificatie",
+      "specNote": "opgesomd, niet uitgelezen — klik een regel om hem één keer te lezen",
+      "specPolled": "uitgelezen",
+      "specNotReadable": "De specificatie geeft dit register een type dat de app niet naar één waarde kan vertalen. Het is hier niet te lezen.",
+      "specSearch": "Filter op adres of naam…",
+      "specNoMatch": "Geen register komt overeen.",
+      "specTypeConflict": "De specificatie geeft dit register een type dat meer registerwoorden nodig heeft dan zij het toekent, dus lezen kan alleen mislukken."
     },
     "logs": {
       "intro": "Live log van de hele app — elke driver en elk apparaat, dezelfde uitvoer als <code>homey app run</code>. Bewaart de laatste 1500 regels; ververst elke 3 seconden zolang dit tabblad open is.",
