@@ -86,8 +86,8 @@
       "exportTextTitle": "Exporteer alle waarden als tekst"
     },
     "registers": {
-      "intro": "Toont alle Modbus-registers die de app leest of schrijft, en onder elk apparaat de volledige Huawei-specificatie ervan. Klik op een regel om dat ene register direct te lezen — handig wanneer de Modbus-poort bezet is.",
-      "specTitle": "Alle registers uit de Huawei-specificatie",
+      "intro": "Toont alle Modbus-registers die de app leest of schrijft, en onder elk apparaat alles wat Huawei ervoor beschrijft. Klik op een regel om dat ene register direct te lezen — handig wanneer de Modbus-poort bezet is.",
+      "specTitle": "Alle registers die Huawei voor dit apparaat beschrijft",
       "specNote": "opgesomd, niet uitgelezen — klik een regel om hem één keer te lezen",
       "specPolled": "uitgelezen",
       "specNotReadable": "De specificatie geeft dit register een type dat de app niet naar één waarde kan vertalen. Het is hier niet te lezen.",

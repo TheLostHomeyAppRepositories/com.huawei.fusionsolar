@@ -72,27 +72,46 @@ test('a SUN2000 is handed the inverter list, and the addresses the app polls', a
   }
 });
 
-test('a battery is handed the battery list, a meter the meter list', async () => {
-  for (const [driverId, list] of [['luna2000_modbus', SPEC.BATTERY_SPEC_REGISTERS],
-                                  ['dtsu666_modbus',  SPEC.METER_SPEC_REGISTERS]]) {
+test('every device gets its own list, not its neighbour\'s', async () => {
+  for (const [driverId, list] of [['luna2000_modbus',  SPEC.BATTERY_SPEC_REGISTERS],
+                                  ['dtsu666_modbus',   SPEC.METER_SPEC_REGISTERS],
+                                  ['sdongle_a_modbus', SPEC.SDONGLE_SPEC_REGISTERS],
+                                  ['sun2000_emma_modbus',    SPEC.EMMA_SPEC_REGISTERS],
+                                  ['luna2000_emma_modbus',   SPEC.EMMA_SPEC_REGISTERS],
+                                  ['powermeter_emma_modbus', SPEC.EMMA_SPEC_REGISTERS],
+                                  ['smartcharger_emma_modbus', SPEC.CHARGER_SPEC_REGISTERS]]) {
     const homey = fakeHomey({ [driverId]: [fakeDevice('d', 'D')] });
     const { devices } = await api.getDebugDevices({ homey });
     assert.strictEqual(devices[0].specRegisters, list, driverId);
   }
 });
 
-test('a device this document does not describe is handed no list at all', async () => {
-  // 40000 is the system time on a SUN2000 and the ESS control mode on an EMMA. Showing an
-  // EMMA the inverter's list would not be an approximation, it would be wrong.
-  for (const driverId of ['sun2000_emma_modbus', 'luna2000_emma_modbus',
-                          'powermeter_emma_modbus', 'smartcharger_emma_modbus',
-                          'sdongle_a_modbus']) {
-    const homey = fakeHomey({ [driverId]: [fakeDevice('d', 'D')] });
-    const { devices } = await api.getDebugDevices({ homey });
-    assert.strictEqual(devices[0].specRegisters, null, driverId);
-    assert.deepStrictEqual(devices[0].polledAddresses, devices[0].polledAddresses.filter(Number.isInteger),
-      `${driverId}: polledAddresses is not a list of addresses`);
-  }
+test('the charger is handed its own list, not the EMMA it sits behind', async () => {
+  // Both answer on the same IP and 30500 means something different on each. This is the one
+  // pairing where borrowing a neighbour's list would put plausible, wrong numbers on screen.
+  const homey = fakeHomey({ smartcharger_emma_modbus: [fakeDevice('d', 'D')] });
+  const { devices } = await api.getDebugDevices({ homey });
+  assert.strictEqual(devices[0].specRegisters, SPEC.CHARGER_SPEC_REGISTERS);
+  assert.notStrictEqual(devices[0].specRegisters, SPEC.EMMA_SPEC_REGISTERS);
+  assert.ok(devices[0].polledAddresses.includes(30500),
+    'the charger polls 30500 but it is not marked');
+});
+
+test('an EMMA is marked against its own polling set, not another driver\'s', async () => {
+  // All three EMMA drivers share one list, so the marks are the only thing that still tells
+  // them apart — the battery device must not be shown the meter's registers as "polled".
+  const luna = await api.getDebugDevices({
+    homey: fakeHomey({ luna2000_emma_modbus: [fakeDevice('d', 'D')] }) });
+  const meter = await api.getDebugDevices({
+    homey: fakeHomey({ powermeter_emma_modbus: [fakeDevice('d', 'D')] }) });
+
+  assert.strictEqual(luna.devices[0].specRegisters, meter.devices[0].specRegisters);
+  assert.notDeepStrictEqual(luna.devices[0].polledAddresses.sort(),
+    meter.devices[0].polledAddresses.sort(),
+    'the two EMMA devices are marked identically, so the marks say nothing');
+  // 30368 is the state of charge, which only the battery device reads
+  assert.ok(luna.devices[0].polledAddresses.includes(30368));
+  assert.ok(!meter.devices[0].polledAddresses.includes(30368));
 });
 
 // ── the drawing end ─────────────────────────────────────────────────────────

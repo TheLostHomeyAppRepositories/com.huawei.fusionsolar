@@ -86,8 +86,8 @@
       "exportTextTitle": "Alle Werte als Text exportieren"
     },
     "registers": {
-      "intro": "Listet alle Modbus-Register, die die App liest oder schreibt, und unter jedem Gerät die vollständige Huawei-Spezifikation dazu. Ein Klick auf eine Zeile liest genau dieses Register — nützlich, wenn der Modbus-Port belegt ist.",
-      "specTitle": "Alle Register der Huawei-Spezifikation",
+      "intro": "Listet alle Modbus-Register, die die App liest oder schreibt, und unter jedem Gerät alles, was Huawei dafür dokumentiert. Ein Klick auf eine Zeile liest genau dieses Register — nützlich, wenn der Modbus-Port belegt ist.",
+      "specTitle": "Alle Register, die Huawei für dieses Gerät dokumentiert",
       "specNote": "aufgelistet, nicht abgefragt — Zeile anklicken, um sie einmal zu lesen",
       "specPolled": "abgefragt",
       "specNotReadable": "Die Spezifikation gibt diesem Register einen Typ, den die App nicht in einen einzelnen Wert übersetzen kann. Es lässt sich hier nicht lesen.",

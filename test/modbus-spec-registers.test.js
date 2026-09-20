@@ -3,12 +3,17 @@
 // The full Huawei register list, and the promises the Registers tab makes about it.
 // Run: node --test
 //
-// lib/modbus-spec-registers.js was not typed out, it was parsed from the specification PDF,
-// whose register tables are set in a column so narrow that the layout engine wrapped the
-// signal names mid-word and dropped the space at every break: "[Energ / y / storag / e]Max
-// / imum / charge / power". Every name in that file is a reconstruction, so the point of
-// these tests is that a reconstruction which went wrong cannot reach a user looking like a
-// fact.
+// lib/modbus-spec-registers.js was not typed out. Three of its four lists were parsed from
+// the specification PDF, whose register tables are set in a column so narrow that the layout
+// engine wrapped the signal names mid-word and dropped the space at every break:
+// "[Energ / y / storag / e]Max / imum / charge / power". Every name in those lists is a
+// reconstruction, so the point of these tests is that a reconstruction which went wrong
+// cannot reach a user looking like a fact.
+//
+// The reconstruction has since been checked against the documentation's own tables, and the
+// tables are kept in test/fixtures/spec-register-reference.json. That fixture is the strongest
+// guard here: the generator has been re-run many times while its spacing rules were worked
+// out, and without it a re-run could quietly undo a name that had already been confirmed.
 //
 // The strongest check is the last one: wherever the app polls a register the specification
 // also describes, the two must agree on type and length. That compares the parse against a
@@ -28,6 +33,9 @@ const LISTS = {
   INVERTER_SPEC_REGISTERS: SPEC.INVERTER_SPEC_REGISTERS,
   BATTERY_SPEC_REGISTERS:  SPEC.BATTERY_SPEC_REGISTERS,
   METER_SPEC_REGISTERS:    SPEC.METER_SPEC_REGISTERS,
+  SDONGLE_SPEC_REGISTERS:  SPEC.SDONGLE_SPEC_REGISTERS,
+  EMMA_SPEC_REGISTERS:     SPEC.EMMA_SPEC_REGISTERS,
+  CHARGER_SPEC_REGISTERS:  SPEC.CHARGER_SPEC_REGISTERS,
 };
 const ALL = Object.values(LISTS).flat();
 
@@ -38,7 +46,9 @@ const WORDS = { UINT16: 1, INT16: 1, UINT32: 2, INT32: 2, UINT64: 4 };
 
 test('every list has rows, and they are unique and in address order', () => {
   for (const [name, rows] of Object.entries(LISTS)) {
-    assert.ok(rows.length > 20, `${name}: only ${rows.length} rows`);
+    // the shortest list is the charger's sixteen; anything under ten is a list that has
+    // lost most of itself rather than a small device
+    assert.ok(rows.length >= 10, `${name}: only ${rows.length} rows`);
     const seen = new Set();
     let previous = -1;
     for (const r of rows) {
@@ -93,14 +103,20 @@ test('a row is only typed with a decoder lib/modbus-client.js actually has', () 
   }
 });
 
-test('a typed row has at least as many words as its type needs', () => {
-  // The specification contradicts itself on 47321 — INT32, one register word — and reading
-  // it would ask readInt32BE for four bytes out of two and throw. The generator turns such
-  // a row into an untyped one, which is how it stays listed without being offered.
+test('a typed row occupies exactly the words its type reads', () => {
+  // Two ways to get this wrong, and a mutation probe found the second one slipping through
+  // an earlier "at least as many" version of this check:
+  //   too few  — 47321 is documented INT32 in one register word, and reading it would ask
+  //              readInt32BE for four bytes out of two and throw. The generator turns such
+  //              a row into an untyped one, which is how it stays listed without being
+  //              offered.
+  //   too many — an I64 energy total typed INT32 would decode the top half of the number
+  //              and present it as the whole, which is worse than failing: 4 of the EMMA's
+  //              64-bit totals sit next to 32-bit ones and look just like them.
   for (const r of ALL) {
     if (r.type === null || !WORDS[r.type]) continue;
-    assert.ok(r.length >= WORDS[r.type],
-      `${r.address}: ${r.type} needs ${WORDS[r.type]} words, the spec allots ${r.length} (${r.label})`);
+    assert.strictEqual(r.length, WORDS[r.type],
+      `${r.address}: ${r.type} reads ${WORDS[r.type]} words but the row is ${r.length} (${r.label})`);
   }
 });
 
@@ -145,21 +161,59 @@ test('each list is attached to a driver that exists', () => {
     assert.ok(fs.existsSync(path.join('drivers', driverId, 'device.js')),
       `DRIVER_SPEC_REGISTERS names ${driverId}, which is not a driver`);
   }
-  assert.deepStrictEqual(
-    Object.keys(SPEC.DRIVER_SPEC_REGISTERS).sort(),
-    ['dtsu666_modbus', 'luna2000_modbus', 'sun2000_modbus']);
+  // Every Modbus driver now has one. Reading the drivers off disk rather than repeating
+  // them means a ninth driver arrives here as a failure instead of quietly going uncovered.
+  const drivers = fs.readdirSync('drivers')
+    .filter((d) => d.endsWith('_modbus') && fs.existsSync(path.join('drivers', d, 'device.js')));
+  assert.ok(drivers.length >= 8, `only ${drivers.length} Modbus drivers found`);
+  assert.deepStrictEqual(Object.keys(SPEC.DRIVER_SPEC_REGISTERS).sort(), drivers.sort(),
+    'a Modbus driver has no reference list, or a list names a driver that does not exist');
 });
 
-test('the drivers this document does not describe get no list', () => {
-  // EMMA, the SDongle and the charger are specified elsewhere. Handing them the inverter's
-  // list would put addresses on screen that mean something entirely different on that
-  // hardware — 40000 is the system time on a SUN2000 and the ESS control mode on an EMMA.
-  for (const driverId of ['sun2000_emma_modbus', 'luna2000_emma_modbus',
-                          'powermeter_emma_modbus', 'smartcharger_emma_modbus',
-                          'sdongle_a_modbus']) {
-    assert.strictEqual(SPEC.DRIVER_SPEC_REGISTERS[driverId], undefined,
-      `${driverId} was given a list from a document that does not describe it`);
+// Three Homey devices, one EMMA, one register map. They must share the very same list, not
+// three copies that could drift apart.
+test('the three EMMA drivers are handed one and the same list', () => {
+  const { sun2000_emma_modbus: a, luna2000_emma_modbus: b,
+          powermeter_emma_modbus: c } = SPEC.DRIVER_SPEC_REGISTERS;
+  assert.strictEqual(a, SPEC.EMMA_SPEC_REGISTERS);
+  assert.strictEqual(b, SPEC.EMMA_SPEC_REGISTERS);
+  assert.strictEqual(c, SPEC.EMMA_SPEC_REGISTERS);
+});
+
+test('the charger keeps its own meanings for the addresses the EMMA also uses', () => {
+  // The charger sits behind the same EMMA but answers on its own unit id, and 30500 is its
+  // phase A voltage. On the EMMA's own smart meter that address is a running status. Giving
+  // the charger the EMMA's list would not be an approximation, it would be wrong.
+  assert.strictEqual(SPEC.DRIVER_SPEC_REGISTERS.smartcharger_emma_modbus,
+    SPEC.CHARGER_SPEC_REGISTERS);
+  assert.notStrictEqual(SPEC.CHARGER_SPEC_REGISTERS, SPEC.EMMA_SPEC_REGISTERS);
+
+  const charger = new Map(SPEC.CHARGER_SPEC_REGISTERS.map((r) => [r.address, r.label]));
+  assert.strictEqual(charger.get(30500), 'Phase A voltage');
+  assert.strictEqual(charger.get(30076), 'Rated power');
+
+  // and every register the driver actually polls is in its own list, none borrowed
+  for (const [key, def] of Object.entries(REG.SMARTCHARGER_REGISTERS)) {
+    assert.ok(charger.has(def[0]),
+      `the charger polls ${key} at ${def[0]}, which its own list does not describe`);
   }
+});
+
+// The SDongle reuses addresses the inverter also defines, which is exactly why these are
+// four lists and not one pool. Some of the shared ones genuinely mean the same thing on
+// both devices — 30015 is a serial number either way — so what has to hold is that the
+// lists stay separate and that the ones which differ still differ.
+test('the SDongle keeps its own meaning for the addresses it shares with the inverter', () => {
+  const inverter = new Map(SPEC.INVERTER_SPEC_REGISTERS.map((r) => [r.address, r.label]));
+  const shared = SPEC.SDONGLE_SPEC_REGISTERS.filter((r) => inverter.has(r.address));
+  assert.ok(shared.length >= 2, `only ${shared.length} shared addresses — did a list change?`);
+
+  assert.notStrictEqual(SPEC.SDONGLE_SPEC_REGISTERS, SPEC.INVERTER_SPEC_REGISTERS);
+  // 31200 is the inverter's REGKEY and the dongle's Registration Key: same address, two
+  // devices, two names. If this ever reads alike, one list has been written over the other.
+  assert.strictEqual(inverter.get(31200), 'REGKEY');
+  assert.strictEqual(SPEC.SDONGLE_SPEC_REGISTERS.find((r) => r.address === 31200).label,
+    'Registration Key');
 });
 
 // ── and it agrees with the registers the app has been using all along ───────
@@ -190,6 +244,11 @@ test('where the app polls a register this spec also describes, the two agree', (
     ['battery',  SPEC.BATTERY_SPEC_REGISTERS,
       ['BATTERY_REGISTERS', 'BATTERY_MODULE_REGISTERS', 'CONTROL_REGISTERS']],
     ['meter',    SPEC.METER_SPEC_REGISTERS, ['POWER_METER_REGISTERS']],
+    ['sdongle',  SPEC.SDONGLE_SPEC_REGISTERS, ['SDONGLE_A_REGISTERS']],
+    ['charger',  SPEC.CHARGER_SPEC_REGISTERS, ['SMARTCHARGER_REGISTERS']],
+    ['emma',     SPEC.EMMA_SPEC_REGISTERS,
+      ['EMMA_REGISTERS', 'POWERMETER_EMMA_DATA_REGISTERS', 'SUN2000_EMMA_DATA_REGISTERS',
+       'LUNA2000_EMMA_DATA_REGISTERS', 'LUNA2000_EMMA_CONTROL_REGISTERS']],
   ];
 
   let compared = 0;
@@ -214,4 +273,51 @@ test('where the app polls a register this spec also describes, the two agree', (
     }
   }
   assert.ok(compared > 60, `only ${compared} registers overlapped — did a map get renamed?`);
+});
+
+
+// ── and it still says what the documentation's own tables say ───────────────
+
+test('every name matches the reference table it was checked against', () => {
+  const reference = require('./fixtures/spec-register-reference.json');
+  const BY_SECTION = {
+    inverter: SPEC.INVERTER_SPEC_REGISTERS,
+    battery:  SPEC.BATTERY_SPEC_REGISTERS,
+    meter:    SPEC.METER_SPEC_REGISTERS,
+    sdongle:  SPEC.SDONGLE_SPEC_REGISTERS,
+    emma:     SPEC.EMMA_SPEC_REGISTERS,
+    charger:  SPEC.CHARGER_SPEC_REGISTERS,
+  };
+
+  let checked = 0;
+  for (const [section, rows] of Object.entries(BY_SECTION)) {
+    const want = reference[section];
+    assert.ok(want, `the fixture has no ${section} section`);
+    const shipped = new Map(rows.map((r) => [String(r.address), r.label]));
+
+    for (const [address, name] of Object.entries(want)) {
+      assert.ok(shipped.has(address), `${section}/${address} is in the reference but not shipped`);
+      const exception = reference._EXCEPTIONS[address];
+      const expected = exception ? exception.shipped : name;
+      assert.strictEqual(shipped.get(address), expected,
+        `${section}/${address}: shipped name no longer matches the reference table`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 450, `only ${checked} names were checked — has the fixture shrunk?`);
+});
+
+// An exception is a place where the shipped list knowingly departs from the reference. It
+// must stay small and it must stay argued for, or the fixture above quietly stops meaning
+// anything.
+test('every departure from the reference is recorded with its reason', () => {
+  const reference = require('./fixtures/spec-register-reference.json');
+  const exceptions = Object.entries(reference._EXCEPTIONS);
+  assert.ok(exceptions.length <= 3, `${exceptions.length} exceptions is too many to call the list checked`);
+  for (const [address, e] of exceptions) {
+    assert.ok(e.reference && e.shipped && e.why, `${address}: an exception without all three fields`);
+    assert.notStrictEqual(e.reference, e.shipped, `${address}: recorded as a departure but identical`);
+  }
+  // the one that exists: a footnote marker the document sets inside a signal name
+  assert.deepStrictEqual(Object.keys(reference._EXCEPTIONS), ['37000']);
 });
