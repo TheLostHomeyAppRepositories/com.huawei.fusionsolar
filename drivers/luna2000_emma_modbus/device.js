@@ -68,6 +68,7 @@ class LUNA2000EmmaModbusDevice extends Device {
     this._prevChargingState          = null;
     this._prevWorkingMode            = null;
     this._prevExcessPv               = null;
+    this._prevBackupSoc              = null;
     this._failureCount               = 0;
     this._updatingFromModbus         = false;
     this._updatingSettingFromModbus  = false;
@@ -239,6 +240,23 @@ class LUNA2000EmmaModbusDevice extends Device {
         return soc !== null && soc !== undefined && soc > args.soc;
       });
 
+    // Registered here as well as on the other battery driver, the way luna2000_soc_above is:
+    // Homey keeps one listener per card, and these read everything off args.device, so
+    // whichever driver initialises last answers correctly for either device.
+    this.homey.flow
+      .getConditionCard('luna2000_backup_soc_above')
+      .registerRunListener((args) => {
+        const value = args.device.getCapabilityValue('measure_battery.backup');
+        return typeof value === 'number' && Number.isFinite(value) && value > args.soc;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_backup_soc_below')
+      .registerRunListener((args) => {
+        const value = args.device.getCapabilityValue('measure_battery.backup');
+        return typeof value === 'number' && Number.isFinite(value) && value < args.soc;
+      });
+
     this.homey.flow
       .getConditionCard('luna2000_soc_below')
       .registerRunListener((args) => {
@@ -330,6 +348,19 @@ class LUNA2000EmmaModbusDevice extends Device {
       await this._set('measure_battery.backup',           d.backupSoc               ?? null);
       await this._set('meter_power.chargeable_capacity',  d.essChargeableCapacity   ?? null);
       await this._set('meter_power.dischargeable_capacity', d.essDischargableCapacity ?? null);
+
+      // Issue #32: this device has shown the reserve on its tile all along, but nothing
+      // could act on a change to it. Same guard as the SoC trigger below — only a real
+      // change, and never the first poll after a restart.
+      if (d.backupSoc !== null && d.backupSoc !== undefined) {
+        if (this._prevBackupSoc !== null && d.backupSoc !== this._prevBackupSoc) {
+          await this.homey.flow
+            .getDeviceTriggerCard('luna2000_backup_soc_changed')
+            .trigger(this, { soc: d.backupSoc })
+            .catch((err) => this.log('Flow trigger luna2000_backup_soc_changed failed:', err.message));
+        }
+        this._prevBackupSoc = d.backupSoc;
+      }
 
       // Read control registers every 5th poll — they change rarely
       this._controlPollCounter = (this._controlPollCounter + 1) % 5;

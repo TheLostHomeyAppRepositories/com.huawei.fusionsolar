@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.247",
+  "version": "1.2.248",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -3610,6 +3610,7 @@
       "capabilities": [
         "measure_power",
         "measure_battery",
+        "measure_battery.backup",
         "meter_power.charged",
         "meter_power.discharged",
         "measure_power.batt_charge",
@@ -3644,6 +3645,14 @@
             "en": "State of Charge",
             "de": "Ladezustand",
             "nl": "Laadtoestand"
+          },
+          "insights": true
+        },
+        "measure_battery.backup": {
+          "title": {
+            "en": "Backup Power SoC",
+            "de": "Backup-Energie-SoC",
+            "nl": "SoC voor noodstroom"
           },
           "insights": true
         },
@@ -3875,9 +3884,9 @@
           "max": 100000,
           "step": 100,
           "hint": {
-            "en": "Maximum power the battery charges at (register 47075). Synced from the inverter every 5 poll cycles.",
-            "de": "Maximale Ladeleistung der Batterie (Register 47075). Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert.",
-            "nl": "Maximaal vermogen waarmee de batterij laadt (register 47075). Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd."
+            "en": "Maximum power the battery charges at (register 47075). Synced from the inverter on every poll.",
+            "de": "Maximale Ladeleistung der Batterie (Register 47075). Wird bei jeder Abfrage mit dem Inverter synchronisiert.",
+            "nl": "Maximaal vermogen waarmee de batterij laadt (register 47075). Wordt bij elke uitlezing met de omvormer gesynchroniseerd."
           }
         },
         {
@@ -3892,9 +3901,9 @@
           "max": 100000,
           "step": 100,
           "hint": {
-            "en": "Maximum power the battery discharges at (register 47077). Synced from the inverter every 5 poll cycles.",
-            "de": "Maximale Entladeleistung der Batterie (Register 47077). Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert.",
-            "nl": "Maximaal vermogen waarmee de batterij ontlaadt (register 47077). Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd."
+            "en": "Maximum power the battery discharges at (register 47077). Synced from the inverter on every poll.",
+            "de": "Maximale Entladeleistung der Batterie (Register 47077). Wird bei jeder Abfrage mit dem Inverter synchronisiert.",
+            "nl": "Maximaal vermogen waarmee de batterij ontlaadt (register 47077). Wordt bij elke uitlezing met de omvormer gesynchroniseerd."
           }
         },
         {
@@ -3924,9 +3933,9 @@
           },
           "value": false,
           "hint": {
-            "en": "Enables or disables grid charging (register 47087). Synced from the inverter every 5 poll cycles.",
-            "de": "Aktiviert oder deaktiviert das Laden der Batterie aus dem Stromnetz (Register 47087). Wird alle 5 Abfragezyklen mit dem Inverter synchronisiert.",
-            "nl": "Schakelt het laden uit het net in of uit (register 47087). Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd."
+            "en": "Enables or disables grid charging (register 47087). Synced from the inverter on every poll.",
+            "de": "Aktiviert oder deaktiviert das Laden der Batterie aus dem Stromnetz (Register 47087). Wird bei jeder Abfrage mit dem Inverter synchronisiert.",
+            "nl": "Schakelt het laden uit het net in of uit (register 47087). Wordt bij elke uitlezing met de omvormer gesynchroniseerd."
           }
         },
         {
@@ -4188,9 +4197,9 @@
         },
         "measure_battery.backup": {
           "title": {
-            "en": "Backup SOC",
-            "de": "Backup-Ladestand",
-            "nl": "Noodstroom-laadniveau"
+            "en": "Backup Power SoC",
+            "de": "Backup-Energie-SoC",
+            "nl": "SoC voor noodstroom"
           },
           "insights": true
         },
@@ -7890,6 +7899,37 @@
               "en": "Power (W)",
               "de": "Leistung (W)",
               "nl": "Vermogen (W)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_backup_soc_changed",
+        "title": {
+          "en": "Backup power SoC changed",
+          "de": "Backup-Energie-SoC hat sich geändert",
+          "nl": "SoC voor noodstroom gewijzigd"
+        },
+        "hint": {
+          "en": "Fires whenever the backup power reserve (register 47102) changes — whether you changed it here, in FusionSolar, or on the inverter itself. The token holds the new percentage, which is what you need to keep another setting a fixed margin above it.",
+          "de": "Wird ausgelöst, sobald sich die Backup-Reserve (Register 47102) ändert — gleich, ob du sie hier, in FusionSolar oder am Wechselrichter geändert hast. Das Token enthält den neuen Prozentwert, mit dem sich eine andere Einstellung stets in festem Abstand darüber halten lässt.",
+          "nl": "Wordt geactiveerd zodra de gereserveerde noodstroomcapaciteit (register 47102) verandert, of je die nu hier, in FusionSolar of op de omvormer zelf hebt gewijzigd. Het token bevat het nieuwe percentage."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          }
+        ],
+        "tokens": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "en": "Backup power SoC (%)",
+              "de": "Backup-Energie-SoC (%)",
+              "nl": "SoC voor noodstroom (%)"
             }
           }
         ]
@@ -13136,6 +13176,90 @@
         ]
       },
       {
+        "id": "luna2000_backup_soc_above",
+        "title": {
+          "en": "Backup power SoC is !{{above|not above}} threshold",
+          "de": "Backup-Energie-SoC !{{über|nicht über}} Schwellwert",
+          "nl": "SoC voor noodstroom is !{{boven|niet boven}} drempel"
+        },
+        "titleFormatted": {
+          "en": "Backup power SoC is !{{above|not above}} [[soc]] %",
+          "de": "Backup-Energie-SoC !{{über|nicht über}} [[soc]] %",
+          "nl": "SoC voor noodstroom is !{{boven|niet boven}} [[soc]] %"
+        },
+        "hint": {
+          "en": "True when the backup power reserve (register 47102) is above the given threshold. Read from the inverter on every poll, so it follows a change made anywhere.",
+          "de": "Wahr, wenn die Backup-Reserve (Register 47102) über dem angegebenen Schwellwert liegt. Wird bei jeder Abfrage vom Wechselrichter gelesen und folgt damit einer Änderung von überall her.",
+          "nl": "Waar wanneer de gereserveerde noodstroomcapaciteit (register 47102) boven de opgegeven drempel ligt. Wordt bij elke uitlezing van de omvormer gelezen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "number",
+            "name": "soc",
+            "title": {
+              "en": "State of charge (%)",
+              "de": "Ladezustand (%)",
+              "nl": "Laadtoestand (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 20",
+              "de": "z.B. 20",
+              "nl": "bijv. 20"
+            }
+          }
+        ]
+      },
+      {
+        "id": "luna2000_backup_soc_below",
+        "title": {
+          "en": "Backup power SoC is !{{below|not below}} threshold",
+          "de": "Backup-Energie-SoC !{{unter|nicht unter}} Schwellwert",
+          "nl": "SoC voor noodstroom is !{{onder|niet onder}} drempel"
+        },
+        "titleFormatted": {
+          "en": "Backup power SoC is !{{below|not below}} [[soc]] %",
+          "de": "Backup-Energie-SoC !{{unter|nicht unter}} [[soc]] %",
+          "nl": "SoC voor noodstroom is !{{onder|niet onder}} [[soc]] %"
+        },
+        "hint": {
+          "en": "True when the backup power reserve (register 47102) is below the given threshold. Read from the inverter on every poll, so it follows a change made anywhere.",
+          "de": "Wahr, wenn die Backup-Reserve (Register 47102) unter dem angegebenen Schwellwert liegt. Wird bei jeder Abfrage vom Wechselrichter gelesen und folgt damit einer Änderung von überall her.",
+          "nl": "Waar wanneer de gereserveerde noodstroomcapaciteit (register 47102) onder de opgegeven drempel ligt. Wordt bij elke uitlezing van de omvormer gelezen."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=luna2000_modbus||driver_id=luna2000_emma_modbus"
+          },
+          {
+            "type": "number",
+            "name": "soc",
+            "title": {
+              "en": "State of charge (%)",
+              "de": "Ladezustand (%)",
+              "nl": "Laadtoestand (%)"
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "placeholder": {
+              "en": "e.g. 20",
+              "de": "z.B. 20",
+              "nl": "bijv. 20"
+            }
+          }
+        ]
+      },
+      {
         "id": "luna2000_max_charge_power_above",
         "title": {
           "en": "Max charge power is !{{above|not above}} threshold",
@@ -13148,9 +13272,9 @@
           "nl": "Maximaal laadvermogen is !{{boven|niet boven}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
-          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) über dem angegebenen Schwellwert liegt. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
-          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) boven de opgegeven drempel ligt. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
+          "en": "True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter on every poll, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) über dem angegebenen Schwellwert liegt. Wird bei jeder Abfrage synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) boven de opgegeven drempel ligt. Wordt bij elke uitlezing met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {
@@ -13190,9 +13314,9 @@
           "nl": "Maximaal laadvermogen is !{{onder|niet onder}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
-          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
-          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
+          "en": "True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter on every poll, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieladeleistung (Register 47075) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird bei jeder Abfrage synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale laadvermogen van de batterij (register 47075) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt bij elke uitlezing met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {
@@ -13232,9 +13356,9 @@
           "nl": "Maximaal ontlaadvermogen is !{{boven|niet boven}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max discharge power setting (register 47077) is above the given threshold. Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
-          "de": "Wahr, wenn die maximale Batterieentladeleistung (Register 47077) über dem angegebenen Schwellwert liegt. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
-          "nl": "Waar wanneer de instelling voor het maximale ontlaadvermogen van de batterij (register 47077) boven de opgegeven drempel ligt. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
+          "en": "True when the battery max discharge power setting (register 47077) is above the given threshold. Synced from the inverter on every poll, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieentladeleistung (Register 47077) über dem angegebenen Schwellwert liegt. Wird bei jeder Abfrage synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale ontlaadvermogen van de batterij (register 47077) boven de opgegeven drempel ligt. Wordt bij elke uitlezing met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {
@@ -13274,9 +13398,9 @@
           "nl": "Maximaal ontlaadvermogen is !{{onder|niet onder}} [[power]] W"
         },
         "hint": {
-          "en": "True when the battery max discharge power setting (register 47077) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter every 5 poll cycles, and at once after a change made from Homey.",
-          "de": "Wahr, wenn die maximale Batterieentladeleistung (Register 47077) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird alle 5 Abfragezyklen synchronisiert, nach einer Änderung aus Homey sofort.",
-          "nl": "Waar wanneer de instelling voor het maximale ontlaadvermogen van de batterij (register 47077) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt elke 5 uitleescycli met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
+          "en": "True when the battery max discharge power setting (register 47077) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter on every poll, and at once after a change made from Homey.",
+          "de": "Wahr, wenn die maximale Batterieentladeleistung (Register 47077) unter dem angegebenen Schwellwert liegt. Schwellwert 1 prüft, ob das Limit bereits auf 0 (blockiert) gesetzt wurde. Wird bei jeder Abfrage synchronisiert, nach einer Änderung aus Homey sofort.",
+          "nl": "Waar wanneer de instelling voor het maximale ontlaadvermogen van de batterij (register 47077) onder de opgegeven drempel ligt. Met drempel 1 controleert u of de grens al op 0 (geblokkeerd) staat. Wordt bij elke uitlezing met de omvormer gesynchroniseerd, en direct na een wijziging vanuit Homey."
         },
         "args": [
           {

@@ -61,6 +61,7 @@ const REMOTE_MODE_LABELS = {
 const REQUIRED_CAPABILITIES = [
   'measure_power',           // combined W: positive = charging, negative = discharging
   'measure_battery',         // SoC 0-100 %
+  'measure_battery.backup',  // backup power reserve, register 47102 — readable in flows (#32)
   'meter_power.charged',     // lifetime total charged (kWh) – used by Homey energy dashboard
   'meter_power.discharged',  // lifetime total discharged (kWh) – used by Homey energy dashboard
   'measure_power.batt_charge',
@@ -155,6 +156,7 @@ class LUNA2000ModbusDevice extends Device {
     this._prevBatteryStatus         = null;
     this._prevWorkingMode           = null;
     this._prevExcessPv              = null;
+    this._prevBackupSoc             = null;
     this._prevRemoteMode            = null;
     this._batteryModuleCount        = null;  // tracks last known module count for setEnergy
     this._batteryModulesInitialized = false; // true once a non-zero module count has been read and locked
@@ -982,6 +984,32 @@ class LUNA2000ModbusDevice extends Device {
         const current = parseFloat(args.device.getSetting('max_discharge_power'));
         return Number.isFinite(current) && current < args.power;
       });
+
+    // Issue #32: the reserve could be written from a flow — "Set backup power reserve SoC"
+    // has been there all along — but never read back, so a flow that set it had no way to
+    // notice a change made in FusionSolar, on the inverter, or by hand in the app.
+    //
+    // Read off the capability rather than the setting, unlike the four pairs above: the
+    // EMMA battery driver has this capability but no backup_power_soc setting, and one pair
+    // of cards covering both devices is better than two pairs that look identical.
+    const backupSocOf = (device) => {
+      const value = device.getCapabilityValue('measure_battery.backup');
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    };
+
+    this.homey.flow
+      .getConditionCard('luna2000_backup_soc_above')
+      .registerRunListener((args) => {
+        const current = backupSocOf(args.device);
+        return current !== null && current > args.soc;
+      });
+
+    this.homey.flow
+      .getConditionCard('luna2000_backup_soc_below')
+      .registerRunListener((args) => {
+        const current = backupSocOf(args.device);
+        return current !== null && current < args.soc;
+      });
   }
 
   // ─── Polling ───────────────────────────────────────────────────────────────
@@ -1321,6 +1349,23 @@ class LUNA2000ModbusDevice extends Device {
       // number and stays out of here.
       await this._set('measure_power.chargesetting',    ctrl.storageMaxChargePower    ?? null);
       await this._set('measure_power.dischargesetting', ctrl.storageMaxDischargePower ?? null);
+
+      // The backup reserve, likewise (issue #32). It has been read on every poll for a long
+      // time but only ever reached a device setting, where no flow can see it — so a flow
+      // could set the reserve and never learn that somebody else had changed it.
+      //
+      // The trigger fires only on a real change, and never on the first poll after a
+      // restart: _prevBackupSoc is still null then, and every value would look new.
+      const backupSoc = ctrl.storageBackupPowerSoc;
+      if (backupSoc !== null && backupSoc !== undefined) {
+        await this._set('measure_battery.backup', backupSoc);
+        if (this._prevBackupSoc !== null && backupSoc !== this._prevBackupSoc) {
+          this.homey.flow.getDeviceTriggerCard('luna2000_backup_soc_changed')
+            .trigger(this, { soc: backupSoc })
+            .catch((err) => this.log('Flow trigger luna2000_backup_soc_changed failed:', err.message));
+        }
+        this._prevBackupSoc = backupSoc;
+      }
 
       // Register 47242 (active grid charge power set point) only reflects a meaningful
       // value when charge_from_grid is enabled — skip sync when it is disabled.
