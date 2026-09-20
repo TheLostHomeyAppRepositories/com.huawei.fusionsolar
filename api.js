@@ -35,15 +35,15 @@ const {
 } = require('./lib/modbus-registers');
 const { DRIVER_SPEC_REGISTERS } = require('./lib/modbus-spec-registers');
 
-// A Modbus request to a Huawei device costs 400-900 ms, measured in the field across four
-// probes — not the 11 ms this was first sized from. The inverter's list needs 31 requests,
-// so reading it in one go runs 15-30 s and dies on its own timeout, taking the socket with
-// it. It is therefore read a few requests at a time.
+// What a Modbus request costs depends entirely on which device answers it. Measured on one
+// plant within the same minute: the SDongle answers for itself in about 190 ms, and relays
+// for the inverter behind it in about 1.6 s. Eight requests is therefore 1.5 s on one and
+// 14 s on the other, and the settings page gives up at twelve — which is exactly how the
+// inverter's walk stalled on its first piece, twice, twelve seconds apart.
 //
-// Eight requests is roughly five seconds of work plus a second to connect: short enough
-// that every call returns promptly and the rows fill in visibly, long enough that the
-// per-chunk connect is not most of the cost.
-const SPEC_GROUPS_PER_CHUNK = 8;
+// So the size is not fixed here. The caller asks for `count` groups from `from`, times the
+// reply and sizes the next one accordingly. All this end does is keep the ask sane.
+const SPEC_MAX_GROUPS = 16;
 
 // Generous on purpose: eight requests is ~5 s, and a model missing several of them makes
 // the reader bisect its way down to singles, which multiplies the round trips.
@@ -464,18 +464,23 @@ module.exports = {
    * that working: 35155 and 42405 answer "Illegal Data Address" on Andi's inverter and are
    * isolated without disturbing anything around them.
    *
-   * The list is read a few requests at a time. `chunk` selects which few; the reply says how
-   * many there are in total so the caller can walk them in order. Each chunk opens its own
-   * connection, which costs a second, and that is the price of every call returning promptly
-   * instead of one call running half a minute and dying on its own timeout — which is what
-   * 1.2.245 did, because it was sized from an estimate of 11 ms per request when the real
-   * figure is 400-900 ms.
+   * The list is read a few requests at a time: `from` and `count` name a run of plan groups,
+   * and the reply says how many groups there are in all so the caller can walk them. Each
+   * piece opens its own connection, which costs about a second, and that is the price of
+   * every call returning promptly rather than one call running for a minute — which is what
+   * 1.2.245 did, sized from an estimate of 11 ms per request.
+   *
+   * How big a piece should be is the caller's decision, because only the caller can time it.
+   * The same eight requests take 1.5 s from an SDongle and 14 s from the inverter behind it,
+   * and this end has no way of knowing which it is talking to until it has asked.
    */
   async readDebugSpecRegisters({ homey, body }) {
     const log = (...a) => { try { homey.app.log('[ReadAll]', ...a); } catch { /* no-op */ } };
     try {
       const { driverId, deviceId } = body || {};
-      const chunk = Number(body && body.chunk) || 0;
+      const from  = Math.max(0, Math.floor(Number(body && body.from) || 0));
+      const count = Math.min(SPEC_MAX_GROUPS,
+        Math.max(1, Math.floor(Number(body && body.count) || 1)));
       if (!driverId || !deviceId) return { error: 'Missing driverId or deviceId' };
 
       let driver;
@@ -503,18 +508,19 @@ module.exports = {
       }
 
       // The plan is what the read actually costs: neighbouring registers ride in one request,
-      // and it is requests that take the time. Chunking by plan groups therefore gives every
-      // call the same amount of work, which chunking by register count would not.
-      const plan   = buildReadPlan(asked);
-      const chunks = Math.max(1, Math.ceil(plan.length / SPEC_GROUPS_PER_CHUNK));
-      if (chunk < 0 || chunk >= chunks) return { error: `No such chunk: ${chunk} of ${chunks}` };
+      // and it is requests that take the time. So the caller walks plan groups, not
+      // registers — a piece of two groups is two round trips whether it covers four
+      // registers or ninety.
+      const plan  = buildReadPlan(asked);
+      const total = plan.length;
+      if (from >= total) return { error: `Nothing at ${from}: the plan has ${total} groups` };
 
-      const groups = plan.slice(chunk * SPEC_GROUPS_PER_CHUNK, (chunk + 1) * SPEC_GROUPS_PER_CHUNK);
+      const groups = plan.slice(from, from + count);
       const slice  = {};
       for (const group of groups) for (const entry of group) slice[entry.name] = entry.def;
 
-      log(`${address}:${port} unit=${unitId} — chunk ${chunk + 1}/${chunks}: `
-        + `${Object.keys(slice).length} registers in ${groups.length} request(s)`);
+      log(`${address}:${port} unit=${unitId} — groups ${from}..${from + groups.length - 1} `
+        + `of ${total}: ${Object.keys(slice).length} registers in ${groups.length} request(s)`);
 
       const paused = await _pauseHostPolling(homey, address, MODBUS_DRIVER_IDS);
       let raw;
@@ -525,8 +531,8 @@ module.exports = {
       }
 
       if (raw === null) {
-        log(`chunk ${chunk + 1}/${chunks}: connection failed or timed out`);
-        return { error: 'Connection failed or timed out', chunk, chunks };
+        log(`groups ${from}..${from + groups.length - 1}: connection failed or timed out`);
+        return { error: 'Connection failed or timed out', from, total };
       }
 
       // A register that answered and a register that did not are different facts, and the
@@ -539,20 +545,23 @@ module.exports = {
         if (value === null || value === undefined) unanswered.push(Number(key));
         else values[key] = value;
       }
-      log(`chunk ${chunk + 1}/${chunks}: answered ${Object.keys(values).length}, `
+      log(`groups ${from}..${from + groups.length - 1}: answered ${Object.keys(values).length}, `
         + `silent ${unanswered.length}`);
 
       return {
         timestamp: new Date().toISOString(),
-        chunk,
-        chunks,
+        from,
+        // What was actually read, which is not always what was asked for: the last piece is
+        // short. The caller advances by this, so asking for more than remains is harmless.
+        count: groups.length,
+        total,
         requests: groups.length,
         values,
         unanswered,
-        // The registers nobody will ask for do not belong to any chunk. Reported once, with
-        // the first, so the caller can mark them straight away rather than only learning
-        // about them if the walk happens to finish.
-        skipped: chunk === 0 ? skipped : [],
+        // The registers nobody will ask for belong to no group at all. Reported once, with
+        // the first piece, so the caller can mark them straight away rather than only
+        // learning about them if the walk happens to finish.
+        skipped: from === 0 ? skipped : [],
       };
     } catch (err) {
       log('failed:', err.message);

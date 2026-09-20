@@ -8,12 +8,16 @@
 // hand was never going to happen, because a single-row click pays its own connect-and-settle
 // second. So the list got a bulk read of its own.
 //
-// 1.2.245 did that in one probe, sized from an estimate of 11 ms per Modbus request. The
-// field said 400-900 ms. The inverter's 31 requests therefore ran past the 20 s timeout,
-// probeModbusUnit destroyed the socket, and every remaining batch bisected against a dead
-// connection — a page of "no connection to modbus server" for a read that was working fine.
-// It is now read a few requests at a time, and the chunking is the first thing tested here:
-// every register has to appear in exactly one chunk, or the walk quietly misses some.
+// 1.2.245 did that in one probe, sized from an estimate of 11 ms per Modbus request, and it
+// died on its own timeout. 1.2.246 cut it into fixed pieces of eight requests, and that died
+// too — on the inverter, because what a request costs depends on which device answers it.
+// Measured on one plant within a minute: 190 ms from the SDongle, 1.6 s from the inverter
+// behind it. Eight requests is 1.5 s on one and 14 s on the other, the settings page gives
+// up at twelve, and the walk never reached its second piece.
+//
+// So the caller names a run of plan groups and sizes it from how long the last one took.
+// Two things are tested first here: that those runs tile the plan exactly, and that the
+// walk advances by what was read rather than by what it asked for.
 //
 // The rest is about honesty. After the read every row has to say something definite, and the
 // three things it can say must stay distinguishable: a value, a register that was asked for
@@ -80,26 +84,26 @@ function reset() {
   probeDead   = false;
 }
 
-// Walks every chunk the way the settings page does, and returns what the whole walk saw.
-async function readAll(driverId, devices) {
+// Walks the whole plan the way the settings page does, and returns what the walk saw.
+async function readAll(driverId, devices, count = 4) {
   const homey = fakeHomey({ [driverId]: devices || [fakeDevice('d-1')] });
   const seen = { asked: [], values: {}, unanswered: [], skipped: [], replies: [] };
 
-  let chunk = 0;
+  let from = 0;
   let total = 1;
   do {
     const res = await api.readDebugSpecRegisters({
-      homey, body: { driverId, deviceId: 'd-1', chunk },
+      homey, body: { driverId, deviceId: 'd-1', from, count },
     });
-    assert.ok(!res.error, `chunk ${chunk}: ${res.error}`);
+    assert.ok(!res.error, `from ${from}: ${res.error}`);
     seen.replies.push(res);
     seen.asked.push(...Object.keys(probeCalls[probeCalls.length - 1].registers).map(Number));
     Object.assign(seen.values, res.values);
     seen.unanswered.push(...res.unanswered);
     seen.skipped.push(...res.skipped);
-    total = res.chunks;
-    chunk += 1;
-  } while (chunk < total);
+    total = res.total;
+    from += res.count;            // what was read, not what was asked for
+  } while (from < total);
 
   return seen;
 }
@@ -108,10 +112,10 @@ const ascending = (a, b) => a - b;
 
 // ── the chunking ────────────────────────────────────────────────────────────
 
-test('every register belongs to exactly one chunk', async () => {
-  // The walk trusts the chunks to partition the list. A register in two chunks is a wasted
-  // round trip; one in none is a row that stays blank for no stated reason, which is exactly
-  // what this list is built not to do.
+test('every register is read exactly once as the walk goes by', async () => {
+  // The walk trusts the pieces to tile the plan. A register in two pieces is a wasted round
+  // trip; one in none is a row that stays blank for no stated reason, which is exactly what
+  // this list is built not to do.
   for (const driverId of ['sun2000_modbus', 'luna2000_modbus', 'sdongle_a_modbus',
                           'sun2000_emma_modbus', 'smartcharger_emma_modbus', 'dtsu666_modbus']) {
     reset();
@@ -122,34 +126,74 @@ test('every register belongs to exactly one chunk', async () => {
       .sort(ascending);
 
     assert.deepStrictEqual([...seen.asked].sort(ascending), expected,
-      `${driverId}: the chunks do not cover the readable registers exactly once`);
+      `${driverId}: the walk does not cover the readable registers exactly once`);
   }
 });
 
-test('no chunk is bigger than the connection can carry', async () => {
-  // A chunk is sized in requests, not registers, because it is requests that take the time —
-  // 400 to 900 ms each on this hardware. Eight of them is about five seconds, which is what
-  // keeps a single call short enough to return promptly.
+test('it tiles the plan whatever size the caller asks for', async () => {
+  // The caller varies the size as it goes, so the tiling has to hold at every size rather
+  // than only at the one the walk happens to start with.
+  const expected = SPEC.INVERTER_SPEC_REGISTERS
+    .filter((r) => r.type && r.rw !== 'WO').map((r) => r.address).sort(ascending);
+  for (const count of [1, 2, 3, 7, 16]) {
+    reset();
+    const seen = await readAll('sun2000_modbus', undefined, count);
+    assert.deepStrictEqual([...seen.asked].sort(ascending), expected,
+      `a walk in pieces of ${count} groups did not cover the list exactly once`);
+  }
+});
+
+test('the caller decides how much is read, and gets what it asked for', async () => {
+  // Only the caller can time a reply, and timing it is the only way to know whether this
+  // device answers in 190 ms or in 1.6 s. So the size is its decision, not this end's.
   reset();
-  const seen = await readAll('sun2000_modbus');
-  assert.ok(seen.replies.length > 1, 'the inverter list still comes back in one piece');
-  for (const res of seen.replies) {
-    assert.ok(res.requests >= 1 && res.requests <= 8, `a chunk asked for ${res.requests} requests`);
-  }
-  assert.ok(seen.replies.length >= 3, `only ${seen.replies.length} chunks for 31 requests`);
+  const homey = fakeHomey({ sun2000_modbus: [fakeDevice('d-1')] });
+  const body = (count) => ({ driverId: 'sun2000_modbus', deviceId: 'd-1', from: 0, count });
+
+  const one  = await api.readDebugSpecRegisters({ homey, body: body(1) });
+  const five = await api.readDebugSpecRegisters({ homey, body: body(5) });
+
+  assert.strictEqual(one.requests, 1);
+  assert.strictEqual(five.requests, 5);
+  assert.ok(five.unanswered.length > one.unanswered.length,
+    'asking for five groups read no more registers than asking for one');
 });
 
-test('a chunk that does not exist is refused rather than read as empty', async () => {
+test('an unreasonable ask is trimmed instead of obeyed', async () => {
+  // A caller asking for the whole plan in one call is asking for precisely the failure this
+  // was built to avoid, so the ask is capped here as well as sized there.
+  reset();
+  const res = await api.readDebugSpecRegisters({
+    homey: fakeHomey({ sun2000_modbus: [fakeDevice('d-1')] }),
+    body:  { driverId: 'sun2000_modbus', deviceId: 'd-1', from: 0, count: 1000 },
+  });
+  assert.ok(res.requests <= 16, `it read ${res.requests} requests in one call`);
+  assert.ok(res.total > res.requests, 'the whole plan went in one call after all');
+});
+
+test('the last piece is short, and says how short', async () => {
+  // The walk advances by `count`. If the reply claimed the size that was asked for, the
+  // walk would step past the end and think it had finished early.
   reset();
   const res = await api.readDebugSpecRegisters({
     homey: fakeHomey({ dtsu666_modbus: [fakeDevice('d-1')] }),
-    body:  { driverId: 'dtsu666_modbus', deviceId: 'd-1', chunk: 99 },
+    body:  { driverId: 'dtsu666_modbus', deviceId: 'd-1', from: 0, count: 8 },
   });
-  assert.match(res.error, /chunk/i);
+  assert.strictEqual(res.total, 1, 'the meter needs more than one request now');
+  assert.strictEqual(res.count, 1, 'it claimed to have read more groups than exist');
+});
+
+test('a start past the end is refused rather than read as empty', async () => {
+  reset();
+  const res = await api.readDebugSpecRegisters({
+    homey: fakeHomey({ dtsu666_modbus: [fakeDevice('d-1')] }),
+    body:  { driverId: 'dtsu666_modbus', deviceId: 'd-1', from: 99, count: 2 },
+  });
+  assert.ok(res.error, 'reading past the end produced no error');
   assert.strictEqual(probeCalls.length, 0);
 });
 
-test('the registers nobody asks for are reported once, with the first chunk', async () => {
+test('the registers nobody asks for are reported once, with the first piece', async () => {
   // They belong to no chunk, so reporting them per chunk would either repeat them or lose
   // them depending on where the walk stopped.
   reset();
@@ -159,9 +203,9 @@ test('the registers nobody asks for are reported once, with the first chunk', as
 
   assert.deepStrictEqual(seen.skipped.sort(ascending), expected);
   assert.deepStrictEqual(seen.replies[0].skipped.sort(ascending), expected,
-    'the first chunk did not carry them');
+    'the first piece did not carry them');
   for (const res of seen.replies.slice(1)) {
-    assert.deepStrictEqual(res.skipped, [], 'a later chunk repeated the skipped registers');
+    assert.deepStrictEqual(res.skipped, [], 'a later piece repeated the skipped registers');
   }
 });
 
@@ -258,23 +302,14 @@ test('a zero is a reading, not a missing one', async () => {
 
 // ── what it does to the port ────────────────────────────────────────────────
 
-test('polling stops for each chunk and starts again afterwards', async () => {
+test('polling stops for each piece and starts again afterwards', async () => {
   reset();
   const dev = fakeDevice('d-1');
-  const homey = fakeHomey({ sdongle_a_modbus: [dev] });
-  let chunk = 0;
-  let total = 1;
-  do {
-    const res = await api.readDebugSpecRegisters({
-      homey, body: { driverId: 'sdongle_a_modbus', deviceId: 'd-1', chunk },
-    });
-    total = res.chunks;
-    chunk += 1;
-  } while (chunk < total);
+  await readAll('sdongle_a_modbus', [dev], 2);
 
-  assert.ok(dev.stopped > 1, 'the walk took more than one chunk but paused only once');
+  assert.ok(dev.stopped > 1, 'the walk took more than one piece but paused only once');
   assert.strictEqual(dev.started, dev.stopped,
-    'the device was left with its polling stopped between chunks');
+    'the device was left with its polling stopped between pieces');
 });
 
 test('polling starts again even when the read blows up', async () => {
@@ -361,8 +396,10 @@ function loadReader() {
   return src;
 }
 
-// Answers each chunk in turn, so the reader's walk is exercised rather than one reply.
-function runReader(rows, replies, startingWith = '—') {
+// Answers each piece in turn, keyed by where it starts, so the walk is exercised rather
+// than a single reply. What the reader asked for is recorded too: the size it chooses is
+// half of what is being tested.
+function runReader(rows, pieceFrom, startingWith = '\u2014') {
   const cells = {};
   for (const r of rows) cells[`sv-0-${r.address}`] = { innerHTML: startingWith, style: {} };
   const status = { textContent: '', innerHTML: '', style: {} };
@@ -376,7 +413,10 @@ function runReader(rows, replies, startingWith = '—') {
     },
     _H: {
       __: (k) => k,
-      api: (method, path, body, cb) => { asked.push(body.chunk); cb(null, replies[body.chunk]); },
+      api: (method, path, body, cb) => {
+        asked.push({ from: body.from, count: body.count });
+        cb(null, pieceFrom(body));
+      },
     },
   };
   vm.createContext(ctx);
@@ -387,36 +427,69 @@ function runReader(rows, replies, startingWith = '—') {
 }
 
 const ROWS = [
-  { address: 100, type: 'UINT16', rw: 'RO', specType: 'U16' },   // answers, first chunk
-  { address: 150, type: 'UINT16', rw: 'RO', specType: 'U16' },   // answers, second chunk
-  { address: 200, type: 'UINT16', rw: 'RO', specType: 'U16' },   // silent, second chunk
+  { address: 100, type: 'UINT16', rw: 'RO', specType: 'U16' },   // answers, first piece
+  { address: 150, type: 'UINT16', rw: 'RO', specType: 'U16' },   // answers, second piece
+  { address: 200, type: 'UINT16', rw: 'RO', specType: 'U16' },   // silent, second piece
   { address: 300, type: 'UINT16', rw: 'WO', specType: 'U16' },   // write-only
   { address: 400, type: null,     rw: 'RW', specType: 'MLD' },   // undecodable
 ];
 
-// A register answers in each chunk on purpose. With only one in the whole walk, a tally that
+// A register answers in each piece on purpose. With only one in the whole walk, a tally that
 // assigns instead of adding counts the same — which is how "the summary counts only the last
-// chunk" survived the probe.
-const TWO_CHUNKS = [
-  { timestamp: '2026-09-20T12:00:00.000Z', chunk: 0, chunks: 2, requests: 1,
+// piece" once survived the probe.
+const PIECES = {
+  0: { timestamp: '2026-09-20T12:00:00.000Z', from: 0, count: 1, total: 2, requests: 1,
     values: { 100: 42 }, unanswered: [], skipped: [300, 400] },
-  { timestamp: '2026-09-20T12:00:05.000Z', chunk: 1, chunks: 2, requests: 1,
+  1: { timestamp: '2026-09-20T12:00:05.000Z', from: 1, count: 1, total: 2, requests: 1,
     values: { 150: 7 }, unanswered: [200], skipped: [] },
-];
+};
+const twoPieces = (body) => PIECES[body.from];
 
-test('the reader walks every chunk in order and stops at the last', () => {
-  const { asked, btn } = runReader(ROWS, TWO_CHUNKS);
-  assert.deepStrictEqual(asked, [0, 1], 'the walk did not visit each chunk exactly once');
+test('the reader walks the plan in order and stops at the end', () => {
+  const { asked, btn } = runReader(ROWS, twoPieces);
+  assert.deepStrictEqual(asked.map((a) => a.from), [0, 1],
+    'the walk did not visit each piece exactly once');
   assert.strictEqual(btn.disabled, false, 'the button stayed disabled after the walk');
 });
 
+test('the first ask is a small one', () => {
+  // The first call is the only one with nothing measured behind it. Asking big there is how
+  // the inverter's walk stalled: fourteen seconds on a page that gives up at twelve.
+  const { asked } = runReader(ROWS, twoPieces);
+  assert.ok(asked[0].count <= 2, `the first call asked for ${asked[0].count} groups`);
+});
+
+test('a device that answers quickly is asked for more next time', () => {
+  // The stub replies instantly, which is the fast end of the range the field showed. The
+  // walk has to notice and stop paying a connection per two requests.
+  const { asked } = runReader(ROWS, twoPieces);
+  assert.ok(asked[1].count > asked[0].count,
+    `the second call still asked for ${asked[1].count} after an instant reply`);
+});
+
+test('the walk advances by what was read, not by what it asked for', () => {
+  // The last piece is short. Advancing by the ask would step past the end and call the walk
+  // finished with registers still unread.
+  const short = {
+    0: { timestamp: '2026-09-20T12:00:00.000Z', from: 0, count: 1, total: 3, requests: 1,
+      values: { 100: 42 }, unanswered: [], skipped: [] },
+    1: { timestamp: '2026-09-20T12:00:01.000Z', from: 1, count: 1, total: 3, requests: 1,
+      values: { 150: 7 }, unanswered: [], skipped: [] },
+    2: { timestamp: '2026-09-20T12:00:02.000Z', from: 2, count: 1, total: 3, requests: 1,
+      values: {}, unanswered: [200], skipped: [] },
+  };
+  const { asked } = runReader(ROWS, (body) => short[body.from]);
+  assert.deepStrictEqual(asked.map((a) => a.from), [0, 1, 2],
+    'the walk skipped a piece by trusting its own ask');
+});
+
 test('each of the three answers leaves a different mark on the row', () => {
-  const { cells } = runReader(ROWS, TWO_CHUNKS);
+  const { cells } = runReader(ROWS, twoPieces);
 
   assert.match(cells['sv-0-100'].innerHTML, /42/, 'the value did not reach its cell');
   assert.match(cells['sv-0-200'].innerHTML, /val-error/, 'silence does not read as silence');
   assert.match(cells['sv-0-300'].innerHTML, /specWriteOnly/, 'a write-only row lost its reason');
-  assert.strictEqual(cells['sv-0-400'].innerHTML, '—',
+  assert.strictEqual(cells['sv-0-400'].innerHTML, '\u2014',
     'a row skipped for its type was overwritten, losing the type it was showing');
 
   const marks = new Set(Object.values(cells).map((c) => c.innerHTML));
@@ -424,35 +497,38 @@ test('each of the three answers leaves a different mark on the row', () => {
 });
 
 test('a register reading zero shows the zero', () => {
-  const { cells } = runReader(ROWS, [{
-    timestamp: '2026-09-20T12:00:00.000Z', chunk: 0, chunks: 1,
+  const { cells } = runReader(ROWS, () => ({
+    timestamp: '2026-09-20T12:00:00.000Z', from: 0, count: 1, total: 1,
     values: { 100: 0 }, unanswered: [], skipped: [],
-  }]);
+  }));
   assert.match(cells['sv-0-100'].innerHTML, />0</, 'a zero was swallowed');
 });
 
 test('the summary counts the whole walk, not just its last piece', () => {
-  const { status } = runReader(ROWS, TWO_CHUNKS);
-  // two, one from each chunk — the point of the test
+  const { status } = runReader(ROWS, twoPieces);
+  // two, one from each piece — the point of the test
   assert.match(status.textContent, /2 settings\.registers\.specAnswered/);
   assert.match(status.textContent, /1 settings\.registers\.specSilent/);
   assert.match(status.textContent, /2 settings\.registers\.specNotAsked/);
 });
 
-test('a chunk that fails keeps what the earlier ones already found', () => {
+test('a piece that fails keeps what the earlier ones already found', () => {
   // This is the whole reason the read is walked rather than done in one call: half an answer
   // is worth keeping, and throwing it away would look like the device had nothing.
-  const replies = [TWO_CHUNKS[0], { error: 'Connection failed or timed out', chunk: 1, chunks: 2 }];
-  const { cells, status, btn } = runReader(ROWS, replies);
+  const replies = {
+    0: PIECES[0],
+    1: { error: 'Connection failed or timed out', from: 1, total: 2 },
+  };
+  const { cells, status, btn } = runReader(ROWS, (body) => replies[body.from]);
 
-  assert.match(cells['sv-0-100'].innerHTML, /42/, 'the first chunk was thrown away');
+  assert.match(cells['sv-0-100'].innerHTML, /42/, 'the first piece was thrown away');
   assert.match(status.textContent, /Connection failed/);
   assert.match(status.textContent, /specStoppedAfter/, 'it does not say how far it got');
   assert.strictEqual(btn.disabled, false);
 });
 
-test('a read that fails at the very first chunk does not clear the rows', () => {
-  const { cells, status, btn } = runReader(ROWS, [{ error: 'Connection failed' }], 'was here');
+test('a read that fails at the very first piece does not clear the rows', () => {
+  const { cells, status, btn } = runReader(ROWS, () => ({ error: 'Connection failed' }), 'was here');
 
   assert.match(status.textContent, /Connection failed/);
   assert.strictEqual(btn.disabled, false);

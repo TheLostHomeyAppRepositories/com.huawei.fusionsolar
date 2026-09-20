@@ -2138,39 +2138,54 @@
         status.style.color = colour;
       };
 
-      // One call per chunk, in order. The device answers a Modbus request in about half a
-      // second, so the whole of an inverter's list is half a minute of work — far too long
-      // for one call to sit on. Walking it in pieces keeps every call short, shows how far
-      // it has got, and leaves the rows already filled in standing if a later piece fails.
-      const walk = (chunk) => {
-        _H.api('POST', '/debug/registers-spec', { driverId, deviceId, chunk }, (err, result) => {
-          if (err || !result || result.error) {
-            const why = err ? err.message
-              : (result && result.error ? result.error : _H.__('settings.tester.noResponseFromApp'));
-            const how = chunk > 0
-              ? ` — ${_H.__('settings.registers.specStoppedAfter')} ${tally.answered + tally.silent}`
-              : '';
-            stop(`✗ ${why}${how}`, 'var(--c-danger-text)');
-            return;
-          }
+      // The list is walked a few Modbus requests at a time, and how few is decided from how
+      // long the last few took. It has to be: on one plant the SDongle answers a request in
+      // about 190 ms and the inverter behind it in about 1.6 s, so a size that suits one
+      // stalls the other. At a fixed eight the inverter's call ran fourteen seconds, the
+      // settings page gave up at twelve and sent the same piece again, and the walk never
+      // reached its second. Aiming each call at roughly four seconds keeps both honest.
+      const TARGET_MS = 4000;
+      const MAX_GROUPS = 16;
+      const readable = rows.filter((r) => r.type && r.rw !== 'WO').length;
+      let count = 2;   // deliberately timid: the first call is the one with no measurement
 
-          fill(result);
+      const progress = () => `${tally.answered + tally.silent}/${readable}`;
 
-          const done  = chunk + 1;
-          const total = result.chunks || 1;
-          if (done < total) {
-            status.innerHTML = `<span class="spinner"></span>`
-              + `${_H.__('settings.registers.specReading')} ${done}/${total}`;
-            walk(done);
-            return;
-          }
+      const walk = (from) => {
+        const startedAt = Date.now();
+        _H.api('POST', '/debug/registers-spec',
+          { driverId, deviceId, from, count }, (err, result) => {
+            if (err || !result || result.error) {
+              const why = err ? err.message
+                : (result && result.error ? result.error : _H.__('settings.tester.noResponseFromApp'));
+              const how = from > 0
+                ? ` — ${_H.__('settings.registers.specStoppedAfter')} ${progress()}`
+                : '';
+              stop(`✗ ${why}${how}`, 'var(--c-danger-text)');
+              return;
+            }
 
-          stop(`✓ ${new Date(result.timestamp).toLocaleTimeString()}`
-            + ` · ${tally.answered} ${_H.__('settings.registers.specAnswered')}`
-            + ` · ${tally.silent} ${_H.__('settings.registers.specSilent')}`
-            + ` · ${tally.skipped} ${_H.__('settings.registers.specNotAsked')}`,
-          'var(--c-success-text)');
-        });
+            fill(result);
+
+            // Scale towards the target rather than stepping: a device eight times slower
+            // than expected should not need eight calls to find that out.
+            const elapsed = Math.max(1, Date.now() - startedAt);
+            count = Math.max(1, Math.min(MAX_GROUPS, Math.round((count * TARGET_MS) / elapsed)));
+
+            const next = from + (result.count || 1);
+            if (next < result.total) {
+              status.innerHTML = `<span class="spinner"></span>`
+                + `${_H.__('settings.registers.specReading')} ${progress()}`;
+              walk(next);
+              return;
+            }
+
+            stop(`✓ ${new Date(result.timestamp).toLocaleTimeString()}`
+              + ` · ${tally.answered} ${_H.__('settings.registers.specAnswered')}`
+              + ` · ${tally.silent} ${_H.__('settings.registers.specSilent')}`
+              + ` · ${tally.skipped} ${_H.__('settings.registers.specNotAsked')}`,
+            'var(--c-success-text)');
+          });
       };
 
       status.innerHTML = `<span class="spinner"></span>${_H.__('settings.registers.specReading')}`;
