@@ -93,7 +93,14 @@
       "specNotReadable": "The specification gives this register a type the app cannot decode into a single value, so it cannot be read here.",
       "specSearch": "Filter by address or name…",
       "specNoMatch": "No register matches that.",
-      "specTypeConflict": "The specification gives this register a type that needs more register words than it also allots to it, so a read could only fail."
+      "specTypeConflict": "The specification gives this register a type that needs more register words than it also allots to it, so a read could only fail.",
+      "specReadAll": "Read all",
+      "specReading": "Reading the whole list…",
+      "specAnswered": "answered",
+      "specSilent": "no answer",
+      "specNotAsked": "not asked",
+      "specNoAnswer": "Asked for, but the device did not answer. On this list that usually means the register does not exist on your model.",
+      "specWriteOnly": "Write-only. Reading it would mean nothing, so it was not asked for."
     },
     "logs": {
       "intro": "Live log of the whole app — every driver and device, the same output as <code>homey app run</code>. Keeps the last 1500 lines; refreshes every 3 seconds while this tab is open.",

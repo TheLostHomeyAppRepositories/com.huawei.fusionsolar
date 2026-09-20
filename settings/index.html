@@ -305,10 +305,16 @@
     .spec-note  { font-size: 12px; color: var(--c-label-3); }
     .spec-body  { display: none; margin-top: 8px; }
     .spec-body.open { display: block; }
-    .spec-filter {
-      width: 100%;
-      box-sizing: border-box;
+    .spec-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 8px;
+    }
+    .spec-filter {
+      flex: 1;
+      min-width: 0;
+      box-sizing: border-box;
       padding: 6px 10px;
       border: 1px solid var(--c-separator);
       border-radius: 6px;
@@ -2017,6 +2023,7 @@
       const polled = new Set(dev.polledAddresses || []);
       const drvId  = escHtml(dev.driverId);
       const devId  = escHtml(dev.deviceId);
+      _specRows[idx] = rows;   // the reader needs each row's type and rw, not just its cell
 
       let table = `<table style="table-layout:auto;width:100%"><thead><tr>
           <th style="white-space:nowrap">${_H.__('settings.tester.regId')}</th>
@@ -2060,11 +2067,79 @@
           <span class="spec-note">${rows.length} · ${_H.__('settings.registers.specNote')}</span>
         </div>
         <div class="spec-body" id="spec-body-${idx}">
-          <input type="text" class="spec-filter" id="spec-filter-${idx}" oninput="filterSpec(${idx})"
-                 placeholder="${_H.__('settings.registers.specSearch')}">
+          <div class="spec-controls">
+            <input type="text" class="spec-filter" id="spec-filter-${idx}" oninput="filterSpec(${idx})"
+                   placeholder="${_H.__('settings.registers.specSearch')}">
+            <button class="btn-secondary" id="spec-btn-${idx}"
+                    style="padding:5px 12px;text-transform:none;letter-spacing:0;font-size:12px;white-space:nowrap"
+                    onclick="readSpecRegisters('${drvId}', '${devId}', ${idx})">
+              ${_H.__('settings.registers.specReadAll')}
+            </button>
+          </div>
+          <div class="spec-note" id="spec-status-${idx}" style="min-height:14px;margin-bottom:6px"></div>
           <div class="spec-note" id="spec-empty-${idx}" style="display:none;padding:6px 0">${_H.__('settings.registers.specNoMatch')}</div>
           ${table}
         </div>`;
+    }
+
+    // ── Reading the whole reference list ───────────────────────────────────────
+    //
+    // The button above this list reads what the app polls; this one reads everything the
+    // documentation describes for the device, over one connection. It is a separate button
+    // because it is several times the work, and because most of the time the app's own
+    // values are what somebody came for.
+    //
+    // Afterwards every row says something definite. A register that answered shows its
+    // value; one that was asked and stayed silent shows a cross, which on this list usually
+    // means the model simply does not have it; one that was never asked — write-only, or a
+    // type the app cannot decode — keeps a dash and says why. Leaving those three looking
+    // alike would turn "we did not ask" into "the device has nothing".
+
+    const _specRows = {};
+
+    function readSpecRegisters(driverId, deviceId, idx) {
+      const btn    = document.getElementById(`spec-btn-${idx}`);
+      const status = document.getElementById(`spec-status-${idx}`);
+      const rows   = _specRows[idx] || [];
+
+      btn.disabled     = true;
+      status.innerHTML = `<span class="spinner"></span>${_H.__('settings.registers.specReading')}`;
+      status.style.color = '';
+
+      _H.api('POST', '/debug/registers-spec', { driverId, deviceId }, (err, result) => {
+        btn.disabled = false;
+
+        if (err || !result || result.error) {
+          status.textContent = '✗ ' + (err ? err.message
+            : (result ? result.error : _H.__('settings.tester.noResponseFromApp')));
+          status.style.color = 'var(--c-danger-text)';
+          return;
+        }
+
+        const silent  = new Set(result.unanswered || []);
+        const skipped = new Set(result.skipped || []);
+
+        for (const r of rows) {
+          const cell = document.getElementById(`sv-${idx}-${r.address}`);
+          if (!cell) continue;
+
+          if (Object.prototype.hasOwnProperty.call(result.values || {}, String(r.address))) {
+            cell.innerHTML = fmtVal(result.values[String(r.address)]);
+          } else if (silent.has(r.address)) {
+            cell.innerHTML = `<span class="val val-error" title="${escHtml(_H.__('settings.registers.specNoAnswer'))}">✗</span>`;
+          } else if (skipped.has(r.address) && r.rw === 'WO') {
+            cell.innerHTML = `<span class="val val-null" title="${escHtml(_H.__('settings.registers.specWriteOnly'))}">WO</span>`;
+          }
+          // a row skipped for its type already shows that type, with its own explanation
+        }
+
+        const answered = Object.keys(result.values || {}).length;
+        status.textContent = `✓ ${new Date(result.timestamp).toLocaleTimeString()}`
+          + ` · ${answered} ${_H.__('settings.registers.specAnswered')}`
+          + ` · ${silent.size} ${_H.__('settings.registers.specSilent')}`
+          + ` · ${skipped.size} ${_H.__('settings.registers.specNotAsked')}`;
+        status.style.color = 'var(--c-success-text)';
+      });
     }
 
     function toggleSpec(idx) {

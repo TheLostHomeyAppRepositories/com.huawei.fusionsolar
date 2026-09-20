@@ -93,7 +93,14 @@
       "specNotReadable": "De specificatie geeft dit register een type dat de app niet naar één waarde kan vertalen. Het is hier niet te lezen.",
       "specSearch": "Filter op adres of naam…",
       "specNoMatch": "Geen register komt overeen.",
-      "specTypeConflict": "De specificatie geeft dit register een type dat meer registerwoorden nodig heeft dan zij het toekent, dus lezen kan alleen mislukken."
+      "specTypeConflict": "De specificatie geeft dit register een type dat meer registerwoorden nodig heeft dan zij het toekent, dus lezen kan alleen mislukken.",
+      "specReadAll": "Alles lezen",
+      "specReading": "Leest de hele lijst…",
+      "specAnswered": "beantwoord",
+      "specSilent": "geen antwoord",
+      "specNotAsked": "niet opgevraagd",
+      "specNoAnswer": "Opgevraagd, maar het apparaat antwoordde niet. In deze lijst betekent dat meestal dat het register op jouw model niet bestaat.",
+      "specWriteOnly": "Alleen schrijfbaar. Lezen zou niets betekenen, dus is het niet opgevraagd."
     },
     "logs": {
       "intro": "Live log van de hele app — elke driver en elk apparaat, dezelfde uitvoer als <code>homey app run</code>. Bewaart de laatste 1500 regels; ververst elke 3 seconden zolang dit tabblad open is.",

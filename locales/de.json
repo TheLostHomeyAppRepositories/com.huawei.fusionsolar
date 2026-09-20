@@ -93,7 +93,14 @@
       "specNotReadable": "Die Spezifikation gibt diesem Register einen Typ, den die App nicht in einen einzelnen Wert übersetzen kann. Es lässt sich hier nicht lesen.",
       "specSearch": "Nach Adresse oder Name filtern…",
       "specNoMatch": "Kein Register passt dazu.",
-      "specTypeConflict": "Die Spezifikation gibt diesem Register einen Typ, der mehr Registerworte braucht, als sie ihm zugleich zugesteht — ein Lesen könnte nur scheitern."
+      "specTypeConflict": "Die Spezifikation gibt diesem Register einen Typ, der mehr Registerworte braucht, als sie ihm zugleich zugesteht — ein Lesen könnte nur scheitern.",
+      "specReadAll": "Alle lesen",
+      "specReading": "Liest die ganze Liste…",
+      "specAnswered": "beantwortet",
+      "specSilent": "keine Antwort",
+      "specNotAsked": "nicht abgefragt",
+      "specNoAnswer": "Abgefragt, aber das Gerät hat nicht geantwortet. In dieser Liste heisst das meist, dass es das Register auf deinem Modell nicht gibt.",
+      "specWriteOnly": "Nur beschreibbar. Ein Lesen hätte keine Bedeutung, darum wurde es nicht abgefragt."
     },
     "logs": {
       "intro": "Live-Log der gesamten App — jeder Treiber und jedes Gerät, dieselbe Ausgabe wie <code>homey app run</code>. Behält die letzten 1500 Zeilen; aktualisiert alle 3 Sekunden, solange dieser Tab offen ist.",

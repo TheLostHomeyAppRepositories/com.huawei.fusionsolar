@@ -34,6 +34,10 @@ const {
   SDONGLE_A_REGISTERS,
 } = require('./lib/modbus-registers');
 const { DRIVER_SPEC_REGISTERS } = require('./lib/modbus-spec-registers');
+
+// The reference read covers three to five times as many registers as the app's own,
+// and a model missing some of them makes the reader bisect its way down to singles.
+const SPEC_PROBE_TIMEOUT_MS = 20000;
 const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
@@ -183,6 +187,42 @@ const POLLED_ADDRESSES = Object.fromEntries(
     [...new Set(Object.values(groups).flatMap((g) => Object.values(g).map((def) => def[0])))],
   ]),
 );
+
+// Huawei devices allow one TCP session on the port, so anything that reads outside the
+// normal poll has to stop the poll first — on every device sharing the host, not just the
+// one being read, because they all queue on the same socket. Written out three times before
+// this was extracted; the wait afterwards is for a fetch that was already in flight.
+async function _pauseHostPolling(homey, address, driverIds) {
+  const paused = [];
+  for (const driverId of driverIds) {
+    let driver;
+    try { driver = homey.drivers.getDriver(driverId); } catch { continue; }
+    for (const device of driver.getDevices()) {
+      try {
+        if ((device.getSetting('address') || '').trim() !== address) continue;
+        if (typeof device._stopPolling === 'function') {
+          await device._stopPolling();
+          paused.push(device);
+        }
+      } catch { /* a device mid-teardown is not worth failing the read over */ }
+    }
+  }
+
+  const deadline = Date.now() + 2000;
+  for (const device of paused) {
+    while (device._fetchInProgress && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 100)); // eslint-disable-line no-promise-executor-return
+    }
+  }
+  return paused;
+}
+
+async function _resumeHostPolling(paused) {
+  for (const device of paused) {
+    try { if (typeof device._startPolling === 'function') await device._startPolling(); } catch { /* ignore */ }
+  }
+}
+
 
 // ─── API handlers ─────────────────────────────────────────────────────────────
 
@@ -342,28 +382,7 @@ module.exports = {
       if (!registerSets) return { error: `No register map defined for driver: ${driverId}` };
 
       // ── 1. Pause polling on all devices sharing this host ────────────────────
-      const pausedDevices = [];
-      for (const dId of MODBUS_DRIVER_IDS) {
-        let drv;
-        try { drv = homey.drivers.getDriver(dId); } catch { continue; }
-        for (const dev of drv.getDevices()) {
-          try {
-            if ((dev.getSetting('address') || '').trim() !== address) continue;
-            if (typeof dev._stopPolling === 'function') {
-              await dev._stopPolling();
-              pausedDevices.push(dev);
-            }
-          } catch { /* ignore */ }
-        }
-      }
-
-      // Wait for any in-flight fetch to finish (max 2 s)
-      const deadline = Date.now() + 2000;
-      for (const dev of pausedDevices) {
-        while (dev._fetchInProgress && Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, 100)); // eslint-disable-line no-promise-executor-return
-        }
-      }
+      const pausedDevices = await _pauseHostPolling(homey, address, MODBUS_DRIVER_IDS);
 
       // ── 2. Merge all register groups into a single flat map ──────────────────
       // Use group name + NUL byte as separator so keys are unique across groups.
@@ -382,9 +401,7 @@ module.exports = {
       log(`probe done: ${raw === null ? 'null (connection failed)' : `${Object.keys(raw).length} values`}`);
 
       // ── 4. Resume polling ────────────────────────────────────────────────────
-      for (const dev of pausedDevices) {
-        try { if (typeof dev._startPolling === 'function') await dev._startPolling(); } catch { /* ignore */ }
-      }
+      await _resumeHostPolling(pausedDevices);
 
       // ── 5. Reassemble per-group results ──────────────────────────────────────
       const result = {};
@@ -420,6 +437,92 @@ module.exports = {
   },
 
   /**
+   * POST /debug/registers-spec
+   * Body: { driverId, deviceId }
+   * Reads the device's whole reference list — everything Huawei documents for it, not only
+   * what the app polls — over a single TCP connection.
+   *
+   * Two kinds of row are deliberately never asked for, and both are reported rather than
+   * left looking unread:
+   *   - a row with no decoder (MLD/Bytes, MULTIDATA, and 47321 where the documentation
+   *     contradicts itself), which could not be turned into a value anyway;
+   *   - a write-only row, where a read means nothing and would only cost a round trip.
+   *
+   * The reader batches neighbouring registers and, when a request fails, halves it and
+   * retries each half down to single registers — so an address this particular model does
+   * not implement fails alone instead of taking its neighbours with it. That bisection is
+   * also why the timeout here is generous: the measured work is one to three seconds, and a
+   * device missing many registers can multiply the number of round trips several times over.
+   */
+  async readDebugSpecRegisters({ homey, body }) {
+    const log = (...a) => { try { homey.app.log('[ReadAll]', ...a); } catch { /* no-op */ } };
+    try {
+      const { driverId, deviceId } = body || {};
+      if (!driverId || !deviceId) return { error: 'Missing driverId or deviceId' };
+
+      let driver;
+      try { driver = homey.drivers.getDriver(driverId); } catch {
+        return { error: `Driver not found: ${driverId}` };
+      }
+      const device = driver.getDevices().find((d) => d.getId() === deviceId);
+      if (!device) return { error: 'Device not found' };
+
+      const rows = DRIVER_SPEC_REGISTERS[driverId];
+      if (!rows) return { error: `No reference list for driver: ${driverId}` };
+
+      const settings = device.getSettings();
+      const address  = settings.address;
+      const port     = parseInt(settings.port, 10) || 502;
+      const modbusId = parseInt(settings.modbus_id, 10);
+      const unitId   = Number.isFinite(modbusId) ? modbusId : 1;
+      if (!address) return { error: 'No IP address configured for this device' };
+
+      const asked   = {};
+      const skipped = [];
+      for (const r of rows) {
+        if (!r.type || r.rw === 'WO') { skipped.push(r.address); continue; }
+        asked[String(r.address)] = [r.address, r.length, r.type, r.label, r.decimalPower];
+      }
+
+      log(`${address}:${port} unit=${unitId} — asking for ${Object.keys(asked).length} of ${rows.length}`);
+      const paused = await _pauseHostPolling(homey, address, MODBUS_DRIVER_IDS);
+      let raw;
+      try {
+        raw = await probeModbusUnit(address, port, unitId, asked, SPEC_PROBE_TIMEOUT_MS);
+      } finally {
+        await _resumeHostPolling(paused);
+      }
+
+      if (raw === null) {
+        log('connection failed or timed out');
+        return { error: 'Connection failed or timed out' };
+      }
+
+      // A register that answered and a register that did not are different facts, and the
+      // tab shows them differently, so they are reported separately rather than as one map
+      // with nulls in it.
+      const values     = {};
+      const unanswered = [];
+      for (const key of Object.keys(asked)) {
+        const value = raw[key];
+        if (value === null || value === undefined) unanswered.push(Number(key));
+        else values[key] = value;
+      }
+      log(`answered ${Object.keys(values).length}, silent ${unanswered.length}, not asked ${skipped.length}`);
+
+      return {
+        timestamp: new Date().toISOString(),
+        values,
+        unanswered,
+        skipped,
+      };
+    } catch (err) {
+      log('failed:', err.message);
+      return { error: err.message };
+    }
+  },
+
+  /**
    * POST /debug/register-single
    * Body: { driverId, deviceId, address, length, type }
    * Reads a single Modbus register without touching any other registers.
@@ -447,26 +550,7 @@ module.exports = {
       if (!host) return { error: 'No IP address configured for this device' };
 
       // Pause polling so the TCP slot is free
-      const pausedDevices = [];
-      for (const dId of MODBUS_DRIVER_IDS) {
-        let drv;
-        try { drv = homey.drivers.getDriver(dId); } catch { continue; }
-        for (const dev of drv.getDevices()) {
-          try {
-            if ((dev.getSetting('address') || '').trim() !== host) continue;
-            if (typeof dev._stopPolling === 'function') {
-              await dev._stopPolling();
-              pausedDevices.push(dev);
-            }
-          } catch { /* ignore */ }
-        }
-      }
-      const deadline = Date.now() + 2000;
-      for (const dev of pausedDevices) {
-        while (dev._fetchInProgress && Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, 100)); // eslint-disable-line no-promise-executor-return
-        }
-      }
+      const pausedDevices = await _pauseHostPolling(homey, host, MODBUS_DRIVER_IDS);
 
       log(`reading register ${address} (len=${length} type=${type}) from ${host}:${port} unit=${unitId}`);
       const raw = await probeModbusUnit(host, port, unitId, { r: [address, length, type, '', decimalPower ?? 0] }, 8000);

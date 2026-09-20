@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.244",
+  "version": "1.2.245",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -22,6 +22,10 @@
     "readDebugRegisters": {
       "method": "POST",
       "path": "/debug/registers"
+    },
+    "readDebugSpecRegisters": {
+      "method": "POST",
+      "path": "/debug/registers-spec"
     },
     "postDebugRegisterSingle": {
       "method": "POST",
@@ -436,6 +440,19 @@
       "uiComponent": "sensor",
       "insights": false,
       "icon": "/assets/capabilities/sdongle_type.svg"
+    },
+    "sdongle_software_version": {
+      "type": "string",
+      "title": {
+        "en": "Software Version",
+        "de": "Software-Version",
+        "nl": "Software-versie"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/sdongle_software_version.svg"
     },
     "smartcharger_rated_power": {
       "type": "number",
@@ -7065,7 +7082,8 @@
         "measure_power.grid_active_power",
         "measure_power.battery",
         "measure_power.active_power",
-        "sdongle_type"
+        "sdongle_type",
+        "sdongle_software_version"
       ],
       "capabilitiesOptions": {
         "measure_power": {

@@ -12,11 +12,16 @@ const modbusPolling = require('../../lib/modbus-polling');
 const DEFAULT_INTERVAL_S = 60;
 const MIN_INTERVAL_S     = 10;
 
+// The reference table lists 0, 2, 3 and 5, with 5 as WLAN-FE — but Andi's own SDongle-A,
+// which is the Ethernet variant, reports 4. Both are mapped rather than picking a side: the
+// 4 is what the hardware in the field says, the 5 is what the documentation says, and an
+// unknown value still falls through to "Type n" rather than borrowing a neighbour's name.
 const CONNECTION_TYPE_MAP = {
   0: 'N/A',
   2: 'WLAN',
   3: '4G',
   4: 'WLAN-FE',
+  5: 'WLAN-FE',
 };
 
 const REQUIRED_CAPABILITIES = [
@@ -26,6 +31,7 @@ const REQUIRED_CAPABILITIES = [
   'measure_power.battery',           // battery power (W): positive = charging, negative = discharging
   'measure_power.active_power',      // total system active power (W)
   'sdongle_type',                    // connection type: N/A, WLAN, 4G, WLAN-FE
+  'sdongle_software_version',        // the dongle's own OS version, register 30050
 ];
 
 class SdonglaAModbusDevice extends Device {
@@ -121,6 +127,12 @@ class SdonglaAModbusDevice extends Device {
       if (data.connectionType !== null && data.connectionType !== undefined) {
         const typeLabel = CONNECTION_TYPE_MAP[data.connectionType] ?? `Type ${data.connectionType}`;
         await this._set('sdongle_type', typeLabel);
+      }
+
+      // Guarded on truthiness, not on null: a dongle that answers with an empty string must
+      // not wipe a version that was read correctly a moment ago.
+      if (data.softwareVersion) {
+        await this._set('sdongle_software_version', data.softwareVersion);
       }
 
 
