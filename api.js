@@ -35,10 +35,20 @@ const {
 } = require('./lib/modbus-registers');
 const { DRIVER_SPEC_REGISTERS } = require('./lib/modbus-spec-registers');
 
-// The reference read covers three to five times as many registers as the app's own,
-// and a model missing some of them makes the reader bisect its way down to singles.
+// A Modbus request to a Huawei device costs 400-900 ms, measured in the field across four
+// probes — not the 11 ms this was first sized from. The inverter's list needs 31 requests,
+// so reading it in one go runs 15-30 s and dies on its own timeout, taking the socket with
+// it. It is therefore read a few requests at a time.
+//
+// Eight requests is roughly five seconds of work plus a second to connect: short enough
+// that every call returns promptly and the rows fill in visibly, long enough that the
+// per-chunk connect is not most of the cost.
+const SPEC_GROUPS_PER_CHUNK = 8;
+
+// Generous on purpose: eight requests is ~5 s, and a model missing several of them makes
+// the reader bisect its way down to singles, which multiplies the round trips.
 const SPEC_PROBE_TIMEOUT_MS = 20000;
-const { probeModbusUnit, withHostLock } = require('./lib/modbus-client');
+const { probeModbusUnit, withHostLock, buildReadPlan } = require('./lib/modbus-client');
 const { version: APP_VERSION, flow: APP_FLOW } = require('./app.json');
 
 // Which trigger cards does the EMS never fire? Not a list kept here — a list here would
@@ -450,14 +460,22 @@ module.exports = {
    *
    * The reader batches neighbouring registers and, when a request fails, halves it and
    * retries each half down to single registers — so an address this particular model does
-   * not implement fails alone instead of taking its neighbours with it. That bisection is
-   * also why the timeout here is generous: the measured work is one to three seconds, and a
-   * device missing many registers can multiply the number of round trips several times over.
+   * not implement fails alone instead of taking its neighbours with it. The field log shows
+   * that working: 35155 and 42405 answer "Illegal Data Address" on Andi's inverter and are
+   * isolated without disturbing anything around them.
+   *
+   * The list is read a few requests at a time. `chunk` selects which few; the reply says how
+   * many there are in total so the caller can walk them in order. Each chunk opens its own
+   * connection, which costs a second, and that is the price of every call returning promptly
+   * instead of one call running half a minute and dying on its own timeout — which is what
+   * 1.2.245 did, because it was sized from an estimate of 11 ms per request when the real
+   * figure is 400-900 ms.
    */
   async readDebugSpecRegisters({ homey, body }) {
     const log = (...a) => { try { homey.app.log('[ReadAll]', ...a); } catch { /* no-op */ } };
     try {
       const { driverId, deviceId } = body || {};
+      const chunk = Number(body && body.chunk) || 0;
       if (!driverId || !deviceId) return { error: 'Missing driverId or deviceId' };
 
       let driver;
@@ -484,18 +502,31 @@ module.exports = {
         asked[String(r.address)] = [r.address, r.length, r.type, r.label, r.decimalPower];
       }
 
-      log(`${address}:${port} unit=${unitId} — asking for ${Object.keys(asked).length} of ${rows.length}`);
+      // The plan is what the read actually costs: neighbouring registers ride in one request,
+      // and it is requests that take the time. Chunking by plan groups therefore gives every
+      // call the same amount of work, which chunking by register count would not.
+      const plan   = buildReadPlan(asked);
+      const chunks = Math.max(1, Math.ceil(plan.length / SPEC_GROUPS_PER_CHUNK));
+      if (chunk < 0 || chunk >= chunks) return { error: `No such chunk: ${chunk} of ${chunks}` };
+
+      const groups = plan.slice(chunk * SPEC_GROUPS_PER_CHUNK, (chunk + 1) * SPEC_GROUPS_PER_CHUNK);
+      const slice  = {};
+      for (const group of groups) for (const entry of group) slice[entry.name] = entry.def;
+
+      log(`${address}:${port} unit=${unitId} — chunk ${chunk + 1}/${chunks}: `
+        + `${Object.keys(slice).length} registers in ${groups.length} request(s)`);
+
       const paused = await _pauseHostPolling(homey, address, MODBUS_DRIVER_IDS);
       let raw;
       try {
-        raw = await probeModbusUnit(address, port, unitId, asked, SPEC_PROBE_TIMEOUT_MS);
+        raw = await probeModbusUnit(address, port, unitId, slice, SPEC_PROBE_TIMEOUT_MS);
       } finally {
         await _resumeHostPolling(paused);
       }
 
       if (raw === null) {
-        log('connection failed or timed out');
-        return { error: 'Connection failed or timed out' };
+        log(`chunk ${chunk + 1}/${chunks}: connection failed or timed out`);
+        return { error: 'Connection failed or timed out', chunk, chunks };
       }
 
       // A register that answered and a register that did not are different facts, and the
@@ -503,18 +534,25 @@ module.exports = {
       // with nulls in it.
       const values     = {};
       const unanswered = [];
-      for (const key of Object.keys(asked)) {
+      for (const key of Object.keys(slice)) {
         const value = raw[key];
         if (value === null || value === undefined) unanswered.push(Number(key));
         else values[key] = value;
       }
-      log(`answered ${Object.keys(values).length}, silent ${unanswered.length}, not asked ${skipped.length}`);
+      log(`chunk ${chunk + 1}/${chunks}: answered ${Object.keys(values).length}, `
+        + `silent ${unanswered.length}`);
 
       return {
         timestamp: new Date().toISOString(),
+        chunk,
+        chunks,
+        requests: groups.length,
         values,
         unanswered,
-        skipped,
+        // The registers nobody will ask for do not belong to any chunk. Reported once, with
+        // the first, so the caller can mark them straight away rather than only learning
+        // about them if the walk happens to finish.
+        skipped: chunk === 0 ? skipped : [],
       };
     } catch (err) {
       log('failed:', err.message);

@@ -100,7 +100,8 @@
       "specSilent": "no answer",
       "specNotAsked": "not asked",
       "specNoAnswer": "Asked for, but the device did not answer. On this list that usually means the register does not exist on your model.",
-      "specWriteOnly": "Write-only. Reading it would mean nothing, so it was not asked for."
+      "specWriteOnly": "Write-only. Reading it would mean nothing, so it was not asked for.",
+      "specStoppedAfter": "stopped after"
     },
     "logs": {
       "intro": "Live log of the whole app — every driver and device, the same output as <code>homey app run</code>. Keeps the last 1500 lines; refreshes every 3 seconds while this tab is open.",

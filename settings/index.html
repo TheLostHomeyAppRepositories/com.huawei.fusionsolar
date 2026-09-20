@@ -2101,45 +2101,80 @@
       const btn    = document.getElementById(`spec-btn-${idx}`);
       const status = document.getElementById(`spec-status-${idx}`);
       const rows   = _specRows[idx] || [];
+      const byAddress = new Map(rows.map((r) => [r.address, r]));
 
-      btn.disabled     = true;
-      status.innerHTML = `<span class="spinner"></span>${_H.__('settings.registers.specReading')}`;
+      btn.disabled       = true;
       status.style.color = '';
 
-      _H.api('POST', '/debug/registers-spec', { driverId, deviceId }, (err, result) => {
-        btn.disabled = false;
+      const tally = { answered: 0, silent: 0, skipped: 0 };
 
-        if (err || !result || result.error) {
-          status.textContent = '✗ ' + (err ? err.message
-            : (result ? result.error : _H.__('settings.tester.noResponseFromApp')));
-          status.style.color = 'var(--c-danger-text)';
-          return;
+      const fill = (result) => {
+        for (const [key, value] of Object.entries(result.values || {})) {
+          const cell = document.getElementById(`sv-${idx}-${Number(key)}`);
+          if (cell) { cell.innerHTML = fmtVal(value); tally.answered += 1; }
         }
-
-        const silent  = new Set(result.unanswered || []);
-        const skipped = new Set(result.skipped || []);
-
-        for (const r of rows) {
-          const cell = document.getElementById(`sv-${idx}-${r.address}`);
-          if (!cell) continue;
-
-          if (Object.prototype.hasOwnProperty.call(result.values || {}, String(r.address))) {
-            cell.innerHTML = fmtVal(result.values[String(r.address)]);
-          } else if (silent.has(r.address)) {
+        for (const address of result.unanswered || []) {
+          const cell = document.getElementById(`sv-${idx}-${address}`);
+          if (cell) {
             cell.innerHTML = `<span class="val val-error" title="${escHtml(_H.__('settings.registers.specNoAnswer'))}">✗</span>`;
-          } else if (skipped.has(r.address) && r.rw === 'WO') {
+            tally.silent += 1;
+          }
+        }
+        for (const address of result.skipped || []) {
+          tally.skipped += 1;
+          const row  = byAddress.get(address);
+          const cell = document.getElementById(`sv-${idx}-${address}`);
+          // A row skipped for its type already shows that type with its own explanation;
+          // only the write-only ones have nothing to say for themselves yet.
+          if (cell && row && row.rw === 'WO') {
             cell.innerHTML = `<span class="val val-null" title="${escHtml(_H.__('settings.registers.specWriteOnly'))}">WO</span>`;
           }
-          // a row skipped for its type already shows that type, with its own explanation
         }
+      };
 
-        const answered = Object.keys(result.values || {}).length;
-        status.textContent = `✓ ${new Date(result.timestamp).toLocaleTimeString()}`
-          + ` · ${answered} ${_H.__('settings.registers.specAnswered')}`
-          + ` · ${silent.size} ${_H.__('settings.registers.specSilent')}`
-          + ` · ${skipped.size} ${_H.__('settings.registers.specNotAsked')}`;
-        status.style.color = 'var(--c-success-text)';
-      });
+      const stop = (message, colour) => {
+        btn.disabled = false;
+        status.textContent = message;
+        status.style.color = colour;
+      };
+
+      // One call per chunk, in order. The device answers a Modbus request in about half a
+      // second, so the whole of an inverter's list is half a minute of work — far too long
+      // for one call to sit on. Walking it in pieces keeps every call short, shows how far
+      // it has got, and leaves the rows already filled in standing if a later piece fails.
+      const walk = (chunk) => {
+        _H.api('POST', '/debug/registers-spec', { driverId, deviceId, chunk }, (err, result) => {
+          if (err || !result || result.error) {
+            const why = err ? err.message
+              : (result && result.error ? result.error : _H.__('settings.tester.noResponseFromApp'));
+            const how = chunk > 0
+              ? ` — ${_H.__('settings.registers.specStoppedAfter')} ${tally.answered + tally.silent}`
+              : '';
+            stop(`✗ ${why}${how}`, 'var(--c-danger-text)');
+            return;
+          }
+
+          fill(result);
+
+          const done  = chunk + 1;
+          const total = result.chunks || 1;
+          if (done < total) {
+            status.innerHTML = `<span class="spinner"></span>`
+              + `${_H.__('settings.registers.specReading')} ${done}/${total}`;
+            walk(done);
+            return;
+          }
+
+          stop(`✓ ${new Date(result.timestamp).toLocaleTimeString()}`
+            + ` · ${tally.answered} ${_H.__('settings.registers.specAnswered')}`
+            + ` · ${tally.silent} ${_H.__('settings.registers.specSilent')}`
+            + ` · ${tally.skipped} ${_H.__('settings.registers.specNotAsked')}`,
+          'var(--c-success-text)');
+        });
+      };
+
+      status.innerHTML = `<span class="spinner"></span>${_H.__('settings.registers.specReading')}`;
+      walk(0);
     }
 
     function toggleSpec(idx) {
