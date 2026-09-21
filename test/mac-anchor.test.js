@@ -109,12 +109,21 @@ function fakeDevice(opts = {}) {
     error: (...a) => dev.logs.push('ERR ' + a.join(' ')),
     get pollDefaultS() { return 60; },
     get pollMinS()     { return 10; },
+    // Every interval ever created, and the ids still running. A timer that was created and
+    // never cleared is invisible in a count of creations — it only shows up as a gap
+    // between the two.
+    liveIds: new Set(),
+    liveTimers() { return [...dev.liveIds]; },
     homey: {
       // Timers are held, never fired on their own, so a test decides whether the wait or
       // the answer wins instead of the clock deciding it.
       setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
-      setInterval: (fn, ms) => { dev.intervals.push({ fn, ms }); return dev.intervals.length; },
-      clearInterval: () => {},
+      setInterval: (fn, ms) => {
+        const id = dev.intervals.push({ fn, ms });   // 1-based, and the id doubles as the index
+        dev.liveIds.add(id);
+        return id;
+      },
+      clearInterval: (id) => { dev.liveIds.delete(id); },
       arp: {
         getMAC: (ip) => { dev.arpCalls.push(ip); return arp(ip); },
       },
@@ -240,6 +249,49 @@ test('a poll that throws is still reported, and teaches nothing', async () => {
   await tick(dev, async () => { dev._lastPollStart = 1000; throw new Error('socket closed'); });
   assert.deepStrictEqual(dev.arpCalls, []);
   assert.ok(dev.logs.some((l) => l.startsWith('ERR Poll failed')), 'the existing error path survives');
+});
+
+// ── the poll timer: starting twice must not leave one behind ────────────────
+
+test('one device runs exactly one poll loop and one watchdog', async () => {
+  const dev = fakeDevice();
+  dev._fetchAndUpdate = async () => {};
+  await dev._startPolling();
+  assert.strictEqual(dev.liveTimers().length, 2, 'the poll timer and its watchdog');
+  await dev._stopPolling();
+  assert.deepStrictEqual(dev.liveTimers(), [], 'and both can be stopped again');
+});
+
+test('starting the poll twice leaves no timer nobody can reach', async () => {
+  // `_stopPolling` can only clear what is in the field. A second start used to overwrite the
+  // field, and the first timer then polled forever with its handle lost — the device asks
+  // the inverter twice per interval for the rest of the app's life, on a bus that answers
+  // one connection at a time.
+  const dev = fakeDevice();
+  dev._fetchAndUpdate = async () => {};
+  await dev._startPolling();
+  await dev._startPolling();
+  assert.strictEqual(dev.liveTimers().length, 2, 'starting twice still runs one of each');
+  await dev._stopPolling();
+  assert.deepStrictEqual(dev.liveTimers(), [], 'nothing survives the stop');
+});
+
+test('two readers pausing and resuming around each other leave the device with one loop', async () => {
+  // The real sequence, found reviewing 1.2.249: reader A pauses the device, reader B pauses
+  // it while it is already paused and finds nothing to clear, then both resume. Since 1.2.245
+  // four code paths pause and resume around a read, so this ordering is ordinary, not exotic.
+  const dev = fakeDevice();
+  dev._fetchAndUpdate = async () => {};
+  await dev._startPolling();          // the device polls normally
+
+  await dev._stopPolling();           // A pauses
+  await dev._stopPolling();           // B pauses — nothing left to clear
+  await dev._startPolling();          // A resumes
+  await dev._startPolling();          // B resumes
+
+  assert.strictEqual(dev.liveTimers().length, 2, 'an orphaned poll loop survived the overlap');
+  await dev._stopPolling();
+  assert.deepStrictEqual(dev.liveTimers(), [], 'and the device can still be shut down cleanly');
 });
 
 // ── the label and the moved-device report ───────────────────────────────────
@@ -488,6 +540,28 @@ test('every string the new interface shows exists in all three languages', () =>
       assert.strictEqual(typeof value, 'string', `${lang}.json is missing ${key}`);
     }
   }
+});
+
+test('a row carrying a MAC can break instead of widening the page', () => {
+  // Found in the field on the first look at 1.2.249: the manufacturer label may not be
+  // broken mid-address, so on a panel too narrow for it the label sets the row's minimum
+  // width — and the whole settings page grew a sideways scrollbar. Every row that holds an
+  // unbreakable label has to be allowed to wrap.
+  const html = fs.readFileSync(require.resolve('../settings/index.html'), 'utf8');
+  for (const selector of ['.host-row', '.moved-row']) {
+    const rule = html.slice(html.indexOf(`    ${selector} {`));
+    const body = rule.slice(0, rule.indexOf('}'));
+    assert.ok(body.includes('display: flex'), `${selector} is no longer a flex row — re-check this test`);
+    assert.ok(body.includes('flex-wrap: wrap'), `${selector} cannot wrap, so a long label widens the page`);
+  }
+
+  // The other half of the same decision: the ROW gives way, the ADDRESS never does.
+  // "b0:c7:87:ee:" on one line and "95:12" on the next is not a MAC anybody can read, and
+  // letting it wrap would have been the lazy way to stop the page from widening.
+  const macRule = html.slice(html.indexOf('    .host-row .host-mac {'));
+  const macBody = macRule.slice(0, macRule.indexOf('}'));
+  assert.ok(macBody.includes('white-space: nowrap'), 'the MAC may be pushed to its own line, never broken across two');
+  assert.ok(macBody.includes('max-width: 100%'), 'and it stays inside the row even on a panel narrower than itself');
 });
 
 test('the two new routes are declared in the manifest', () => {

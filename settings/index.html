@@ -821,13 +821,20 @@
       border-radius: 6px;
       border: 1px solid var(--c-fill);
       margin-bottom: 5px;
+      /* The row must be able to break. Without this the manufacturer label — which may not
+         be broken mid-address — sets the row's minimum width, and the whole settings page
+         gets a sideways scrollbar on a panel this narrow. */
+      flex-wrap: wrap;
     }
     .host-row .host-ip { font-family: 'SF Mono', Menlo, monospace; font-size: 13px; font-weight: 600; min-width: 130px; }
     .port-badge { background: var(--c-tint-accent); color: var(--c-link); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
     .probe-btn { padding: 3px 10px; font-size: 12px; }
     /* Pushed to the right so the manufacturer reads as an annotation to the row rather than
-       as another thing to act on — it says who made the box, never what the box is. */
-    .host-row .host-mac { margin-left: auto; font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--c-label-2); white-space: nowrap; }
+       as another thing to act on — it says who made the box, never what the box is. On a
+       panel too narrow for it, the row wraps and the label lands on its own line instead of
+       widening the page. A MAC is never broken across lines: half an address is unreadable,
+       and max-width keeps it inside the row even then. */
+    .host-row .host-mac { margin-left: auto; max-width: 100%; font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--c-label-2); white-space: nowrap; }
     .host-row .host-mac .vendor { color: var(--c-label); font-weight: 600; font-family: inherit; }
     .moved-box { border: 1px solid var(--c-separator); border-left: 3px solid var(--c-accent); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
     .moved-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0; }
