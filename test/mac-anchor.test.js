@@ -23,6 +23,7 @@
 const test   = require('node:test');
 const assert = require('node:assert');
 const fs     = require('fs');
+const vm     = require('node:vm');
 
 const vendor  = require('../lib/mac-vendor');
 const polling = require('../lib/modbus-polling');
@@ -562,6 +563,112 @@ test('a row carrying a MAC can break instead of widening the page', () => {
   const macBody = macRule.slice(0, macRule.indexOf('}'));
   assert.ok(macBody.includes('white-space: nowrap'), 'the MAC may be pushed to its own line, never broken across two');
   assert.ok(macBody.includes('max-width: 100%'), 'and it stays inside the row even on a panel narrower than itself');
+});
+
+// ── showing the anchor, so nobody has to read the log for it ────────────────
+//
+// Built after a real detour: an app log covering three and a half hours was read as proof
+// that the anchor was broken, when in fact it was working and had simply been learned during
+// an earlier run — the line is printed once per device, ever. Nothing in the interface could
+// settle that, so the question took a scan, a guess and a round trip. This row settles it.
+
+function loadConnFields() {
+  const html = fs.readFileSync(require.resolve('../settings/index.html'), 'utf8');
+  const cut = (from, to) => {
+    const a = html.indexOf(from);
+    const b = html.indexOf(to, a);
+    assert.ok(a !== -1 && b > a, `could not find ${from} … ${to}`);
+    return html.slice(a, b);
+  };
+  return cut('function escHtml(', 'function regCellId(')
+       + cut('function buildConnFields(', '// ── Capabilities card');
+}
+
+// `__` returns the key itself, so an assertion names the string the page asks for rather
+// than one language's wording.
+function connFields(dev) {
+  const ctx = { _H: { __: (k) => k }, Date, Number, String };
+  vm.createContext(ctx);
+  vm.runInContext(loadConnFields(), ctx);
+  return ctx.buildConnFields(dev);
+}
+
+const SETTINGS = { address: ANDIS_HOST, port: '502', modbus_id: '1', poll_interval: '30' };
+
+test('a learned anchor is on the device card, not only in the log', () => {
+  const html = connFields({
+    settings: SETTINGS,
+    macAnchor: { mac: ANDIS_MAC, address: ANDIS_HOST, port: 502, unitId: 1, at: '2026-09-21T12:34:00.000Z' },
+  });
+  assert.ok(html.includes('settings.tester.macAnchor'), 'the row is not labelled');
+  assert.ok(html.includes(ANDIS_MAC), 'the MAC itself is missing');
+  assert.ok(!html.includes('settings.tester.macNotLearned'), 'a learned anchor must not read as missing');
+});
+
+test('no anchor yet says so, instead of leaving a blank', () => {
+  // The distinction this row exists for: "not learned yet" and "nothing has moved" look
+  // identical from outside, and only the first one means the search cannot work yet.
+  for (const macAnchor of [null, undefined, {}, { mac: null }]) {
+    const html = connFields({ settings: SETTINGS, macAnchor });
+    assert.ok(html.includes('settings.tester.macNotLearned'), `${JSON.stringify(macAnchor)} left the row empty`);
+  }
+});
+
+test('an anchor learned at a different address shows which one', () => {
+  // The two disagreeing is the interesting part: the device answers where the settings say,
+  // but its anchor remembers somewhere else — usually a hand-edited address.
+  const moved = connFields({
+    settings: SETTINGS,
+    macAnchor: { mac: ANDIS_MAC, address: '10.160.12.50', at: '2026-09-21T12:34:00.000Z' },
+  });
+  assert.ok(moved.includes('10.160.12.50'), 'the address the anchor belongs to is not shown');
+
+  const settled = connFields({
+    settings: SETTINGS,
+    macAnchor: { mac: ANDIS_MAC, address: ANDIS_HOST, at: '2026-09-21T12:34:00.000Z' },
+  });
+  assert.ok(!settled.includes(`(${ANDIS_HOST})`), 'an agreeing address is noise, not information');
+});
+
+test('a device with no settings at all still renders', () => {
+  // getDebugDevices can hand over a device mid-teardown. A row that throws takes the whole
+  // card list with it, which is a poor trade for one missing MAC.
+  assert.doesNotThrow(() => connFields({}));
+  assert.ok(connFields({}).includes('settings.tester.macNotLearned'));
+});
+
+test('both device cards pass the whole device, not just its settings', () => {
+  // buildConnFields used to take dev.settings. If one call site is left behind, that card
+  // silently loses the MAC row while the other keeps it.
+  const html = fs.readFileSync(require.resolve('../settings/index.html'), 'utf8');
+  const calls = [...html.matchAll(/buildConnFields\(([^)]*)\)/g)].map((m) => m[1].trim());
+  assert.strictEqual(calls[0], 'dev', 'the definition itself changed shape — re-check this test');
+  assert.deepStrictEqual(calls.slice(1), ['dev', 'dev'], 'a call site still passes something else');
+});
+
+test('the text export carries the MAC too, present or not', () => {
+  // A pasted export is how a problem arrives from the field. A line that is simply absent
+  // reads as "old version"; "not learned yet" is an answer.
+  const html = fs.readFileSync(require.resolve('../settings/index.html'), 'utf8');
+  const exporter = html.slice(html.indexOf('function buildDebugText'), html.indexOf('  CAPABILITIES'));
+  assert.ok(exporter.includes('macAnchor'), 'the export never looks at the anchor');
+  assert.ok(exporter.includes('not learned yet'), 'the export omits the line instead of stating the absence');
+  // The label too, not only the value: the export is read by eye, and a line whose name
+  // changed is a line nobody finds. It sits with IP/Port/Unit ID, padded to the same column.
+  assert.ok(/lines\.push\(`MAC: +\$\{/.test(exporter), 'the exported line is no longer labelled MAC');
+});
+
+test('a Homey without ARP says so once, not on every poll', () => {
+  // Every other exit from _learnMac is a healthy one and stays quiet. This one is not: the
+  // anchor can never be learned, and silence makes that indistinguishable from waiting.
+  const dev = fakeDevice();
+  delete dev.homey.arp;
+  return (async () => {
+    for (let i = 0; i < 5; i++) await dev._learnMac();
+    const said = dev.logs.filter((l) => l.includes('No ARP'));
+    assert.strictEqual(said.length, 1, `expected exactly one line, got ${said.length}`);
+    assert.strictEqual(dev.store[polling.MAC_ANCHOR_KEY], undefined, 'and still no anchor');
+  })();
 });
 
 test('the two new routes are declared in the manifest', () => {

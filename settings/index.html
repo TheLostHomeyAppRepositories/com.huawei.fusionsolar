@@ -2301,13 +2301,45 @@
         </div>`;
     }
 
-    function buildConnFields(s) {
+    // Takes the whole device, not only its settings: the MAC below is not a setting anybody
+    // made, it is something the device learned about itself.
+    function buildConnFields(dev) {
+      const s = dev.settings || {};
       return [
         s.address       ? `<div class="conn-item">${_H.__('settings.tester.ip')} <span>${escHtml(s.address)}</span></div>` : '',
         s.port          ? `<div class="conn-item">${_H.__('settings.tester.port')} <span>${s.port}</span></div>` : '',
         s.modbus_id !== undefined ? `<div class="conn-item">${_H.__('settings.tester.unitId')} <span>${s.modbus_id}</span></div>` : '',
         s.poll_interval ? `<div class="conn-item">${_H.__('settings.tester.poll')} <span>${s.poll_interval}s</span></div>` : '',
+        buildAnchorField(dev),
       ].join('');
+    }
+
+    // The MAC the device learned from the address that last worked — the thing that lets a
+    // scan say "this is your battery at a new address" rather than "something answers here".
+    //
+    // It is shown even when it is missing, and that is the point. It is learned on the poll
+    // timer, so a freshly updated installation has none for up to one interval, and until it
+    // does, a device that moved cannot be found again. Without this line the only way to tell
+    // "no anchor yet" from "nothing has moved" was to read the app log — which is exactly the
+    // detour this row exists to remove.
+    function buildAnchorField(dev) {
+      const a = dev.macAnchor;
+      if (!a || !a.mac) {
+        return `<div class="conn-item">${_H.__('settings.tester.macAnchor')} <span>${_H.__('settings.tester.macNotLearned')}</span></div>`;
+      }
+      // The address it was learned for is worth showing only when it is no longer the one in
+      // the settings: then the two disagree, and that disagreement is the interesting part.
+      const stale = (dev.settings || {}).address && a.address && a.address !== dev.settings.address
+        ? ` <span style="font-weight:400;color:var(--c-label-2)">(${escHtml(String(a.address))})</span>`
+        : '';
+      const when = a.at ? ` <span style="font-weight:400;color:var(--c-label-2)">· ${escHtml(fmtAnchorDate(a.at))}</span>` : '';
+      return `<div class="conn-item">${_H.__('settings.tester.macAnchor')} <span>${escHtml(String(a.mac))}</span>${stale}${when}</div>`;
+    }
+
+    function fmtAnchorDate(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString(undefined, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     }
 
     // ── Capabilities card (Capabilities tab) ───────────────────────────────────
@@ -2318,7 +2350,7 @@
         <div class="device-card">
           ${buildCardHeader(dev, id)}
           <div class="card-body" id="body-${id}">
-            <div class="conn-info">${buildConnFields(dev.settings || {})}</div>
+            <div class="conn-info">${buildConnFields(dev)}</div>
             <div class="section-title">${_H.__('settings.tabs.capabilities')}</div>
             ${buildCapTable(dev.capabilities || {})}
           </div>
@@ -2335,7 +2367,7 @@
         <div class="device-card">
           ${buildCardHeader(dev, id)}
           <div class="card-body" id="body-${id}">
-            <div class="conn-info">${buildConnFields(dev.settings || {})}</div>
+            <div class="conn-info">${buildConnFields(dev)}</div>
             <div class="section-title" style="display:flex;align-items:center;gap:8px">
               <span>${_H.__('settings.tabs.registers')}</span>
               <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--c-label-3);font-size:12px">${_H.__('settings.tester.mayNeedMultipleAttempts')}</span>
@@ -2428,6 +2460,11 @@
         if (s.address)             lines.push(`IP:        ${s.address}`);
         if (s.port)                lines.push(`Port:      ${s.port}`);
         if (s.modbus_id !== undefined) lines.push(`Unit ID:   ${s.modbus_id}`);
+        // Always printed, present or not: in a pasted export, a missing line reads as
+        // "the exporter is old", while "not learned yet" is an answer.
+        lines.push(`MAC:       ${dev.macAnchor && dev.macAnchor.mac
+          ? dev.macAnchor.mac + (dev.macAnchor.address && dev.macAnchor.address !== s.address ? ` (learned at ${dev.macAnchor.address})` : '')
+          : 'not learned yet'}`);
         lines.push('');
 
         // Capabilities

@@ -185,7 +185,9 @@
       "adoptAddress": "Use this address",
       "adopting": "Setting…",
       "adopted": "Set — the device reports back at its next poll.",
-      "adoptFailed": "Could not set the address:"
+      "adoptFailed": "Could not set the address:",
+      "macAnchor": "MAC",
+      "macNotLearned": "not learned yet"
     },
     "driverSub": {
       "inverterDirect": "Inverter — direct Modbus",

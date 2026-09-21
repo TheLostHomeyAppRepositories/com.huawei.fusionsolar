@@ -185,7 +185,9 @@
       "adoptAddress": "Adres overnemen",
       "adopting": "Overnemen…",
       "adopted": "Overgenomen — het apparaat meldt zich bij de volgende uitlezing.",
-      "adoptFailed": "Overnemen mislukt:"
+      "adoptFailed": "Overnemen mislukt:",
+      "macAnchor": "MAC",
+      "macNotLearned": "nog niet geleerd"
     },
     "driverSub": {
       "inverterDirect": "Omvormer — direct Modbus",

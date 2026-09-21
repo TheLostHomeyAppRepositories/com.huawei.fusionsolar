@@ -185,7 +185,9 @@
       "adoptAddress": "Adresse übernehmen",
       "adopting": "Übernehme…",
       "adopted": "Übernommen — das Gerät meldet sich beim nächsten Abruf.",
-      "adoptFailed": "Übernahme fehlgeschlagen:"
+      "adoptFailed": "Übernahme fehlgeschlagen:",
+      "macAnchor": "MAC",
+      "macNotLearned": "noch nicht gelernt"
     },
     "driverSub": {
       "inverterDirect": "Wechselrichter — direktes Modbus",
