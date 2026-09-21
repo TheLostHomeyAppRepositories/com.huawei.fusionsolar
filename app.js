@@ -8,7 +8,11 @@ class FusionSolarApp extends App {
   async onInit() {
     this._appLogBuffer = [];
     this._wrapLogger(); // capture stdout/stderr into the ring buffer for the Settings → Logs tab
-    this.log('FusionSolar app is running...');
+    // The version, because a pasted log is how a problem arrives — and twice now the
+    // answer to "which build is this?" had to be reconstructed from commit timestamps,
+    // once leading straight to the wrong conclusion.
+    const version = this.homey.manifest && this.homey.manifest.version;
+    this.log(`FusionSolar app${version ? ` v${version}` : ''} is running...`);
 
     this._coordinator = new OpenAPICoordinator(this.homey);
 

@@ -58,6 +58,11 @@ const MAC_LOOKUP_MAX_HOSTS = 64;
 
 // The budget for the whole MAC phase, not for one host. The settings page gives up at
 // twelve seconds and the scan that precedes this already spends four to five of them.
+//
+// Larger than ARP_TIMEOUT_MS in lib/modbus-polling.js on purpose, and the two were briefly
+// merged on the theory that the smaller one was starving the anchor. It was not: the field
+// showed the anchor learning fine at two seconds. They measure different things — a ceiling
+// for a phase resolving up to 64 addresses at once, against the wait for a single address.
 const MAC_LOOKUP_BUDGET_MS = 6000;
 
 const IPV4_RE = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;

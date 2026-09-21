@@ -731,3 +731,21 @@ test('a held tick reports nothing released, rather than the last live figure', (
   assert.match(ensure, /'measure_released_surplus'/,
     'the capability is never added to devices that already exist');
 });
+
+// A pasted log is how a problem arrives from the field, and the first question about any log
+// is which build produced it. Twice that had to be reconstructed from commit timestamps, and
+// once the reconstruction led straight to a wrong conclusion about a feature that was fine.
+test('the startup line names the version that is running', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync('app.js', 'utf8');
+  const at = src.indexOf('is running...');
+  assert.ok(at > 0, 'the startup line is gone');
+
+  // The whole statement, not one line: the version is read into a variable first, because
+  // it has to survive a Homey that hands over no manifest at all.
+  const block = src.slice(Math.max(0, at - 400), at + 60);
+  assert.match(block, /manifest\.version/,
+    'the startup line no longer says which version it is — read from the manifest, not a literal');
+  assert.match(block, /\$\{version \?/,
+    'the version is used unguarded — a missing manifest would throw inside onInit and the app would not start');
+});

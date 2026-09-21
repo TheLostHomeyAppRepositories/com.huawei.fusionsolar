@@ -194,6 +194,91 @@ test('a lookup that fails, hangs or answers nonsense leaves no anchor and no thr
   assert.strictEqual(hangs.store[polling.MAC_ANCHOR_KEY], undefined);
 });
 
+// ── every way of giving up has to say so ────────────────────────────────────
+//
+// This is the one that was missing, and its absence cost a day in the field. The anchor was
+// failing on every single poll while the scan in the settings resolved the same MAC without
+// trouble; from outside, a feature that gives up silently is indistinguishable from one that
+// is working and simply has nothing to report. Each path out now leaves a trace.
+
+test('a lookup that runs out of time says so, and says it once', async () => {
+  const dev = fakeDevice({ arp: () => new Promise(() => {}) });
+  for (let i = 0; i < 3; i++) {
+    const pending = dev._learnMac();
+    await flush();
+    dev.fireTimers();
+    await pending;
+  }
+  const said = dev.logs.filter((l) => l.includes('did not answer'));
+  assert.strictEqual(said.length, 1, `expected one line, got ${said.length}`);
+  assert.ok(said[0].includes(String(polling.ARP_TIMEOUT_MS)), 'the line does not say how long it waited');
+  assert.ok(said[0].includes(ANDIS_HOST), 'the line does not say which address');
+});
+
+test('an answer that is not a MAC says what it was', async () => {
+  // "Nothing usable came back" and "the wait ran out" need different repairs. Printing what
+  // arrived is what makes the next reader able to tell them apart without guessing.
+  const dev = fakeDevice({ arp: async () => '' });
+  for (let i = 0; i < 3; i++) await dev._learnMac();
+  const said = dev.logs.filter((l) => l.includes('not a MAC'));
+  assert.strictEqual(said.length, 1, `expected one line, got ${said.length}`);
+  assert.ok(said[0].includes('string'), 'the line does not say what kind of value came back');
+});
+
+test('"the table does not know this address" is not reported as a timeout', async () => {
+  // null is the likeliest thing a neighbour table returns for a host it has no entry for,
+  // and it is emphatically not the same event as a lookup that never came back: one says
+  // the address is unknown, the other says the wait was too short. A sentinel that happens
+  // to equal the answer collapses the two, and the log then sends the reader after the
+  // wrong repair — which is how this whole round started.
+  for (const answer of [null, undefined]) {
+    const dev = fakeDevice({ arp: async () => answer });
+    await dev._learnMac();
+    assert.strictEqual(dev.logs.filter((l) => l.includes('did not answer')).length, 0,
+      `${String(answer)} was reported as a timeout`);
+    assert.strictEqual(dev.logs.filter((l) => l.includes('not a MAC')).length, 1,
+      `${String(answer)} was not reported as an unusable answer`);
+  }
+});
+
+test('a timeout and an unusable answer are two different reasons, both reported', async () => {
+  // Said once *per reason*, not once per device: a device that first times out and later
+  // gets an unusable answer has hit two different faults and should report both.
+  let mode = 'hang';
+  const dev = fakeDevice({ arp: () => (mode === 'hang' ? new Promise(() => {}) : Promise.resolve('nope')) });
+
+  const first = dev._learnMac();
+  await flush();
+  dev.fireTimers();
+  await first;
+
+  mode = 'junk';
+  await dev._learnMac();
+
+  assert.strictEqual(dev.logs.filter((l) => l.includes('did not answer')).length, 1);
+  assert.strictEqual(dev.logs.filter((l) => l.includes('not a MAC')).length, 1);
+});
+
+test('the two ARP budgets stay different, because they measure different things', () => {
+  // Written down as a test because they were briefly merged, on the theory that the device's
+  // two seconds were starving the anchor while the scan's six seconds succeeded. The field
+  // disproved it on 2026-09-21: all four devices learned their anchor at two seconds, about
+  // forty seconds after a restart — one poll interval plus the poll itself. Both earlier
+  // looks had simply landed inside that window.
+  //
+  // They are not one number. The device waits for ONE address, on the poll timer, where
+  // nobody is waiting and a miss costs nothing. The scan caps a whole phase resolving up to
+  // 64 addresses while a person watches a spinner against a twelve-second ceiling. Merging
+  // them makes the device hold a poll three times longer for a lookup that was never slow.
+  assert.strictEqual(polling.ARP_TIMEOUT_MS, 2000, 'the per-address wait moved without a measurement');
+
+  const src = fs.readFileSync(require.resolve('../api.js'), 'utf8');
+  const phase = /const MAC_LOOKUP_BUDGET_MS = (\d+);/.exec(src);
+  assert.ok(phase, 'the scan no longer states its own phase budget');
+  assert.ok(Number(phase[1]) > polling.ARP_TIMEOUT_MS,
+    'a phase resolving many addresses must not be capped tighter than a single lookup');
+});
+
 test('a Homey without ARP support costs nothing', async () => {
   const dev = fakeDevice();
   delete dev.homey.arp;
