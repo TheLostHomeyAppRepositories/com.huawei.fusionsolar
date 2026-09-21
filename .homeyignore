@@ -3,3 +3,16 @@
 # ever loads them, so shipping them only costs archive size and on-device storage
 # (test/ems.test.js alone is ~143 KB of the ~228 KB total).
 test/
+
+# The sources the register lists were built from, and the notes that record why things are
+# the way they are. Both belong in the repository; neither belongs on somebody else's Homey.
+# Together ~193 KB — roughly what test/ was worth, and excluded for the same reason rather
+# than for the size: nothing on the device ever opens them. Measured against the build, not
+# assumed.
+#
+# Only the Markdown README goes. README.txt, README.de.txt and README.nl.txt are the App
+# Store description in three languages and have to stay — so this is an exact file name on
+# purpose, never README*.
+Modbus Register.xlsx
+README.md
+docs/
