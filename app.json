@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.255",
+  "version": "1.2.256",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -1340,6 +1340,23 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false
+    },
+    "battery_rated_capacity": {
+      "type": "number",
+      "title": {
+        "en": "Battery Capacity",
+        "de": "Batteriekapazität",
+        "nl": "Batterijcapaciteit"
+      },
+      "units": {
+        "en": "kWh"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/capabilities/battery_rated_capacity.svg"
     },
     "measure_battery_modules": {
       "type": "number",
@@ -3632,6 +3649,7 @@
         "storage_force_charge_discharge",
         "storage_excess_pv_energy_use_in_tou",
         "remote_charge_discharge_control_mode",
+        "battery_rated_capacity",
         "measure_battery_modules",
         "luna2000_unit1_installed",
         "luna2000_unit2_installed",

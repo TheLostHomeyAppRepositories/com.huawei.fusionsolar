@@ -17,6 +17,9 @@ const assert = require('node:assert');
 const tz = require('../lib/ems/tariff-zones.js');
 const priceMixin    = require('../lib/ems/price.js');
 const forecastMixin = require('../lib/ems/priceForecast.js');
+// _batteryPriceMode asks the battery helpers for the usable capacity, so the device this
+// test builds needs them too — the real one has every mixin.
+const batteryMixin  = require('../lib/ems/battery.js');
 
 // ── the schedule from the report, in the app's own config shape ──────────────
 const IRISH = {
@@ -181,7 +184,7 @@ test('an unconfigured schedule produces no slots at all', () => {
 // Enough of an EmsDevice to run the real mixins: the two price modules, a fixed UTC
 // timezone, and a config the test controls.
 function makeDevice(priceConfig, { forecast = null, forecastAt = null } = {}) {
-  const d = Object.assign({}, priceMixin, forecastMixin);
+  const d = Object.assign({}, priceMixin, forecastMixin, batteryMixin);
   d.homey = { clock: { getTimezone: () => 'UTC' } };
   d.log = () => {};
   d.error = () => {};

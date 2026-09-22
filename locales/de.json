@@ -579,7 +579,9 @@
         "poolPump": "Poolpumpen",
         "dehumidifier": "Entfeuchter",
         "aircon": "Klimaanlage"
-      }
+      },
+      "batteryCapacity": "Kapazität (kWh)",
+      "batteryCapacityHint": "Wird hier eine Capability gewählt, gilt der vom Gerät gelesene Wert; sonst die Zahl unten. Ein leerer Messwert fällt nie auf 0 zurück — dort hiesse 0 „unbekannt\" und würde die adaptive Prognosesperre abschalten."
     },
     "guard": {
       "addDeviceFirst": "Zuerst mindestens ein Gerät hinzufügen.",

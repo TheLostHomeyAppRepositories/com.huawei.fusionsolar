@@ -579,7 +579,9 @@
         "poolPump": "pool pump",
         "dehumidifier": "dehumidifier",
         "aircon": "air conditioner"
-      }
+      },
+      "batteryCapacity": "Capacity (kWh)",
+      "batteryCapacityHint": "Pick a capability here and the value read from the device is used; otherwise the number below. An unreadable reading never falls back to 0 — there 0 means \"unknown\" and would switch the adaptive forecast gate off."
     },
     "guard": {
       "addDeviceFirst": "Add at least one device first.",

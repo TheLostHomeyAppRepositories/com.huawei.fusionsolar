@@ -1006,10 +1006,27 @@ class EmsDevice extends Device {
   async _getBattery(cfg) {
     const devices = cfg.battery_devices || [];
     if (!devices.length) return { soc: null, powerW: null, socPerDevice: {} };
-    const [socs, powers] = await Promise.all([
+    const [socs, powers, capacities] = await Promise.all([
       Promise.all(devices.map((d) => this._cap(d.id, d.cap_soc || 'measure_battery'))),
       Promise.all(devices.map((d) => d.cap_power ? this._cap(d.id, d.cap_power) : Promise.resolve(null))),
+      Promise.all(devices.map((d) => d.cap_capacity ? this._cap(d.id, d.cap_capacity) : Promise.resolve(null))),
     ]);
+
+    // Remember the usable capacity a battery reported, so the four places that need it can
+    // ask without each doing its own read. Held for the life of the app rather than for a
+    // window: a nameplate capacity does not go stale between two polls, and the hold is not
+    // about freshness. It is about never handing on a zero.
+    //
+    // Zero is not a small capacity, it is the word "unknown" at every consumer — the
+    // adaptive solar-forecast gate returns inactive('no_capacity') and price-optimised
+    // charging stops planning. One unreadable poll must not switch those off silently.
+    this._capacityByBattery = this._capacityByBattery || {};
+    devices.forEach((d, i) => {
+      const value = capacities[i];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        this._capacityByBattery[d.id] = value;
+      }
+    });
     // Build per-device SOC map so _checkBatteryTriggers can reuse already-fetched values
     const socPerDevice = {};
     devices.forEach((d, i) => { socPerDevice[d.id] = socs[i]; });

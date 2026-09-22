@@ -1110,6 +1110,9 @@ class LUNA2000ModbusDevice extends Device {
 
       await this._syncStringCap('luna2000_unit1_software_version', batt.storageUnit1SoftwareVer);
       await this._syncStringCap('luna2000_unit2_software_version', batt.storageUnit2SoftwareVer);
+      // The stack's nameplate capacity, register 37758. Dynamic for the same reason as the
+      // two above: a battery that does not answer it should show nothing rather than a zero.
+      await this._syncNumberCap('battery_rated_capacity', batt.ratedCapacity);
 
       // The eleven settings registers came with the battery data on the same connection.
       await this._applyControl(batt);
@@ -1181,6 +1184,32 @@ class LUNA2000ModbusDevice extends Device {
 
   // Adds the capability and sets its value when present; removes it when absent.
   // Used for optional string capabilities that only exist on some hardware configurations.
+  /**
+   * The numeric counterpart to _syncStringCap, for a reading a battery may or may not give.
+   *
+   * Register 37758 is the stack's nameplate capacity. The same physical fact the module
+   * count registers describe, and those are known to answer with a transient 0 — see
+   * _fetchControl below, which only trusts a module count once it is greater than zero. So
+   * a zero here is treated as "not answered", never as "this battery holds nothing": a
+   * capacity of 0 reaching the EMS would silently switch off the adaptive solar-forecast
+   * gate and price-optimised charging, with no error anywhere.
+   *
+   * Removal follows _syncStringCap's rule exactly: only when the current value is empty
+   * too, so a capacity read once survives any number of failed polls.
+   */
+  async _syncNumberCap(capId, value) {
+    const usable = typeof value === 'number' && Number.isFinite(value) && value > 0;
+    if (usable) {
+      if (!this.hasCapability(capId)) await this.addCapability(capId);
+      await this._set(capId, value);
+      return;
+    }
+    if (!this.hasCapability(capId)) return;
+    const current = this.getCapabilityValue(capId);
+    if (current !== null && current !== undefined && current !== 0) return;
+    await this.removeCapability(capId);
+  }
+
   async _syncStringCap(capId, value) {
     const hasValue = value && typeof value === 'string' && value.trim().length > 0;
     if (hasValue) {

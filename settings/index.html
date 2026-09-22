@@ -5527,7 +5527,7 @@
       if (!infoEl) return;
       infoEl.innerHTML = '';
       infoEl.className = 'ems-caps-info';
-      ['capSoc','capPower'].forEach(function(k) { delete row.dataset[k]; });
+      ['capSoc','capPower','capCapacity'].forEach(function(k) { delete row.dataset[k]; });
 
       if (!caps.length) return;
 
@@ -5538,6 +5538,20 @@
       var socCaps = caps.filter(function(c) { return c.indexOf('measure_battery') === 0 || c.toLowerCase().indexOf('battery') !== -1 || c.indexOf('soc') !== -1; });
       var pwCaps  = caps.filter(function(c) { return c.indexOf('measure_power') === 0; });
 
+      // Deliberately narrow. A wide filter on 'meter_power' would offer an EMMA battery its
+      // chargeable and dischargeable capacity — numbers that move with the state of charge,
+      // where this field wants the nameplate. Offering them would invite a choice that looks
+      // right and makes the forecast gate wander.
+      var capCaps = caps.filter(function(c) {
+        return c === 'battery_rated_capacity' || c === 'isitepower_total_capacity' || /rated_capacity/i.test(c);
+      });
+
+      // No auto-detection, unlike the two rows above. A stored configuration has no
+      // cap_capacity, so detecting one would silently move an existing installation off the
+      // number its owner typed and onto a reading — without being asked, and without anybody
+      // noticing until the numbers differed. The choice is made once, on purpose.
+      var defCap = (stored && stored.cap_capacity) || '';
+
       infoEl.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding-top:4px';
       infoEl.appendChild(_emsCapRow(row, _H.__('settings.caps.batterySoc'), socCaps.length ? socCaps : caps, 'capSoc', defSoc));
       if (pwCaps.length) {
@@ -5546,6 +5560,16 @@
         pwHint.style.cssText = 'font-size:11px;color:var(--c-label-2);line-height:1.4;padding-left:2px';
         pwHint.textContent = _H.__('settings.caps.batteryPowerHint');
         infoEl.appendChild(pwHint);
+      }
+      // Hidden entirely when the battery reports no capacity — an EMMA battery, or a LUNA
+      // that does not answer register 37758, then looks exactly as it does today and keeps
+      // the typed number.
+      if (capCaps.length) {
+        infoEl.appendChild(_emsCapRow(row, _H.__('settings.caps.batteryCapacity'), capCaps, 'capCapacity', defCap));
+        var capCapHint = document.createElement('div');
+        capCapHint.style.cssText = 'font-size:11px;color:var(--c-label-2);line-height:1.4;padding-left:2px';
+        capCapHint.textContent = _H.__('settings.caps.batteryCapacityHint');
+        infoEl.appendChild(capCapHint);
       }
     }
 
@@ -8562,6 +8586,7 @@
         var d = { id: id };
         if (row.dataset.capSoc)   d.cap_soc   = row.dataset.capSoc;
         if (row.dataset.capPower) d.cap_power = row.dataset.capPower;
+        if (row.dataset.capCapacity) d.cap_capacity = row.dataset.capCapacity;
         var capInput = entry.querySelector('.ems-battery-capacity');
         d.capacity_kwh = capInput ? (Math.max(0, parseFloat(capInput.value) || 0)) : 0;
         var priceChk = entry.querySelector('.ems-battery-price-enabled');

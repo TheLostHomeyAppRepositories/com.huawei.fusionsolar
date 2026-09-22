@@ -579,7 +579,9 @@
         "poolPump": "zwembadpomp",
         "dehumidifier": "ontvochtiger",
         "aircon": "airco"
-      }
+      },
+      "batteryCapacity": "Capaciteit (kWh)",
+      "batteryCapacityHint": "Kies hier een capability en de van het apparaat gelezen waarde geldt; anders het getal hieronder. Een onleesbare meting valt nooit terug op 0 — daar betekent 0 \"onbekend\" en zou de adaptieve prognosepoort uitschakelen."
     },
     "guard": {
       "addDeviceFirst": "Voeg eerst minstens één apparaat toe.",
