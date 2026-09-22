@@ -15,7 +15,7 @@ class SmartChargerModbusDriver extends Driver {
     session.setHandler('connect', async ({ address, port, modbusId, name }) => {
       address  = (address || '').trim();
       port     = parseIntSafe(port, 502);
-      modbusId = parseIntSafe(modbusId, 1); // 0 is a valid unit ID — avoid || 1
+      modbusId = parseIntSafe(modbusId, 0); // 0 is a valid unit ID — avoid || 0
 
       if (!address) {
         throw new Error(this.homey.__('modbus.pair.errors.noAddress'));

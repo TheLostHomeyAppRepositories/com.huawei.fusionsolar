@@ -128,7 +128,10 @@ class SmartChargerModbusDevice extends Device {
     }
 
     const port     = parseInt(this.getSetting('port'), 10) || 502;
-    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 1);
+    // 0, like the three sibling EMMA drivers: this register block is answered by the EMMA,
+    // not by the charger. The old default of 1 is the inverter's RS485 address behind an
+    // EMMA, so it pointed the probe at the wrong device entirely.
+    const modbusId = parseIntSafe(this.getSetting('modbus_id'), 0);
 
     try {
       const d = await readModbusRegisters(address, port, modbusId, SMARTCHARGER_REGISTERS);
