@@ -951,6 +951,41 @@ module.exports = {
       const emmaLive = (d) => [d.emmaPvPower, d.emmaFeedInPower, d.emmaBatteryCapacity,
         d.emmaChargerRatedPow].some((v) => typeof v === 'number' && Number.isFinite(v) && v !== 0);
 
+      // The same idea for the charger, which had no such guard and was the likeliest place to
+      // need one: its whole confirmation rested on a single number at 30076.
+      //
+      // Deliberately NOT counting the rated power among the signs of life. It is checked just
+      // above and has to be plausible to get here, so including it would make this always
+      // true — a guard against "one believable number and silence behind it" that the one
+      // believable number satisfies by itself. A name is enough on its own: every real
+      // charger answers 30000, and a device that replies to everything with zero has none.
+      const chargerLive = (d) => {
+        const named = typeof d.chargerName === 'string'
+          && d.chargerName.replace(/\x00/g, '').trim() !== '';
+        return named || [d.chargerPhaseA, d.chargerTemp]
+          .some((v) => typeof v === 'number' && Number.isFinite(v) && v !== 0);
+      };
+
+      // Used only to REJECT, never to accept. Behind an EMMA, unit 1 is the inverter's RS485
+      // address, and on an inverter 30076 falls between "maximum active power" (30075) and
+      // "maximum apparent power" (30077): a read there crosses a field boundary and returns a
+      // number rather than an exception — and a number was all the old check asked for.
+      //
+      // A name we do not recognise proves nothing and is let through. An allowlist of charger
+      // names would be the opposite mistake: it would turn every model nobody has told us
+      // about into "not your device", which is the kind of wrong that sends somebody off to
+      // buy hardware they already own. These four prefixes are how huawei-solar-lib itself
+      // dispatches an inverter, and no charger carries them.
+      const INVERTER_NAMES = ['SUN2000', 'EDF ESS', 'POWERSHIFTER', 'SWI300'];
+      const looksLikeInverter = (name) => {
+        if (typeof name !== 'string') return false;
+        // Stripping the NUL padding is belt and braces, not load-bearing: Modbus pads STRING
+        // registers at the end, and startsWith only reads the beginning. It stays because a
+        // leading pad would silently switch the guard off, and nothing else would notice.
+        const clean = name.replace(/\x00/g, '').trim().toUpperCase();
+        return INVERTER_NAMES.some((prefix) => clean.startsWith(prefix));
+      };
+
       // Map base driver name → the specific registers that confirm it
       const CONN_TYPE_LABEL_C = { 0: 'N/A', 2: 'WLAN', 3: '4G', 4: 'WLAN-FE', 5: 'WLAN-FE' };
       const DRIVER_CONFIRM = {
@@ -1013,9 +1048,24 @@ module.exports = {
           detail: d => `Register 30358 (feed-in power) = ${d.emmaFeedInPower} W`,
         },
         smartcharger_emma_modbus: {
-          registers: { emmaChargerRatedPow: [30076, 2, 'UINT32', 'Smart Charger Rated Power (kW)', -1] },
-          check:  d => typeof d.emmaChargerRatedPow === 'number' && d.emmaChargerRatedPow > 0 && d.emmaChargerRatedPow < 100000,
-          detail: d => `Register 30076 (charger rated power) = ${d.emmaChargerRatedPow} kW`,
+          registers: {
+            chargerName:         [30000, 15, 'STRING', 'Charger Offering Name', 0],
+            emmaChargerRatedPow: [30076,  2, 'UINT32', 'Smart Charger Rated Power (kW)', -1],
+            chargerPhaseA:       [30500,  2, 'UINT32', 'Charger Phase A Voltage (V)', -1],
+            chargerTemp:         [30508,  2, 'INT32',  'Charger Temperature (°C)', -1],
+          },
+          check: (d) => {
+            if (looksLikeInverter(d.chargerName)) return false;
+            const power = d.emmaChargerRatedPow;
+            // In kW since 1.2.254. The old bound of 100000 was written for watts and let
+            // almost anything through; a charger is single digits to a few hundred.
+            if (typeof power !== 'number' || !Number.isFinite(power) || power <= 0 || power > 1000) return false;
+            return chargerLive(d);
+          },
+          detail: (d) => {
+            const name = typeof d.chargerName === 'string' ? d.chargerName.replace(/\x00/g, '').trim() : '';
+            return `Register 30000 (offering name) = "${name}", register 30076 (rated power) = ${d.emmaChargerRatedPow} kW`;
+          },
         },
       };
 

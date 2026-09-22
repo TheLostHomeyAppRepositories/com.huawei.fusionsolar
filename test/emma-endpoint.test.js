@@ -106,7 +106,10 @@ test('the charger rated power is called kW wherever it is shown', () => {
   // driver check said W, which turned a 22 kW charger into "2.2 W" in the one place a person
   // looks to decide whether the right device answered.
   const api = fs.readFileSync(path.join(ROOT, 'api.js'), 'utf8');
-  const labelled = [...api.matchAll(/\[30076, 2, 'UINT32', '([^']+)', (-?\d+)\]/g)];
+  // Whitespace-tolerant on purpose: these tables are column-aligned by hand, so a single
+  // extra space is a formatting choice, not a change of meaning. Insisting on one spelling
+  // made this test fail the moment the charger's entry joined a wider block.
+  const labelled = [...api.matchAll(/\[\s*30076\s*,\s*2\s*,\s*'UINT32'\s*,\s*'([^']+)'\s*,\s*(-?\d+)\s*\]/g)];
   assert.ok(labelled.length >= 4, `expected 30076 in every EMMA check, found ${labelled.length}`);
   for (const [, label, power] of labelled) {
     assert.strictEqual(power, '-1', 'the gain changed — re-check the unit in the label');
