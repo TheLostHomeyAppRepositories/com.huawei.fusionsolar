@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.256",
+  "version": "1.2.257",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -5298,6 +5298,7 @@
       "capabilities": [
         "measure_power",
         "measure_battery",
+        "battery_rated_capacity",
         "meter_power.charged",
         "meter_power.discharged"
       ],
@@ -14519,12 +14520,12 @@
             "nl": "Batterijcapaciteit (kWh)"
           },
           "hint": {
-            "en": "Usable capacity of your battery in kWh. Used to calculate the estimated time until full or empty.\n\nLUNA2000 examples:\n• 1 module (5 kWh) → enter 5\n• 2 modules (10 kWh) → enter 10\n• 3 modules (15 kWh) → enter 15",
-            "de": "Nutzbare Kapazität deiner Batterie in kWh. Wird verwendet, um die verbleibende Lade- bzw. Entladezeit zu berechnen.\n\nLUNA2000 Beispiele:\n• 1 Modul (5 kWh) → 5 eingeben\n• 2 Module (10 kWh) → 10 eingeben\n• 3 Module (15 kWh) → 15 eingeben",
-            "nl": "Bruikbare capaciteit van je batterij in kWh. Wordt gebruikt om de geschatte tijd tot vol of leeg te berekenen.\n\nLUNA2000 voorbeelden:\n• 1 module (5 kWh) → voer 5 in\n• 2 modules (10 kWh) → voer 10 in\n• 3 modules (15 kWh) → voer 15 in"
+            "en": "Only needed when your battery does not report its own capacity — a LUNA2000 over Modbus does, and that figure is used automatically. Left at 0, no estimate is shown rather than a guessed one.\n\nLUNA2000 examples:\n• 1 module (5 kWh) → enter 5\n• 2 modules (10 kWh) → enter 10\n• 3 modules (15 kWh) → enter 15",
+            "de": "Nur nötig, wenn deine Batterie ihre Kapazität nicht selbst meldet — eine LUNA2000 über Modbus tut es, und dieser Wert wird dann automatisch verwendet. Bleibt hier 0, wird keine Zeit angezeigt statt einer geratenen.\n\nLUNA2000 Beispiele:\n• 1 Modul (5 kWh) → 5 eingeben\n• 2 Module (10 kWh) → 10 eingeben\n• 3 Module (15 kWh) → 15 eingeben",
+            "nl": "Alleen nodig als je batterij haar eigen capaciteit niet doorgeeft — een LUNA2000 via Modbus doet dat wel, en die waarde wordt dan automatisch gebruikt. Blijft dit 0, dan wordt er geen schatting getoond in plaats van een gegokte.\n\nLUNA2000 voorbeelden:\n• 1 module (5 kWh) → voer 5 in\n• 2 modules (10 kWh) → voer 10 in\n• 3 modules (15 kWh) → voer 15 in"
           },
-          "value": 5,
-          "min": 1,
+          "value": 0,
+          "min": 0,
           "max": 200,
           "step": 0.5
         }

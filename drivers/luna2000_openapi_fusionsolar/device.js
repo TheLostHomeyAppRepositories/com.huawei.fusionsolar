@@ -194,6 +194,25 @@ class FusionSolarBatteryDevice extends Device {
                && !(this.getCapabilityValue('measure_battery.soh') > 0)) {
       await this.removeCapability('measure_battery.soh').catch(() => {});
     }
+    // The nameplate capacity the plant reports for its batteries. Summed, because a plant
+    // may hold more than one and the figure the EMS and the widget want is the whole bank.
+    //
+    // Already kilowatt-hours here, unlike register 37758 on the Modbus twin, which gives
+    // watt-hours — same capability, same unit on the tile, two different sources.
+    //
+    // Added and removed with the reading, like measure_battery.soh above: a plant that does
+    // not report it should show nothing rather than an empty row, and a value once read
+    // survives a KPI call that came back short.
+    const ratedCapacityKwh = sumKwh('rated_capacity');
+    if (ratedCapacityKwh !== null && ratedCapacityKwh > 0) {
+      if (!this.hasCapability('battery_rated_capacity')) {
+        await this.addCapability('battery_rated_capacity').catch(() => {});
+      }
+      await this._set('battery_rated_capacity', ratedCapacityKwh);
+    } else if (this.hasCapability('battery_rated_capacity')
+               && !(this.getCapabilityValue('battery_rated_capacity') > 0)) {
+      await this.removeCapability('battery_rated_capacity').catch(() => {});
+    }
     await this._set('measure_voltage.battery',       avg('busbar_u'));
     await this._set('meter_power.charged',           sumKwh('total_charged_energy'));
     await this._set('meter_power.discharged',        sumKwh('total_discharged_energy'));

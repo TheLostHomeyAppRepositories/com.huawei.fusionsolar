@@ -313,12 +313,19 @@ function onHomeyReady(Homey) {
   Homey.ready({ height: 165 });
   document.body.classList.add('loading');
 
-  var capacityKwh = 5; // default, overridden from settings below
+  // Reported by gsommer as issue #33: charging at 2 kW from 50 %, a 15 kWh battery was
+  // told it would be full in a little over an hour. It was not the arithmetic. This line
+  // used to read "var capacityKwh = 5", and the manifest handed every widget that 5 as the
+  // setting's default — the capacity of a single LUNA2000 module. Three modules, and the
+  // estimate came out a third of the truth, stated to the minute.
+  //
+  // Five kilowatt-hours is not a measurement of anything. A capacity nobody has established
+  // is unknown, and the honest thing to draw for an unknown is nothing.
+  var settingCapacityKwh = null;
   try {
     var settings = Homey.getSettings();
-    if (settings && settings.battery_capacity_kwh) {
-      capacityKwh = parseFloat(settings.battery_capacity_kwh) || 5;
-    }
+    var typed = settings ? parseFloat(settings.battery_capacity_kwh) : NaN;
+    if (isFinite(typed) && typed > 0) settingCapacityKwh = typed;
   } catch(e) {}
 
   function render(data) {
@@ -354,10 +361,19 @@ function onHomeyReady(Homey) {
 
     document.getElementById('batt-status').textContent = (data.status && T.statusMap[data.status]) ? T.statusMap[data.status] : (data.status || '—');
 
-    // Remaining time
+    // Remaining time. The battery's own figure wins: it is the hardware talking, where
+    // the setting is somebody's recollection. The setting stays for batteries that report
+    // nothing, and when neither exists the line stays empty.
+    var capacityKwh = (typeof data.capacityKwh === 'number' && isFinite(data.capacityKwh) && data.capacityKwh > 0)
+      ? data.capacityKwh
+      : settingCapacityKwh;
     var pw = data.powerW;
     var remaining = '';
-    if (soc !== null && pw !== null) {
+    // The capacityKwh test is belt and braces, not load-bearing: fmtRemaining already returns
+    // an empty string for anything that is not a positive number of hours, so a missing
+    // capacity draws nothing either way. It stays because reading the condition should not
+    // require knowing that.
+    if (soc !== null && pw !== null && capacityKwh) {
       if (pw > 50) {
         var remainKwh = (1 - soc / 100) * capacityKwh;
         remaining = fmtRemaining(remainKwh / (pw / 1000));

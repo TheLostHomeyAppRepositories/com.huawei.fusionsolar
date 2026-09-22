@@ -41,6 +41,18 @@ module.exports = {
       else                   status = 'standby';
     }
 
-    return { soc, status, powerW, todayChargedKwh, todayDischargedKwh, lang: lang(homey) };
+    // The nameplate capacity, straight from the battery (register 37758 on a LUNA2000),
+    // so the remaining-time estimate no longer depends on somebody having typed the right
+    // number into the widget's own settings. Null when the battery does not report one —
+    // an EMMA battery, an OpenAPI plant — and null is an answer the widget knows how to
+    // show: it shows no time at all rather than a confident wrong one.
+    //
+    // cap() returns null for an unreachable device unless the capability name starts with
+    // meter_, which this one does not. That is right here: a battery nobody can reach
+    // should not be counting down to anything.
+    const capacityKwh = cap(device, 'battery_rated_capacity', null)
+                     ?? cap(device, 'isitepower_total_capacity', null);
+
+    return { soc, status, powerW, todayChargedKwh, todayDischargedKwh, capacityKwh, lang: lang(homey) };
   }
 };
