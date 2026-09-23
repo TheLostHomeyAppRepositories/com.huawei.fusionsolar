@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDevice, cap } = require('../../lib/widget-data');
+const { getDevice, cap, setting } = require('../../lib/widget-data');
 
 // Dashboard language from Homey itself, not navigator.language in the widget — that is
 // the browser/OS language and can differ from the Homey app language. See
@@ -53,6 +53,22 @@ module.exports = {
     const capacityKwh = cap(device, 'battery_rated_capacity', null)
                      ?? cap(device, 'isitepower_total_capacity', null);
 
-    return { soc, status, powerW, todayChargedKwh, todayDischargedKwh, capacityKwh, lang: lang(homey) };
+    // Where the battery will actually stop, so the estimate can count to that instead of
+    // to 0 % and 100 % — which it never reaches. Sent raw, one number each, because the
+    // direction is decided in the widget from powerW and the arithmetic belongs beside it.
+    //
+    // Each is null on its own when this battery does not know it: a LUNA2000 over Modbus has
+    // all three, an EMMA battery only the reserve, an OpenAPI plant none. They fall back one
+    // by one, not as a set.
+    const num = (v) => {
+      const n = typeof v === 'string' ? parseFloat(v) : v;
+      return typeof n === 'number' && Number.isFinite(n) ? n : null;
+    };
+    const socCeiling = num(setting(device, 'charging_cutoff_capacity'));
+    const socFloor   = num(setting(device, 'discharge_cutoff_capacity'));
+    const socReserve = num(cap(device, 'measure_battery.backup', null));
+
+    return { soc, status, powerW, todayChargedKwh, todayDischargedKwh, capacityKwh,
+      socCeiling, socFloor, socReserve, lang: lang(homey) };
   }
 };

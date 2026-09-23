@@ -367,6 +367,23 @@ function onHomeyReady(Homey) {
     var capacityKwh = (typeof data.capacityKwh === 'number' && isFinite(data.capacityKwh) && data.capacityKwh > 0)
       ? data.capacityKwh
       : settingCapacityKwh;
+    // A battery does not charge to 100 % or discharge to 0 %, and asked by gsommer in
+    // issue #33 whether the estimate knows that. It does now. Three limits, each falling
+    // back on its own: a LUNA2000 over Modbus reports all of them, an EMMA battery only the
+    // reserve, an OpenAPI plant none — and a battery that reports none counts 0 to 100 as
+    // before rather than losing the line.
+    //
+    // The floor is the higher of the discharge cutoff and the backup reserve. Taking the
+    // reserve at face value is the careful direction, not the certain one: whether the
+    // inverter really holds it depends on backup operation being active, which is a register
+    // we do not read. Wrong that way the estimate comes out short — and a countdown that
+    // says three hours and gives four is a better mistake than one that says four and
+    // gives three.
+    var num = function(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; };
+    var ceiling = num(data.socCeiling);
+    if (ceiling === null) ceiling = 100;
+    var floor = Math.max(num(data.socFloor) || 0, num(data.socReserve) || 0);
+
     var pw = data.powerW;
     var remaining = '';
     // The capacityKwh test is belt and braces, not load-bearing: fmtRemaining already returns
@@ -374,11 +391,17 @@ function onHomeyReady(Homey) {
     // capacity draws nothing either way. It stays because reading the condition should not
     // require knowing that.
     if (soc !== null && pw !== null && capacityKwh) {
+      // Both Math.max(0, ...) guards are the same kind of belt and braces as the test above:
+      // a battery sitting outside its own window — somebody lowered the maximum while it was
+      // full, or raised the reserve above where it stands — produces a negative distance, and
+      // fmtRemaining turns every non-positive hour count into an empty string anyway. Clamping
+      // first says "there is no time to show here" at the place where the distance is measured,
+      // instead of leaving it to be discovered two lines later.
       if (pw > 50) {
-        var remainKwh = (1 - soc / 100) * capacityKwh;
+        var remainKwh = Math.max(0, (ceiling - soc) / 100) * capacityKwh;
         remaining = fmtRemaining(remainKwh / (pw / 1000));
       } else if (pw < -50) {
-        var availKwh = (soc / 100) * capacityKwh;
+        var availKwh = Math.max(0, (soc - floor) / 100) * capacityKwh;
         remaining = fmtRemaining(availKwh / (Math.abs(pw) / 1000));
       }
     }

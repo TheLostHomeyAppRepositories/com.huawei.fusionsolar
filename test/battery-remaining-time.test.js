@@ -74,7 +74,8 @@ test('the widget asks the battery for its capacity', () => {
 
 // ── the estimate itself, executed ───────────────────────────────────────────
 
-function estimate({ soc, powerW, capacityKwh = null, setting = null }) {
+function estimate({ soc, powerW, capacityKwh = null, setting = null,
+  socCeiling = null, socFloor = null, socReserve = null }) {
   // Lift the two pieces that decide the line: the formatter and the branch that uses it.
   // The end marker is searched for AFTER the start, not from it — otherwise a marker that is
   // a prefix of the opening line finds itself and the slice comes back empty.
@@ -98,7 +99,7 @@ function estimate({ soc, powerW, capacityKwh = null, setting = null }) {
     Math, isFinite, parseFloat, NaN,
     // What Homey hands the widget: the setting as a string, or nothing at all.
     Homey: { getSettings: () => (setting === null ? {} : { battery_capacity_kwh: String(setting) }) },
-    data: { powerW, capacityKwh },
+    data: { powerW, capacityKwh, socCeiling, socFloor, socReserve },
     soc,
     result: null,
   };
@@ -120,7 +121,13 @@ test('the widget hands on the capacity it read', async () => {
   Module._load = _orig;
 
   const battery = {
-    getCapabilityValue: (c) => ({ measure_battery: 50, measure_power: 2000, battery_rated_capacity: 15 }[c] ?? null),
+    getCapabilityValue: (c) => ({
+      measure_battery: 50, measure_power: 2000, battery_rated_capacity: 15,
+      'measure_battery.backup': 30,
+    }[c] ?? null),
+    // Homey hands settings back as they were stored, which for a number field written from
+    // a register can be a string. The widget has to cope with both.
+    getSetting: (id) => ({ charging_cutoff_capacity: 90, discharge_cutoff_capacity: '15' }[id]),
     getAvailable: () => true,
     getCapabilities: () => ['measure_battery', 'measure_power', 'battery_rated_capacity'],
   };
@@ -137,6 +144,65 @@ test('the widget hands on the capacity it read', async () => {
   const data = await widgetApi.getData({ homey });
   assert.strictEqual(data.capacityKwh, 15, 'the capacity never reaches the widget');
   assert.strictEqual(data.soc, 50, 'the rest of the payload broke');
+
+  // And the three limits, each from the right place: two settings and one capability.
+  assert.strictEqual(data.socCeiling, 90, 'the charge ceiling never reaches the widget');
+  assert.strictEqual(data.socFloor, 15, 'the discharge floor never reaches the widget');
+  assert.strictEqual(data.socReserve, 30, 'the backup reserve never reaches the widget');
+  assert.strictEqual(typeof data.socFloor, 'number',
+    'a setting stored as text arrives as text and every comparison against it becomes a guess');
+});
+
+test('a setting that is not there reads as unknown, not as zero', () => {
+  // Zero is a floor somebody could have chosen; "not known" is not. The two have to stay
+  // apart at the source, because everything downstream treats 0 as a real limit — and a
+  // device that simply has no such setting would otherwise look like one configured to run
+  // itself flat. Tested here directly: the widget's own fake throws from getSetting, which
+  // exercises the catch and never reaches the branch this guards.
+  const { setting } = require('../lib/widget-data');
+  const device = { getSetting: (id) => ({ present: 15, zero: 0, blank: '' }[id]) };
+
+  assert.strictEqual(setting(device, 'present'), 15);
+  assert.strictEqual(setting(device, 'zero'), 0, 'a real zero was thrown away');
+  assert.strictEqual(setting(device, 'blank'), '', 'an empty string is still an answer');
+  assert.strictEqual(setting(device, 'missing'), null, 'a missing setting became a value');
+  assert.strictEqual(setting(device, 'missing', 42), 42, 'the fallback is ignored');
+  assert.strictEqual(setting(null, 'present'), null, 'a missing device became a value');
+});
+
+test('a battery that knows none of its limits sends nulls, not zeroes', async () => {
+  // Zero is a floor somebody could have set. "Not known" has to stay distinguishable from
+  // it, or an OpenAPI plant would look like a battery configured to run itself flat.
+  const Module = require('module');
+  const _orig = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (request === 'homey') return { App: class {}, Device: class {}, Driver: class {} };
+    return _orig.call(this, request, parent, isMain);
+  };
+  const widgetApi = require('../widgets/battery-status/api.js');
+  Module._load = _orig;
+
+  const bare = {
+    getCapabilityValue: (c) => ({ measure_battery: 50, measure_power: 2000 }[c] ?? null),
+    getSetting: () => { throw new Error('no settings on this device'); },
+    getAvailable: () => true,
+    getCapabilities: () => ['measure_battery', 'measure_power'],
+  };
+  const homey = {
+    i18n: { getLanguage: () => 'en' },
+    drivers: {
+      getDriver: (id) => {
+        if (id !== 'luna2000_modbus') throw new Error('Invalid Driver');
+        return { getDevices: () => [bare] };
+      },
+    },
+  };
+
+  const data = await widgetApi.getData({ homey });
+  assert.strictEqual(data.socCeiling, null);
+  assert.strictEqual(data.socFloor, null);
+  assert.strictEqual(data.socReserve, null);
+  assert.strictEqual(data.capacityKwh, null);
 });
 
 test("Gerhard's battery now says three and three quarter hours, not one", () => {
@@ -192,4 +258,63 @@ test('a battery that is neither charging nor discharging counts down to nothing'
 test('a full battery and an empty one show no countdown', () => {
   assert.strictEqual(estimate({ soc: 100, powerW: 2000, capacityKwh: 15 }), '', 'full and still counting');
   assert.strictEqual(estimate({ soc: 0, powerW: -2000, capacityKwh: 15 }), '', 'empty and still counting');
+});
+
+// ── the limits the battery actually honours ─────────────────────────────────
+//
+// Gerhard's second question on issue #33: a battery does not charge to 100 % or discharge
+// to 0 %, and the estimate was counting to both. He was right that it matters, and right
+// about why — the usable amount moves every time one of those settings changes, so the
+// estimate has to follow them rather than be told once.
+
+test('discharging stops at the floor, not at empty', () => {
+  // 15 kWh at 80 %, giving out 3 kW. To zero that is four hours; to the 15 % the inverter
+  // actually stops at it is three and a quarter. Three quarters of an hour that was never
+  // his to spend.
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15 }), '4h 0min');
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socFloor: 15 }), '3h 15min');
+});
+
+test('charging stops at the ceiling, not at full', () => {
+  // A maximum charge level of 90 % means the last 1.5 kWh are never going in.
+  assert.strictEqual(estimate({ soc: 50, powerW: 2000, capacityKwh: 15, socCeiling: 90 }), '3h 0min');
+});
+
+test('the floor is whichever of the two is higher', () => {
+  // The backup reserve usually sits above the discharge cutoff, and then it is the reserve
+  // that stops the battery. But not always — somebody with no backup box and a raised
+  // cutoff is the other way round, and the estimate has to take whichever binds first.
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socFloor: 15, socReserve: 30 }), '2h 30min');
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socFloor: 30, socReserve: 15 }), '2h 30min');
+});
+
+test('each limit falls back on its own, not as a set', () => {
+  // An EMMA battery reports the reserve and neither cutoff; an OpenAPI plant reports none.
+  // Knowing one of three has to be worth more than knowing none.
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socReserve: 20 }), '3h 0min',
+    'a battery that knows only its reserve was treated as knowing nothing');
+  assert.strictEqual(estimate({ soc: 50, powerW: 2000, capacityKwh: 15, socFloor: 15 }), '3h 45min',
+    'a floor leaked into the charging direction');
+  assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socCeiling: 90 }), '4h 0min',
+    'a ceiling leaked into the discharging direction');
+});
+
+test('a battery already outside its window counts down to nothing', () => {
+  // Lower the maximum to 90 while the battery sits at 95, or raise the reserve above where
+  // the battery already is. "noch -1h 40min" is not an answer.
+  assert.strictEqual(estimate({ soc: 95, powerW: 2000, capacityKwh: 15, socCeiling: 90 }), '',
+    'charging past the ceiling produced a countdown');
+  assert.strictEqual(estimate({ soc: 20, powerW: -3000, capacityKwh: 15, socReserve: 30 }), '',
+    'discharging below the reserve produced a countdown');
+  assert.strictEqual(estimate({ soc: 30, powerW: -3000, capacityKwh: 15, socReserve: 30 }), '',
+    'sitting exactly on the reserve produced a countdown');
+});
+
+test('a limit that arrives as nonsense is ignored rather than obeyed', () => {
+  for (const bad of [NaN, Infinity, null, undefined, 'ninety']) {
+    assert.strictEqual(estimate({ soc: 50, powerW: 2000, capacityKwh: 15, socCeiling: bad }), '3h 45min',
+      `a ceiling of ${String(bad)} changed the estimate`);
+    assert.strictEqual(estimate({ soc: 80, powerW: -3000, capacityKwh: 15, socFloor: bad }), '4h 0min',
+      `a floor of ${String(bad)} changed the estimate`);
+  }
 });
