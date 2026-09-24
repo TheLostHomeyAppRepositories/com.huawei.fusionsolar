@@ -49,7 +49,8 @@ Connection via the Huawei FusionSolar Northbound API. Provides inverter, grid an
 
 | Capability              | Description                                                        |
 |-------------------------|--------------------------------------------------------------------|
-| Solar power             | DC input power from PV strings (W)                                |
+| Power                   | The generation figure Homey Energy reads (W) — see the note below |
+| Solar power             | DC input power from PV strings (W) — blank where the inverter does not report it |
 | Active power            | AC output power (W)                                               |
 | Heat sink temperature   | Internal inverter temperature (°C)                                |
 | PV energy today         | Plant PV production today (kWh) — used by the widgets             |
@@ -58,9 +59,23 @@ Connection via the Huawei FusionSolar Northbound API. Provides inverter, grid an
 | Daily yield             | The inverter's own AC yield today (kWh)                           |
 | PV1 / PV2 voltage       | DC voltage of PV strings (V)                                      |
 | PV1 / PV2 current       | DC current of PV strings (A)                                      |
+| Grid frequency          | Mains frequency (Hz)                                              |
+| Inverter efficiency     | Conversion efficiency reported by the inverter (%)                |
+| Inverter status         | Operating state as text                                           |
 | Grid active power       | Current: positive = import, negative = export (W)                 |
 | Total grid export       | Cumulative total energy exported to grid (kWh)                    |
 | Total grid import       | Cumulative total energy imported from grid (kWh)                  |
+
+> **"Power" and "Solar power" are two capabilities, not one.** `measure_power.mppt` is the DC
+> input alone, and it stays empty on an inverter that does not report `mppt_power`.
+> `measure_power` is the one Homey Energy and the widgets read, and it falls back to the AC
+> output where the DC figure is missing — so a reading never disappears, but on a hybrid
+> inverter the fallback can include battery discharge. Most installations show the same number
+> twice; the ones that do not are the ones the fallback was written for.
+
+> Grid frequency, inverter efficiency and inverter status are added on the first successful
+> poll rather than at pairing, and **PV energy today** appears the first time the plant summary
+> carries it. A plant whose API never sends a field does not get a permanently empty row.
 
 > **Production and yield are two different figures on a hybrid system.** The inverter's own
 > counters measure its AC output, and the battery sits on the DC bus in front of that — so
@@ -217,14 +232,20 @@ Direct Modbus TCP connection to the SUN2000 inverter or SDongle.
 | Heat sink temperature       | Internal inverter temperature (°C)                        |
 | Total yield                 | Cumulative total yield (kWh)                              |
 | Daily yield                 | Today's energy yield (kWh)                                |
-| PVn voltage                 | DC voltage per PV string (V) — as many as the inverter has |
-| PVn current                 | DC current per PV string (A) — as many as the inverter has |
+| PVn voltage                 | DC voltage per PV string (V) — one per string, up to 24    |
+| PVn current                 | DC current per PV string (A) — one per string, up to 24    |
 | Grid frequency              | Mains frequency (Hz)                                      |
 | Inverter status             | Operating state as text                                   |
+| Software version            | Inverter firmware version                                 |
 | Active power control mode   | Configurable feed-in limit                                |
+| Optimizers total / online   | Counts from register 37200 — only where optimizers are registered |
 | Grid active power           | Current (W) — only when DTSU666 is connected              |
 | Total grid import           | Cumulative (kWh) — only when DTSU666 is connected         |
 | Total grid export           | Cumulative (kWh) — only when DTSU666 is connected         |
+
+> The last four rows come and go with the hardware: the optimizer counts while register 37200
+> reads above zero, the three meter rows while a DTSU666 answers with plausible data. A meter
+> that stops answering takes its rows with it rather than freezing them at the last value.
 
 ---
 
@@ -243,6 +264,56 @@ Reads inverter data via the EMMA Energy Management Module (unit ID 0). No SDongl
 | Grid active power       | Current: positive = import, negative = export (W)         |
 | Total grid import       | Cumulative total energy imported (kWh)                    |
 | Total grid export       | Cumulative total energy exported (kWh)                    |
+
+> This driver reports **no inverter temperature**. It used to, from register 30508 — but in the
+> EMMA address space that register is the external meter's A-B line voltage, so a ~400 V reading
+> was displayed as "4000 °C". EMMA exposes no inverter temperature at all, so the capability is
+> removed from devices that still carry it rather than repointed.
+
+---
+
+### The three SUN2000 drivers side by side
+
+The same inverter can be read three ways, and the three do not expose the same capabilities
+under the same names. This matters when moving a device from one driver to another: **flows
+reference capability IDs, not titles**, so a flow survives the move only where its ID exists on
+both sides.
+
+| Capability ID | Title | Modbus | EMMA Modbus | OpenAPI |
+|---|---|:-:|:-:|:-:|
+| `measure_power` | Solar Power / Power | yes | yes | yes |
+| `measure_power.mppt` | Solar Power | — | — | yes |
+| `measure_power.active_power` | Active Power | yes | yes | yes |
+| `measure_power.grid_active_power` | Grid Active Power | with DTSU666 | yes | yes |
+| `meter_power` | Total Energy | yes | yes | — |
+| `meter_power.daily` | Daily Energy | yes | yes | — |
+| `meter_power.inv_total` | Total Yield | — | — | yes |
+| `meter_power.inv_daily` | Daily Yield | — | — | yes |
+| `meter_power.pv_total` | Total PV Energy | — | yes | yes |
+| `meter_power.pv_daily` | PV Energy Today | — | yes | on first arrival |
+| `meter_power.grid_export` | Grid Export Energy | with DTSU666 | yes | yes |
+| `meter_power.grid_import` | Grid Import Energy | with DTSU666 | yes | yes |
+| `measure_voltage.pvN` / `measure_current.pvN` | PVn Voltage / Current | up to 24 | — | PV1 and PV2 |
+| `measure_temperature.invertor` | Inverter Temperature | yes | removed | yes |
+| `measure_frequency` | Grid Frequency | yes | — | on first poll |
+| `huawei_status` | Inverter Status | yes | — | on first poll |
+| `openapi_inverter_efficiency` | Inverter Efficiency | — | — | on first poll |
+| `sun2000_software_version` | Software Version | yes | — | — |
+| `activepower_controlmode` | Active Power Control Mode | yes | — | — |
+| `optimizer_total_count` / `optimizer_online_count` | Optimizers | with optimizers | — | — |
+
+Three differences are worth knowing before switching:
+
+- **The lifetime counter has a different ID on the cloud driver.** Modbus and EMMA Modbus both
+  call it `meter_power`; the OpenAPI driver has no `meter_power` at all and splits the same
+  idea into `meter_power.inv_total` (the inverter's own AC yield) and `meter_power.pv_total`
+  (the plant's PV production). They are not interchangeable — see the note under the OpenAPI
+  driver on why production and yield differ on a hybrid system.
+- **Homey Energy reads a different capability on each driver**: `meter_power` on Modbus,
+  `meter_power.pv_total` on EMMA Modbus and on OpenAPI. Pairing the same physical inverter on
+  two of these drivers at once therefore counts its production twice.
+- **Only the Modbus driver can control anything.** `activepower_controlmode` is the one
+  writable capability among the three; the EMMA and cloud drivers are read-only.
 
 ---
 
