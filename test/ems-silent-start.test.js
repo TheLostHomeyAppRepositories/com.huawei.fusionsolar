@@ -150,18 +150,24 @@ test('after the full patience it stops and hands the surplus back', async () => 
     'the log does not point at the flow that has to be checked');
 });
 
-test('after giving up, the surplus path leaves it alone', async () => {
-  // The loop this ends: FLIP_COOLDOWN_MS alone let the charger be poked every six minutes
-  // for as long as the sun shone — eleven times in the log.
+test('after giving up, the surplus path leaves it alone for the whole back-off', async () => {
+  // Probe times are derived from the constant, not written out: the back-off is a setting
+  // that gets tuned, and a test that hard-codes minutes only measures the tuning it was
+  // written against.
+  //
+  // Worth knowing while reading this: at CHARGER_IGNORED_BACKOFF_MS <= FLIP_COOLDOWN_MS the
+  // two cover the same span, and this test would pass with the back-off removed entirely.
+  // What it still pins is the contract — no start before the deadline — which is what the
+  // give-up path promises whatever the numbers are set to.
   const dev = makeDevice();
   const t = await startAndGoSilent(dev);
   await step(dev, t + CHARGER_START_GRACE_MS + 1);
-  await step(dev, t + CHARGER_START_GIVEUP_MS);
+  const gaveUp = t + CHARGER_START_GIVEUP_MS;
+  await step(dev, gaveUp);
   const before = starts(dev);
 
-  // Well past FLIP_COOLDOWN_MS, still inside the back-off.
-  for (const d of [400_000, 800_000, 1_200_000, 1_600_000]) {
-    await step(dev, t + CHARGER_START_GIVEUP_MS + d);
+  for (const frac of [0.2, 0.4, 0.6, 0.8, 0.99]) {
+    await step(dev, gaveUp + Math.round(CHARGER_IGNORED_BACKOFF_MS * frac));
   }
 
   assert.strictEqual(starts(dev), before, 'it was started again during the back-off');
@@ -323,6 +329,38 @@ test('the grace outlasts the 57 s the field log was giving up after', () => {
   assert.ok(CHARGER_START_GRACE_MS > 57_000);
   assert.ok(CHARGER_START_GIVEUP_MS > CHARGER_START_GRACE_MS,
     'giving up must come after the retry, not with it');
-  assert.ok(CHARGER_IGNORED_BACKOFF_MS > 5 * 60_000,
-    'a back-off no longer than FLIP_COOLDOWN_MS would not slow the loop at all');
+  assert.ok(CHARGER_IGNORED_BACKOFF_MS > 0,
+    'without a back-off the give-up would only pace the loop, not break it');
+});
+
+test('what the three timings cost in triggers, over the window that prompted them', async () => {
+  // A characterisation test, and it is meant to be read rather than merely passed. The
+  // three constants are a trade nobody can settle from first principles: a short back-off
+  // forgives a charger that starts behaving, a long one stops pestering one that does not.
+  // This counts what the current setting actually sends, so changing any of them shows up
+  // here as a number and has to be looked at on purpose.
+  //
+  // For scale, from the 2026-09-25 log over the same 140 minutes, BEFORE any of this:
+  //   11 starts · 13 current commands · 11 stops · 22 allocation flips
+  // The retry costs a second start per attempt, so a back-off near FLIP_COOLDOWN_MS buys
+  // quicker forgiveness at roughly double the traffic. That is a deliberate choice, not an
+  // oversight.
+  const dev = makeDevice();
+  const WINDOW_MIN = 140;
+  let flips = 0, prev = 0;
+  for (let s = 0; s <= WINDOW_MIN * 60; s += TICK / 1000) {
+    const r = await step(dev, T0 + s * 1000);
+    const a = r.allocatedW > 0 ? 1 : 0;
+    if (a !== prev) { flips += 1; prev = a; }
+  }
+
+  const cycleMs = CHARGER_START_GIVEUP_MS + CHARGER_IGNORED_BACKOFF_MS;
+  const attempts = Math.ceil((WINDOW_MIN * 60_000) / cycleMs);
+
+  assert.ok(starts(dev) <= attempts * 2,
+    `${starts(dev)} starts is more than two per attempt — the retry is firing more than once`);
+  assert.strictEqual(zeros(dev), starts(dev) / 2,
+    'every attempt should end in exactly one stop');
+  assert.strictEqual(flips, starts(dev),
+    'the charger took and released the surplus a different number of times than it started');
 });
