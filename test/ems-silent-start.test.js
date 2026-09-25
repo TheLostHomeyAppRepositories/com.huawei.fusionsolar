@@ -21,7 +21,7 @@ const chargerMixin = require('../lib/ems/chargerControl');
 const timingMixin  = require('../lib/ems/timing');
 const {
   CHARGER_START_GRACE_MS, CHARGER_START_GIVEUP_MS, CHARGER_IGNORED_BACKOFF_MS,
-  CHARGER_LIVE_W, STEP_HOLD_MS,
+  CHARGER_IGNORED_BACKOFF_MAX_MS, CHARGER_LIVE_W, STEP_HOLD_MS,
 } = require('../lib/ems/constants');
 
 const CH = 'charger-1';
@@ -211,6 +211,94 @@ test('the second attempt gets a full grace of its own, not the leftovers of the 
   assert.strictEqual(zeros(dev), 1, 'the second attempt was given up on the moment it began');
   assert.strictEqual(dev._getChargerState(CH).startRetried, false,
     'and it inherited the first attempt\'s spent retry');
+});
+
+// ── the escalation ──────────────────────────────────────────────────────────────
+
+// Walks one attempt from start to give-up and returns the moment it was given up on.
+async function oneFailedAttempt(dev, from) {
+  await step(dev, from);
+  await step(dev, from + STEP_HOLD_MS + 1);
+  const silent = from + STEP_HOLD_MS + 1 + TICK;
+  await step(dev, silent);                                  // clock starts
+  await step(dev, silent + CHARGER_START_GRACE_MS + 1);     // retry
+  const gaveUp = silent + CHARGER_START_GIVEUP_MS;
+  await step(dev, gaveUp);                                  // give up
+  return gaveUp;
+}
+
+const waitedMin = (dev) => dev.logs
+  .filter((l) => l.includes('leaving it alone'))
+  .map((l) => Number((l.match(/alone for (\d+) min/) || [])[1]));
+
+test('each give-up in a row doubles the wait, up to the ceiling', async () => {
+  const dev = makeDevice();
+  let t = T0;
+  for (let i = 0; i < 5; i++) {
+    const gaveUp = await oneFailedAttempt(dev, t);
+    t = gaveUp + Math.min(
+      CHARGER_IGNORED_BACKOFF_MAX_MS,
+      CHARGER_IGNORED_BACKOFF_MS * (2 ** i),
+    ) + 1;
+  }
+
+  assert.deepStrictEqual(waitedMin(dev), [5, 10, 20, 30, 30],
+    'the back-off did not double, or did not stop doubling at the ceiling');
+});
+
+test('the first give-up is forgiven in the base back-off, not the ceiling', async () => {
+  // The whole point of escalating rather than picking one number: a charger that hiccups
+  // once gets asked again quickly.
+  const dev = makeDevice();
+  await oneFailedAttempt(dev, T0);
+  assert.deepStrictEqual(waitedMin(dev), [CHARGER_IGNORED_BACKOFF_MS / 60_000]);
+});
+
+test('one amp drawn wipes the streak, and the next failure starts at the base again', async () => {
+  // A car that charges is not a charger that ignores starts, however the afternoon went
+  // before it. Anything else would punish a working charger for its own earlier silence.
+  const dev = makeDevice();
+  let t = T0;
+  for (let i = 0; i < 3; i++) {
+    const gaveUp = await oneFailedAttempt(dev, t);
+    t = gaveUp + CHARGER_IGNORED_BACKOFF_MAX_MS + 1;
+  }
+  assert.deepStrictEqual(waitedMin(dev), [5, 10, 20]);
+
+  await step(dev, t, { powerW: 2500 });          // it charges
+  assert.strictEqual(dev._getChargerState(CH).ignoredStreak, 0);
+
+  await oneFailedAttempt(dev, t + TICK);
+  assert.deepStrictEqual(waitedMin(dev), [5, 10, 20, 5], 'the streak survived a real charge');
+});
+
+test('unplugging wipes the streak too', async () => {
+  const fs   = require('fs');
+  const path = require('path');
+  const src  = fs.readFileSync(path.join(__dirname, '..', 'lib', 'ems', 'chargerControl.js'), 'utf8');
+  const from = src.indexOf('P2: No EV connected');
+  const block = src.slice(from, src.indexOf('const idleSocStr', from));
+  assert.ok(/st\.ignoredStreak = 0/.test(block),
+    'the next car inherits the last one\'s punishment');
+});
+
+test('the escalation is what keeps a broken charger from being asked all afternoon', async () => {
+  // Measured, because the whole argument for escalating is a pair of numbers. Six hours of
+  // sun, charger silent throughout. A flat five-minute back-off sends a start every eleven
+  // minutes for the entire day; this settles at one every thirty-five.
+  const dev = makeDevice();
+  const SIX_HOURS = 360 * 60_000;
+  for (let ms = 0; ms <= SIX_HOURS; ms += TICK) await step(dev, T0 + ms);
+
+  const flat = Math.floor(SIX_HOURS / (CHARGER_START_GIVEUP_MS + CHARGER_IGNORED_BACKOFF_MS)) * 2;
+  assert.ok(starts(dev) < flat * 0.6,
+    `${starts(dev)} starts in six hours is not meaningfully fewer than the ${flat} a flat `
+    + 'back-off would send — the escalation is not doing its job');
+
+  const waits = waitedMin(dev);
+  assert.ok(waits.length > 3, 'too few give-ups in six hours to say anything about the ladder');
+  assert.strictEqual(waits[waits.length - 1], CHARGER_IGNORED_BACKOFF_MAX_MS / 60_000,
+    'it never reached the ceiling');
 });
 
 // ── a charger that does start ───────────────────────────────────────────────────
