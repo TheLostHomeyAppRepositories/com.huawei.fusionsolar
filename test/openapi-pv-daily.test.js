@@ -47,6 +47,12 @@ function fakeInverter() {
   d.caps = new Set([
     'measure_power', 'measure_power.mppt', 'measure_power.active_power',
     'meter_power.inv_total', 'meter_power.inv_daily',
+    // Present from init, not created on arrival: it is in the driver's REQUIRED_CAPABILITIES
+    // because Homey reads the energy block's target from the manifest, which the test below
+    // ("Homey Energy is pointed at the generation figure, and can actually read it") pins.
+    // It moved from _setOptional to _setCumulative in 1.2.261, and _setCumulative — like
+    // _set — writes to capabilities a device has rather than creating them.
+    'meter_power.pv_total',
   ]);
   d._prevDeviceStatus = null;
   d.log = () => {};
@@ -56,6 +62,12 @@ function fakeInverter() {
   d.addCapability = async (c) => { d.caps.add(c); };
   d._set = async (c, v) => { if (v !== null && v !== undefined && d.caps.has(c)) d.values[c] = v; };
   d._setOptional = InverterDevice.prototype._setOptional.bind(d);
+  // The high-water mark _setCumulative keeps for meter_power.pv_total lives in the device
+  // store, so the fake needs one. Empty at the start of every poll() here, which is the
+  // state a freshly paired device is in.
+  d.store = {};
+  d.getStoreValue = (k) => d.store[k];
+  d.setStoreValue = async (k, v) => { d.store[k] = v; };
   d._trackPower = () => {};
   d.homey = {
     notifications: { createNotification: async () => {} },

@@ -109,7 +109,7 @@ class FusionSolarKioskDevice extends Device {
       const kpi = extractKpiValues(raw);
 
       await this._set('measure_power',       kpi.realTimePower);
-      await this._set('meter_power',          kpi.cumulativeEnergy);
+      await this._setCumulative('meter_power', kpi.cumulativeEnergy);
       await this._set('meter_power.daily',    kpi.dailyEnergy);
       await this._set('meter_power_monthly',  kpi.monthEnergy);
       await this._set('meter_power_yearly',   kpi.yearEnergy);
@@ -159,5 +159,14 @@ class FusionSolarKioskDevice extends Device {
   }
 
 }
+
+// Only _setCumulative, deliberately not the whole mixin: this driver keeps its own _set for
+// the reason spelled out above it, and _setCumulative calls through to whatever _set the
+// device has. The kiosk page is a different source from the OpenAPI station total, and no
+// dip has been measured on it — but it is the same kind of number under the same Homey
+// contract, and the README records a 0 here once booking an entire lifetime as one day.
+Object.assign(FusionSolarKioskDevice.prototype, {
+  _setCumulative: require('../../lib/capability-set')._setCumulative,
+});
 
 module.exports = FusionSolarKioskDevice;

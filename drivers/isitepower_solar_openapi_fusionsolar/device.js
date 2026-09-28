@@ -43,10 +43,16 @@ class ISitePowerSolarDevice extends Device {
       await this._set('measure_current', v.solarCurrentA);
     }
 
-    // Use cumulative total_power from Station KPI (real Huawei counter, never resets)
-    // Guard against 0: some off-grid stations return 0 for all KPIs — don't reset the counter
+    // The same station total that issue #34 caught dipping by a full day's production at
+    // FusionSolar's nightly rollover. The old comment here claimed it "never resets"; it
+    // does, briefly, and Homey books the recovery as generation. _setCumulative holds the
+    // high reading through the dip.
+    //
+    // The > 0 test stays for a different failure: some off-grid stations return 0 for every
+    // KPI, and while the guard below would hold that too, saying so here is cheaper than
+    // making the reader work it out.
     if (stationKpi?.totalEnergy > 0) {
-      await this._set('meter_power', stationKpi.totalEnergy);
+      await this._setCumulative('meter_power', stationKpi.totalEnergy);
     }
 
     if (!this.getAvailable()) await this.setAvailable();

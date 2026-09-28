@@ -166,7 +166,12 @@ class FusionSolarInverterDevice extends Device {
     // meter_power.inv_total keeps the inverter's own lifetime yield, under its own name.
     // It is the genuine figure for the hardware and the only one that survives a plant
     // record being recreated — which is exactly what happened on that plant in 2025.
-    await this._setOptional('meter_power.pv_total', stationKpi?.totalEnergy ?? null);
+    // _setCumulative, not _setOptional: this is what energy.meterPowerExportedCapability
+    // points at, so Homey reads it as generation. Issue #34 measured it dipping by exactly one
+    // day's production every night and Homey booking the recovery as solar. The capability is
+    // declared in the manifest rather than created on arrival, so nothing is lost by not
+    // going through _setOptional here.
+    await this._setCumulative('meter_power.pv_total', stationKpi?.totalEnergy ?? null);
 
 
     // Inverter device KPI (type 1 = string inverter, type 38 = residential inverter)
