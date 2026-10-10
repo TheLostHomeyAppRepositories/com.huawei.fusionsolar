@@ -286,7 +286,7 @@
           settings: {
             address,
             port:          parseInt(port, 10) || 502,
-            modbus_id:     parseInt(modbusId, 10) || 100,
+            modbus_id:     parseInt(modbusId, 10) >= 0 ? parseInt(modbusId, 10) : 100,
             poll_interval: 60,
           },
         });

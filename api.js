@@ -663,7 +663,10 @@ module.exports = {
       const settings = device.getSettings();
       const host     = settings.address;
       const port     = parseInt(settings.port,      10) || 502;
-      const unitId   = parseInt(settings.modbus_id, 10) || 1;
+      // Unit 0 is a real address — every EMMA device has it — and `|| 1` turned it into 1,
+      // so a click on a row read some other unit while "Live lesen" beside it read the right one.
+      const modbusId = parseInt(settings.modbus_id, 10);
+      const unitId   = Number.isFinite(modbusId) ? modbusId : 1;
       if (!host) return { error: 'No IP address configured for this device' };
 
       // Pause polling so the TCP slot is free
