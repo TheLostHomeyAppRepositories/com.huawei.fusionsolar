@@ -531,7 +531,7 @@ Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible 
 | Charging power          | Live AC charging power (W)                                                       |
 | Target current (A)      | Active charging current limit (fine-grained amp control, kept in sync with Target Charging Power) |
 | Charging energy         | Cumulative total energy (kWh)                                                    |
-| Charging state          | Homey EV state: `plugged_out` / `plugged_in` / `plugged_in_paused` (charger reports SuspendedEV/SuspendedEVSE) / `plugged_in_charging`; left unchanged while the charger is offline |
+| Charging state          | Homey EV state: `plugged_out` / `plugged_in` (also while the charger reports Finishing — the cable is still in) / `plugged_in_paused` (charger reports SuspendedEV/SuspendedEVSE) / `plugged_in_charging`; left unchanged while the charger is offline |
 | Session status          | Not connected · Connected · Smart charging (car in, auto-start off) · Charging · Finishing (under 100 W for 3 min) · Paused · Fully charged · Offline · Error — used by the *Session status is* condition |
 | Session energy          | Energy of the current session (kWh), across pauses; refreshed every minute, 0 after unplug |
 | Session duration        | Duration of the current session (e.g. "1h 12m"); "—" after unplug              |

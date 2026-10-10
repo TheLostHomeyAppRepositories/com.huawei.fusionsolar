@@ -147,6 +147,7 @@ function device() {
   d.settings = { station_id: 'CP1', auto_start_charging: true, default_charging_amps: '16' };
   d.getSetting = (k) => d.settings[k];
   d.getCapabilityValue = (k) => d.caps[k];
+  d.hasCapability = () => true; // the meter reading goes through _setCumulative since 1.2.327
   d._set = async (k, v) => { d.caps[k] = v; };
   d.setStoreValue = async (k, v) => { d.store[k] = v; };
   d.getStoreValue = async (k) => d.store[k];

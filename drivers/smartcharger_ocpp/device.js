@@ -10,6 +10,8 @@ const AMPS_TO_WATTS       = (amps, phases = 3) => Math.round(amps * phases * 230
 const BLOCK_AMPS          = 0; // server converts 0A → 1W (Huawei firmware bug workaround)
 // How long the "Instant Charging" switch shows "on" after a tap — see _resetChargeNowSwitch.
 const CHARGE_NOW_RESET_MS = 1500;
+// How long a resume counts as on its way before its StartTransaction — see startCharging.
+const RESUME_IN_FLIGHT_MS = 60_000;
 // How long after sending the starting current a second attempt is treated as the same one.
 // The restart timer and the connect handler can both fire on a restart with the charger
 // still attached; wide enough to cover the gap between them, short enough that a charger
@@ -78,6 +80,14 @@ const INTERNAL_FROM_HOMEY = {
 const OCPP_HOMEY_STATE = {
   'SuspendedEVSE': 'plugged_in_paused',
   'SuspendedEV':   'plugged_in_paused',
+  // The transaction is over, the cable still in. Internally Finishing stays 'idle', but Homey
+  // was told plugged_out: on a Huawei every stop and every masked pause passes through it
+  // (Charging → Finishing → Preparing), and an EMS tick landing in that moment read the car as
+  // unplugged — it closed the charge session, split it in two, cleared the "car is at its
+  // target" latch and the back-off for a car that ignores its starts, and could switch instant
+  // charging off (review 2026-10-10). A charger that stays in Finishing until the cable is pulled
+  // would never have had its paused car resumed.
+  'Finishing':     'plugged_in',
 };
 
 // Capabilities the user can turn off. A charger reports the car's state of charge only if
@@ -914,7 +924,7 @@ class SmartChargerOcppDevice extends Device {
           }
 
           case 'Energy.Active.Import.Register':
-            this._set('meter_power', parseFloat((val / 1000).toFixed(3))).catch(() => {});
+            this._setMeterReading(val).catch(() => {});
             this._trackLastNonZero('meter_power', val / 1000);
             break;
 
@@ -1070,6 +1080,15 @@ class SmartChargerOcppDevice extends Device {
       }
       await this.setStoreValue('activeSession', null).catch(() => {});
       await this._set('evcharger_charging', false);
+      // The transaction has ended, so nothing flows — but a Huawei sends MeterValues only during
+      // a transaction, so no 0 W sample may come to say so, and the last reading stood for the
+      // whole pause. The EMS reads it as the charger's draw: it booked it as session energy,
+      // counted it in the house load, and kept sending stops to a charger that seemed to draw
+      // (review 2026-10-10).
+      await this._set('measure_power', 0);
+      for (const cap of ['measure_current', 'measure_current.l1', 'measure_current.l2', 'measure_current.l3']) {
+        await this._set(cap, 0);
+      }
       await this._updateSessionStatus('connected');
 
       this.homey.setTimeout(async () => {
@@ -1167,9 +1186,11 @@ class SmartChargerOcppDevice extends Device {
       if (cur && cur !== 'charging') return cur;
       return 'connected';
     })();
-    await this._setChargingState(settledState);
+    // With the same override as the status itself: a Finishing that arrived before this stop
+    // is still a car on the cable (see OCPP_HOMEY_STATE).
+    await this._setChargingState(settledState, OCPP_HOMEY_STATE[this._lastRawStatus]);
     await this._set('measure_power', 0);
-    if (meterStop) await this._set('meter_power', parseFloat((meterStop / 1000).toFixed(3)));
+    if (meterStop > 0) await this._setMeterReading(meterStop);
     await this._set('ocpp_last_message', 'Charging stopped');
     await this._updateSessionStatus(settledState);
     this._updateChargingProfile().catch(() => {});
@@ -1228,7 +1249,44 @@ class SmartChargerOcppDevice extends Device {
 
   // ─── Charging control ────────────────────────────────────────────────────
 
-  async startCharging(amps, overridePhases, owner) {
+  /**
+   * A start is not a second start. On a session that is running, paused, or being resumed this
+   * used to send RemoteStart once more and, 3 s later, the start's safety-net profile at the
+   * default current — so the EMS's own retry for a car that ignored its start (start and current
+   * together), its resume after a 0 A pause (both cards at once) and Homey's native start could
+   * leave the car at 16 A while the EMS believed 6–7 A, and the EMS sends a current only when
+   * it changes (review 2026-10-10). Now:
+   *   - running: only an explicitly given current is applied, as a new limit;
+   *   - paused: it resumes, at the given current if there is one;
+   *   - being resumed (no transaction yet, under a minute): the resume is already on its way.
+   * resumeCharging's own start passes `fromResume`.
+   */
+  async startCharging(amps, overridePhases, owner, { fromResume = false } = {}) {
+    if (!fromResume) {
+      if (this._txnId && !this._autoStartBlocked) {
+        if (amps != null && amps !== this._txnAmps) {
+          this.log(`[OCPP] Start on a running session — applying ${amps}A as its limit`);
+          return this.setChargingLimit(amps, overridePhases, owner);
+        }
+        this.log('[OCPP] Start on a running session — already charging, nothing sent');
+        return undefined;
+      }
+      if (this.stitchedSession && this.stitchedSession.paused) {
+        this.log(`[OCPP] Start on a paused session — resuming${amps != null ? ` at ${amps}A` : ''}`);
+        if (amps != null) {
+          this._validateProfileRequest(amps, this._getPhases());
+          this._txnAmps = amps;
+          this.stitchedSession.resumeAmps = amps;
+        }
+        return this.resumeCharging(owner || 'user');
+      }
+      if (!this._txnId && this.stitchedSession && this.stitchedSession.resuming
+          && (Date.now() - (this._resumeStartedAt || 0)) < RESUME_IN_FLIGHT_MS) {
+        if (amps != null) this._txnAmps = amps;
+        this.log('[OCPP] Start while a resume is on its way — nothing sent');
+        return undefined;
+      }
+    }
     this._startInFlight = true;
     try {
       return await this._startChargingInner(amps, overridePhases, owner);
@@ -1297,8 +1355,11 @@ class SmartChargerOcppDevice extends Device {
     this._pendingTxProfileTimer = this.homey.setTimeout(() => {
       this._pendingTxProfileTimer = null;
       if (!this._txnId || this._autoStartBlocked) return;
-      server.setTxProfileAsync(stationId, this._txnId, safetyAmps, safetyPhases)
-        .then(r => this.log(`[OCPP] Safety-net TxProfile applied: ${safetyAmps}A — ${JSON.stringify(r)}`))
+      // The current in force when it fires, not the one captured 3 s ago: a later start or
+      // resume may have set another one in between.
+      const amps = this._txnAmps || safetyAmps;
+      server.setTxProfileAsync(stationId, this._txnId, amps, safetyPhases)
+        .then(r => this.log(`[OCPP] Safety-net TxProfile applied: ${amps}A — ${JSON.stringify(r)}`))
         .catch(e => this.log(`[OCPP] Safety-net TxProfile failed: ${e.message}`));
     }, 3000);
   }
@@ -1394,9 +1455,10 @@ class SmartChargerOcppDevice extends Device {
     await this._persistStitched();
 
     this.log(`[OCPP] Masked resume: starting transaction stitched onto paused session (${resumeAmps}A${resumePhases ? `/${resumePhases}P` : ''})`);
+    this._resumeStartedAt = Date.now();
     try {
       // Preserve the phase override from the paused session; keep existing owner
-      await this.startCharging(this._txnAmps || resumeAmps, resumePhases || undefined, this.sessionOwner);
+      await this.startCharging(this._txnAmps || resumeAmps, resumePhases || undefined, this.sessionOwner, { fromResume: true });
     } catch (e) {
       this.log(`[OCPP] Resume failed: ${e.message}`);
       this.stitchedSession.paused   = true;
@@ -1487,6 +1549,20 @@ class SmartChargerOcppDevice extends Device {
       this.log('[OCPP] Release failed:', e.message);
       throw e;
     }
+  }
+
+  // ─── The energy register ────────────────────────────────────────────────
+  //
+  // meter_power is the charger's lifetime register and the meter Homey Energy books the car's
+  // consumption from — by difference, re-anchoring on a fall and counting the recovery as new
+  // energy. A 0, or a reading below the last one, followed by the real figure booked the whole
+  // lifetime as one day: the same fault 1.2.320 closed for the cloud meters. Every value went
+  // straight through here. Now a reading of 0 or less is not one, and a dip is held until it
+  // lasts (lib/capability-set.js _setCumulative: 6 h, then believed and logged — a charger
+  // that was replaced or reset).
+  async _setMeterReading(wh) {
+    if (!(wh > 0)) return;
+    await this._setCumulative('meter_power', parseFloat((wh / 1000).toFixed(3)));
   }
 
   // ─── Charge Now ──────────────────────────────────────────────────────────
@@ -2325,5 +2401,9 @@ class SmartChargerOcppDevice extends Device {
 
 // Every saved settings page in the log and the change log — see lib/change-log.js.
 withSettingsLog(SmartChargerOcppDevice);
+
+// Only _setCumulative from the shared set: this driver keeps its own _set (target_power mirror),
+// and _setCumulative writes through whatever _set the device has.
+SmartChargerOcppDevice.prototype._setCumulative = require('../../lib/capability-set')._setCumulative;
 
 module.exports = SmartChargerOcppDevice;
