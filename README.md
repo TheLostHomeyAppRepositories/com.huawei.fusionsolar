@@ -3,7 +3,7 @@
 **App ID:** `com.huawei.fusionsolar`
 **SDK:** Homey SDK 3
 **Minimum firmware:** Homey >= 12.13.0
-**Compatible with:** Homey Pro (Early 2019) and all newer Homey devices running firmware >= 12.13.0
+**Compatible with:** Homey Pro (Early 2019) and newer Homey Pro models running firmware >= 12.13.0 — local platform only, not Homey Cloud
 
 > Firmware >= 12.13.0 is required by the OCPP Smart Charger's standard `target_power` capability. Earlier releases of this app targeted 12.4.5.
 
@@ -17,8 +17,8 @@ This app supports five independent connection methods to a Huawei FusionSolar in
 |-----------------|------------------------------------------------------------------------------------|
 | **Kiosk**       | Reads plant data via the public Kiosk URL (no account required)                   |
 | **OpenAPI**     | Connects via the official Northbound API using a FusionSolar account              |
-| **Modbus TCP**  | Direct communication with SUN2000, LUNA2000 and DTSU666 over the local network   |
-| **EMMA Modbus** | Direct communication via the EMMA Energy Management Module (SUN2000MA)            |
+| **Modbus TCP**  | Direct communication with SUN2000, LUNA2000, DTSU666 and SDongle A over the local network |
+| **EMMA Modbus** | Direct communication via Huawei's EMMA (Energy Management Assistant, e.g. EMMA-A02) |
 | **OCPP 1.6**    | Runs an OCPP 1.6 WebSocket server on Homey so EV chargers can connect directly    |
 
 On top of these, the app includes an **Energy Management System (EMS)** device — a local orchestration layer that steers EV charging, heat pumps and other loads from live solar surplus. See [Energy Management System](#energy-management-system-ems).
@@ -62,7 +62,6 @@ Connection via the Huawei FusionSolar Northbound API. Provides inverter, grid an
 | PV1 / PV2 voltage       | DC voltage of PV strings (V)                                      |
 | PV1 / PV2 current       | DC current of PV strings (A)                                      |
 | Grid frequency          | Mains frequency (Hz)                                              |
-| Inverter efficiency     | Conversion efficiency reported by the inverter (%)                |
 | Inverter status         | Operating state as text                                           |
 | Grid active power       | Current: positive = import, negative = export (W)                 |
 | Total grid export       | Cumulative total energy exported to grid (kWh)                    |
@@ -86,7 +85,7 @@ Connection via the Huawei FusionSolar Northbound API. Provides inverter, grid an
 > the DC side, before conversion losses. Inverters that do not report the DC counter keep the
 > guarded plant total.
 
-> Grid frequency, inverter efficiency and inverter status are added on the first successful
+> Grid frequency and inverter status are added on the first successful
 > poll rather than at pairing, and **PV energy today** appears the first time the plant summary
 > carries it. A plant whose API never sends a field does not get a permanently empty row.
 
@@ -125,12 +124,14 @@ Connection via the Huawei FusionSolar Northbound API.
 | Battery voltage          | DC bus voltage (V)                                   |
 | State of health          | SoH in percent (%) — see note                        |
 | Battery modules          | Number of modules reported by the plant              |
+| Battery capacity         | Nameplate capacity the plant reports (kWh), summed over its batteries — only where reported |
 | Battery Unit 1 / 2 installed | Whether each unit is fitted                      |
 | Battery status           | Operating state as text (e.g. Running, Standby)      |
 | Working mode             | Charge/discharge mode as text (read-only)            |
+| Battery state            | Text summary, e.g. "1234 W 🔺 73%" — available in flows |
 
-> **State of health** is read from the per-module list the API returns, not from the flat
-> `battery_soh` field — that field reads 0 on plants that publish no health figure, and a
+> **State of health** is read from the per-module list the API returns; the flat
+> `battery_soh` field is used only where no module reports and it is above 0 — it reads 0 on plants that publish no health figure, and a
 > 0 % row states a scrap battery where none was reported. Where the modules do report, the
 > row shows their average; where nothing reports, there is no row at all.
 
@@ -157,7 +158,9 @@ Connection via the Huawei FusionSolar Northbound API. Registered as a P1 meter (
 > Grid Meter (type 17). The three differ in ways that fail silently if merged: EMMA reports
 > power in kilowatts and the power sensor in watts, their lifetime counters run the opposite
 > way round, and Huawei counts feed-in as positive on the power sensor and grid meter while
-> EMMA already matches Homey's direction. Each is read on its own terms.
+> EMMA already matches Homey's direction. Each is read on its own terms. A plant with only a
+> Grid Meter (type 17) gets grid power and the state indicator, but no import/export totals and
+> no phase values.
 
 ---
 
@@ -169,6 +172,7 @@ Dedicated driver for the Huawei iSitePower-M Solar subsystem. Registered as a so
 |---------------|--------------------------------------------------|
 | Solar power   | Current PV output power (W)                      |
 | Total yield   | Cumulative PV yield (kWh) — from station KPI     |
+| Current       | PV output current (A) — when reported            |
 
 ---
 
@@ -182,13 +186,15 @@ Dedicated driver for the Huawei iSitePower-M Battery subsystem. Registered as a 
 | State of charge          | SoC in percent (%)                                       |
 | Charge power             | Current charge power (W)                                 |
 | Discharge power          | Current discharge power (W)                              |
-| Total charged energy     | Cumulative charged energy (kWh)                          |
+| Total charged energy     | Charged energy (kWh), integrated by the app from charge power — the API has no lifetime charge counter |
 | Total discharged energy  | Cumulative discharged energy (kWh)                       |
 | Battery voltage          | Current battery voltage (V)                              |
 | Remaining backup time    | Estimated backup runtime at current load (h)             |
 | Total capacity           | Total installed battery capacity (kWh)                   |
 | Discharge cycles         | Total number of discharge cycles                         |
 | Battery state            | Human-readable state string — available in flows         |
+| Battery status           | iSitePower state as text (e.g. Float charging, Standby) — when reported |
+| Battery current          | Battery current (A) — when reported                      |
 
 ---
 
@@ -200,9 +206,9 @@ Dedicated driver for the Huawei iSitePower-M Grid meter. Registered as a cumulat
 |-----------------|--------------------------------------------------------------|
 | Grid power      | Current import power (W)                                     |
 | Grid import     | Cumulative grid import (kWh)                                 |
-| AC voltage      | Grid voltage (V)                                             |
-| AC current      | Grid current (A)                                             |
-| Grid frequency  | Grid frequency (Hz)                                          |
+| AC voltage      | AC voltage (V) — AC output (60010), else power converter (60092), else Mains meter (60001) |
+| AC current      | AC current (A) — same order of sources                       |
+| Grid frequency  | Frequency (Hz) — same order of sources                       |
 
 ---
 
@@ -213,7 +219,7 @@ Dedicated driver for the Huawei iSitePower-M Home consumption measurement. Regis
 | Capability         | Description                                              |
 |--------------------|----------------------------------------------------------|
 | Home consumption   | Current home load power (W)                              |
-| Total consumption  | Cumulative home energy consumption (kWh)                 |
+| Total consumption  | Home energy (kWh), integrated by the app from home load power since pairing |
 
 > If load data is temporarily unavailable from the API, the last known value is preserved (no drop to 0 W).
 
@@ -233,6 +239,7 @@ Direct Modbus TCP connection to the Huawei SDongle A (unit ID 100).
 | Battery Power           | Current: positive = charging, negative = discharging (W)           |
 | Total Active Power      | Net system active power (W)                                        |
 | Connection Type         | SDongle connection type (N/A, WLAN, 4G, WLAN-FE)                  |
+| Software Version        | The dongle's own OS version (register 30050)                       |
 
 ---
 
@@ -252,15 +259,18 @@ Direct Modbus TCP connection to the SUN2000 inverter or SDongle.
 | Grid frequency              | Mains frequency (Hz)                                      |
 | Inverter status             | Operating state as text. "Standby: battery empty" at night once the battery has reached its discharge cutoff. A code Huawei does not document shows its range and number, e.g. "Shutdown (0x030D)" |
 | Software version            | Inverter firmware version                                 |
-| Active power control mode   | Feed-in limit mode — shown here, changed only by flow cards |
+| Active power control mode   | Feed-in limit mode — shown here; changed in the device settings (*Feed-in Power Control*) or by flow cards |
 | Optimizers total / online   | Counts from register 37200 — only where optimizers are registered |
 | Grid active power           | Current (W) — only when DTSU666 is connected              |
 | Total grid import           | Cumulative (kWh) — only when DTSU666 is connected         |
 | Total grid export           | Cumulative (kWh) — only when DTSU666 is connected         |
 
 > The last four rows come and go with the hardware: the optimizer counts while register 37200
-> reads above zero, the three meter rows while a DTSU666 answers with plausible data. A meter
-> that stops answering takes its rows with it rather than freezing them at the last value.
+> reads above zero, the three meter rows while a DTSU666 answers with plausible data. Only an
+> inverter that reports no meter or no optimizers removes them; a poll cut short — by a flow
+> card writing to the inverter, a settings check or a timeout — keeps the rows and their last
+> values (since 1.2.316). PV power that was not read is not reported as 0 W either: the last
+> value stays.
 
 ---
 
@@ -306,8 +316,8 @@ both sides.
 | `meter_power.inv_daily` | Daily Yield | — | — | yes |
 | `meter_power.pv_total` | Total PV Energy | — | yes | yes |
 | `meter_power.pv_daily` | PV Energy Today | — | yes | on first arrival |
-| `meter_power.grid_export` | Grid Export Energy | with DTSU666 | yes | yes |
-| `meter_power.grid_import` | Grid Import Energy | with DTSU666 | yes | yes |
+| `meter_power.grid_export` | Grid Export Energy / Grid Export | with DTSU666 | yes | yes |
+| `meter_power.grid_import` | Grid Import Energy / Grid Import | with DTSU666 | yes | yes |
 | `measure_voltage.pvN` / `measure_current.pvN` | PVn Voltage / Current | up to 24 | — | PV1 and PV2 |
 | `measure_temperature.invertor` | Inverter Temperature | yes | removed | yes |
 | `measure_frequency` | Grid Frequency | yes | — | on first poll |
@@ -354,18 +364,23 @@ Direct Modbus TCP connection to the LUNA2000 battery via SUN2000 / SDongle. If n
 | Daily charged energy        | Energy charged today (kWh)                               |
 | Daily discharged energy     | Energy discharged today (kWh)                            |
 | Battery status              | Operating state as text (e.g. Running, Standby)          |
-| Installed battery modules   | Number of detected battery packs (read from registers 47750–47755) |
+| Installed battery modules   | Number of detected battery packs (read from registers 47750–47755) — hidden in UI, available in flows |
+| Battery capacity            | Nameplate capacity of the whole stack (kWh, register 37758) — shown once the battery reports it |
+| Backup power SoC            | Reserve for grid outages (%, register 47102) — hidden in UI, available in flows; set under *State of charge limits* |
+| Software version (unit 1/2) | Firmware of each battery unit; unit 2 only when installed                |
+| Battery unit 1/2 installed  | Whether each unit is present — hidden in UI, available in flows          |
 
 #### Battery Modes
 
-The device tile shows the four modes but does not change them: until 1.2.266 they were scroll
-wheels that wrote whatever they landed on (issue #35). Three are changed in the device settings
+The device tile shows the working mode, excess PV and remote mode but does not change them: until
+1.2.266 they were scroll wheels that wrote whatever they landed on (issue #35). Force
+charge/discharge is not on the tile; its value is available in flows. The three are changed in the device settings
 under **Change battery mode**, from dropdowns that list every value and write only on Save. Force
 charge/discharge has no dropdown — it is a command, not a setting, and stays with the flow cards.
 
 | Mode                          | Options                                                                                   | Changed from                         |
 |-------------------------------|-------------------------------------------------------------------------------------------|--------------------------------------|
-| Storage working mode          | Adaptive · Fixed charge/discharge · Maximise self-consumption · TOU · Full feed-in · Third party | Settings dropdown · flow card |
+| Storage working mode          | Adaptive · Fixed charge/discharge · Maximise self-consumption · TOU (LG) · Full feed-in · TOU (LUNA2000) · Third party | Settings dropdown · flow card |
 | Force charge/discharge        | Stop · Charge · Discharge                                                                 | Flow cards                           |
 | Excess PV energy (TOU)        | Feed into grid · Charge battery                                                           | Settings dropdown · flow card        |
 | Remote charge/discharge mode  | Local control · Max self-consumption · Full feed-in · TOU · AI · Third party             | Settings dropdown · flow card        |
@@ -381,7 +396,9 @@ FusionSolar app, by a flow card, or by anything else talking to it.
 **Time of Use windows (since 1.2.307).** The charge and discharge windows *Time of Use (LUNA2000)*
 follows are in the same group, as text in the format of the Home Assistant integration
 ([wiki](https://github.com/wlcrs/huawei_solar/wiki/Time-of-Use-control)) — one line per window,
-`start-end/days/+ or -`, days 1 = Monday to 7 = Sunday, `+` charge, `-` discharge:
+`start-end/days/+ or -`, days 1 = Monday to 7 = Sunday, `+` charge (from the grid only with
+*Charge battery from grid* on), `-` discharge. The windows apply only in the working mode
+*Time of Use (LUNA2000)*:
 
 ```
 00:00-06:00/12345/+
@@ -407,8 +424,10 @@ Reads battery data via the EMMA Energy Management Module (unit ID 0).
 
 | Capability               | Description                                          |
 |--------------------------|------------------------------------------------------|
-| Battery State Indicator  | Human-readable battery state: `850 W 🔺 (67%)` charging / `1200 W 🔻 (45%)` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
+| Battery State Indicator  | Human-readable battery state: `850 W 🔺 67%` charging / `1200 W 🔻 45%` discharging / `(67%)` at idle / `Full (100%)` / `Empty (<5%)` — hidden in UI, available in flows |
 | Battery power            | Current: positive = charging, negative = discharging (W) |
+| Battery charge power     | Current charge power (W)                             |
+| Battery discharge power  | Current discharge power (W)                          |
 | State of charge          | SoC in percent (%)                                   |
 | Backup SoC               | Reserved emergency SoC (%)                           |
 | Chargeable capacity      | Currently available charge capacity (kWh)            |
@@ -457,6 +476,7 @@ Direct Modbus TCP connection to the DTSU666 smart meter via SUN2000 / SDongle. R
 | Phase A/B/C voltage     | Phase voltages (V)                                        |
 | Phase A/B/C current     | Phase currents (A)                                        |
 | Phase A/B/C power       | Phase power (W)                                           |
+| Meter status            | `Normal` / `Offline`; a change fires *Meter status changed* and posts to the timeline (setting *Timeline notifications*) |
 
 ---
 
@@ -474,16 +494,23 @@ Reads grid data via the EMMA Energy Management Module (unit ID 0). Registered as
 | Grid export today       | Energy exported to grid today (kWh)                       |
 | House consumption       | Current house load / consumption power (W)                |
 | House consumption today | Total consumption today (kWh)                             |
+| Phase A/B/C voltage     | Phase voltages (V)                                        |
+| Phase A/B/C current     | Phase currents (A)                                        |
+| Phase A/B/C power       | Phase power (W)                                           |
 
 ---
 
 ### Smart Charger (EMMA Modbus)
 
-Reads EV charger data via the EMMA Energy Management Module.
+Reads EV charger data via the EMMA (the EMMA's IP address, unit ID 0). Read-only — charging is
+controlled with the Smart Charger (OCPP) device.
 
 | Capability           | Description                              |
 |----------------------|------------------------------------------|
-| Rated power          | Maximum charging power of the station (W)|
+| Charging             | Read-only: on while charging             |
+| Charging state       | `plugged_in_charging` while any phase voltage is above 10 V, otherwise `plugged_out` (a car that is plugged in but not drawing current reads as unplugged). If the voltages cannot be read, the last state stands for up to three polls |
+| Charging power       | Estimated from the energy counter between polls (no power register); 0 W when not charging (W) |
+| Rated power          | Maximum charging power of the station (kW)|
 | Model name           | Charger product name                     |
 | Phase A/B/C voltage  | Current phase voltages (V)               |
 | Temperature          | Internal charger temperature (°C)        |
@@ -500,32 +527,41 @@ Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible 
 | Capability              | Description                                                                      |
 |-------------------------|----------------------------------------------------------------------------------|
 | Charging (on/off)       | Native EV `evcharger_charging` control — on = actively charging (generates the standard "Start charging" / "Is charging" flow cards) |
-| Target Charging Power   | Native EV `target_power` (W) — Homey/Energy dashboard set-point, mapped automatically to current and phase count (6 A minimum dead-zone) |
+| Target Charging Power   | Native EV `target_power` (W) — Homey/Energy set-point, converted to a current for the configured number of phases; acted on only while Homey is in control (`target_power_mode`). The slider steps by 230 W × phases and skips everything below 6 A per phase (1380 W single-phase, 4140 W three-phase); 0 W stops charging |
 | Charging power          | Live AC charging power (W)                                                       |
 | Target current (A)      | Active charging current limit (fine-grained amp control, kept in sync with Target Charging Power) |
 | Charging energy         | Cumulative total energy (kWh)                                                    |
-| Charging state          | `idle` / `connected` / `charging` / `finishing` / `fully_charged` / `error`     |
-| Session status          | Human-readable session summary (e.g. "Charging · 3.2 kWh · 1h 12min")          |
-| Charging profile        | Active limit display (e.g. "11 kW · 3-phase")                                   |
-| Status summary          | Combined charger state line for the device card                                  |
+| Charging state          | Homey EV state: `plugged_out` / `plugged_in` / `plugged_in_paused` (charger reports SuspendedEV/SuspendedEVSE) / `plugged_in_charging`; left unchanged while the charger is offline |
+| Session status          | Not connected · Connected · Smart charging (car in, auto-start off) · Charging · Finishing (under 100 W for 3 min) · Paused · Fully charged · Offline · Error — used by the *Session status is* condition |
+| Session energy          | Energy of the current session (kWh), across pauses; refreshed every minute, 0 after unplug |
+| Session duration        | Duration of the current session (e.g. "1h 12m"); "—" after unplug              |
+| Charging profile        | Active limit, e.g. "11.0 kW / 16A / 3P"                                          |
+| Status summary          | One line for the device card, e.g. "Charging · 7.4 kW", "Paused · 3.20 kWh", "Ready to start", "Fully Charged" |
+| Current total           | Sum of the phase currents (A) from MeterValues                                   |
+| Voltage (avg)           | Average of the phase voltages (V) from MeterValues                               |
 | Phase currents L1/L2/L3 | Per-phase current (A) from MeterValues                                           |
 | Phase voltages L1/L2/L3 | Per-phase voltage (V) from MeterValues                                           |
 | Temperature             | Charger internal temperature (°C)                                                |
 | Vehicle SoC             | Vehicle battery state of charge (%) — if charger supports it                    |
-| OCPP server status      | WebSocket connection status and port                                             |
-| Last OCPP message       | Timestamp of the last received OCPP message                                      |
+| OCPP server status      | Starting · Waiting for charger · Charger connected · Error                        |
+| Last OCPP message       | The last event received from the charger, e.g. "Status: Charging", "MeterValues received", "Boot: <model>" |
 
 #### Button Actions (device card)
 
-| Button          | Description                                                           |
-|-----------------|-----------------------------------------------------------------------|
-| Pause charging  | Sends RemoteStop and stores session state for resume                  |
-| Resume charging | Sends RemoteStart and restores the previous charging limit            |
-| Release charger | Sends ChangeAvailability → Operative (unlocks stuck chargers)         |
+| Button           | Description                                                           |
+|------------------|-----------------------------------------------------------------------|
+| Pause charging   | Sends RemoteStop and stores session state for resume                  |
+| Resume charging  | Sends RemoteStart and restores the previous charging limit            |
+| Instant Charging | Charges at 16 A: resumes a paused session, raises a running one or starts one; refused when the charger is offline or no car is connected. Also a quick action and the flow card *Charge now at 16A* |
+
+*Release charger* (ChangeAvailability → Operative, unlocks a charger stuck in Unavailable) is under
+the device's **Maintenance** actions, not on the card, and is also a flow card.
 
 #### Setup (Huawei SCharger)
 
-Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Settings*:
+OCPP needs charger firmware **V100R023C10SPC220** or newer. Configure the SCharger as installer in
+the FusionSolar app: *Services* → *Commission Device*, connect to the charger's WLAN, then
+*Settings* → *Third-party management system* → *OCPP Settings*:
 
 | SCharger field      | Value                                                                                      |
 |---------------------|--------------------------------------------------------------------------------------------|
@@ -536,6 +572,12 @@ Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Sett
 | Username / Password | Optional — enter the same values in Homey settings if used                                 |
 
 > The **Path** field in the SCharger is empty by default. You choose any unique identifier and enter the exact same value as **Station ID** in Homey. The value is case-sensitive.
+
+> **OCPP and the EMMA.** One owner reports that once OCPP is configured on the charger, the EMMA's
+> surplus charging stops working, and only a factory reset of the charger brings it back (the
+> firmware cannot be downgraded either). With OCPP, charging is controlled from Homey — the
+> Energy Management System can take over the surplus charging. To only *read* the charger in
+> Homey without changing it, use the Smart Charger (EMMA Modbus) device instead.
 
 #### Device Settings
 
@@ -550,13 +592,13 @@ Configure the SCharger via FusionSolar → *Device Commissioning* → *OCPP Sett
 | Charging | Auto-start charging | on | Automatically starts charging when a car connects |
 | Charging | Default charging current | 10A | Current used by auto-start and by "Start charging" without an ampere value |
 | Display | Show vehicle battery level | on | Off removes the tile for cars that do not report their state of charge |
-| Notifications | Timeline notifications | on | Posts car connected, charging started/stopped and car disconnected to the timeline |
+| Notifications | Timeline notifications | on | Posts car connected (auto-start off), charging started/paused/resumed/stopped, limit changes, a car that draws no power, car disconnected, and charger offline/back online. Off also silences the offline warning |
 
 ---
 
 ### Energy Management System (EMS)
 
-A local orchestration device (Homey class `other`) that decides, on a configurable tick (15 s by default), how to use solar surplus. It reads your PV, house, grid and battery figures from the paired FusionSolar devices and drives loads — EV chargers, heat pump, boiler, pool pump, dehumidifier, air conditioner — plus battery and inverter export limits, prioritising free solar energy. No cloud, no external service; all logic runs on Homey.
+A local orchestration device (Homey class `other`) that decides, on a configurable tick (15 s by default), how to use solar surplus. It reads your PV, house, grid and battery figures from the Homey devices you pick — typically the paired FusionSolar devices, but any Homey device with the matching reading can be chosen — and drives loads — EV chargers, heat pump, boiler, pool pump, dehumidifier, air conditioner — plus battery and inverter export limits, prioritising free solar energy. No cloud, no external service; all logic runs on Homey.
 
 **Control model:** the EMS does not write to other devices directly. Instead it **fires flow trigger cards** (e.g. *Set charger current*, *Start heat pump*) that you link to the corresponding device action cards in your own flows. This keeps it compatible with any charger/heat-pump brand, not just Huawei.
 
@@ -565,35 +607,39 @@ A local orchestration device (Homey class `other`) that decides, on a configurab
 | Capability            | Description                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
 | Enabled (on/off)      | Master switch for the whole EMS                                              |
-| Off-peak charging     | Enables cheap-tariff EV charging when solar is insufficient                  |
-| Charge now            | Instant charging at full power. A deliberate toggle: nothing clears it but unplugging the car — the charge target does not apply, since the point of the mode is "full power until *I* say otherwise". Once the car reaches its target it stops drawing on its own, and the status says so (`Tesla full (82% ≥ 80%) — waiting to be unplugged`) rather than implying the granted amps are flowing |
+| Off-peak charging     | Switches the off-peak window on for chargers left in *Solar only* mode; chargers set to *Solar & off-peak window* use the window regardless |
+| Charge now            | Instant charging at full power. A deliberate toggle: nothing clears it but unplugging the car — the charge target does not apply, since the point of the mode is "full power until *I* say otherwise". Once the car reaches its target it stops drawing on its own, and the status says so (`Tesla voll (82% ≥ 80%) — wartet auf Abstecken · 16A/3ph`) rather than implying the granted amps are flowing |
 | EMS mode              | Current decision (see modes below)                                          |
 | Status text           | Human-readable summary of the active decision (e.g. `16A × 1 Lader · Bat 82%`) |
 | Solar surplus (W)     | The meter reading — what is actually flowing to the grid                    |
-| Released surplus (W)  | What the EMS grants the devices: the meter reading **plus** the share the SoC ramp lends out of the battery's charging. The gap between the two lines is exactly that share, and it widens as the battery fills — so Insights shows over the day why a device was allowed to run, which the meter alone can never explain (the lent power never passes it). Identical to Solar surplus when no ramp is configured; `0` while the EMS is holding |
+| Released surplus (W)  | What the EMS grants the devices: the meter reading **plus** the share the SoC ramp lends out of the battery's charging. The gap between the two lines is exactly that share, and it widens as the battery fills — so Insights shows over the day why a device was allowed to run, which the meter alone can never explain (the lent power never passes it). Identical to Solar surplus when no ramp is configured; `0` while the EMS is switched off or has no grid reading (disabled, no API key, grid meter unreadable) |
 | PV / House / Grid / Battery power (W) | Live snapshot of the inputs driving the decision            |
-| Electricity price     | Current tariff (fixed, dual, variable flow, or day-ahead forecast)          |
+| Electricity price     | Current tariff (fixed, low/high, time zones, variable flow, or day-ahead forecast) |
 
 #### EMS Modes
 
-`idle` · `disabled` · `not_configured` · `error` · `holding` · `battery_priority` · `solar_ev` · `offpeak_ev` · `lowtariff_ev` (dual low/high tariff) · `price_ev` (price-optimised) · `instant_ev` · `solar_hp` (heat pump) · `solar_boiler` · `solar_pool` · `solar_dehumidifier` · `solar_multi` (several device types at once)
+`idle` · `disabled` · `not_configured` · `error` · `holding` · `battery_priority` · `solar_ev` · `offpeak_ev` · `lowtariff_ev` (dual low/high tariff) · `price_ev` (price-optimised) · `instant_ev` · `solar_hp` (heat pump) · `solar_boiler` · `solar_pool` · `solar_dehumidifier` · `solar_aircon` (air conditioner) · `solar_multi` (several device types at once)
 
 #### Controlled loads
 
 | Load               | Behaviour                                                                                     |
 |--------------------|-----------------------------------------------------------------------------------------------|
 | EV chargers        | Solar-first current stepping (1/3-phase, per-charger min/max), off-peak fallback, per-car target SoC + car↔charger assignment |
-| Heat pump / boiler / pool / dehumidifier / air conditioner | On/off from surplus with per-device reaction grace, min-run, stop-grace and max-run guards |
+| Heat pump / boiler / pool / dehumidifier / air conditioner | On/off from surplus, with per-device start threshold (default 2000 W), start sustain (60 s), reaction grace (120 s), stop grace (60 s), optional max-run, restart cooldown (5 min) and min. power while running, plus a fixed 5-minute minimum run after every start |
 | Battery            | One hard-stop SoC, plus a surplus **share ramp** — see below                                  |
-| Inverter export    | Optional export-limit coordinator (fires on/off triggers at a configurable SoC + export hold) |
+| Inverter export    | Optional export-limit coordinator: fires on/off triggers for every configured inverter when the battery reaches a trigger SoC (default 95 %, released below 90 %), when the price falls below a threshold (default 0, i.e. negative), or permanently (*zero export*). The limit stays on for at least 5 min |
+
+**Device priority** (*Controlled devices → Device Priority*): the order in which individual devices — each charger, heat pump, boiler, … — get first claim on the surplus and on the ramp's share. Drag to reorder; unlisted devices go last.
 
 #### How the battery and the loads share the sun
 
 Older releases had three SoC zones (reserve / normal / an "orange" flat watt budget). That is gone. There is now **one threshold and one ramp**, configured under *Home Batteries*:
 
-- **Below the lower SoC point** nothing runs. Every controllable load is off and the battery takes the whole production. This point *is* the hard stop — "0 % share at the lower point" therefore means what it reads like. A charger that keeps drawing there — a stop that did not land, or a car started in the charger's own app — gets the stop again on every tick, and the history says so once the stops plainly do not reach it (since 1.2.308; before, it was stopped once).
+- **Below the lower SoC point** nothing runs from the surplus. Every surplus-driven load is off — heat pump, boiler, pool, dehumidifier, air conditioner, and solar / off-peak / price / low-tariff charging — and the battery takes the whole production. Instant charging and chargers in *Always charge* mode are the exception: they charge regardless of the battery, capped only by the whole-house grid import limit. This point *is* the hard stop — "0 % share at the lower point" therefore means what it reads like. A charger that keeps drawing there — a stop that did not land, or a car started in the charger's own app — gets the stop again on every tick, and the history says so once the stops plainly do not reach it (since 1.2.308; before, it was stopped once).
 - **Between the two points** the devices' share of production rises linearly with SoC: the fuller the battery, the more of the sun the devices may claim, and the less goes into charging.
 - **At the upper point** the battery stops having priority.
+
+The ramp is opt-in: with both SoC points at 0 it is off, and the hard stop is then a single SoC set via *Stop below* in the **EMS Battery Usage** widget (80 % if never set).
 
 **Chargers are steered by what they measure** (since 1.2.308). A charger that ignores its start — drawing under 500 W although the EMS started it — is started once more after 90 s and stopped after 5 minutes, then left alone for 5, 10, 20, up to 30 minutes before the next try from surplus; a car that is full or at its own limit looks the same and is handled the same way. Until 1.2.308 the current the EMS had commanded counted as drawn, so such a charger kept its share of the surplus indefinitely. A charger switched out of EMS control (widget or settings) is left alone entirely: its draw is no longer counted as surplus the EMS could hand out, and the current last commanded to it is forgotten.
 
@@ -602,19 +648,16 @@ Two guards sit under the ramp, both from field measurements:
 - **The share can never exceed what the battery is actually absorbing.** The budget's whole justification is "what a device may claim is what the battery would otherwise have taken" — so while the battery *discharges* it lends nothing. Without this, a charger climbed 1.6 → 6.9 kW in eleven minutes financed entirely by the battery, invisible to every meter-based guard because the inverter holds the grid near zero during discharge. Installations without a battery power sensor keep the old behaviour: capping on a guess would be worse than not capping.
 - **A hard-stop overflow exception** lets a load run below the stop threshold when the battery is charging *and* there is more export than it can absorb — with a reserve held back, so a start cannot revoke its own permission on the next tick.
 
-The two SoC points also decide when the EMS announces *battery low* / *battery full*: those are the moments the chart already shows, rather than hidden defaults.
+The two SoC points also decide when the EMS announces *battery low* / *battery full*: those are the moments the chart already shows. Without a ramp these stay at 80 % / 95 %, and the Home Batteries section names the thresholds in force.
 
-#### Flow triggers (device: Energy Management System)
+#### Flow cards
 
-`ems_mode_changed`, `ems_set_charger_current`, `ems_start_charger`, `ems_start_heat_pump` / `ems_stop_heat_pump`, `ems_start_boiler` / `ems_stop_boiler`, `ems_start_pool` / `ems_stop_pool`, `ems_start_dehumidifier` / `ems_stop_dehumidifier`, `ems_start_aircon` / `ems_stop_aircon`, `ems_battery_full`, `ems_battery_low`, `ems_battery_force_charge` / `ems_battery_force_discharge` / `ems_battery_normal_mode`, `ems_battery_max_charge_power` / `ems_battery_max_discharge_power`, `ems_inverter_export_limit_on` / `ems_inverter_export_limit_off`, `ems_inverter_set_power_w` / `ems_inverter_set_power_pct` / `ems_inverter_remove_limit`, `ems_set_car_target`
-
-#### Flow actions
-
-`ems_set_enabled`, `ems_set_electricity_price` (feed a variable tariff), `ems_set_price_forecast` (feed an hourly price forecast for price-optimised EV charging), `ems_set_car_target_soc`
+Every EMS trigger, condition and action — with its tokens and what it does — is listed under
+[Flow Cards](#flow-cards), device *Energy Management System*.
 
 #### Solar forecast (Solcast, optional)
 
-An optional **Solcast** PV forecast feed. Enter a free [Solcast Hobbyist](https://toolkit.solcast.com.au) rooftop **Resource ID** and **API key** under *App Settings → Energy Management → Data sources → Solar Forecast*. The EMS fetches the rooftop-site forecast (30-minute slots, up to 7 days) and caches it. **Multiple sites** are supported (e.g. a north- and south-facing roof) — enter one Resource ID per line and their forecasts are summed per slot. To respect the free tier's ~10 calls/day limit, it refreshes **at most every 3 hours** (the interval scales with the number of sites, since each site is one API call) and persists the last fetch across restarts so app reloads never exhaust the daily quota. When configured, the EMS device also exposes three forecast **capabilities** (device card / flows / Insights): *Solar forecast today* and *Solar forecast tomorrow* (kWh) and *Solar forecast (now)* (kW) — the latter is handy for comparing the forecast against actual production. They are added only while Solcast is configured and removed when it is disabled. Expected PV (remaining today / next 6 h / forecast peak) is also shown in the EMS Diagnostics panel and available in flows: a **Solar forecast updated** trigger (tokens: remaining today / next 6 h / peak) and **Expected solar today / in the next N hours / until a cutoff time is more/less than X kWh** conditions (the cutoff-time variant is anchored to a wall-clock deadline). **Solar-forecast start gate** (under *Data sources → Home Batteries*): on a poor-forecast day the EMS can hold off *starting* loads to protect the home battery for the evening — either a manual kWh threshold or an Adaptive mode that blocks starts when the remaining forecast can't refill the battery to full (uses each battery's usable-capacity setting — summed across multiple batteries — + current SOC). It covers **solar EV charging as well as** heat pump / boiler / pool / dehumidifier / air conditioner. Running devices and charges finish normally — the gate holds *starts*, never stops something already going — and it falls back to normal when the forecast is missing or stale.
+An optional **Solcast** PV forecast feed. Enter a free [Solcast Hobbyist](https://toolkit.solcast.com.au) rooftop **Resource ID** and **API key** under *App Settings → Energy Management → Data sources → Solar Forecast*. The EMS fetches the rooftop-site forecast (30-minute slots, up to 7 days) and caches it. **Multiple sites** are supported (e.g. a north- and south-facing roof) — enter one Resource ID per line and their forecasts are summed per slot. To respect the free tier's ~10 calls/day limit, it refreshes **at most every 3 hours** (the interval scales with the number of sites, since each site is one API call) and persists the last fetch across restarts so app reloads never exhaust the daily quota. When configured, the EMS device also exposes three forecast **capabilities** (device card / flows / Insights): *Solar forecast today* and *Solar forecast tomorrow* (kWh) and *Solar forecast (now)* (kW) — the latter is handy for comparing the forecast against actual production. They are added only while Solcast is configured and removed when it is disabled. Expected PV (remaining today / next 6 h / forecast peak) is also shown in the EMS Diagnostics panel and available in flows: a **Solar forecast updated** trigger (tokens: remaining today / next 6 h / peak) and **Expected solar today / in the next N hours / until a cutoff time is more/less than X kWh** conditions (the cutoff-time variant is anchored to a wall-clock deadline). **Solar-forecast start gate** (under *Data sources → Home Batteries*): on a poor-forecast day the EMS can hold off *starting* loads to protect the home battery for the evening — either a manual kWh threshold or an Adaptive mode that blocks starts when the remaining forecast can't refill the battery to full (uses each battery's capacity — read from the battery when its capacity capability is selected, otherwise the typed value — summed across multiple batteries, + current SOC). It covers **solar EV charging as well as** heat pump / boiler / pool / dehumidifier / air conditioner. Running devices and charges finish normally — the gate holds *starts*, never stops something already going — and it falls back to normal when the forecast is missing or stale.
 
 The gate closes at the bare comparison but **reopens only with 1 kWh of forecast on top of the deficit**. The asymmetry is deliberate and was measured: an opening starts loads whose own draw slows the battery's charging, which grows the deficit and closes the gate again. Without the margin it closed at 5.1/5.7, opened at 5.1/5.1 and closed again at 5.1/5.3 inside 28 minutes — every opening revoking itself. While the margin is what holds it, the settings page says so (`5.4 kWh left — reopens from 6.3 kWh`) rather than showing "blocked" beside a remaining figure that already exceeds the requirement. Each transition is written to the EMS History once, so you can see when it engaged and why. Beyond this, the forecast is a **data feed** for flows/Insights (foundation for further solar-aware planning).
 
@@ -626,26 +669,28 @@ EV chargers can be set to **"Solar & cheapest hours (forecast)"** mode. This com
 2. Feed an hourly price forecast into the EMS via the **"Set price forecast"** flow action — it takes a JSON array of hourly prices and a period (*this day* / *tomorrow* / *next hours*). This works directly with [Power by the Hour](https://homey.app/)'s **"New prices received"** trigger (its `Prices` token is exactly this array — just drag it in) or Tibber, EPEX, or any similar day-ahead price app that can produce an hourly array.
 3. Set the charger's **Charging mode** to *Solar & cheapest hours (forecast)*.
 
-Each tick, the EMS computes the car's remaining energy need (target − current SoC × capacity), subtracts what the Solcast forecast will deliver by the deadline, and — only for the remainder — checks whether *now* is one of the cheapest price slots before the deadline (ties prefer the later slot; a short block right before the deadline always charges regardless of price, as a safety margin). If the price feed goes stale or was never fed, it falls back to charging continuously so the car is never stranded just because a flow broke. Shows as the **Price-Optimised EV Charging** EMS mode. No solar/no price data configured → the charger behaves like *Solar only*.
+Each tick, the EMS computes the car's remaining energy need (target − current SoC × capacity), subtracts what the Solcast forecast will deliver by the deadline, and — only for the remainder — checks whether *now* is one of the cheapest price slots before the deadline (ties prefer the later slot; a short block right before the deadline always charges regardless of price, as a safety margin). If the price feed goes stale or was never fed, it falls back to charging continuously so the car is never stranded just because a flow broke. Shows as the **Price-Optimised EV Charging** EMS mode. Without an assigned car with capacity and *Ready by* time the charger behaves like *Solar only*; without a Solcast forecast the whole remaining need is planned into the cheapest hours.
 
 The price forecast works independently of EV charging too: the **Electricity Price** settings section's **Tariff model** dropdown has a dedicated **"Price forecast (day-ahead)"** option — pick it to have the EMS's displayed current price (tile/Insights/flow token) read directly from this same hourly forecast, no separate "current price" flow needed. This is distinct from **"Variable (via flow)"**, which is for price sources that can only push a single current-price value without a day-ahead array (e.g. some real-time Tibber setups). Selecting "Price forecast" also reveals a live preview chart of the incoming data (with a one-time **Flow setup** helper to auto-create the required flows) so you can confirm your price app is feeding it correctly.
+
+**Time zones (3+ tariffs)** is a fifth tariff model for contracts with more than two periods. It takes any number of zones, each with its own times, price and weekdays. Hours no zone covers cost the standard rate, a window may cross midnight, and a window inside another one wins. It produces the same hourly slots as the day-ahead forecast and never goes stale, so price-optimised EV charging, battery grid-charging / reserve and the negative-price export limit all work from it without a *Set price forecast* flow.
 
 #### Price-optimised home battery control (optional)
 
 The same price forecast can also drive the home battery itself — a Homey equivalent of evcc's "battery grid charge": grid-charge the battery in the cheapest hours, and hold discharge back outside the priciest hours so it has capacity when it matters most. Opt in per battery under **Home Batteries**:
 
-1. Enable **"Price-optimised charging"** for the battery and set a **Target SOC**, a **charge power** (kW, used only for the EMS's own scheduling math — it doesn't set the actual hardware limit), and how many hours to **reserve** for the most expensive part of the day (0 disables the reserve/hold behaviour).
+1. Enable **"Price-optimised charging"** for the battery and set a **Target SOC**, a **charge power** (kW, used only for the EMS's own scheduling math — it doesn't set the actual hardware limit), and how many hours to **reserve** for the most expensive part of the day (0 disables the reserve/hold behaviour). Optionally set **No grid charging above forecast** (kWh, `0` = off): when Solcast expects at least that much over the next 24 h, cheap-hour grid charging is skipped; a stale forecast leaves it charging as before.
 2. In that battery's **Flow setup** below, wire up the *Force Charge*, *Max Discharge Power*, and *Normal Mode* rows to your battery's own action cards — same as any other EMS battery flow. Set **Max Discharge Power**'s value to `0` (or a low reserve figure): this is the flow the EMS fires to hold discharge back.
 
 Unlike EV charging, there's no "by" deadline — a battery has no real-world moment it must be ready by, so instead of a fixed clock-time cutoff, the EMS looks at a **rolling 24-hour window from now** and picks the cheapest hours within it to reach Target SOC, firing *Force Charge* when now is one of them. This lets it hold out for a genuinely cheaper hour later instead of being forced to commit early. Independently, it picks the `N` most expensive upcoming hours in that same window (the reserve) and fires *Max Discharge Power* outside them, *Normal Mode* inside them. If the price forecast is stale or missing, or a battery isn't SoC-readable, this does nothing — battery behaviour falls back to whatever the inverter/battery already does on its own. A live preview under each battery's price fields ("Refresh plan") shows, from the current forecast, what the battery is doing right now and its planned charge/reserve windows for the next 24h.
 
 **Which flow rows the EMS drives, and which are yours.** The *Flow setup* panels create one Homey flow per row in the folder `_Huawei EMS`, and the rows are of two kinds. *Force Charge*, *Normal Mode* and *Max Discharge Power* on a battery, and *Enable/Disable export limit* on an inverter, arrive with a working trigger — the EMS fires those cards itself, so replacing their trigger is exactly how you switch price control or the export limit back off. Every other row arrives with a **placeholder** trigger that nothing fires, for you to replace in Homey with your own condition (a price app, a schedule). The flow list marks the difference: a working flow gets a green tick, one still sitting on its placeholder gets an amber ⚠ that says so. The ▶ button beside each flow fires that card exactly as the EMS would and now reports whether any flow was actually listening — `trigger()` resolves either way, so "it fired" and "something ran" are not the same statement. Note that pressing *Create / Update Flows* again deletes these flows by name and recreates them, so a trigger you edited by hand does not survive it.
 
-**Shared grid-import budget:** since the home battery and any EV chargers in "Solar & cheapest hours (forecast)" / "Solar & low tariff" mode can all independently decide to grid-charge in the same cheap hour, an optional **Grid import limit for price-charging** field (under *Grid Meter*, `0` = unlimited) caps their combined draw. The battery is allocated first each tick (it evaluates earlier); a charger is then capped to the highest amp rung that still fits what's left, and only skips grid-charging entirely — falling back to solar-only — when not even its minimum current fits. Each charger is charged against the budget for the amps it was *actually* granted, not for the maximum it asked for. (Before 1.2.43 the theoretical maximum was reserved up front and never released when the whole-house ceiling below subsequently granted less, which exhausted the budget far faster than reality and could wrongly deny a second price/low-tariff charger; the figure shown in Diagnostics was correspondingly too high.) EMS Diagnostics shows how much of the budget is currently committed.
+**Grid-charging in cheap hours:** the home battery and any EV chargers in "Solar & cheapest hours (forecast)" / "Solar & low tariff" mode can all decide to grid-charge in the same cheap hour. They share the whole-house ceiling below, and the battery is allocated first each tick. A charger is capped to the highest amp rung that still fits, and only skips grid-charging (falling back to solar-only) when not even its minimum current fits. The separate *Grid import limit for price-charging* was removed in 1.2.93.
 
 **Live plan previews:** both the battery (its price fields) and each EV charger in a price-aware mode have a "↻ Refresh plan" button showing, from the current forecast, whether it's grid-charging right now and its planned cheap-hour window(s) for the next 24h — no need to wait and watch to find out.
 
-**Grid import limit — whole house (load shedding):** the budget above only caps *price-driven* grid-charging; several EMS behaviours draw grid power unconditionally regardless of price — Instant charging, "Always charge" chargers, and Off-peak-window charging. An optional **Grid import limit — whole house** field (also under *Grid Meter*, `0` = unlimited) sets a hard ceiling on *total* grid import, e.g. matching the site's main fuse rating. Every tick the EMS starts from the actually-measured house import (so ordinary baseline load — fridge, lights, whatever isn't EMS-controlled — is already accounted for) and, if any of these unconditional tiers would push total import over the limit, gracefully steps the charging current down to the highest amp rung that still fits rather than stopping outright; if even the minimum amp doesn't fit, the charger is held off entirely for that tick. Home Battery force-charge is included too — since its power is a fixed value set via your own flow rather than an adjustable amp, it's simply skipped for the tick if it wouldn't fit. This is layered *under* the price-charging budget above: a price/low-tariff charger must pass both checks. EMS Diagnostics shows how much of the ceiling is currently committed.
+**Grid import limit — whole house (load shedding):** an optional **Grid import limit — whole house** field (under *Grid Meter*, `0` = unlimited) sets a hard ceiling on *total* grid import, e.g. matching the site's main fuse rating. It covers every EMS behaviour that draws from the grid: Instant charging, "Always charge" chargers, off-peak-window, price-optimised and low-tariff charging, and Home Battery force-charge; a heat pump, boiler, pool pump, dehumidifier or air conditioner start that would not fit is denied. Every tick the EMS starts from the actually-measured house import (so ordinary baseline load — fridge, lights, whatever isn't EMS-controlled — is already accounted for) and, if any of these unconditional tiers would push total import over the limit, gracefully steps the charging current down to the highest amp rung that still fits rather than stopping outright; if even the minimum amp doesn't fit, the charger is held off entirely for that tick. Home Battery force-charge is included too — since its power is a fixed value set via your own flow rather than an adjustable amp, it's simply skipped for the tick if it wouldn't fit. EMS Diagnostics shows how much of the ceiling is currently committed.
 
 > **How the ceiling is counted.** Because the starting figure is a *measurement*, it already contains whatever EMS-controlled loads are running right now. Anything that re-claims its full draw every tick — EV chargers and Home Battery force-charge — therefore takes its own current draw back out before asking for headroom, and only the difference is charged against the ceiling. Loads that claim once when they start and not again while running (heat pump, boiler, pool pump, dehumidifier) correctly stay part of that measured baseline. Without this a charger sitting comfortably inside the limit would be counted twice, get stopped, then restart on the next tick once its draw left the meter reading — a permanent 15-second on/off cycle (fixed in 1.2.43). A charger whose house load has since risen *above* the ceiling now steps its current down to fit instead of stopping.
 
@@ -655,9 +700,9 @@ Unlike EV charging, there's no "by" deadline — a battery has no real-world mom
 
 #### Charge sessions
 
-Every configured EV charger (any charging mode — solar, off-peak, price-optimised, low-tariff, always) gets a per-session energy and cost log, shown under **App Settings → Energy Management → 🔌 Charge Sessions**. A session runs from the car being plugged in to being unplugged; energy only accumulates on ticks where the charger actually draws power, so pauses within one plug-in period (waiting for surplus, a cheaper price slot, battery protection, …) don't split it into several entries. Energy is integrated from the charger's **measured** power, not from the current the EMS commanded — a car that self-caps below the commanded amps (tapering near full, or a 1-phase car on a 3-phase charger) is billed for what it actually drew. Before 1.2.43 the commanded estimate was used, which could overstate a session's kWh and cost by up to about 3×; entries logged before that release keep their original figures. Cost is computed from whatever the **Electricity Price** tariff model reports at each tick (Fixed / Low-high / Variable / Price forecast) — sessions where no price was known at all show energy only, with cost left blank. Sessions under 0.05 kWh (e.g. a brief plug-in) aren't logged. The last 200 sessions are kept.
+Every configured EV charger (any charging mode — solar, off-peak, price-optimised, low-tariff, always) gets a per-session energy and cost log, shown under **App Settings → Energy Management → 🔌 Charge Sessions**. A session runs from the car being plugged in to being unplugged; energy only accumulates on ticks where the charger actually draws power, so pauses within one plug-in period (waiting for surplus, a cheaper price slot, battery protection, …) don't split it into several entries. Energy is integrated from the charger's **measured** power, not from the current the EMS commanded — a car that self-caps below the commanded amps (tapering near full, or a 1-phase car on a 3-phase charger) is billed for what it actually drew. Before 1.2.43 the commanded estimate was used, which could overstate a session's kWh and cost by up to about 3×; entries logged before that release keep their original figures. Cost is computed from whatever the **Electricity Price** tariff model reports at each tick (Fixed / Low-high / Time zones / Variable / Price forecast) — sessions where no price was known at all show energy only, with cost left blank. Sessions under 0.05 kWh (e.g. a brief plug-in) aren't logged. The last 200 sessions are kept.
 
-**The running session is shown too**, at the top of the list, so a charge in progress is visible instead of appearing only once the cable comes out. It is labelled *charging* or *paused* by whether current is actually flowing — a session waiting for surplus or a cheaper price slot is still one session, but it is not charging, and saying "running" for both was misleading. The same list feeds the **Charging Sessions** widget, which falls back to these EMS sessions when no OCPP charger is paired.
+**The running session is shown too**, at the top of the list, so a charge in progress is visible instead of appearing only once the cable comes out. It is labelled *charging* or *paused* by whether the EMS is currently granting it current — a session waiting for surplus or a cheaper price slot is still one session, but it is not charging, and saying "running" for both was misleading. The same list feeds the **Charging Sessions** widget, which falls back to these EMS sessions when no OCPP charger is paired.
 
 **Feed-in tariff.** Solar a charging car takes was never bought — but where exporting is paid for, it was not free either: it is revenue given up. Enter what you are paid per exported kWh under **Electricity Price → Feed-in tariff / kWh** (it applies whichever tariff model you use for buying, since feeding in is a separate contract), and the solar half of a session is counted at that rate. Both the cost and the average price per kWh then become the real ones — a sunny charge no longer reads `0.00` as if that were the whole story. Because that total mixes two different kinds of money, the session list names both halves underneath it: what was **paid**, and what was **not fed in**. A 6.28 kWh charge that was 97 % solar reads `0.51 CHF (Ø 0.082/kWh)` with `0.05 paid · 0.46 forgone feed-in` below — which is why the average sits nowhere near the 0.3415 on the bill. The breakdown appears only where it says something, so a charge taken entirely from the grid, or one on a contract with no feed-in rate, looks exactly as it did. The CSV export carries the same split in two extra columns.
 
@@ -669,9 +714,13 @@ Data sources, controlled devices, tariff/automation and diagnostics are configur
 
 **Copy configuration** puts the whole setup on the clipboard for a bug report: settings, the current readings, and the per-device table with each steered device's *measured* value beside the one the EMS believes. The aim is that a tick can be recomputed from the export alone — every figure the control loop branches on leaves the device as a value rather than only inside a sentence. **Secrets are redacted by key name** (anything matching key / secret / password / token / code / credential / user): the key stays, the value is replaced, and an unset secret stays visibly unset, so the export is safe to paste into a forum thread.
 
+**Scheduler** (*Automation → Scheduler*): runs a flow from the `_Huawei EMS` folder at a set time, daily or on chosen weekdays, in Homey's time zone. Tasks run only while the EMS is enabled. A task missed by a late or slow control cycle runs with the next one, up to five minutes late and once only (since 1.2.319). A task in the hour skipped by the spring clock change runs when the clocks jump; one in the repeated autumn hour runs once.
+
 #### Manual control always wins
 
-A device switched on **by hand** while the EMS is not running it is adopted as "externally on" and left alone entirely — no start, no stop, no amp commands — until it is switched off again. To avoid mistaking a slow report for a person, that decision waits out the device's own **reaction grace** (the per-device setting that also covers start-up lag; 60 s minimum). Without it, an air conditioner whose app reports more slowly than a minute was classified "switched on externally" one minute after *every* EMS stop, and then ran unmanaged into the evening — four times in one day.
+A heat pump, boiler, pool pump, dehumidifier or air conditioner switched on **by hand** while the EMS is not running it is adopted as "externally on" and left alone entirely — no start, no stop, no amp commands — until it is switched off again. To avoid mistaking a slow report for a person, that decision waits out the device's own **reaction grace** (the per-device setting that also covers start-up lag; 60 s minimum). Without it, an air conditioner whose app reports more slowly than a minute was classified "switched on externally" one minute after *every* EMS stop, and then ran unmanaged into the evening — four times in one day.
+
+EV chargers are the exception: a charger drawing power the EMS did not command is adopted at its current amps and regulated like any other, and is stopped below the hard stop. To keep the EMS off a charger, switch it out of EMS control (widget, settings or the *Enable or disable EMS control for a device* card).
 
 The opposite direction is reported honestly too. What the EMS actually fires to start a heat pump, boiler, pool pump, dehumidifier or air conditioner is **your** flow — and a flow is free to decline. If the device is never once seen running during an attempt, the history says *"started, but nothing happened — the start flow did not act"* rather than *"switched off outside the EMS"*, which points at the flow instead of the hardware. One owner's air-conditioning flow only acts above a room temperature; on a cool afternoon that produced two "switched off externally" entries for a device nobody had touched. A run that genuinely was switched off reads as before, and so does one the app could not watch from beginning to end — across a restart, for instance, where guessing would only trade one wrong story for another.
 
@@ -687,29 +736,36 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 #### OpenAPI (SUN2000 / LUNA2000 / iSitePower-M)
 - FusionSolar account with Northbound API enabled
 - Username and System Code (API password)
-- Regional server, e.g. `https://intl.fusionsolar.huawei.com`
+- The regional server (picked from a list in the device settings, or entered as a URL)
 
 #### OCPP Smart Charger
 - EV charger with OCPP 1.6 JSON support
 - Charger and Homey on the same local network
-- Port 8887 accessible (not blocked by firewall)
+- Charger's OCPP backend set to `ws://<Homey-IP>:8887/<station-id>` — 8887 is the default; the port can be set per device (one server per port) — and that port reachable from the charger (not blocked by a firewall)
+- Huawei SCharger: firmware V100R023C10SPC220 or newer
 
 #### SDongle A
 - SDongle A reachable over LAN
-- Modbus TCP enabled (default port: **502**, alternative: **6607**)
+- Modbus TCP enabled (port **502**; 6607 is the inverter's built-in WLAN access point, not the SDongle)
 - Modbus Unit ID: **100** (older firmware may use **0**)
 - Static IP address recommended
 
 #### Modbus (SUN2000 / LUNA2000 / DTSU666)
 - SUN2000 inverter or SDongle reachable over LAN
-- Modbus TCP enabled (default port: **502**, SDongle: **6607**)
+- Modbus TCP enabled (default port: **502**, also for the SDongle; **6607** only through the inverter's built-in WLAN access point, then usually IP 192.168.200.1 and unit ID 0)
+- Modbus Unit ID: **1** (battery and meter use the inverter's)
 - Static IP address recommended (DHCP reservation in router)
 
 #### EMMA Modbus
-- SUN2000MA Energy Management Module reachable over LAN
+- EMMA (Energy Management Assistant, e.g. EMMA-A02) reachable over LAN
 - Modbus TCP enabled (default port: **502**)
 - Modbus Unit ID: **0**
 - Static IP address recommended
+- The Smart Charger behind an EMMA is read through the **EMMA's** address and unit ID 0, not its own IP
+
+#### Energy Management System
+- A Homey API key (Homey → Settings → System → API Keys) with read/write access to Devices and Flows, entered in the EMS device's settings; without it the EMS stays in `error`
+- Configuration is done in App Settings → Energy Management
 
 > **Huawei hardware accepts exactly one Modbus TCP connection at a time.** A second program connecting — Home Assistant, EVCC, another Homey app, or the FusionSolar app left in local commissioning mode — takes the connection over, and the dongle then accepts the handshake and hangs up immediately. That looks nothing like a wiring or address fault, so the device now says what it is: *"192.168.x.x accepted the connection and closed it again — no register could be read. Huawei devices allow only one Modbus connection at a time: is another program reading this device?"* rather than blaming the battery or the meter. Also check that **Modbus TCP** is set to *Enable (unrestricted)* in the FusionSolar app under the dongle's parameter settings; *limited* produces the same symptom.
 
@@ -735,14 +791,15 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 
 | Setting           | Default                         | Description                                   |
 |-------------------|---------------------------------|-----------------------------------------------|
-| Server URL        | intl.fusionsolar.huawei.com     | Regional FusionSolar API server               |
+| Server            | Other (use Server URL below)    | Regional FusionSolar server (eu5, intl, region01–05, sg5, au5, jp5, la5, EnergyOrb). Applies to every OpenAPI device of the plant |
+| Server URL        | https://eu5.fusionsolar.huawei.com (iSitePower-M: https://intl.fusionsolar.huawei.com) | Only used when Server is "Other" |
 | Username          | –                               | FusionSolar API username                      |
 | System Code       | –                               | API password                                  |
 | Station Code      | –                               | Set automatically during pairing              |
-| Update interval   | 5 min                           | How often data is fetched (min. 1 min)        |
+| Update interval   | 5 min                           | 5–60 min. One fetch per plant; the shortest interval set on any of its devices applies |
 | Timeline notifications | On                         | Announce inverter, battery or meter status changes (SUN2000, LUNA2000 and Power Meter) |
 
-> **Rate limiting:** Huawei may return HTTP 407 if polling too frequently. The default of 5 minutes is recommended. Values below 5 minutes may cause temporary data gaps.
+> **Rate limiting:** Huawei may return HTTP 407 if polling too frequently. The default of 5 minutes is recommended; it is also the minimum — Huawei refreshes its data about every 5 minutes.
 
 ### SUN2000 (Modbus)
 
@@ -751,7 +808,7 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 | Setting              | Default | Description                                   |
 |----------------------|---------|-----------------------------------------------|
 | IP address           | –       | IP of the SUN2000 / SDongle                   |
-| Modbus port          | 502     | SDongle typically uses 6607                   |
+| Modbus port          | 502     | Also 502 for the SDongle. 6607 only via the inverter's built-in WLAN access point (usually 192.168.200.1, unit ID 0) |
 | Modbus unit ID       | 1       | Unit ID of the device (default: 1)            |
 | Update interval (s)  | 60      | How often data is polled (min. 10 s)          |
 
@@ -765,21 +822,34 @@ These values are read from the inverter on startup and kept in sync.
 | Max feed-in power (W)      | –       | Maximum grid feed-in power in watts (register 47416). Set to 0 to block all export. |
 | Max feed-in power (%)      | –       | Maximum grid feed-in power as % of rated power (register 47418).                    |
 
-#### Output Limit (without Smart Power Sensor)
+#### Output Limit (works without power meter)
 
 These registers derate the inverter AC output directly and work without a DTSU666.
 
 | Setting                   | Default | Description                                                                         |
 |---------------------------|---------|-------------------------------------------------------------------------------------|
-| Output limit (W)          | –       | Absolute output cap in watts (register 40126). 0 shuts the inverter down; *Remove inverter output limit* sets rated power × 1.1 for no cap. |
-| Output limit (%)          | –       | Output cap as % of rated power (register 40125). Set to 100 for no limit.          |
+| Inverter output limit (W) | –       | Absolute output cap in watts (register 40126). 0 shuts the inverter down; *Remove inverter output limit* sets rated power × 1.1 for no cap. |
+| Inverter output limit (%) | –       | Output cap as % of rated power (register 40125). Set to 100 for no limit.          |
+
+#### MPPT
+
+| Setting                      | Default | Description                                                    |
+|------------------------------|---------|----------------------------------------------------------------|
+| MPPT multimodal scanning     | –       | Multi-peak scan for shaded strings (register 42054), written on Save and kept in sync |
+| MPPT scanning interval (min) | –       | 1–60 min (register 42055); only with multimodal scanning on    |
+
+#### Notifications
+
+| Setting                | Default | Description                                                         |
+|------------------------|---------|---------------------------------------------------------------------|
+| Timeline notifications | On      | Inverter status changes, and a setting the inverter refused (put back) |
 
 ### LUNA2000 / DTSU666 (Modbus)
 
 | Setting              | Default | Description                                   |
 |----------------------|---------|-----------------------------------------------|
 | IP address           | –       | IP of the SUN2000 / SDongle                   |
-| Modbus port          | 502     | SDongle typically uses 6607                   |
+| Modbus port          | 502     | Also 502 for the SDongle. 6607 only via the inverter's built-in WLAN access point (usually 192.168.200.1, unit ID 0) |
 | Modbus unit ID       | 1       | Unit ID of the device (default: 1)            |
 | Update interval (s)  | 60      | How often data is polled (min. 10 s)          |
 
@@ -797,14 +867,15 @@ sits in a group, the way the inverter's do:
 | Notifications | Timeline notifications |
 
 The EMMA battery has Connection, Change battery mode, Charging from the grid (max grid charging
-power) and Notifications.
+power) and Notifications. The DTSU666 has Connection and Notifications (Timeline notifications,
+on: meter status changes).
 
 ### SDongle A Modbus
 
 | Setting              | Default | Description                                   |
 |----------------------|---------|-----------------------------------------------|
 | IP address           | –       | IP of the SDongle A                           |
-| Modbus port          | 502     | Alternative: 6607                             |
+| Modbus port          | 502     | 6607 is the inverter's WLAN access point, not the SDongle |
 | Modbus unit ID       | 100     | Older firmware may use 0                      |
 | Update interval (s)  | 60      | How often data is polled (min. 10 s)          |
 
@@ -815,104 +886,222 @@ power) and Notifications.
 | IP address                      | –       | IP of the EMMA Energy Management Module          |
 | Modbus port                     | 502     | Default port of the EMMA                         |
 | Modbus unit ID                  | 0       | EMMA uses unit ID 0                              |
-| Update interval (s)             | 60      | How often data is polled (min. 10 s)             |
+| Update interval (s)             | 60 (Smart Charger: 30) | How often data is polled (min. 10 s) |
 | Max grid charging power (kW)    | 5       | Battery only: writes EMMA register 40002         |
+| Timeline notifications          | On      | Battery only: charging / discharging / idle      |
+
+### Energy Management System
+
+| Setting                | Default | Description                                                                 |
+|------------------------|---------|-----------------------------------------------------------------------------|
+| Homey API Key          | –       | Created in Homey → Settings → System → API Keys, with read/write access to Devices and Flows. All other EMS configuration is in the app settings |
+| Timeline notifications | On      | When the EMS starts or stops a device, when the battery is full or low, when the price forecast has not been updated for hours, and when an EMS cycle overruns |
+| Debug logging          | Off     | Logs every tick's price/battery decision, not only changes — only while troubleshooting |
 
 ---
 
 ## Flow Cards
 
+<!-- flow-cards:start — generated by scripts/readme-flow-cards.js from app.json; edit the card hints there -->
+
+Every card the app offers, with the text Homey shows behind its (i). Retired cards are left
+out — they are no longer offered for new flows, and existing flows keep working.
+
 ### Triggers
 
-| Card                                     | Device                          | Tokens                                               | Description                                                              |
-|------------------------------------------|---------------------------------|------------------------------------------------------|--------------------------------------------------------------------------|
-| Power output changed                     | Kiosk                           | `power` (W)                                          | Fires on every kiosk update (10 min by default), also when unchanged     |
-| Daily yield updated                      | Kiosk                           | `daily_energy`                                       | Fires on every kiosk update; Huawei refreshes the figure about every 30 min |
-| Power output changed                     | Inverter SUN2000 Modbus/EMMA    | `power` (W)                                          | Fires on every power change                                              |
-| Power output changed                     | Inverter SUN2000 OpenAPI        | `power` (W)                                          | Fires on every power change                                              |
-| Battery SoC changed                      | LUNA2000 Modbus/EMMA            | `soc` (%)                                            | Fires on every SoC change                                                |
-| Battery charging state changed           | LUNA2000 Modbus/EMMA            | `state`                                              | `charging` / `discharging` / `idle`                                     |
-| Battery working mode changed             | LUNA2000 Modbus/EMMA            | `mode`                                               | Fires when the storage working mode changes                              |
-| Excess PV energy use in TOU mode changed | LUNA2000 Modbus/EMMA            | `mode`                                               | Fires when switching between Feed to Grid / Charge Battery               |
-| Remote dispatch mode changed             | LUNA2000 Modbus                 | `mode`                                               | Fires when the remote charge/discharge control mode changes              |
-| Battery SoC changed                      | Battery OpenAPI                 | `soc` (%)                                            | Fires on every SoC change                                                |
-| Battery charging state changed           | Battery OpenAPI                 | `state`                                              | `charging` / `discharging` / `idle`                                     |
-| Grid export started                      | Power Meter Modbus/EMMA         | `power` (W)                                          | Fires when switching from import to export                               |
-| Grid import started                      | Power Meter Modbus/EMMA         | `power` (W)                                          | Fires when switching from export to import                               |
-| Inverter status changed                  | Inverter SUN2000 Modbus         | `status`                                             | Fires when the inverter operating state changes (timeline notification)  |
-| Battery status changed                   | LUNA2000 Modbus / OpenAPI       | `status`                                             | Fires when the battery state changes (timeline notification)             |
-| Meter status changed                     | Power Meter DTSU666 Modbus / OpenAPI | `status`                                        | Fires when the meter state changes (timeline notification)               |
-| Charging session started                 | Smart Charger (OCPP)            | `amps`, `phases`, `phase_label`, `message`           | Fires when a vehicle starts charging (power confirmed > 100 W)          |
-| Charging session stopped                 | Smart Charger (OCPP)            | `energy_wh`, `energy_formatted`, `duration`, `amps`, `phases`, `message` | Fires when a vehicle stops charging (StopTransaction received) |
-| Car plugged in, waiting                  | Smart Charger (OCPP)            | –                                                    | Fires when a car connects but auto-start is off or session is blocked    |
-| Charging state changed                   | Smart Charger (OCPP)            | `state`                                              | Fires on every charging state transition                                 |
-| Charger offline                          | Smart Charger (OCPP)            | `message`                                            | Fires when no OCPP message has been received for 3 minutes               |
-| Charger back online                      | Smart Charger (OCPP)            | `message`                                            | Fires when the charger reconnects after being offline                    |
-| Charging paused                          | Smart Charger (OCPP)            | –                                                    | Fires when a session is paused via the Pause button or flow action       |
-| Charging resumed                         | Smart Charger (OCPP)            | `amps`, `phases`, `phase_label`, `message`           | Fires when a paused session is resumed                                   |
-| Charging limit changed                   | Smart Charger (OCPP)            | `amps`, `previous_amps`, `phases`, `phase_label`, `message` | Fires when the SetChargingProfile limit is changed during a session |
-| Charger disconnected                     | Smart Charger (OCPP)            | –                                                    | Fires when the OCPP WebSocket connection drops. A running session is kept: the charger carries on and reports when it is back (since 1.2.310) |
+| Card | Device | Tokens | Description |
+|---|---|---|---|
+| Power output changed | FusionSolar Plant (Kiosk) | `power` | Fires on every successful kiosk update (every 10 minutes by default) with the plant's current power — also when it has not changed. The Power token holds the value. |
+| Daily energy updated | FusionSolar Plant (Kiosk) | `daily_energy` | Fires on every successful kiosk update with the plant's daily yield. Huawei refreshes that figure only about every 30 minutes, so consecutive values are often the same. |
+| Power output changed | Inverter SUN 2000 (OpenAPI) | `power` | Fires on every FusionSolar OpenAPI update with the inverter's AC active power — also when the value has not changed. |
+| Battery state of charge changed | Battery LUNA 2000 (OpenAPI) | `soc` | Fires every time the battery's state of charge changes. Reads the current value via the FusionSolar OpenAPI. |
+| Battery charging state changed | Battery LUNA 2000 (OpenAPI) | `state` | Fires when the battery switches between charging, discharging, and idle. The State token contains the new value. |
+| Battery unit status changed | Battery LUNA 2000 (OpenAPI / Modbus) | `status` | Fires when the LUNA2000 battery unit's operating status changes. Select a specific status to trigger only on that transition. |
+| Battery started charging | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | – | Fires when the battery transitions from idle or discharging to charging (power above 50 W). |
+| Battery started discharging | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | – | Fires when the battery transitions from idle or charging to discharging (power above 50 W). |
+| Battery working mode changed | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | `mode` | Fires when the storage working mode changes — e.g. switched by an external grid balancing service. |
+| Grid export started | Power Meter (OpenAPI / Modbus / EMMA Modbus) | `power` | Fires when the meter switches from importing to exporting — i.e. when surplus PV power starts flowing back to the grid. |
+| Grid import started | Power Meter (OpenAPI / Modbus / EMMA Modbus) | `power` | Fires when the meter switches from exporting to importing — i.e. when grid power is being drawn again. |
+| Meter status changed | Power Meter (OpenAPI / Modbus) | `status` | Fires when the grid meter's online/offline status changes. Select a specific status to trigger only on that transition. |
+| Battery state of charge changed | iSitePower-M Battery (OpenAPI), Battery LUNA 2000 (Modbus / EMMA Modbus) | `soc` | Fires every time the battery's state of charge changes. The SoC token contains the new percentage value. |
+| Battery charging state changed | iSitePower-M Battery (OpenAPI), Battery LUNA 2000 (Modbus / EMMA Modbus) | `state` | Fires when the battery switches between charging, discharging, and idle. The State token contains the new value. |
+| Power output changed | Inverter SUN 2000 (Modbus / EMMA Modbus) | `power` | Fires when the solar power the device reports changes: the PV input power (register 32064) on a SUN2000 via Modbus, the PV power read from the EMMA (register 30354) on an inverter connected through EMMA. |
+| Inverter status changed | Inverter SUN 2000 (Modbus) | `status` | Fires when the SUN2000 inverter's operating status changes. Select a specific status to trigger only on that transition. |
+| Backup power SoC changed | Battery LUNA 2000 (Modbus / EMMA Modbus) | `soc` | Fires whenever the backup power reserve (register 47102 on a LUNA2000 via the inverter, 30373 via EMMA) changes — whether you changed it here, in FusionSolar, or on the inverter itself. The token holds the new percentage, which is what you need to keep another setting a fixed margin above it. |
+| Excess PV energy use in TOU mode changed | Battery LUNA 2000 (Modbus / EMMA Modbus) | `mode` | Fires when the excess PV energy setting changes between 'Feed to Grid' and 'Charge Battery'. |
+| Remote dispatch mode changed | Battery LUNA 2000 (Modbus) | `mode` | Fires when the remote charge/discharge control mode changes (e.g. switched by a third-party scheduling service). |
+| EV charging started | Smart Charger (EMMA Modbus) | – | Fires when the app sees voltage appear on the charger's output (above 10 V on any phase). The charger has no register for its charging state, so this is how a session is recognised. |
+| EV charging stopped | Smart Charger (EMMA Modbus) | – | Fires when the voltage on the charger's output disappears (10 V or less on every phase). The charger has no register for its charging state, so this is how the end of a session is recognised. |
+| Charger reported a fault (OCPP) | Smart Charger (OCPP) | `error_code`, `vendor_error_code`, `info`, `status` | Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature. |
+| EV charging started (OCPP) | Smart Charger (OCPP) | `amps`, `phases`, `phase_label`, `message`, `transaction_id`, `meter_start` | Fires once power actually flows (above 100 W) after the charger has started a transaction, or right away when a start card releases a car that was waiting. Not fired when the car draws nothing, nor when charging continues after a pause — that is "Charging resumed (OCPP)". |
+| EV charging stopped (OCPP) | Smart Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start that aborts within 2 seconds and is retried; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |
+| EV plugged in — waiting for start (OCPP) | Smart Charger (OCPP) | – | Fires when a car plugs in and auto-start charging is disabled. Use this to start charging manually from a flow. |
+| EV charger state changed (OCPP) | Smart Charger (OCPP) | `state` | Fires on every status report from the charger (OCPP StatusNotification), mapped to idle / connected / charging / error — the state can be the same as before. |
+| EV disconnected (OCPP) | Smart Charger (OCPP) | `connected_minutes`, `message` | Fires when the cable is physically unplugged from the charger (rawStatus=Available). |
+| Charger went offline (OCPP) | Smart Charger (OCPP) | `message` | Fires when no OCPP message has been received from the charger for 3 minutes. Not fired for 5 minutes after a reboot command. |
+| Charger came back online (OCPP) | Smart Charger (OCPP) | `message` | Fires when the charger reconnects after "Charger went offline (OCPP)" has fired. |
+| Charging paused (OCPP) | Smart Charger (OCPP) | `resume_amps`, `message` | Fires when charging is paused via the masked-stop mechanism. |
+| Charging resumed (OCPP) | Smart Charger (OCPP) | `amps`, `phases`, `phase_label`, `message` | Fires when power is flowing again after a pause (power-verified). |
+| Charging limit changed (OCPP) | Smart Charger (OCPP) | `amps`, `previous_amps`, `phases`, `phase_label`, `message` | Fires when the charging current limit is changed during an active session. |
+| Solar forecast updated | Energy Management System | `remaining_today_kwh`, `next_6h_kwh`, `peak_kw` | Fires when a fresh Solcast PV forecast has been fetched. |
+| EMS mode changed | Energy Management System | `mode` | Fires when the Energy Management System switches to a different operating mode. |
+| EMS wants to set charger current | Energy Management System | `amps`, `phase1`, `phase2`, `phase3`, `charger_device_id` | Fires when the EMS wants to change an EV charger's current. Paste the Charger Device ID from the EMS settings. Use the [amps], [phase1], [phase2], [phase3] tokens in the charger action: [amps] is the current per phase, [phase2] and [phase3] are 0 when charging on one phase, and 0 A means stop charging. |
+| EMS wants to start charging | Energy Management System | `charger_device_id` | Fires when the EMS starts giving current to a charger that is not charging (drawing under 500 W) and a charging session should begin. Fired once more if the car still draws nothing after 90 s. |
+| EMS wants to start heat pump | Energy Management System | `heat_pump_device_id` | Fires when the EMS wants to turn the heat pump on (enough solar surplus). |
+| EMS wants to stop heat pump | Energy Management System | `heat_pump_device_id` | Fires when the EMS wants to turn the heat pump off (battery priority or no surplus). |
+| EMS wants to start boiler/heater | Energy Management System | `boiler_device_id` | Fires when the EMS wants to turn the boiler/heater on (sufficient solar surplus available). |
+| EMS wants to stop boiler/heater | Energy Management System | `boiler_device_id` | Fires when the EMS wants to turn the boiler/heater off (battery priority or no surplus). |
+| EMS wants to start pool pump | Energy Management System | `pool_device_id` | Fires when the EMS wants to turn the pool pump on (sufficient solar surplus available). |
+| EMS wants to stop pool pump | Energy Management System | `pool_device_id` | Fires when the EMS wants to turn the pool pump off (battery priority or no surplus). |
+| EMS wants to start dehumidifier | Energy Management System | `dehumidifier_device_id` | Fires when the EMS wants to turn the dehumidifier on (sufficient solar surplus available). |
+| EMS wants to start air conditioner | Energy Management System | `aircon_device_id` | Fires when the EMS wants to turn the air conditioner on (sufficient solar surplus available). |
+| EMS wants to stop dehumidifier | Energy Management System | `dehumidifier_device_id` | Fires when the EMS wants to turn the dehumidifier off (battery priority or no surplus). |
+| EMS wants to stop air conditioner | Energy Management System | `aircon_device_id` | Fires when the EMS wants to turn the air conditioner off (surplus gone or battery too low). |
+| EMS: battery is full | Energy Management System | `battery_device_id`, `soc` | Fires when the battery SOC first reaches the upper point of "Battery: surplus split" (EMS settings → Home Batteries) — 95 % when no split is set up. It only notifies. Use it, for example, to start force-discharging the battery into the EV charger. |
+| EMS: battery is low | Energy Management System | `battery_device_id`, `soc` | Fires when the battery SOC drops below the lower point of "Battery: surplus split" (EMS settings → Home Batteries) — 80 % when no split is set up. It only notifies; switching the devices off is what the lower point itself does. Use it, for example, to stop force-discharging. |
+| EMS: battery — force charge | Energy Management System | `battery_device_id` | Fires when the EMS decides this battery should grid-charge because electricity is cheap now. Requires price-based charging to be enabled for the battery in the EMS settings. |
+| EMS: battery — force discharge | Energy Management System | `battery_device_id` | Placeholder trigger created by EMS Setup Flows for 'Force Discharge'. Replace with your own trigger in Homey. |
+| EMS: battery — normal mode | Energy Management System | `battery_device_id` | Fires when the EMS hands this battery back to its normal behaviour — neither grid-charging nor holding its charge back. |
+| EMS: battery — set max charge power | Energy Management System | `battery_device_id` | Placeholder trigger created by EMS Setup Flows for 'Max Charge Power'. Replace with your own trigger in Homey. |
+| EMS: battery — set max discharge power | Energy Management System | `battery_device_id` | Fires when the EMS wants this battery to stop discharging and save its capacity for the most expensive upcoming hours. Wire it to a card that sets the discharge power to 0 W. |
+| EMS: inverter — enable export limit | Energy Management System | `inverter_device_id` | Fires for every inverter set up in the EMS when the Export Limit Coordinator (EMS settings) starts limiting feed-in: at once and for good with "Never feed in (zero export)", otherwise only while more than 100 W is exported and the battery has reached "Activate at SOC" (default 95 %) or the price is below the set threshold. Link it to "Enable/disable grid export limit" or "Enable zero export (Nulleinspeisung)" of the inverter. |
+| EMS: inverter — disable export limit | Energy Management System | `inverter_device_id` | Fires for every inverter set up in the EMS when the coordinator lifts the limit: at the earliest 5 minutes after it was set, once the price is no longer below the threshold and either nothing is exported any more or the battery has fallen below "Deactivate at SOC" (default 90 %). Also fires when the coordinator is switched off while a limit is active; never while "Never feed in (zero export)" is on. |
+| EMS: inverter — set feed-in limit (W) | Energy Management System | `inverter_device_id` | Placeholder trigger created by EMS Setup Flows for 'Set max feed-in power (W)'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey. |
+| EMS: inverter — set feed-in limit (%) | Energy Management System | `inverter_device_id` | Placeholder trigger created by EMS Setup Flows for 'Set max feed-in power (%)'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey. |
+| EMS: inverter — remove output limit | Energy Management System | `inverter_device_id` | Placeholder trigger created by EMS Setup Flows for 'Remove output limit'. The EMS never fires it — replace it with your own trigger (e.g. energy price, time schedule) in Homey. |
+| EMS: set car target charge | Energy Management System | `target_soc`, `car_name`, `message` | Fires each time a car target is set through "Set car target charge (%)" or the EMS Device widget — also when the value is unchanged. Use the Target SOC token to set the charge limit on your vehicle. |
 
 ### Conditions
 
-| Card                                      | Device                          | Description                                                                         |
-|-------------------------------------------|---------------------------------|-------------------------------------------------------------------------------------|
-| Is currently producing                    | Kiosk                           | Checks if the plant is currently generating                                         |
-| Is currently producing                    | Inverter SUN2000 Modbus/EMMA    | Checks if the inverter is currently generating                                      |
-| Solar power above value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been above the threshold for at least N minutes             |
-| Solar power below value for duration      | Inverter SUN2000 Modbus/EMMA    | True if solar power has been below the threshold for at least N minutes             |
-| Battery SoC is above threshold            | LUNA2000 Modbus/EMMA/OpenAPI    | True if current SoC (%) is strictly above the configured value                     |
-| Battery SoC is below threshold            | LUNA2000 Modbus/EMMA/OpenAPI    | True if current SoC (%) is strictly below the configured value                     |
-| Battery is charging                       | LUNA2000 Modbus                 | True when the battery is actively charging                                          |
-| Battery is discharging                    | LUNA2000 Modbus                 | True when the battery is actively discharging                                       |
-| Battery status is                         | LUNA2000 Modbus / OpenAPI       | Checks the current battery operating state string                                   |
-| Storage working mode is                   | LUNA2000 Modbus/EMMA            | Checks the current storage working mode                                             |
-| Excess PV energy use in TOU mode is       | LUNA2000 Modbus/EMMA            | Checks whether excess PV is set to feed-in or charge battery                        |
-| Remote charge/discharge mode is           | LUNA2000 Modbus                 | Checks the current remote dispatch control mode                                     |
-| Max charge power is above threshold       | LUNA2000 Modbus                 | True when register 47075 (max charge power) is above the given W value. Use "NOT below 1 W" to check if the limit has already been zeroed. |
-| Max charge power is below threshold       | LUNA2000 Modbus                 | True when register 47075 (max charge power) is below the given W value. Threshold 1 checks whether the limit is already set to 0. |
-| Grid is exporting                         | Power Meter Modbus/EMMA/OpenAPI | True when the meter reports negative active power (surplus fed to grid)             |
-| Meter status is                           | Power Meter DTSU666 Modbus / OpenAPI | Checks the current meter online/offline status                                 |
+| Card | Device | Description |
+|---|---|---|
+| Is producing / not producing | FusionSolar Plant (Kiosk) | Checks whether the plant is currently generating power. |
+| Solar power is above / not above value for duration | Inverter SUN 2000 (OpenAPI / Modbus / EMMA Modbus) | True when solar power has been continuously above the specified wattage for at least the given number of minutes. What "solar power" is depends on the device: PV input power on a SUN2000 via Modbus, the EMMA's PV power via EMMA, AC active power on a cloud inverter (which on a hybrid inverter includes battery discharge). The app keeps about 2 hours of readings: a longer duration is never true, and after an app restart the card needs that much history first. |
+| Solar power is below / not below value for duration | Inverter SUN 2000 (OpenAPI / Modbus / EMMA Modbus) | True when solar power has been continuously below the specified wattage for at least the given number of minutes. What "solar power" is depends on the device: PV input power on a SUN2000 via Modbus, the EMMA's PV power via EMMA, AC active power on a cloud inverter (which on a hybrid inverter includes battery discharge). The app keeps about 2 hours of readings: a longer duration is never true, and after an app restart the card needs that much history first. |
+| Battery is charging / not charging | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | True when the battery is actively charging (power above 50 W). |
+| Battery is discharging / not discharging | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | True when the battery is actively discharging (power above 50 W). |
+| Battery SoC is above / not above threshold | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | True when the battery state of charge is above the given threshold. |
+| Battery SoC is below / not below threshold | Battery LUNA 2000 (OpenAPI / Modbus / EMMA Modbus), iSitePower-M Battery (OpenAPI) | True when the battery state of charge is below the given threshold. |
+| Battery unit status is / is not | Battery LUNA 2000 (OpenAPI / Modbus) | Checks the current operating status of the LUNA2000 battery unit (e.g. Running, Fault, Sleep mode). |
+| Grid is exporting / importing | Power Meter (OpenAPI / Modbus / EMMA Modbus) | True when the meter reports a negative active power — i.e. surplus energy is being fed into the grid. |
+| Meter status is / is not | Power Meter (OpenAPI / Modbus) | Checks the current online status of the DTSU666 grid meter (Offline or Normal). |
+| Inverter status is / is not | Inverter SUN 2000 (Modbus) | Checks the current operating status of the SUN2000 inverter (e.g. On-grid, Shutdown: fault). |
+| Is producing / not producing | Inverter SUN 2000 (Modbus / EMMA Modbus) | Checks whether the SUN2000 inverter is currently generating power. |
+| Backup power SoC is above / not above threshold | Battery LUNA 2000 (Modbus / EMMA Modbus) | True when the backup power reserve (register 47102 on a LUNA2000 via the inverter, 30373 via EMMA) is above the given threshold. Read on every poll, so it follows a change made anywhere. |
+| Backup power SoC is below / not below threshold | Battery LUNA 2000 (Modbus / EMMA Modbus) | True when the backup power reserve (register 47102 on a LUNA2000 via the inverter, 30373 via EMMA) is below the given threshold. Read on every poll, so it follows a change made anywhere. |
+| Max charge power is above / not above threshold | Battery LUNA 2000 (Modbus) | True when the battery max charge power setting (register 47075) is above the given threshold. Synced from the inverter on every poll, and at once after a change made from Homey. |
+| Max charge power is below / not below threshold | Battery LUNA 2000 (Modbus) | True when the battery max charge power setting (register 47075) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter on every poll, and at once after a change made from Homey. |
+| Max discharge power is above / not above threshold | Battery LUNA 2000 (Modbus) | True when the battery max discharge power setting (register 47077) is above the given threshold. Synced from the inverter on every poll, and at once after a change made from Homey. |
+| Max discharge power is below / not below threshold | Battery LUNA 2000 (Modbus) | True when the battery max discharge power setting (register 47077) is below the given threshold. Use threshold 1 to check whether the limit has already been set to 0 (blocked). Synced from the inverter on every poll, and at once after a change made from Homey. |
+| Battery working mode is / is not | Battery LUNA 2000 (Modbus / EMMA Modbus) | Checks the current storage working mode of the LUNA2000 battery. |
+| Excess PV energy use in TOU mode is / is not | Battery LUNA 2000 (Modbus / EMMA Modbus) | Checks how excess PV energy is used in TOU mode (feed to grid or charge battery). In any other working mode the setting does nothing. |
+| Remote dispatch mode is / is not | Battery LUNA 2000 (Modbus) | Checks the current remote charge/discharge control mode of the LUNA2000 battery. |
+| Charger is / is not online | Smart Charger (OCPP) | True while OCPP messages are arriving from the charger. Worth checking before any charging action — they all fail on an offline charger. |
+| Charger is charging / not charging | Smart Charger (OCPP) | True while the charger reports the status Charging — what the charger says, not measured power — as opposed to the cable merely being connected. |
+| Car is / is not plugged in | Smart Charger (OCPP) | True whenever the cable is connected — while waiting for a start, charging, paused, and after charging has finished (Finishing). False while the charger reports Unavailable or Faulted: it cannot tell then. |
+| Session status is / is not | Smart Charger (OCPP) | The status shown on the device, for the cases the plainer conditions do not separate — finishing, fully charged, waiting for a start. |
+| Expected solar today is more / less than | Energy Management System | True when the Solcast forecast for the rest of today (until midnight) is above the given number of kWh. |
+| Expected solar until a time is below / not below | Energy Management System | True when the Solcast forecast for the PV production remaining from now until the given time today is below the threshold (kWh). Returns 0 once that time has passed. Useful for deadline planning, e.g. "the sun won't cover the car by 18:00, start grid charging". |
+| Expected solar in the next hours is more / less than | Energy Management System | True when the Solcast forecast for the next N hours is above the given number of kWh. |
+| EMS mode is / is not | Energy Management System | Compares the EMS's current mode (shown on the Energy Management device) with the one selected. To react the moment it changes, use the trigger for a changed EMS mode. |
+| EMS control for a device is / is not active | Energy Management System | True while the EMS may start and stop the chosen charger or device — the per-device switch in the EMS settings and the EMS Device widget. Fails if the device is no longer set up in the EMS. |
 
 ### Actions
 
-#### Inverter SUN2000 (Modbus)
+#### Inverter SUN 2000 (Modbus)
 
-| Card                              | Description                                                                                        |
-|-----------------------------------|----------------------------------------------------------------------------------------------------|
-| Set active power control mode     | Sets the feed-in mode (reg 47415): Unlimited · DI active scheduling · Zero power grid connection · Limited by power (kW) · Limited by power (%). The device tile shows this mode but cannot change it; the device settings offer it as a dropdown. |
-| Enable/disable grid export limit  | Enable: *Limited by power (kW)* (47415 = 6) with the watt value already on 47416. Disable: *Unlimited* (47415 = 0). |
-| Set max feed-in power             | Sets the feed-in limit in watts (reg 47416). Requires a power meter (DTSU666).                     |
-| Set max feed-in power (%)         | Switches to *Limited by power (%)* (47415 = 7) and sets the limit (reg 47418). Requires a power meter. |
-| Enable zero export                | 47415 = 6, 47416 = 0 W. Remembers the mode and limit in force before.                              |
-| Disable zero export               | Puts back the mode and limit from before *Enable zero export* — watt limit first (47416), then the mode (47415). With nothing remembered it writes nothing (since 1.2.312): zero export off means nothing to disable; zero export switched on outside the app leaves the mode before it unknown, so the card fails, the timeline says so, and the inverter stays at zero export. |
-| Set inverter output limit (W)     | Caps inverter AC output in watts (reg 40126). Works without a power meter.                         |
-| Set inverter output limit (%)     | Caps inverter AC output as % of rated power (reg 40125). Works without a power meter.              |
-| Remove inverter output limit      | Sets 40126 to rated power × 1.1 and 40125 to 100 %.                                                |
-| Start inverter / Shut down inverter | Writes reg 40200 / 40201.                                                                        |
-| Set MPPT multimodal scanning      | Reg 42054.                                                                                         |
-| Set MPPT scanning interval        | Reg 42055, in minutes.                                                                             |
+| Card | Description |
+|---|---|
+| Set active power control mode | Sets the active power control mode of the SUN2000 inverter via Modbus (register 47415) — how it limits what it feeds into the grid. If your house connection depends on a feed-in limit, check it after every change. "Unlimited" — Huawei's default: no limit, the inverter feeds in whatever is left over. "DI Active Scheduling": follows the signals on the inverter's digital inputs (DI), for example from the grid operator's ripple control receiver. "Zero Power Grid Connection": regulates so that nothing is fed into the grid at the connection point. "Limited by Power (kW)" and "Limited by Power (%)": cap the feed-in at the connection point at what "Set max feed-in power" or "Set max feed-in power (%)" set. These three need a power meter at the grid connection (Smart Power Sensor); without one, only "Set inverter output limit (W)" and "Set inverter output limit (%)" help. |
+| Enable/disable grid export limit | Enables (mode: Limited by Power, register 47415=6) or disables (mode: Unlimited, register 47415=0) the grid export limit. Set the watt limit separately using 'Set max feed-in power'. Needs a power meter at the grid connection (e.g. DTSU666); without one the inverter ignores it — use "Set inverter output limit (W)" instead. |
+| Set max feed-in power | Sets the maximum grid feed-in power of the SUN2000 inverter via Modbus (register 47416). Set to 0 to block all export. Takes effect only in the mode "Limited by Power (kW)" — switch it on with "Enable/disable grid export limit". Needs a power meter at the grid connection (e.g. DTSU666); without one the inverter ignores it — use "Set inverter output limit (W)" instead. |
+| Set inverter output limit (W) | Sets the maximum AC output of the inverter in watts (register 40126). This is a ceiling, not a setpoint — actual production follows the natural PV level when sun is weaker, and is only throttled when sun would otherwise produce more. Set to 0 to fully shut down. To lift the limit, use "Remove inverter output limit" (it writes rated power × 1.1). Works WITHOUT a Smart Power Sensor. |
+| Remove inverter output limit | Resets both output limits to 'no cap': writes rated power × 1.1 to register 40126 and 100 % to register 40125. Use this to fully remove a previously set output limit and let the inverter run at its natural maximum. |
+| Set inverter output limit (%) | Sets the maximum AC output as a percentage of rated power (register 40125). This is a ceiling, not a setpoint — actual production follows the natural PV level when sun is weaker, and is only throttled when sun would otherwise produce more. Example on a 4 kW inverter: 50 % = 2 kW cap. Set to 0 to fully shut down, 100 to remove the limit. Works WITHOUT a Smart Power Sensor. |
+| Set max feed-in power (%) | Sets the maximum grid feed-in power as a percentage of rated power via Modbus (register 47418). Set to 0 to block all export. Also switches the active power control mode to "Limited by Power (%)" (register 47415 = 7), replacing a watt limit. Needs a power meter at the grid connection (e.g. DTSU666); without one the inverter ignores it — use "Set inverter output limit (%)" instead. |
+| Enable zero export (Nulleinspeisung) | Activates zero export: sets active power control mode to "Limited by Power (kW)" (register 47415 = 6) and sets the feed-in limit to 0 W (register 47416 = 0). The inverter will continue producing power for self-consumption but will not export any surplus to the grid. The feed-in mode and limit in force before are remembered, so 'Disable zero export' can put them back. Needs a power meter at the grid connection (e.g. DTSU666); without one the inverter ignores it — use "Set inverter output limit (W)" instead. |
+| Disable zero export (Nulleinspeisung) | Deactivates zero export: puts back the feed-in mode and limit that were in force before 'Enable zero export' ran (registers 47416 and 47415) — a standing feed-in limit stays a limit. Without a remembered state nothing is written: if zero export is not on, there is nothing to disable; if it was switched on outside this app, the feed-in mode before it is unknown — the card fails, the timeline says so, and the inverter stays at zero export until the feed-in mode is set in its device settings. |
+| Start inverter | Sends a startup command to the inverter via Modbus (register 40200). Verify that grid conditions are suitable before using. |
+| Shut down inverter | Sends a shutdown command to the inverter via Modbus (register 40201). The inverter stops feeding power to the grid. |
+| Set MPPT multimodal scanning | Enables or disables MPPT multimodal scanning (register 42054). Useful for installations with partial shading where multiple power peaks may exist. |
+| Set MPPT scanning interval | Sets the MPPT scanning interval in minutes (register 42055). Shorter intervals improve response to changing conditions but increase inverter activity. |
 
-> **Zero export and a standing feed-in limit.** Many installations need a permanent limit — a
-> main fuse, or a grid operator's 60/70 % rule. Until 1.2.264, *Disable zero export* returned to
-> *Unlimited* regardless, and *Enable zero export* had already overwritten the watt limit with
-> 0 W, so a negative-price flow quietly removed that protection. Both cards now hand the
-> earlier state back. Until 1.2.312 *Disable zero export* still fell back to *Unlimited* when
-> nothing was remembered — and the memory is cleared after each restore, so a second run took
-> the limit off after all. It now writes nothing in that case. *Enable/disable grid export
-> limit* keeps its literal meaning: off is *Unlimited*.
+#### Battery LUNA 2000 (Modbus)
 
-#### Battery LUNA2000 (Modbus)
+| Card | Description |
+|---|---|
+| Set storage working mode | What the battery does on its own (register 47086). For charging by price or forecast, use the Energy Management device instead. "Maximise Self-Consumption" — the normal choice: surplus solar charges the battery; when the sun is not enough, it supplies the house. "Time of Use (LUNA2000)" — follows the charge and discharge windows stored in the inverter. Set them in the device settings or in the FusionSolar app, or the battery may discharge on a sunny morning. "Fully Fed to Grid" — as much solar as possible into the grid; the battery charges only with what exceeds the inverter's maximum output and discharges below it. "Third-party Scheduling" — only if an outside platform is connected; otherwise nothing controls the battery. "Fixed Charge/Discharge", "Time of Use (LG)" and "Adaptive" — meant for LG batteries or not described by Huawei; do not choose them with a LUNA2000. |
+| Set excess PV energy use in TOU mode | Only takes effect in the working mode "Time of Use (LUNA2000)": whether surplus solar goes into the grid or charges the battery (register 47299). In any other mode the setting does nothing. |
+| Set remote charge/discharge mode | Who may command the battery from outside. "Local Control" means nobody, and that is what you want unless a third-party scheduler really is talking to the inverter. Any other value hands control over and overrides the storage working mode — without such a scheduler the battery then behaves unpredictably. (Modbus register 47589.) |
+| Stop force charge/discharge | Stops a forced charge or discharge of the LUNA2000: the stop command (register 47100 = 0), then the discharge power (47249), the duration (47083) and the mode (47246 = 0) are cleared, so the next run starts from known values. The same as "Set force charge/discharge" with "Stop". The card is done once the stop is written; if it cannot be sent, the card fails and the timeline warns that the run may still be going. |
+| Start charging until SoC % | Starts force charging the LUNA2000 at the given power until the target SoC is reached (registers 47101, 47247, mode 47246 = 1, start 47100). The card is done only once every value is written; if one step fails nothing starts, the card fails with the reason, and the timeline says it too. The power is capped at the battery's max charge or discharge power (registers 47075/47077); the card is refused while that limit is 0. |
+| Start discharging until SoC % | Starts force discharging the LUNA2000 at the given power until the target SoC is reached (registers 47101, 47249, mode 47246 = 1, start 47100). The card is done only once every value is written; if one step fails nothing starts, the card fails with the reason, and the timeline says it too. The power is capped at the battery's max charge or discharge power (registers 47075/47077); the card is refused while that limit is 0. |
+| Start charging for minutes | Starts force charging the LUNA2000 at the given power for the specified duration (registers 47247, 47083, mode 47246 = 0, start 47100). The battery firmware stops automatically when the timer expires — on every battery, since the card sets the mode to "duration" itself. The card is done only once every value is written; if one step fails nothing starts, the card fails with the reason, and the timeline says it too. The power is capped at the battery's max charge or discharge power (registers 47075/47077); the card is refused while that limit is 0. |
+| Start discharging for minutes | Starts force discharging the LUNA2000 at the given power for the specified duration (registers 47249, 47083, mode 47246 = 0, start 47100). The battery firmware stops automatically when the timer expires — on every battery, since the card sets the mode to "duration" itself. The card is done only once every value is written; if one step fails nothing starts, the card fails with the reason, and the timeline says it too. The power is capped at the battery's max charge or discharge power (registers 47075/47077); the card is refused while that limit is 0. |
+| Set max charge power | Sets the maximum battery charge power (register 47075, UINT32). The device setting and tile follow at once, and the value is read back on every poll. |
+| Set max discharge power | Sets the maximum battery discharge power (register 47077, UINT32). The device setting and tile follow at once, and the value is read back on every poll. |
+| Set charge from grid | Enables or disables charging the battery from the grid (register 47087). |
+| Set grid charge cutoff SoC | Sets the state of charge at which grid charging stops (register 47088). Range: 20–100 %, default 50 %. |
+| Set grid charge power | Sets the power at which the battery charges from the grid (register 47242). Requires 'Charge from grid' to be enabled. |
+| Set charge cutoff SoC | Sets the maximum SoC the battery charges to during normal operation (register 47081). Valid range: 90–100 %, default 100 %. |
+| Set discharge cutoff SoC | Sets the minimum SoC the battery discharges to (register 47082). Valid range: 12–20 %, default 15 %. |
+| Set backup power reserve SoC | Sets the SoC reserved for backup / off-grid operation (register 47102). The battery will not discharge below this level during normal grid-tied operation. |
+| Set max power charge from grid | Sets the ceiling for charging from the grid (register 47244, UINT32) — the upper limit that "Set grid charge power" (register 47242) cannot exceed. |
+| Set grid-tied power limit | Sets register 47079, which Huawei calls "[Energy storage unit] Power limit of the grid-tied point": 0 W up to the inverter's maximum active power (Pmax), default Pmax, supported only by certain models (Solar Inverter Modbus Interface Definitions V3.0; the SPC177 register list does not have it). The table says no more about what it limits. A model without it refuses the write, which shows only in the app log. |
+| Switch to off-grid operation | ⚠️ Sends Huawei's command to switch the system from grid-tied to off-grid operation (register 47604 = 0). With backup hardware the house is cut off from the grid and runs on battery and solar alone. Huawei documents no value for the way back in this register, so this app offers none. Needs a Backup Box or SmartGuard. Runs only with the confirmation ticked. Replaces "Set backup off-grid switch", whose "Disabled" sent this same command. |
+| Set capacity control mode | Sets peak shaving (register 47954): off, active power limit, or apparent power limit (several inverters only). The limits per time period come from the FusionSolar app; the charge kept in reserve for it is set with "Set capacity control peak-shaving SoC" (register 47955). |
+| Set capacity control peak-shaving SoC | Sets the charge the battery keeps in reserve for peak shaving (register 47955). Takes effect while peak shaving is on (register 47954). |
 
-| Card                              | Description                                                                                        |
-|-----------------------------------|----------------------------------------------------------------------------------------------------|
-| Set storage working mode          | Sets the battery operating mode (self-consumption / TOU / full feed-in / etc.)                    |
-| Force charge                      | Forces immediate battery charging at the specified power                                           |
-| Force discharge                   | Forces immediate battery discharging at the specified power                                        |
-| Set max charge power (W)          | Sets the maximum battery charge power (reg 47075)                                                  |
-| Set max discharge power (W)       | Sets the maximum battery discharge power (reg 47077)                                               |
-| Set grid charge power (W)         | Sets the active grid-to-battery charge power setpoint (reg 47242)                                  |
-| Set grid charge cutoff SoC (%)    | Sets the SoC at which grid charging stops (reg 47088)                                              |
+#### Battery LUNA 2000 (EMMA Modbus)
+
+| Card | Description |
+|---|---|
+| Set storage working mode | What the battery does on its own (EMMA register 40000). For charging by price or forecast, use the Energy Management device instead. "Maximise Self-Consumption" — the normal choice: surplus solar charges the battery; when the sun is not enough, it supplies the house. "Time of Use (TOU)" — follows the charge and discharge windows stored in the system. This app does not write them: set them in the FusionSolar app first, or the battery may discharge on a sunny morning. "Fully Fed to Grid" — as much solar as possible into the grid; the battery charges only with what exceeds the inverter's maximum output and discharges below it. "Third-party Scheduling" — only if an outside platform is connected; otherwise nothing controls the battery. |
+| Set excess PV energy use in TOU mode | Only takes effect in the working mode "Time of Use (TOU)": whether surplus solar goes into the grid or charges the battery (EMMA register 40001). In any other mode the setting does nothing. |
+| Set max grid charging power | Sets the maximum power the LUNA2000 battery may draw from the grid for charging via EMMA Modbus (register 40002), 0–50 kW. Huawei defines it for the working mode "Time of Use (TOU)". |
+
+#### Smart Charger (OCPP)
+
+| Card | Description |
+|---|---|
+| Set max charging current (OCPP) | Sets the maximum charging current via OCPP SetChargingProfile (6–32 A). 0 A pauses a running session, as "Pause charging (OCPP)" does — which is what an EMS stop sends; a session paused that way resumes at the next current above 0. 1–5 A is refused. Without a running session, the value is used for the next start. |
+| Start charging (OCPP) | Sends a RemoteStartTransaction command to the OCPP charger. |
+| Start charging at (OCPP) | Starts charging at the given current. If the car is already plugged in and blocked, unblocks it at the specified ampere value. |
+| Stop charging (OCPP) | Sends a RemoteStopTransaction command to the OCPP charger. |
+| Pause charging (OCPP) | Pauses charging using a masked RemoteStop. The session snapshot is preserved so Resume stitches it back together. |
+| Resume charging (OCPP) | Resumes a previously paused charging session. |
+| Release charger (OCPP) | Sends ChangeAvailability → Operative to unlock the connector. Use if the charger is stuck Unavailable after a pause. |
+| Start charging at current + phase (OCPP) | Starts charging at the specified current and phase count. Useful for solar surplus charging on mono-phase. |
+| Set charging limit at current + phase (OCPP) | Changes the charging current and phase count during an active session. |
+| Reboot charger (OCPP) | Sends a Reset command to the charger. Soft reboot gracefully stops the session; Hard restarts at once, without ending the session properly first. |
+| Charge now at 16A | Charges at 16 A right away, whatever the default current: resumes a paused session at 16 A, raises a running session to 16 A, or starts a new one (also releasing a car that waits for a start). Fails if the charger is offline or no car is plugged in. |
+
+#### Energy Management System
+
+| Card | Description |
+|---|---|
+| Enable or disable EMS | Switches the Energy Management on or off — the same as the device's on/off switch. While off it keeps showing readings but starts, stops and adjusts nothing; devices it started stay as they are, and its mode reads Disabled. |
+| Enable or disable EMS control for a device | Takes one charger or device out of EMS control, or hands it back — the same switch as in the EMS settings and the EMS Device widget, and saved there. While it is out, the EMS neither starts nor stops it. Fails if the device is no longer set up in the EMS. |
+| Set electricity price (per kWh) | Sets the current variable electricity price. Only used when the EMS price model is set to Variable. Call this from your dynamic-tariff app (e.g. Tibber, EPEX). |
+| Set price forecast | Feeds an hourly price array (e.g. the "Prices" token from "Power by the Hour"'s New prices received trigger, or any similar day-ahead price app) into the EMS for price-optimised EV charging (chargers set to "Solar & price-optimised"). Link this once from your price app's forecast trigger — no separate schedule needed. |
+| Set car target charge (%) | Sets the car target charge. If the vehicle has no target-charge capability the value is kept virtually in the EMS. Also fires the matching "Set charge X%" flow so the vehicle is updated. |
+
+<!-- flow-cards:end -->
+
+### More on some actions
+
+#### Zero export and a standing feed-in limit (Inverter SUN2000 Modbus)
+
+Many installations need a permanent limit — a
+main fuse, or a grid operator's 60/70 % rule. Until 1.2.264, *Disable zero export* returned to
+*Unlimited* regardless, and *Enable zero export* had already overwritten the watt limit with
+0 W, so a negative-price flow quietly removed that protection. Both cards now hand the
+earlier state back. Until 1.2.312 *Disable zero export* still fell back to *Unlimited* when
+nothing was remembered — and the memory is cleared after each restore, so a second run took
+the limit off after all. It now writes nothing in that case. *Enable/disable grid export
+limit* keeps its literal meaning: off is *Unlimited*.
+
+#### Forced charging and discharging (Battery LUNA2000 Modbus)
 
 **Forced charging and discharging work like the Home Assistant integration** ([wlcrs/huawei_solar](https://github.com/wlcrs/huawei_solar/wiki/Force-charge-discharge-battery), since 1.2.302). A forced run ends either after a duration or at a target SoC, and register 47246 decides which: 0 = duration (47083), 1 = target SoC (47101). Until 1.2.301 no card wrote it, so each ran in the mode the battery happened to have — on a battery set to target SoC the minute cards ignored their minutes. Now:
 
@@ -927,28 +1116,7 @@ Each step waits for the one before it, and a step that fails starts nothing — 
 
 **Retired in 1.2.304:** *Set force charge/discharge* and the three cards that fed it (*Set force charge target percentage*, *Set force charge power*, *Set force discharge power*). The start cards above bring their own power and target, and *Stop force charge/discharge* stops — the same set the HA integration has. Retired cards are no longer offered for new flows; existing flows keep working as described above.
 
-#### Battery LUNA2000 (EMMA Modbus)
-
-| Card                              | Description                                                                                        |
-|-----------------------------------|----------------------------------------------------------------------------------------------------|
-| Set storage working mode          | Sets the battery operating mode (self-consumption / TOU / full feed-in / etc.)                    |
-| Force charge                      | Forces immediate battery charging at the specified power                                           |
-| Force discharge                   | Forces immediate battery discharging at the specified power                                        |
-| Set max grid charging power (kW)  | Sets the max grid charge power on the EMMA (reg 40002)                                             |
-
-#### Smart Charger (OCPP)
-
-| Card                                         | Description                                                                                            |
-|----------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| Start charging                               | Sends RemoteStartTransaction; applies pending current limit beforehand                                 |
-| Start charging at X A (N-phase)              | Starts a session with an explicit current and phase override                                           |
-| Stop charging                                | Sends RemoteStopTransaction to the active session                                                      |
-| Pause charging                               | Masked pause: stops the current session and saves state for resume                                     |
-| Resume charging                              | Restores the paused session with the previous current limit                                            |
-| Set charging limit to X A                   | Sends SetChargingProfile (TxProfile during session / TxDefaultProfile otherwise) in Watts/Absolute     |
-| Set charging limit to X A (N-phase)          | Same as above with an explicit phase override                                                          |
-| Release charger                              | Sends ChangeAvailability → Operative (unblocks a charger stuck in Unavailable state)                   |
-| Reboot charger (Soft / Hard)                 | Sends OCPP Reset and suppresses the offline watchdog alert for 5 minutes                               |
+*Set backup off-grid switch* was retired in 1.2.289: it sends nothing, because its "Disabled" sent Huawei's command to switch to off-grid operation — use *Switch to off-grid operation* instead. An older duplicate of *Start discharging until SoC %* is retired as well.
 
 ---
 
@@ -959,25 +1127,28 @@ The app is fully configured for the Homey Energy Dashboard:
 | Device                          | Homey category        | Function                                                  |
 |---------------------------------|-----------------------|-----------------------------------------------------------|
 | Kiosk                           | Solar panel           | Total yield → Generated energy                            |
-| Inverter SUN2000 OpenAPI        | Solar panel           | Plant PV production → Generated energy                     |
+| Inverter SUN2000 OpenAPI        | Solar panel           | Total PV energy → Generated energy (follows the inverter's DC counter, since 1.2.262) |
 | Inverter SUN2000 Modbus         | Solar panel           | Total yield → Generated energy                            |
-| Inverter SUN2000 EMMA Modbus    | Solar panel           | Total yield → Generated energy                            |
+| Inverter SUN2000 EMMA Modbus    | Solar panel           | Total PV energy → Generated energy                        |
 | iSitePower-M Solar              | Solar panel           | Total yield → Generated energy                            |
-| Battery LUNA2000 OpenAPI        | Home battery          | Charge and discharge power                                |
+| Battery LUNA2000 OpenAPI        | Home battery          | Charged / discharged energy + charge/discharge power      |
 | Battery LUNA2000 Modbus         | Home battery          | Charged / discharged energy + charge/discharge power      |
 | Battery LUNA2000 EMMA Modbus    | Home battery          | Charged / discharged energy + charge/discharge power      |
 | iSitePower-M Battery            | Home battery          | Charged / discharged energy + charge/discharge power      |
 | Power Meter OpenAPI             | P1 meter (cumulative) | Grid import + grid export                                 |
 | Power Meter Modbus              | P1 meter (cumulative) | Grid import + grid export                                 |
 | Power Meter EMMA Modbus         | P1 meter (cumulative) | Grid import + grid export                                 |
-| iSitePower-M Grid               | P1 meter (cumulative) | Grid import (direct from Mains meter or energy balance)   |
-| iSitePower-M Home               | Energy consumer       | Total home consumption (cumulative kWh)                   |
+| iSitePower-M Grid               | P1 meter (cumulative) | Grid import (Mains meter or energy balance); export always 0 |
+| iSitePower-M Home               | Cumulative meter      | Total home consumption as cumulative import; export always 0 |
+| Smart Charger (OCPP)            | EV charger            | Total energy charged → consumption                        |
+| Smart Charger (EMMA Modbus)     | EV charger            | Total energy charged → consumption                        |
 
 All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": ["INTERNAL"]` so Homey correctly identifies them as built-in home batteries in the Energy Dashboard.
 
-> **Do not pair the Kiosk and an OpenAPI inverter into Energy at the same time.** Both are
-> solar-panel devices reporting the same plant production, so Homey would count it twice.
-> Exclude one of them under *Advanced settings → Exclude from Energy*. The same applies to
+> **Do not count the Kiosk and a SUN2000 inverter (Modbus, EMMA or OpenAPI) in Energy at the
+> same time.** Both are solar-panel devices reporting the same plant production, so Homey would
+> count it twice. Since 1.2.295 the kiosk device warns while a SUN2000 is paired and the kiosk is
+> not excluded; exclude it under *Settings → Energy → Exclude from Energy*. The same applies to
 > running the Modbus and OpenAPI devices for one installation side by side: two inverters,
 > two batteries and two cumulative meters all describing one house.
 
@@ -987,7 +1158,7 @@ All LUNA2000 and iSitePower-M Battery variants are declared with `"batteries": [
 
 The app includes 12 Homey dashboard widgets that provide live and daily energy data at a glance. Widgets are added via **Homey → Dashboard → + → Huawei FusionSolar Manager**.
 
-All widgets prefer `sun2000_modbus` / `luna2000_modbus` as their primary data source and fall back to EMMA or SDongle A variants when those are not paired.
+The energy widgets prefer the local devices — `sun2000_modbus` / `luna2000_modbus`, then the EMMA and SDongle A variants (and a DTSU666 for the grid) — and fall back to the FusionSolar cloud (OpenAPI, then iSitePower) and, for PV, a kiosk device. A device Homey shows as unavailable contributes nothing: the next one in the chain answers, or the figure shows as an em dash instead of its last value. Only lifetime `meter_*` totals keep their last reading. The charger widgets read the OCPP or EMMA charger, the EMS widgets the Energy Management device.
 
 Behaviour shared by every widget:
 
@@ -1053,14 +1224,14 @@ Daily energy totals shown as relative bars, plus self-consumption and self-suffi
 | Bar               | Source                                                                        |
 |-------------------|-------------------------------------------------------------------------------|
 | PV today          | `sun2000_modbus` → `meter_power.daily` (register 32114, resets at midnight); on a cloud-only plant the FusionSolar plant summary |
-| Grid export today | `sun2000_modbus` → cumulative delta from midnight baseline                    |
-| Grid import today | `sun2000_modbus` → cumulative delta from midnight baseline                    |
-| House consumption | The plant summary's own daily total where there is one, otherwise the balance at the house connection: what the inverter delivered − export + import. From a PV production figure (EMMA, cloud) the battery's net charge comes off first; with a battery paired but its day counters missing, the total is left unknown rather than guessed |
+| Grid export today | `sun2000_modbus` → cumulative delta from midnight baseline; an EMMA power meter's own day counter where there is no cumulative counter |
+| Grid import today | `sun2000_modbus` → cumulative delta from midnight baseline; an EMMA power meter's own day counter where there is no cumulative counter |
+| House consumption | An EMMA meter's or the plant summary's own daily total where there is one, otherwise the balance at the house connection: what the inverter delivered − export + import. From a PV production figure (EMMA, cloud) the battery's net charge comes off first; with a battery paired but its day counters missing, the total is left unknown rather than guessed |
 
 Local sources come first everywhere: a Modbus or EMMA reading is seconds old and the cloud
 minutes at best, so the cloud is consulted only where nothing closer answers.
 
-> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start — retried after 1, 5 and 15 minutes, because ten seconds after start is a guess at how long an inverter needs for its first reading, and losing that race used to cost the whole day its baseline in silence. If the counters are still unread after that, the log says so instead. Installations with no SUN2000 Modbus or EMMA device have no cumulative counters to snapshot at all, and the log says that too rather than repeating that it is writing one. A hint is shown in the widget until the baseline is available.
+> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start — retried after 1, 5 and 15 minutes, because ten seconds after start is a guess at how long an inverter needs for its first reading, and losing that race used to cost the whole day its baseline in silence. If the counters are still unread after that, the log says so instead. Installations with none of the devices that carry cumulative grid counters — SUN2000 Modbus, EMMA inverter, FusionSolar cloud inverter or meter, iSitePower grid — have nothing to snapshot at all, and the log says that too rather than repeating that it is writing one. An EMMA power meter needs no baseline: its own day counters are used directly. A hint is shown in the widget until the baseline is available.
 
 - **Eigenverbrauch %** — share of PV energy used on-site (not exported)
 - **Autarkie %** — share of the house consumption that did not come from the grid: 1 − import ÷ consumption, against the very figures shown beside it
@@ -1077,7 +1248,7 @@ Detailed battery state at a glance.
 
 - **SoC bar** — colour coded: green ≥ 40 %, orange 20–40 %, red < 20 %
 - **Charge / discharge power** with direction label and a pulsing icon
-- **Time remaining** — estimated time to full (when charging) or empty (when discharging), shown prominently below the SoC bar. An EMMA battery's own kWh to full and to empty come first
+- **Time remaining** — estimated time until the battery stops, shown prominently below the SoC bar: up to its maximum charge when charging, down to the higher of its discharge cutoff and backup reserve when discharging (each as far as the battery reports it, otherwise 100 % / 0 %). An EMMA battery's own kWh to full and to empty come first; otherwise the battery's reported capacity, then the widget setting. With no capacity known, no time is shown
 - **Today's stats** — energy charged and discharged today (kWh)
 - **State** in the dashboard language — Huawei's "Running" becomes charging, discharging or standby by the power
 - Shows the first battery that answers; **"Battery unreachable"** when none does, **"No battery"** only when none is paired
@@ -1085,7 +1256,7 @@ Detailed battery state at a glance.
 
 | Widget setting             | Default | Description                                                   |
 |----------------------------|---------|---------------------------------------------------------------|
-| Battery capacity (kWh)     | 5 kWh   | Usable capacity used to calculate remaining time. LUNA2000 examples: 1 module = 5 kWh, 2 modules = 10 kWh |
+| Battery capacity (kWh)     | 0 (empty) | Only for batteries that do not report their own capacity — a LUNA2000 over Modbus does (register 37758), and that figure is used automatically. Left at 0, no time is shown rather than a guessed one. LUNA2000 examples: 1 module = 5 kWh, 2 modules = 10 kWh, 3 modules = 15 kWh |
 
 ---
 
@@ -1117,13 +1288,17 @@ Live state of an EV charger (OCPP or EMMA): charging power, session energy, acti
 
 ### Charging Sessions (Ladesitzungen)
 
-A scrollable history of charging sessions — energy delivered, duration and end reason per session. Prefers a paired OCPP charger, whose history is the richer one, and otherwise falls back to the EMS's own charge sessions, so the widget is useful with any charger brand. Every session in progress appears at the top, labelled *charging* or *paused* — two chargers running at once show as two. The charger's stop reasons are translated (*Car disconnected*, *Stopped remotely* …). The widget grows with its rows instead of scrolling inside a fixed box. Updates every **30 seconds**. Where a feed-in tariff is configured, the cost line is followed by its two halves — what was paid and what was given up by not exporting.
+The most recent charging sessions — energy delivered and duration per session; an OCPP session also shows its current and phases and the charger's stop reason, translated (*Car disconnected*, *Stopped remotely* …). Prefers a paired OCPP charger, whose history is the richer one, and otherwise falls back to the EMS's own charge sessions, so the widget is useful with any charger brand — those rows name the car and the solar share instead of a stop reason. Every session in progress appears at the top, labelled *In progress* or *Paused* — two chargers running at once show as two. The widget grows with its rows instead of scrolling inside a fixed box. Updates every **30 seconds**; running clocks tick every second. A session's cost and its split into paid and forgone feed-in are shown in the session list in App Settings, not on the widget.
+
+| Widget setting   | Default | Description                                                   |
+|------------------|---------|---------------------------------------------------------------|
+| Sessions to show | Last 5  | Last 5 or last 10; sessions in progress count towards it      |
 
 ---
 
 ### EMS History (EMS Verlauf)
 
-Recent Energy Management System events — mode changes, device start/stop and charger current steps — the same feed shown in App Settings, on your dashboard. Pages through calendar days (also across a clock change); after the first load only new events are fetched. No settings — the former "Time window" was never read and is gone.
+Recent Energy Management System events — mode changes, device start/stop and charger current steps — the same feed shown in App Settings, on your dashboard. Pages through calendar days (also across a clock change); after the first load only new events are fetched. No settings — the former "Time window" was never read and is gone. Updates every **30 seconds**; ↻ reloads the whole history.
 
 ---
 
@@ -1135,16 +1310,23 @@ A configurable time-series chart of up to four power readings, for a quick trend
 - **Gaps stay gaps.** A device that is unreachable contributes nothing for that stretch, and the line breaks there; the legend shows "—" instead of a last value that is no longer true.
 - **Light on the network.** The app thins each series to at most 240 points before sending (largest-triangle sampling, which keeps peaks), a few kilobytes instead of every stored point.
 - Dates follow the dashboard's language (9.10. in German, 10/9 in English).
+- Updates **once a minute**.
+
+| Widget setting      | Default | Description                                                         |
+|---------------------|---------|---------------------------------------------------------------------|
+| Series 1–4          | —       | Any power reading (`measure_power`, `measure_power.load`) of this app's devices |
+| Series 1–4 label    | empty   | Optional name for the legend                                        |
+| Time range (hours)  | 24      | Starting view; snaps to the nearest step (6 h, 12 h, 24 h, 48 h, 72 h, 7 d) |
 
 ---
 
 ### EMS Device (EMS-Gerät)
 
-Live status card for a single EMS-controlled device — pick any configured **EV charger**, **heat pump**, **boiler**, **pool pump** or **dehumidifier** via a search field in the widget settings (add the same widget multiple times for several devices).
+Live status card for a single EMS-controlled device — pick any configured **EV charger**, **heat pump**, **boiler**, **pool pump**, **dehumidifier** or **air conditioner** via a search field in the widget settings (add the same widget multiple times for several devices).
 
-- **EV charger:** connection state, current power (green dashed underline + bolt icon while actively charging), current session's energy and an estimated remaining-time-to-target, a **charging-mode selector** (Solar / Solar + Off-peak / Solar + Low tariff / Solar + Price / Always charge), and an **"Instant charge" switch** — the same `charge_now` capability as the device tile's own button, for a one-off full-power charge without switching the mode to "Always charge" (device-wide: applies to every charger on this EMS device, not just the one shown on the card). If a car is assigned to the charger, a sub-card shows its name, a charge-level progress bar (with a marker at the charge limit), and charge level / plan (the car's configured "ready by" deadline, shown only in "Solar + Price" mode) / charge limit as three labelled stats. The remaining-time estimate needs the car's battery capacity (set under Cars in App Settings), current power, current SoC and target SoC — it's a simple estimate (constant-power assumption), not a real navigation-grade prediction.
+- **EV charger:** connection state, current power (green dashed underline + bolt icon while actively charging), current session's energy and an estimated remaining-time-to-target, a **charging-mode selector** (Solar / Solar + Off-peak / Solar + Low tariff / Solar + Price / Always charge), and an **"Instant charge" switch** — the same `charge_now` capability as the device tile's own button, for a one-off full-power charge without switching the mode to "Always charge" (device-wide: applies to every charger on this EMS device, not just the one shown on the card). If a car is assigned to the charger, a sub-card shows its name, a charge-level progress bar (with a marker at the charge limit), and charge level / plan (the car's configured "ready by" deadline, shown only in "Solar + Price" mode) / charge limit as three labelled stats. Three buttons below it — **80 %**, **90 %**, **100 %** — set that car's charge target, the same as the *Set car target charge (%)* flow action: the EMS stores it and fires *EMS: set car target charge*, so your vehicle flow can pass it on to the car. A failed write marks the button red; the next refresh shows the real target. The remaining-time estimate needs the car's battery capacity (set under Cars in App Settings), current power, current SoC and target SoC — it's a simple estimate (constant-power assumption), not a real navigation-grade prediction.
 
-- **Heat pump / boiler / pool / dehumidifier:** on/off state, current power, today's energy and runtime (reset at local midnight, saved to the device store roughly every 60s so it survives an app restart), and the configured **minimum surplus (W)** threshold (read-only — change it in App Settings)
+- **Heat pump / boiler / pool / dehumidifier / air conditioner:** on/off state, current power, today's energy and runtime (reset at local midnight, saved to the device store roughly every 60s so it survives an app restart), and the configured **minimum surplus (W)** threshold (read-only — change it in App Settings)
 - **All devices:** an **"EMS control" switch** — turns EMS's control of *this specific device* on or off, independent of any other device or the app-wide settings. Off means EMS leaves it alone entirely (no start/stop/current commands).
 - Updates every **15 seconds**, matching the EMS's own tick — polling faster only re-fetches that tick's cached snapshot. Responsiveness doesn't suffer, because every control you change (switch, charging-mode dropdown) applies optimistically and then confirms itself with an immediate refresh rather than waiting for the next poll. If the write fails, the control springs back to its previous state and shows the reason instead of silently reverting later. A change runs one EMS tick at once — it no longer restarts the loop, whose first tick only observes, so a change used to wait a full interval. The power shown for a charger is what it measures, not the floor the EMS uses for control (amps × phases × 230 V)
 
@@ -1154,7 +1336,7 @@ Live status card for a single EMS-controlled device — pick any configured **EV
 
 Aggregate view of the EMS's Home Battery SoC and its priority zones — mirrors the **Battery** section of App Settings.
 
-- Colour-coded SoC bar (green = solar free, red = protected/hard-stop) with a marker at the stop
+- Colour-coded SoC bar (green = solar free, red = protected/hard-stop) with a marker at the stop, and the stored energy beside it (e.g. "8.7 of 13.4 kWh") where the battery capacity is known
 - **Stop below** is editable directly on the widget and writes the setting the EMS actually stops at: with the surplus ramp configured its lower point (a value at or above the ramp's upper point is refused, with the limit), otherwise the single battery floor. An edited value confirms itself immediately, and on failure restores the previous value with the reason shown
 - Status line shows whether price-optimised grid-charging is currently active or holding discharge, when configured
 - Updates every **15 seconds**, matching the EMS's own tick
@@ -1179,25 +1361,25 @@ The current slot/value is highlighted in both charts where a timeline is shown; 
 
 ## Languages
 
-English and German are complete. Dutch is complete everywhere the app renders its own text and
-falls back to English for the parts Homey renders from `app.json`.
+English, German and Dutch are complete — the app's own texts, the widgets, and everything Homey
+renders from `app.json`. Counted on 1.2.324:
 
 | Surface | What it covers | en | de | nl |
 |---|---|---|---|---|
-| `locales/*.json` | App code, pairing, the entire settings page | 667 | 667 | **667** |
+| `locales/*.json` | App code, pairing, the entire settings page | 869 | 869 | **869** |
 | Widgets (12) | All dashboard widget text | 225 | 225 | **225** |
-| `app.json` | Driver names, device settings, capability titles, flow cards | 1361 | 1349 | **1349** |
+| `app.json` | Driver names, device settings, capability titles, flow cards | 1738 | 1724 | **1724** |
 
 ### What a Dutch user sees today
 
-Dutch throughout the settings page, all twelve widgets, pairing, and every message the app shows
-or logs itself. English for driver names in the device list, device setting labels, capability
-titles on the tile, and flow card text. Homey falls back to `en` per string, so nothing is
-missing or blank — those parts are simply English.
+Dutch throughout: the settings page, all twelve widgets, pairing, every message the app shows or
+logs itself, driver names in the device list, device setting labels, capability titles on the tile
+and flow card text. Only units have no `nl` (see Scope); Homey shows them from `en`, and they are
+the same in every language.
 
 ### Scope
 
-Dutch is complete. The twelve `app.json` entries still without `nl` are `units` — `W`, `kW`,
+Dutch is complete. The fourteen `app.json` entries still without `nl` are `units` — `W`, `kW`,
 `kWh`, `%`, `/kWh` — which are identical in every language and which `de` does not carry either.
 
 Driver names follow the German wording as the guide to what counts as a product designation:
@@ -1229,15 +1411,19 @@ the last 50 entries per device, kept in the device's own store:
 
 | Source | What is recorded |
 |--------|------------------|
-| Settings | A saved device settings page: every changed setting from old to new (passwords, keys, codes and user names masked), or why the page was not saved |
+| Settings | A saved device settings page: every changed setting from old to new (passwords, keys, codes and user names masked) |
 | Flow | Every action flow card that ran, with its arguments. Data feeds (electricity price, price forecast) appear in the live log only |
 | Device | A value changed on the device itself — in the FusionSolar app, say — once the app reads it (`Setting follows the device`, `Mode dropdown follows the device`). A poll that read the device before a save ended stores nothing, so the value just saved is not briefly put back (`Setting sync skipped … read before the last save` in the live log, since 1.2.323) |
-| Failed | A write the device refused (the setting is put back where the app can), and a flow card the app refused, with the reason |
+| Failed | A settings page that was not saved (`Settings not saved: …`), a write the device refused (the setting is put back where the app can), and a flow card the app refused, with the reason |
 
 A repeat of the same entry within 15 minutes — a flow that adjusts a charger every minute —
-counts up instead of pushing everything else out.
+counts up instead of pushing everything else out. The panel shows the newest 300 entries across
+all devices.
 
-**Live log** is everything the app writes, the last 1500 lines in memory: every write to a device
+**Live log** is everything the app writes, the last 1500 lines in memory. A device that keeps
+polling fine writes its `Poll OK` line once every 15 minutes, with the number of polls it stands
+for; a failure that repeats unchanged is written in full three times, then every 15 minutes with a
+count — so a few devices cannot push the morning's problem out of the 1500 lines. It holds every write to a device
 with `Write start`, `Write OK` or the failure, each saved settings page (`Settings saved: …`)
 and each flow card (`[flow] …`). It is cleared by a restart or an update, and is what
 *More → Apps → FusionSolar → Submit App Logs* sends.
@@ -1245,10 +1431,10 @@ and each flow card (`[flow] …`). It is cleared by a restart or an update, and 
 ## Technical Background
 
 - **Kiosk:** HTTP polling of the public FusionSolar Kiosk API
-- **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session and coordinator — one API call per interval for all devices of the same plant
-- **Modbus (SUN2000/SDongle):** TCP connection via [`jsmodbus`](https://www.npmjs.com/package/jsmodbus) following the Huawei SUN2000 Modbus Interface Definition A. All Modbus devices on the same host share a serialised queue (`withHostLock`) — no concurrent connections
-- **EMMA Modbus:** TCP connection to the SUN2000MA Energy Management Module (unit ID 0). All three EMMA device types (inverter, battery, meter) read from the same EMMA register range — no SDongle or DTSU666 required. R/W access to ESS control registers (40000–40002) via FC06/FC16
-- **Energy Management System:** A 15-second decision loop running on Homey. Reads PV/house/grid/battery from the paired devices, allocates solar surplus across a fixed load priority (instant → battery-protect → EV solar/off-peak → simple loads), and acts by firing flow trigger cards rather than writing to devices directly (brand-agnostic). Internally modular (`lib/ems/*` mixins: charger control, simple devices, battery zones, price, export limit, history) with debounced history persistence, config validation and a diagnostics snapshot (`getEmsDiag`). Core decision logic is covered by unit tests (`node --test`).
+- **OpenAPI:** HTTPS connection to the Huawei FusionSolar Northbound API (xsrf-token authentication, automatic re-login on session expiry). Devices from the same plant share a common session and coordinator — one set of calls per poll for all of them: the plant KPI, then one device-KPI call per device type, 1.5 s apart; the device list is fetched once a day, and again after 15 minutes while a device is missing from it. The poll interval is the shortest set on any device of the plant (5–60 min, default 5). A 407 refusal (calling too often) pauses all calls for 15 minutes. A cached reading bridges up to three poll cycles and is then dropped rather than shown; a timed-out call skips the rest of that cycle instead of taking the plant's devices offline
+- **Modbus (SUN2000/SDongle):** TCP connection via [`jsmodbus`](https://www.npmjs.com/package/jsmodbus) following the Huawei SUN2000 Modbus Interface Definition A. All Modbus devices on the same host share a serialised queue (`withHostLock`) — no concurrent connections. Each poll opens its own connection, waits a second for the device to settle, reads in batches of up to 64 registers and closes it before the next device's turn. A failed poll is retried once after 1.5 s; after three failed polls a host is left alone for 60 s, so it does not stall the devices behind the same dongle. Reads time out after 5 s, writes after 25 s; a write or a settings-page probe interrupts a running poll rather than queueing behind it. A register that was not read is told apart from one the device does not have (since 1.2.316)
+- **EMMA Modbus:** TCP connection to the EMMA (Energy Management Assistant, unit ID 0). All four EMMA device types (inverter, battery, meter, Smart Charger) are read through the EMMA — no SDongle or DTSU666 required. The Smart Charger is read-only this way (model, rated power, phase voltages, energy, temperature); charge control is the OCPP charger device. R/W access to ESS control registers (40000–40002) via FC06/FC16
+- **Energy Management System:** A decision loop running on Homey, every 15 seconds by default (adjustable from 10 to 60 s). Reads PV/house/grid/battery from the paired devices, allocates solar surplus across a fixed load priority (instant → battery-protect → EV solar/off-peak → simple loads), and acts by firing flow trigger cards rather than writing to devices directly (brand-agnostic). Internally modular (`lib/ems/*` mixins: charger control, simple devices, battery zones, price, export limit, history) with debounced history persistence, config validation and a diagnostics snapshot (`getEmsDiag`). Core decision logic is covered by unit tests (`node --test`).
 - **OCPP 1.6:** One WebSocket server per configured port (8887 by default) running inside Homey; a device moves between them when its port changes, and a server stops when its last device leaves. Station IDs are unique per server (a second device is refused and queued), and the device without a Station ID keeps the charger it took while that charger stays connected. Implements BootNotification, Heartbeat, StatusNotification, MeterValues, StartTransaction, StopTransaction, Authorize, DataTransfer. Outgoing calls are fully async with response tracking (`_pendingCalls` map, 10 s timeout): RemoteStartTransaction, RemoteStopTransaction, SetChargingProfile (TxDefaultProfile stackLevel 0 / TxProfile stackLevel 1, `chargingRateUnit: 'W'`, Absolute kind), ChangeAvailability, Reset. SetChargingProfile uses Watts (0 A → 1 W to work around a Huawei firmware bug where a 0 W TxDefaultProfile is unreliable). Supports optional HTTP Basic Authentication per station. Station ID is extracted from the WebSocket URL path (`ws://homey-ip:8887/[station-id]`). Masked Pause/Resume stitches two physical transactions into a single logical session preserving cumulative energy and start time. Power-verified start: the `charging_started` trigger fires only after > 100 W is confirmed (90 s watchdog). Offline watchdog triggers a flow card after 3 minutes of silence and suppresses alerts for 5 minutes after a reboot command.
 
 ---

@@ -16,3 +16,6 @@ test/
 Modbus Register.xlsx
 README.md
 docs/
+
+# Developer tools — scripts/readme-flow-cards.js builds the flow-card tables in README.md.
+scripts/
