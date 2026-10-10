@@ -28,7 +28,7 @@ werden.
 | C1 | erledigt (1.2.281): die Cloud-Batterie schreibt `luna2000_battery_status` mit den Wörtern des Modbus-Treibers („Fault", „Sleep mode" statt „Faulty", „Hibernating"); Auslöser und Bedingung „Batterie-Betriebsstatus …" gelten für beide Treiber, die Bedingung fragt das im Flow gewählte Gerät | `test/openapi-battery-status.test.js` |
 | C2 | erledigt (1.2.281): `modbus.battery.state.full`/`.empty`, wie bei Modbus | ebd. |
 | C3 | erledigt (1.2.212); seit 1.2.213 kommt der SoH aus `battery_unit_info[].soh` | `test/openapi-unread-fields.test.js` |
-| D1 | offen: alle vier Hausbatterie-Treiber tragen `batteries: ["INTERNAL"]`; LUNA2000 Modbus setzt es sogar nach der Modulzahl per `setEnergy`. Vor dem Streichen klären, ob Homey es für die Hausbatterie braucht | `luna2000_modbus/device.js`, Modulzählung |
+| D1 | von Andi verworfen (2026-10-11), nicht umsetzen: alle vier Hausbatterie-Treiber tragen `batteries: ["INTERNAL"]`, LUNA2000 Modbus setzt es nach der Modulzahl per `setEnergy`; das bleibt so | `luna2000_modbus/device.js`, Modulzählung |
 | D2 | erledigt (1.2.280). Im Betrieb überbrückt der Cache seit 1.2.197 bis zu drei leere Antworten; abgewiesene Aufrufe (407/403/429) setzen seit 1.2.220 nicht mehr offline (Issue #28); „ohne Daten" heisst seit 1.2.210, dass **jeder** vorhandene Typ fehlt. 1.2.280 schliesst den Rest: nach einem Start (kein Cache) bekommt die erste leere Antwort einen Zyklus Gnadenfrist; die Geräteliste wird täglich neu geholt und nach 15 Minuten nochmals, solange ein Gerät darin fehlt; fehlt es auch in der zweiten Liste, wird es mit „FusionSolar lists no device of type …" als nicht verfügbar markiert; eine leere Liste ersetzt nie eine volle | `lib/openapi-coordinator.js`, `test/openapi-device-list.test.js`, `test/openapi-starved-type.test.js` |
 | Abschnitt 5 | Wechselrichter und Leistungssensor sind konform. SDongle und iSitePower Home: von Andi verworfen (2026-10-09), nicht umsetzen | |
 | Ungenutzte Felder | seither genutzt: `rated_capacity` (1.2.257, `battery_rated_capacity`), `mppt_total_cap` (1.2.262). Weiter ungenutzt: `mppt_1_cap`/`mppt_2_cap`, `power_factor`, `reactive_power`, die Erträge in Geld. Die AC-Phasenwerte des Wechselrichters sind entfernt | |
@@ -325,6 +325,7 @@ Stand 1.2.294 — erledigt sind die Vorzeichen (A1, B1), der Ertragszähler des 
 und A4, B7, B8. Was bleibt:
 
 1. **A3** — die Phasennamen.
-2. **D1** — erst nach Klärung, ob Homey `batteries` für die Hausbatterie braucht.
+
+D1 ist von Andi verworfen (2026-10-11).
 
 A2 bleibt bewusst offen, bis eine EMMA-Messung vorliegt.
