@@ -2,7 +2,7 @@
 
 const { Device } = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
-const { DEV_TYPE_BATTERY_RACK, calculate, integrationHours } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_BATTERY_RACK, calculate, hasData, integrationHours } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
 const capabilitySet = require('../../lib/capability-set');
 
@@ -72,6 +72,15 @@ class ISitePowerBatteryDevice extends Device {
   getDevTypes() { return [DEV_TYPE_BATTERY_RACK]; }
 
   async onPollData({ kpiByType, freshKpiByType }) {
+    // Nothing from the plant for the battery: the last readings stand. The 0 W written here
+    // also read as "idle", so every silent spell of the cloud fired the charging-state cards,
+    // and its end fired them again (review 2026-10-10); the coordinator marks the device
+    // unavailable. Booking 0 moves the charge total's clock on, so the gap is not booked later.
+    if (!hasData(kpiByType, this.getDevTypes())) {
+      await this._accumulateCharged(0);
+      logPollOk(this, 'Poll: no battery data — last values kept');
+      return;
+    }
     const v = calculate(kpiByType, freshKpiByType);
 
     const signed = v.dischargeW > 0 ? -v.dischargeW : v.chargeW;

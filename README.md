@@ -174,6 +174,8 @@ Dedicated driver for the Huawei iSitePower-M Solar subsystem. Registered as a so
 | Total yield   | Cumulative PV yield (kWh) — from station KPI     |
 | Current       | PV output current (A) — when reported            |
 
+> When the plant delivers nothing for the PV devices, the last power stays on display rather than dropping to 0 W, and the device is marked unavailable.
+
 ---
 
 ### iSitePower-M Battery (OpenAPI)
@@ -195,6 +197,8 @@ Dedicated driver for the Huawei iSitePower-M Battery subsystem. Registered as a 
 | Battery state            | Human-readable state string — available in flows         |
 | Battery status           | iSitePower state as text (e.g. Float charging, Standby) — when reported |
 | Battery current          | Battery current (A) — when reported                      |
+
+> When the plant delivers nothing for the battery, the last readings stay on display rather than dropping to 0 W, the device is marked unavailable, and the charging-state cards do not fire.
 
 ---
 
@@ -532,7 +536,7 @@ Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible 
 | Target current (A)      | Active charging current limit (fine-grained amp control, kept in sync with Target Charging Power) |
 | Charging energy         | Cumulative total energy (kWh)                                                    |
 | Charging state          | Homey EV state: `plugged_out` / `plugged_in` (also while the charger reports Finishing — the cable is still in) / `plugged_in_paused` (charger reports SuspendedEV/SuspendedEVSE) / `plugged_in_charging`; left unchanged while the charger is offline |
-| Session status          | Not connected · Connected · Smart charging (car in, auto-start off) · Charging · Finishing (under 100 W for 3 min) · Paused · Fully charged · Offline · Error — used by the *Session status is* condition |
+| Session status          | Not connected · Connected · Smart charging (car in, auto-start off) · Charging · Finishing (under 100 W for 3 min) · Paused · Fully charged (the charger ended the session after the car had stopped drawing: SuspendedEV, or 3 min under 100 W) · Offline · Error — used by the *Session status is* condition |
 | Session energy          | Energy of the current session (kWh), across pauses; refreshed every minute, 0 after unplug |
 | Session duration        | Duration of the current session (e.g. "1h 12m"); "—" after unplug              |
 | Charging profile        | Active limit, e.g. "11.0 kW / 16A / 3P"                                          |
@@ -590,7 +594,7 @@ the FusionSolar app: *Services* → *Commission Device*, connect to the charger'
 | Charger | Charger model | Other / not sure | Hardware variant; the 7KS rejects three phases |
 | Charger | Number of phases | 3 (Tri-Phase) | How the charger is wired; used for SetChargingProfile. Never auto-detected |
 | Charging | Auto-start charging | on | Automatically starts charging when a car connects |
-| Charging | Default charging current | 10A | Current used by auto-start and by "Start charging" without an ampere value |
+| Charging | Default charging current | 10A | Current used by auto-start and by "Start charging" without an ampere value; a change during a session applies from the next start |
 | Display | Show vehicle battery level | on | Off removes the tile for cars that do not report their state of charge |
 | Notifications | Timeline notifications | on | Posts car connected (auto-start off), charging started/paused/resumed/stopped, limit changes, a car that draws no power, car disconnected, and charger offline/back online. Off also silences the offline warning |
 
@@ -934,7 +938,7 @@ out — they are no longer offered for new flows, and existing flows keep workin
 | EV charging stopped | Smart Charger (EMMA Modbus) | – | Fires when the voltage on the charger's output disappears (10 V or less on every phase). The charger has no register for its charging state, so this is how the end of a session is recognised. |
 | Charger reported a fault (OCPP) | Smart Charger (OCPP) | `error_code`, `vendor_error_code`, `info`, `status` | Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature. |
 | EV charging started (OCPP) | Smart Charger (OCPP) | `amps`, `phases`, `phase_label`, `message`, `transaction_id`, `meter_start` | Fires once power actually flows (above 100 W) after the charger has started a transaction, or right away when a start card releases a car that was waiting. Not fired when the car draws nothing, nor when charging continues after a pause — that is "Charging resumed (OCPP)". |
-| EV charging stopped (OCPP) | Smart Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start that aborts within 2 seconds and is retried; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |
+| EV charging stopped (OCPP) | Smart Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start in which the car never drew power — there was no "EV charging started" for it either; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |
 | EV plugged in — waiting for start (OCPP) | Smart Charger (OCPP) | – | Fires when a car plugs in and auto-start charging is disabled. Use this to start charging manually from a flow. |
 | EV charger state changed (OCPP) | Smart Charger (OCPP) | `state` | Fires on every status report from the charger (OCPP StatusNotification), mapped to idle / connected / charging / error — the state can be the same as before. |
 | EV disconnected (OCPP) | Smart Charger (OCPP) | `connected_minutes`, `message` | Fires when the cable is physically unplugged from the charger (rawStatus=Available). |

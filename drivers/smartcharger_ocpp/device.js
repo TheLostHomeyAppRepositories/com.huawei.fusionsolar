@@ -27,6 +27,11 @@ const MAX_SESSION_HIST    = 10;
 const OFFLINE_AFTER_MS    = 180_000;
 const LOW_POWER_W         = 100;
 const LOW_POWER_FINISH_MS = 180_000;
+// A start that never drew power and delivered less than this ends without "charging stopped" —
+// see onStopTransaction.
+const FALSE_START_WH      = 10;
+// How often the debug record of the last non-zero readings is written — see _trackLastNonZero.
+const LAST_NON_ZERO_SAVE_MS = 5 * 60_000;
 
 // This app's own vocabulary for what the charger is doing. It drives _computeSessionStatus
 // and the session_status capability, which is ours and accepts these words.
@@ -211,6 +216,7 @@ class SmartChargerOcppDevice extends Device {
     this._startInFlight        = false;
     this.assumeActiveFromRestart = false;
     this._lastNonZero          = null;
+    this._lastNonZeroSavedAt   = 0;
 
     // ── Session ownership (tracks who started the current session) ──────────
     this.sessionOwner = null; // 'user' | null ('solar'/'offpeak' were pre-EMS engine owners, may still appear in old stored sessions)
@@ -232,6 +238,7 @@ class SmartChargerOcppDevice extends Device {
     this._connectionStart  = null;
     this._lowPowerSince    = null;
     this._startVerify      = null;
+    this._carDoneAt        = null;  // when the car was done, in this transaction — see onStopTransaction
 
     // ── Masked pause / resume ───────────────────────────────────────────────
     this.stitchedSession = null;
@@ -239,6 +246,7 @@ class SmartChargerOcppDevice extends Device {
 
     // ── Stop-reason / Fully-Charged heuristic ──────────────────────────────
     this.lastStopReason = null;
+    this.lastStopFull   = false;
 
     // ── Offline watchdog ────────────────────────────────────────────────────
     this.chargerOffline        = false;
@@ -284,6 +292,7 @@ class SmartChargerOcppDevice extends Device {
     try {
       const sr = await this.getStoreValue('lastStopReason');
       if (sr) this.lastStopReason = sr;
+      this.lastStopFull = (await this.getStoreValue('lastStopFull')) === true;
     } catch (e) { /* ignore */ }
 
     try {
@@ -452,13 +461,12 @@ class SmartChargerOcppDevice extends Device {
           const r = await server.setMaxCurrentAsync(stationId, targetAmps, this._getPhases());
           this.log('[OCPP] Updated TxDefault response:', JSON.stringify(r));
         } catch (e) { this.log('[OCPP] Updated TxDefault failed:', e.message); }
-      } else if (!this._autoStartBlocked) {
-        this._txnAmps = amps;
-        try {
-          const r = await server.setTxProfileAsync(stationId, this._txnId, amps, this._getPhases());
-          this.log('[OCPP] Updated TxProfile response:', JSON.stringify(r));
-        } catch (e) { this.log('[OCPP] Updated TxProfile failed:', e.message); }
-        await this._saveSession();
+      } else {
+        // A default is for the next session. Saving it used to set the running one to it too,
+        // over whatever the EMS, a flow or the slider had set — and the EMS, which sends again
+        // only when its own target moves, went on believing its figure (review 2026-10-10). The
+        // stop restores the resting limit from this setting.
+        this.log(`[OCPP] Default current now ${amps}A — the running session keeps its limit, the new default applies from the next start`);
       }
       if (!autoStart) this._startIdleGuard();
     }
@@ -514,6 +522,8 @@ class SmartChargerOcppDevice extends Device {
   async onUninit() {
     this._clearTimers();
     this._leaveOcppServer();
+    // The readings since the last write — see _trackLastNonZero.
+    if (this._lastNonZero) await this.setStoreValue('lastNonZero', this._lastNonZero).catch(() => {});
   }
 
   // Without starting a server to leave: both of the two above may run for one device.
@@ -672,6 +682,8 @@ class SmartChargerOcppDevice extends Device {
     const homeyState = OCPP_STATUS_MAP[rawStatus] || 'idle';
     this._lastRawStatus = rawStatus;
     if (rawStatus === 'Available' && this._txnId) this._watchStaleTransaction(this._txnId);
+    // The car's own "done": it stopped drawing with the charger still offering current.
+    if (rawStatus === 'SuspendedEV' && this._txnId && this._carDoneAt === null) this._carDoneAt = Date.now();
 
     // First StatusNotification after restart confirms charger is live — clear
     // the restart-guard so the idle guard can run normally from here on.
@@ -775,8 +787,7 @@ class SmartChargerOcppDevice extends Device {
     // Fresh plug-in: clear stale "Fully Charged" flag from previous session
     if (newState === 'connected' && oldRawStatus === 'Available' && this.lastStopReason) {
       this.log(`[OCPP] Fresh plug-in — clearing previous stop reason (was ${this.lastStopReason})`);
-      this.lastStopReason = null;
-      await this.setStoreValue('lastStopReason', null).catch(() => {});
+      await this._setLastStop(null);
     }
 
     if (newState === oldState) {
@@ -826,11 +837,10 @@ class SmartChargerOcppDevice extends Device {
       await this.handleSessionEnd();
     }
 
-    if (oldState === 'connected' && newState === 'idle' && !this._txnId) {
-      this._connectionStart = null;
-      await this.setStoreValue('connectionStart', null).catch(() => {});
-    }
-
+    // The plug-in time goes with a real unplug only, above. It also went on any step from
+    // connected to idle — and Finishing is idle here, so a paused car's stop (SuspendedEV →
+    // Finishing → Preparing) lost it with the cable still in, and the unplug then reported
+    // "plugged in for 0s" (review 2026-10-10).
     this._prevState     = newState;
     this._prevRawStatus = rawStatus;
     await this.setStoreValue('prevState', { state: newState, raw: rawStatus }).catch(() => {});
@@ -862,8 +872,7 @@ class SmartChargerOcppDevice extends Device {
     if (this.stitchedSession) {
       await this._finalizeStitchedSession('EVDisconnected');
     }
-    this.lastStopReason = null;
-    await this.setStoreValue('lastStopReason', null).catch(() => {});
+    await this._setLastStop(null);
 
     const durationMs  = connStart ? (Date.now() - connStart) : 0;
     const durationStr = this._formatDuration(durationMs);
@@ -913,8 +922,14 @@ class SmartChargerOcppDevice extends Device {
             if (this._txnId && this._chargingState() === 'charging') {
               if (powerW < LOW_POWER_W) {
                 if (!this._lowPowerSince) this._lowPowerSince = Date.now();
+                // As long as 'finishing' waits, and kept apart from the streak, which a status
+                // change resets.
+                if (this._carDoneAt === null && Date.now() - this._lowPowerSince >= LOW_POWER_FINISH_MS) {
+                  this._carDoneAt = this._lowPowerSince;
+                }
               } else {
                 this._lowPowerSince = null;
+                this._carDoneAt     = null;
               }
               this._updateSessionStatus('charging').catch(() => {});
             } else {
@@ -971,6 +986,7 @@ class SmartChargerOcppDevice extends Device {
   async onStartTransaction(payload, txnId) {
     this.log('[OCPP] StartTransaction txnId:', txnId);
     this._lowPowerSince = null;
+    this._carDoneAt     = null;
 
     if (payload.idTag) {
       this.idTag = payload.idTag;
@@ -987,8 +1003,7 @@ class SmartChargerOcppDevice extends Device {
     this._txnMeterStart = payload.meterStart != null
       ? payload.meterStart
       : (this.getCapabilityValue('meter_power') || 0) * 1000;
-    this.lastStopReason = null;
-    await this.setStoreValue('lastStopReason', null).catch(() => {});
+    await this._setLastStop(null);
 
     const manualStart = this._manualStartRequested;
     this._manualStartRequested = false;
@@ -1142,6 +1157,7 @@ class SmartChargerOcppDevice extends Device {
     this._quickAbortCount = 0;
 
     // ── Stitched resume ended — report as ONE continuous session ─────────────
+    const wasStitched   = !!this.stitchedSession;
     let reportStartTime = this._txnStartTime;
     let reportEnergyWh  = energyWh;
     if (this.stitchedSession) {
@@ -1158,14 +1174,23 @@ class SmartChargerOcppDevice extends Device {
     const sessionAmps     = this._txnAmps;
     const sessionPhases   = this._getPhases();
     const sessionOwnerWas = this.sessionOwner;
+    // A start that never drew power — "charging started" waits for it — and delivered nothing
+    // still fired "charging stopped": a stop with no start before it, for a car that refused
+    // the start or the second of two quick aborts (review 2026-10-10). A resumed session
+    // started long before and still ends with the card.
+    const verify     = this._startVerify;
+    const falseStart = !wasStitched && !!verify && verify.txId === this._txnId && reportEnergyWh < FALSE_START_WH;
 
-    this.lastStopReason = reason;
-    await this.setStoreValue('lastStopReason', reason).catch(() => {});
+    // "Fully charged" is the charger's own stop (Local) after the car was done: SuspendedEV, or
+    // three minutes under 100 W. Local alone is also a stop at the charger by hand, which then
+    // read as a full car until the next plug-in (review 2026-10-10).
+    await this._setLastStop(reason, reason === 'Local' && this._carDoneAt !== null);
 
     this._txnId = null; this._txnStartTime = null;
     this._txnMeterStart = 0; this._txnAmps = null;
     this._autoStartBlocked = false;
     this._lowPowerSince = null;
+    this._carDoneAt     = null;
     this._startVerify   = null;
     this.sessionPhaseOverride = null;
     this.isPaused = false;
@@ -1209,6 +1234,10 @@ class SmartChargerOcppDevice extends Device {
     if (!wasBlocked) {
       if (reportDurationMs >= 5000) {
         await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: sessionAmps, phases: sessionPhases, reason, startTime: reportStartTime, owner: sessionOwnerWas });
+      }
+      if (falseStart) {
+        this.log(`[OCPP] The start never drew power (${reason}, ${this._formatDuration(reportDurationMs)}) — no "charging stopped"`);
+        return;
       }
 
       const durationStr = this._formatDuration(reportDurationMs);
@@ -1487,8 +1516,7 @@ class SmartChargerOcppDevice extends Device {
     const message          = `Charging finished · ${energyStr} · ${durationStr}`;
 
     this.log(`[OCPP] Stitched session finalized (${reason}): ${reportEnergyWh}Wh over ${durationStr}`);
-    this.lastStopReason = reason;
-    await this.setStoreValue('lastStopReason', reason).catch(() => {});
+    await this._setLastStop(reason);
 
     if (reportDurationMs >= 5000 && s.originalStartTime) {
       await this._recordSession({ durationMs: reportDurationMs, energyWh: reportEnergyWh, amps: s.resumeAmps || null, phases: this._getPhases(), reason, startTime: s.originalStartTime, owner: s.owner || null });
@@ -2095,6 +2123,15 @@ class SmartChargerOcppDevice extends Device {
     if (homeyState) await this._set('evcharger_charging_state', homeyState);
   }
 
+  // The last stop's reason, and whether it was the car finishing — see onStopTransaction. Both
+  // survive a restart: a car left on the cable overnight still reads as full in the morning.
+  async _setLastStop(reason, full = false) {
+    this.lastStopReason = reason;
+    this.lastStopFull   = full;
+    await this.setStoreValue('lastStopReason', reason).catch(() => {});
+    await this.setStoreValue('lastStopFull', full).catch(() => {});
+  }
+
   _computeSessionStatus(chargingState, autoStartOverride) {
     if (this.chargerOffline) return 'offline';
     if (chargingState === 'error') return 'error';
@@ -2105,7 +2142,7 @@ class SmartChargerOcppDevice extends Device {
     }
     if (chargingState === 'idle') return 'not_connected';
     if (chargingState === 'connected') {
-      if (this.lastStopReason === 'Local') return 'fully_charged';
+      if (this.lastStopFull) return 'fully_charged';
       const autoStart = (autoStartOverride !== undefined)
         ? autoStartOverride !== false
         : this.getSetting('auto_start_charging') !== false;
@@ -2261,6 +2298,12 @@ class SmartChargerOcppDevice extends Device {
     if (!value || value <= 0) return;
     if (!this._lastNonZero) this._lastNonZero = {};
     this._lastNonZero[key] = { value, at: new Date().toISOString() };
+    // Every reading kept here, the store written at most every five minutes and on shutdown.
+    // It was written for each measurand of each MeterValues — the whole map, about ten times
+    // per message, every few seconds while charging — for a debug summary (review 2026-10-10).
+    const now = Date.now();
+    if (now - this._lastNonZeroSavedAt < LAST_NON_ZERO_SAVE_MS) return;
+    this._lastNonZeroSavedAt = now;
     this.setStoreValue('lastNonZero', this._lastNonZero).catch((err) => {
       this.log(`[OCPP] Failed to persist lastNonZero: ${err.message}`);
     });

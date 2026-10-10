@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.2.329",
+  "version": "1.2.330",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2684,9 +2684,9 @@
                 }
               ],
               "hint": {
-                "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value.",
-                "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird.",
-                "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde."
+                "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value. A change during a session applies from the next start.",
+                "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird. Eine Änderung während einer Ladung gilt ab dem nächsten Start.",
+                "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde. Een wijziging tijdens een sessie geldt vanaf de volgende start."
               }
             }
           ]
@@ -9335,9 +9335,9 @@
           "nl": "EV laden gestopt (OCPP)"
         },
         "hint": {
-          "en": "Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start that aborts within 2 seconds and is retried; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session.",
-          "de": "Wird ausgelöst, wenn die Ladestation das Ende einer Transaktion meldet (OCPP StopTransaction). Nicht bei einer Pause und nicht bei einem Start, der innert 2 Sekunden abbricht und wiederholt wird; eine pausierte Sitzung, die dann gestoppt oder ausgesteckt wird, löst sie einmal aus, mit den Summen der ganzen Sitzung.",
-          "nl": "Wordt geactiveerd wanneer de laadpaal het einde van een transactie meldt (OCPP StopTransaction). Niet bij een pauze, en niet bij een start die binnen 2 seconden afbreekt en opnieuw wordt geprobeerd; een gepauzeerde sessie die daarna wordt gestopt of losgekoppeld, activeert hem één keer, met de totalen van de hele sessie."
+          "en": "Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start in which the car never drew power — there was no \"EV charging started\" for it either; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session.",
+          "de": "Wird ausgelöst, wenn die Ladestation das Ende einer Transaktion meldet (OCPP StopTransaction). Nicht bei einer Pause und nicht bei einem Start, bei dem das Auto nie Strom bezogen hat – dafür gab es auch kein „Laden des Fahrzeugs begonnen“; eine pausierte Sitzung, die dann gestoppt oder ausgesteckt wird, löst sie einmal aus, mit den Summen der ganzen Sitzung.",
+          "nl": "Wordt geactiveerd wanneer de laadpaal het einde van een transactie meldt (OCPP StopTransaction). Niet bij een pauze, en niet bij een start waarbij de auto nooit stroom heeft afgenomen — daarvoor was er ook geen \"EV laden gestart\"; een gepauzeerde sessie die daarna wordt gestopt of losgekoppeld, activeert hem één keer, met de totalen van de hele sessie."
         },
         "args": [
           {

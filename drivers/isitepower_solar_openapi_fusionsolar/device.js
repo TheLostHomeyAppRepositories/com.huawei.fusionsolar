@@ -2,7 +2,7 @@
 
 const { Device } = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
-const { DEV_TYPE_SOLAR_GROUP, DEV_TYPE_POWER_CONVERTER, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_SOLAR_GROUP, DEV_TYPE_POWER_CONVERTER, calculate, hasData } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
 const capabilitySet = require('../../lib/capability-set');
 
@@ -38,10 +38,17 @@ class ISitePowerSolarDevice extends Device {
 
   async onPollData({ stationKpi, kpiByType, freshKpiByType }) {
     const v = calculate(kpiByType, freshKpiByType);
-    await this._set('measure_power', v.solarW);
-    if (v.solarCurrentA !== null) {
-      if (!this.hasCapability('measure_current')) await this.addCapability('measure_current').catch(() => {});
-      await this._set('measure_current', v.solarCurrentA);
+    // Nothing from the plant for either type: the last reading stands, as the house's does.
+    // This wrote 0 W — into Insights and to every flow comparing the PV power — for as long as
+    // the cloud stayed silent (review 2026-10-10); the coordinator marks the device unavailable.
+    // A plant that answers without a PV figure still reads 0, as before.
+    const known = hasData(kpiByType, this.getDevTypes());
+    if (known) {
+      await this._set('measure_power', v.solarW);
+      if (v.solarCurrentA !== null) {
+        if (!this.hasCapability('measure_current')) await this.addCapability('measure_current').catch(() => {});
+        await this._set('measure_current', v.solarCurrentA);
+      }
     }
 
     // The same station total that issue #34 caught dipping by a full day's production at
@@ -59,7 +66,7 @@ class ISitePowerSolarDevice extends Device {
     // Availability is the coordinator's call, made right after this returns — from what the
     // plant delivered, the same as for every other cloud device. Setting it here as well made a
     // device with no data flip to available and back on every poll (review 2026-10-10).
-    logPollOk(this, 'Poll OK: PV=' + Math.round(v.solarW) + 'W');
+    logPollOk(this, known ? 'Poll OK: PV=' + Math.round(v.solarW) + 'W' : 'Poll: no PV data — last value kept');
   }
 
   async _ensureCapabilities() {
