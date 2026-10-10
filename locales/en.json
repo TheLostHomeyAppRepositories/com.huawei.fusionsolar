@@ -796,7 +796,7 @@
       },
       "modeHint": {
         "solar": "Only charges when enough solar surplus is available; the power follows the surplus.",
-        "solarOffpeak": "Charges on solar surplus during the day. If the car is not yet at its target when the fixed off-peak time window (set under EV Chargers → Off-Peak Charging, enabled via the Off-Peak toggle on the EMS device tile) starts, it charges at full power during that window — the window is always the same time, not price-aware.",
+        "solarOffpeak": "Charges on solar surplus during the day. If the car is not yet at its target when the fixed off-peak time window (set under EV Chargers → Off-Peak Charging) starts, it charges at full power during that window — always at the same time, not price-aware. This mode uses the window on its own; the \"Off-Peak Charging\" toggle on the EMS device tile is not needed for it.",
         "solarLowtariff": "Charges on solar surplus during the day. Charges at full power whenever the \"Low / high tariff\" schedule (Electricity Price → Low / high tariff) currently says LOW tariff — reuses that same weekday window instead of a separate Off-Peak schedule.",
         "solarPrice": "Charges on solar surplus first. What solar won't cover by the car's \"Ready by\" deadline (set under Cars) is charged during whichever hours are actually cheapest, based on the live price forecast (Electricity Price → Set price forecast flow) — not a fixed window.",
         "always": "Charges at the maximum possible power as soon as the cable is plugged in — regardless of solar or battery state."
@@ -867,7 +867,7 @@
       },
       "offpeak": {
         "title": "Off-Peak Charging",
-        "toggleHint": "Enable/disable using the <b>Off-Peak</b> toggle on the EMS device tile in Homey.",
+        "toggleHint": "Chargers in <b>Solar & off-peak window</b> mode use this window on their own. The <b>Off-Peak Charging</b> toggle on the EMS device tile in Homey switches it on in addition for chargers left in <b>Solar only</b>.",
         "weekday": "Weekday",
         "weekend": "Weekend",
         "start": "Start",
@@ -1044,7 +1044,7 @@
       "step4Body": "Use the <b>✓ Create / Update Flows</b> button in each device section — it automatically creates the required flows in the Homey folder <em>\"_Huawei EMS\"</em>. You can then open the Homey app, edit those flows, and link them to your devices.",
       "step5Title": "5 · Diagnostics & history",
       "step5Body": "The <em>Diagnostics</em> section below has an <b>EMS Diagnostics</b> panel (live tick health, the last decision, PV forecast, and app memory usage) and an <b>EMS History</b> log of recent mode/device/charger events, with a Copy button for sharing.",
-      "offpeakTip": "<b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ."
+      "offpeakTip": "<b>💡 Tip — Off-peak charging:</b> To charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient, set the charger to <em>Solar & off-peak window</em> — or, for chargers left in <em>Solar only</em>, switch on <em>Off-Peak Charging</em> on the EMS device in Homey. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ."
     },
     "gridMeter": {
       "title": "Grid Meter",

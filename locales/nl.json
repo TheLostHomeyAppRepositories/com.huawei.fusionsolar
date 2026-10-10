@@ -796,7 +796,7 @@
       },
       "modeHint": {
         "solar": "Laadt alleen wanneer voldoende zonneoverschot beschikbaar is; het vermogen volgt het overschot.",
-        "solarOffpeak": "Laadt overdag op zonneoverschot. Als de auto nog niet op streefwaarde is wanneer het vaste daltarief-tijdvenster begint (in te stellen onder EV-laders → Daltarief laden, in te schakelen via de Daltarief-schakelaar op de EMS-apparaattegel), wordt tijdens dat venster op vol vermogen geladen — het venster is altijd hetzelfde tijdstip, niet prijsafhankelijk.",
+        "solarOffpeak": "Laadt overdag op zonneoverschot. Als de auto nog niet op streefwaarde is wanneer het vaste daltarief-tijdvenster begint (in te stellen onder EV-laders → Daltarief laden), wordt tijdens dat venster op vol vermogen geladen — altijd op hetzelfde tijdstip, niet prijsafhankelijk. Deze modus gebruikt het venster uit zichzelf; de schakelaar \"Daltarief laden\" op de EMS-apparaattegel is ervoor niet nodig.",
         "solarLowtariff": "Laadt overdag op zonneoverschot. Laadt op vol vermogen wanneer het schema \"Laag / hoog tarief\" (Elektriciteitsprijs → Laag / hoog tarief) momenteel LAAG tarief aangeeft — gebruikt hetzelfde weekdagvenster in plaats van een apart daltarief-schema.",
         "solarPrice": "Laadt eerst op zonneoverschot. Wat zon niet dekt vóór de \"Klaar om\"-deadline van de auto (in te stellen onder Auto's) wordt geladen tijdens de daadwerkelijk goedkoopste uren, op basis van de live prijsprognose (Elektriciteitsprijs → flow Prijsprognose instellen) — geen vast venster.",
         "always": "Laadt op maximaal mogelijk vermogen zodra de kabel is aangesloten — ongeacht zon- of batterijstatus."
@@ -867,7 +867,7 @@
       },
       "offpeak": {
         "title": "Daltarief laden",
-        "toggleHint": "In-/uitschakelen via de <b>Daltarief</b>-schakelaar op de EMS-apparaattegel in Homey.",
+        "toggleHint": "Laders in de modus <b>Zon & daltarief-venster</b> gebruiken dit venster uit zichzelf. De schakelaar <b>Daltarief laden</b> op de EMS-apparaattegel in Homey zet het daarnaast aan voor laders in <b>Alleen zon</b>.",
         "weekday": "Weekdag",
         "weekend": "Weekend",
         "start": "Start",
@@ -1044,7 +1044,7 @@
       "step4Body": "Gebruik de knop <b>✓ Flows aanmaken / bijwerken</b> in elke apparaatsectie — deze maakt automatisch de benodigde flows aan in de Homey-map <em>\"_Huawei EMS\"</em>. Open daarna de Homey-app, bewerk deze flows en koppel ze aan je apparaten.",
       "step5Title": "5 · Diagnose & geschiedenis",
       "step5Body": "De sectie <em>Diagnose</em> hieronder bevat een paneel <b>EMS-diagnose</b> (live tick-status, de laatste beslissing, PV-prognose en geheugengebruik van de app) en een <b>EMS-geschiedenis</b>-log van recente modus-/apparaat-/ladergebeurtenissen, met een Kopieer-knop om te delen.",
-      "offpeakTip": "<b>💡 Tip — Daltarief laden:</b> Schakel <em>Daltarief laden</em> in op het EMS-apparaat in Homey om EV's op vol vermogen te laden tijdens goedkope nachttarieven wanneer het zonneoverschot ontoereikend is. Zonneoverschot krijgt nog steeds prioriteit indien beschikbaar (configureerbaar), en de vensters voor doordeweeks/weekend kunnen verschillen."
+      "offpeakTip": "<b>💡 Tip — Daltarief laden:</b> Om EV's op vol vermogen te laden tijdens goedkope nachttarieven wanneer het zonneoverschot ontoereikend is, zet je de lader op <em>Zon & daltarief-venster</em> — of schakel je voor laders in <em>Alleen zon</em> <em>Daltarief laden</em> in op het EMS-apparaat in Homey. Zonneoverschot krijgt nog steeds prioriteit indien beschikbaar (configureerbaar), en de vensters voor doordeweeks/weekend kunnen verschillen."
     },
     "gridMeter": {
       "title": "Netmeter",

@@ -1232,7 +1232,7 @@
 
           <!-- Off-peak tip -->
           <div style="background:var(--color-bg-secondary,var(--c-bg));border-radius:6px;padding:10px 12px;font-size:12px;color:var(--color-text-secondary,var(--c-label-2))" data-i18n-html="emsInfo.offpeakTip">
-            <b>💡 Tip — Off-peak charging:</b> Enable <em>Offpeak charging</em> on the EMS device in Homey to charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ.
+            <b>💡 Tip — Off-peak charging:</b> To charge EVs at full power during cheap overnight tariffs when solar surplus is insufficient, set the charger to <em>Solar & off-peak window</em> — or, for chargers left in <em>Solar only</em>, switch on <em>Off-Peak Charging</em> on the EMS device in Homey. Solar surplus still takes priority when available (configurable), and weekday/weekend windows can differ.
           </div>
 
         </div>
@@ -1627,7 +1627,7 @@
       <!-- Off-Peak Charging (sub-section of EV Chargers) -->
       <div class="ems-toggle-row" style="flex-direction:column;align-items:stretch;cursor:default;margin-bottom:20px;gap:10px">
         <span class="ems-toggle-title" data-i18n="evChargers.offpeak.title">Off-Peak Charging</span>
-        <div class="ems-callout"><span data-i18n-html="evChargers.offpeak.toggleHint">Enable/disable using the <b>Off-Peak</b> toggle on the EMS device tile in Homey.</span></div>
+        <div class="ems-callout"><span data-i18n-html="evChargers.offpeak.toggleHint">Chargers in <b>Solar & off-peak window</b> mode use this window on their own. The <b>Off-Peak Charging</b> toggle on the EMS device tile in Homey switches it on in addition for chargers left in <b>Solar only</b>.</span></div>
         <div style="font-size:12px;font-weight:600;color:var(--c-label-strong)" data-i18n="evChargers.offpeak.weekday">Weekday</div>
         <div style="display:flex;gap:12px">
           <div style="flex:1">

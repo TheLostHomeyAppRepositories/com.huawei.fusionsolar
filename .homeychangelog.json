@@ -1,4 +1,9 @@
 {
+  "1.2.326": {
+    "en": "Energy management settings: the off-peak texts now say what the app does. A charger set to \"Solar & off-peak window\" uses the off-peak window on its own; the \"Off-Peak Charging\" toggle on the EMS device tile only adds the window for chargers left in \"Solar only\". Three texts claimed the toggle was needed in every case.",
+    "de": "Einstellungen der Energieverwaltung: Die Off-Peak-Texte sagen jetzt, was die App tut. Ein Lader im Modus „Solar & Off-Peak-Fenster“ nutzt das Off-Peak-Fenster von sich aus; der Schalter „Nebenzeit-Laden“ auf der Kachel des EMS-Geräts schaltet das Fenster nur zusätzlich für Lader im Modus „Nur Solar“ ein. Drei Texte behaupteten, der Schalter sei in jedem Fall nötig.",
+    "nl": "Instellingen energiebeheer: de daltarief-teksten zeggen nu wat de app doet. Een lader in de modus \"Zon & daltarief-venster\" gebruikt het daltarief-venster uit zichzelf; de schakelaar \"Daltarief laden\" op de EMS-apparaattegel zet het venster alleen daarnaast aan voor laders in \"Alleen zon\". Drie teksten beweerden dat de schakelaar altijd nodig was."
+  },
   "1.2.325": {
     "en": "OCPP charger: switching \"Instant Charging\" off no longer starts charging at 16 A. The switch is a one-shot command — on starts 16 A charging, then the switch goes back off by itself, and switching it off does nothing. A switch left on by an earlier version is turned off at start.",
     "de": "OCPP-Lader: Das Ausschalten von „Sofortladen“ startet nicht mehr das Laden mit 16 A. Der Schalter ist ein einmaliger Befehl – Einschalten startet das Laden mit 16 A, danach springt der Schalter von selbst zurück, und Ausschalten bewirkt nichts. Ein Schalter, den eine frühere Version eingeschaltet gelassen hat, wird beim Start ausgeschaltet.",

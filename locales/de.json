@@ -796,7 +796,7 @@
       },
       "modeHint": {
         "solar": "Lädt nur, wenn genug Solarüberschuss vorhanden ist; die Leistung folgt dem Überschuss.",
-        "solarOffpeak": "Lädt tagsüber mit Solarüberschuss. Ist das Fahrzeug bei Beginn des festen Off-Peak-Zeitfensters (eingestellt unter EV Chargers → Off-Peak Charging, aktiviert über den Off-Peak-Schalter auf das EMS-Gerätekachel) noch nicht am Ziel, lädt es während dieses Fensters mit voller Leistung — das Fenster ist immer zur gleichen Zeit, nicht preisabhängig.",
+        "solarOffpeak": "Lädt tagsüber mit Solarüberschuss. Ist das Fahrzeug bei Beginn des festen Off-Peak-Zeitfensters (eingestellt unter EV-Lader → Off-Peak-Laden) noch nicht am Ziel, lädt es während dieses Fensters mit voller Leistung — immer zur gleichen Zeit, nicht preisabhängig. Dieser Modus nutzt das Fenster von sich aus; den Schalter „Nebenzeit-Laden“ auf der Kachel des EMS-Geräts braucht er nicht.",
         "solarLowtariff": "Lädt tagsüber mit Solarüberschuss. Lädt mit voller Leistung, wann immer der \"Niedrig-/Hochtarif\"-Zeitplan (Electricity Price → Low / high tariff) gerade NIEDRIG sagt — nutzt dasselbe Wochentagsfenster statt eines separaten Off-Peak-Zeitplans.",
         "solarPrice": "Lädt zuerst mit Solarüberschuss. Was Solar bis zur \"Ready by\"-Deadline des Fahrzeugs (unter Cars eingestellt) nicht deckt, wird in den tatsächlich günstigsten Stunden geladen, basierend auf der Live-Preisprognose (Electricity Price → Set price forecast Flow) — kein festes Fenster.",
         "always": "Lädt mit maximal möglicher Leistung, sobald das Kabel eingesteckt ist — unabhängig von Solar oder Batteriestatus."
@@ -867,7 +867,7 @@
       },
       "offpeak": {
         "title": "Off-Peak-Laden",
-        "toggleHint": "Aktivierung/Deaktivierung über den <b>Off-Peak</b>-Schalter auf das EMS-Gerätekachel in Homey.",
+        "toggleHint": "Lader im Modus <b>Solar & Off-Peak-Fenster</b> nutzen dieses Fenster von sich aus. Der Schalter <b>Nebenzeit-Laden</b> auf der Kachel des EMS-Geräts in Homey schaltet es zusätzlich für Lader im Modus <b>Nur Solar</b> ein.",
         "weekday": "Wochentag",
         "weekend": "Wochenende",
         "start": "Start",
@@ -1044,7 +1044,7 @@
       "step4Body": "Den Button <b>✓ Create / Update Flows</b> in jedem Geräteabschnitt nutzen — erstellt automatisch die benötigten Flows im Homey-Ordner <em>\"_Huawei EMS\"</em>. Danach die Homey-App öffnen, diese Flows bearbeiten und mit den Geräten verknüpfen.",
       "step5Title": "5 · Diagnose & Verlauf",
       "step5Body": "Der Abschnitt <em>Diagnostics</em> unten enthält ein <b>EMS Diagnostics</b>-Panel (Live-Tick-Status, letzte Entscheidung, PV-Prognose und App-Speicherverbrauch) sowie ein <b>EMS History</b>-Protokoll der letzten Modus-/Geräte-/Lader-Ereignisse mit Kopieren-Button zum Teilen.",
-      "offpeakTip": "<b>💡 Tipp — Off-Peak-Laden:</b> <em>Offpeak charging</em> am EMS-Gerät in Homey aktivieren, um EVs mit voller Leistung während günstiger Nachttarife zu laden, wenn der Solarüberschuss nicht ausreicht. Solarüberschuss hat weiterhin Priorität, wenn verfügbar (konfigurierbar), und Wochentag-/Wochenend-Fenster können unterschiedlich sein."
+      "offpeakTip": "<b>💡 Tipp — Off-Peak-Laden:</b> Um EVs bei günstigem Nachttarif mit voller Leistung zu laden, wenn der Solarüberschuss nicht reicht, den Lader auf <em>Solar & Off-Peak-Fenster</em> stellen — oder, für Lader im Modus <em>Nur Solar</em>, <em>Nebenzeit-Laden</em> am EMS-Gerät in Homey einschalten. Solarüberschuss hat weiterhin Priorität, wenn verfügbar (konfigurierbar), und Wochentag-/Wochenend-Fenster können unterschiedlich sein."
     },
     "gridMeter": {
       "title": "Netzzähler",
