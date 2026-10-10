@@ -18,7 +18,7 @@ werden.
 |---|---|---|
 | A1 | erledigt (1.2.212): Leistung und Phasen von Leistungssensor (47) und Netzzähler (17) negiert | `test/openapi-grid-sign.test.js` |
 | A2 | **bewusst offen**: der EMMA-Zweig hat bei den Zählern eine eigene Konvention, es gibt keine EMMA-Messung, und ein Test hält den Zweig fest, damit die Negation nicht versehentlich hineinläuft | Kopfkommentar in `powermeter_openapi_fusionsolar/device.js` |
-| A3 | offen: die Phasen heissen weiter `meter_u`/`b_u`/`c_u` und `meter_i`/`b_i`/`c_i` | `powermeter_openapi_fusionsolar/device.js` ≈ Z. 49–54 |
+| A3 | von Andi verworfen (2026-10-11), nicht umsetzen: die Phasen heissen weiter `meter_u`/`b_u`/`c_u` und `meter_i`/`b_i`/`c_i` | `powermeter_openapi_fusionsolar/device.js` ≈ Z. 49–54 |
 | A4 | erledigt (1.2.294): `powermeter_state_string` geht in allen drei Zweigen über `setOptional` — beim ersten Abruf da, beim reinen Typ-17-Zähler überhaupt erst | `test/openapi-small-fixes-1294.test.js` |
 | B1 | erledigt (1.2.212) | |
 | B2, B3, B6 | **anders gelöst — die Migration aus 4 B ist hinfällig.** Homey Energy liest seit 1.2.216 `meter_power.pv_total`, seit 1.2.262 vom DC-Zähler `mppt_total_cap` getrieben (Issue #34). Die blanke `meter_power` ist seit 1.2.212 entfernt, `inv_total`/`inv_daily` bleiben als Anzeige | `sun2000_openapi_fusionsolar/device.js`, `_writePvMeter` |
@@ -322,10 +322,6 @@ Vergleichen in Ordnung, für den Dauerbetrieb nicht — eine Seite gehört auf
 
 Stand 1.2.294 — erledigt sind die Vorzeichen (A1, B1), der Ertragszähler des Wechselrichters
 (anders gelöst, siehe Tabelle oben), die Batterie-Fassade (C1–C3), die Verfügbarkeitsregel (D2)
-und A4, B7, B8. Was bleibt:
-
-1. **A3** — die Phasennamen.
-
-D1 ist von Andi verworfen (2026-10-11).
+und A4, B7, B8. A3 und D1 sind von Andi verworfen (2026-10-11).
 
 A2 bleibt bewusst offen, bis eine EMMA-Messung vorliegt.
