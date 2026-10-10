@@ -552,7 +552,7 @@ Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible 
 |------------------|-----------------------------------------------------------------------|
 | Pause charging   | Sends RemoteStop and stores session state for resume                  |
 | Resume charging  | Sends RemoteStart and restores the previous charging limit            |
-| Instant Charging | Charges at 16 A: resumes a paused session, raises a running one or starts one; refused when the charger is offline or no car is connected. Also a quick action and the flow card *Charge now at 16A* |
+| Instant Charging | Charges at 16 A: resumes a paused session, raises a running one or starts one; refused when the charger is offline or no car is connected. A one-shot command: the switch goes back off by itself, and switching it off does nothing (since 1.2.325). Also a quick action and the flow card *Charge now at 16A* |
 
 *Release charger* (ChangeAvailability → Operative, unlocks a charger stuck in Unavailable) is under
 the device's **Maintenance** actions, not on the card, and is also a flow card.

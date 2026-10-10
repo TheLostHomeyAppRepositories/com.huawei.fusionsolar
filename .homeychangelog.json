@@ -1,4 +1,9 @@
 {
+  "1.2.325": {
+    "en": "OCPP charger: switching \"Instant Charging\" off no longer starts charging at 16 A. The switch is a one-shot command — on starts 16 A charging, then the switch goes back off by itself, and switching it off does nothing. A switch left on by an earlier version is turned off at start.",
+    "de": "OCPP-Lader: Das Ausschalten von „Sofortladen“ startet nicht mehr das Laden mit 16 A. Der Schalter ist ein einmaliger Befehl – Einschalten startet das Laden mit 16 A, danach springt der Schalter von selbst zurück, und Ausschalten bewirkt nichts. Ein Schalter, den eine frühere Version eingeschaltet gelassen hat, wird beim Start ausgeschaltet.",
+    "nl": "OCPP-lader: \"Direct laden\" uitschakelen start niet meer het laden op 16 A. De schakelaar is een eenmalig commando — aanzetten start het laden op 16 A, daarna springt de schakelaar vanzelf terug, en uitzetten doet niets. Een schakelaar die een eerdere versie aan liet staan, wordt bij het starten uitgezet."
+  },
   "1.2.324": {
     "en": "Kiosk devices: a new poll interval applies as soon as it is saved, not only after the next restart, and the first fetch after changing the kiosk URL goes to the new URL rather than the old one.",
     "de": "Kiosk-Geräte: Ein neues Abfrageintervall gilt sofort beim Speichern, nicht erst nach dem nächsten Neustart, und der erste Abruf nach einer geänderten Kiosk-URL geht an die neue statt an die alte URL.",

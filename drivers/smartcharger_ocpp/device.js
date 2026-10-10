@@ -8,6 +8,8 @@ const MIN_AMPS            = 6;
 const MAX_AMPS            = 32;
 const AMPS_TO_WATTS       = (amps, phases = 3) => Math.round(amps * phases * 230);
 const BLOCK_AMPS          = 0; // server converts 0A → 1W (Huawei firmware bug workaround)
+// How long the "Instant Charging" switch shows "on" after a tap — see _resetChargeNowSwitch.
+const CHARGE_NOW_RESET_MS = 1500;
 // How long after sending the starting current a second attempt is treated as the same one.
 // The restart timer and the connect handler can both fire on a restart with the charger
 // still attached; wide enough to cover the gap between them, short enough that a charger
@@ -325,6 +327,11 @@ class SmartChargerOcppDevice extends Device {
 
     await this._set('ocpp_server_status', 'starting');
     await this._applyTargetPowerRange();
+    // A switch left on by an earlier version (see the charge_now listener) would make the next
+    // tap a switch-off, which now does nothing — so it starts from off.
+    if (this.hasCapability('charge_now') && this.getCapabilityValue('charge_now') === true) {
+      await this.setCapabilityValue('charge_now', false).catch(() => {});
+    }
     this._registerCapabilityListeners();
     this._registerFlowActions();
     this._registerFlowConditions();
@@ -543,6 +550,10 @@ class SmartChargerOcppDevice extends Device {
     if (this._offlineWatchdog) {
       this.homey.clearInterval(this._offlineWatchdog);
       this._offlineWatchdog = null;
+    }
+    if (this._chargeNowReset) {
+      this.homey.clearTimeout(this._chargeNowReset);
+      this._chargeNowReset = null;
     }
     if (this._pendingTxProfileTimer) {
       this.homey.clearTimeout(this._pendingTxProfileTimer);
@@ -1481,6 +1492,19 @@ class SmartChargerOcppDevice extends Device {
   // ─── Charge Now ──────────────────────────────────────────────────────────
   // One-tap 16A start — takes over any engine session without suppressing future automation.
 
+  // Homey stores the switch's new value only after the listener has resolved, so turning it
+  // off from inside the listener would be overwritten at once; a moment later it sticks. After a
+  // refused tap Homey keeps the old value anyway, and this changes nothing.
+  _resetChargeNowSwitch() {
+    if (this._chargeNowReset) this.homey.clearTimeout(this._chargeNowReset);
+    this._chargeNowReset = this.homey.setTimeout(() => {
+      this._chargeNowReset = null;
+      if (this.hasCapability('charge_now') && this.getCapabilityValue('charge_now') !== false) {
+        this.setCapabilityValue('charge_now', false).catch(() => {});
+      }
+    }, CHARGE_NOW_RESET_MS);
+  }
+
   async chargeNow() {
     if (this.chargerOffline) {
       throw new Error('Charger is offline — cannot start charging.');
@@ -1817,9 +1841,19 @@ class SmartChargerOcppDevice extends Device {
       });
     }
 
+    // A one-shot command behind a switch: the switch is what puts it on the tile as a quick
+    // action. The listener used to ignore the value, and nothing turned the switch back off, so
+    // after the first "charge now" the next tap — switching it off — started 16 A charging
+    // again (review 2026-10-10). Only "on" acts now, and the switch goes back off by itself: a
+    // standing "on" would claim an instant charge the EMS may already have turned down again.
     if (this.hasCapability('charge_now')) {
-      this.registerCapabilityListener('charge_now', async () => {
-        await this.chargeNow();
+      this.registerCapabilityListener('charge_now', async (value) => {
+        if (value !== true) return;
+        try {
+          await this.chargeNow();
+        } finally {
+          this._resetChargeNowSwitch();
+        }
       });
     }
 
