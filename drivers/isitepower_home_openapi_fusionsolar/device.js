@@ -2,7 +2,7 @@
 
 const { Device } = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
-const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, calculate, integrationHours } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
 const capabilitySet = require('../../lib/capability-set');
 
@@ -49,20 +49,25 @@ class ISitePowerHomeDevice extends Device {
       await this._accumulate(v.loadW);
       logPollOk(this, 'Poll OK: Load=' + Math.round(v.loadW) + 'W');
     } else {
-      // No 60010/60092 data — system is likely in solar/battery mode with no grid.
-      // Keep accumulating using the last Homey-persisted measure_power so meter_power
-      // stays continuous and the Energy tab doesn't show "— kWh".
-      const lastW = this.getCapabilityValue('measure_power') ?? 0;
-      await this._accumulate(lastW);
-      logPollOk(this, 'Poll: no 60010/60092 data; accumulating with last known value (' + Math.round(lastW) + 'W)');
+      // No load reading, so nothing is known about the house, and nothing is counted. This
+      // used to go on adding the last known power — through a cloud outage, a refused call
+      // (407) or API access withdrawn alike, since none of them stops this from being called.
+      // meter_power is what Homey Energy books as the house's consumption: one reading of
+      // 800 W followed by a day without data came to 19.2 kWh that never happened (review
+      // 2026-10-10). The interval is skipped rather than kept open, so the next reading does
+      // not stand for it either.
+      this._lastEnergyTs = Date.now();
+      await this.setStoreValue('energy_ts', this._lastEnergyTs);
+      logPollOk(this, 'Poll: no 60010/60092 data — house energy not counted for this interval');
     }
-
-    if (!this.getAvailable()) await this.setAvailable();
+    // Availability is the coordinator's call, made right after this returns — from what the
+    // plant delivered, the same as for every other cloud device. Setting it here as well made a
+    // device with no data flip to available and back on every poll (review 2026-10-10).
   }
 
   async _accumulate(homeW) {
     const now = Date.now();
-    const h = Math.max(0, Math.min(1, (now - this._lastEnergyTs) / 3600000));
+    const h = integrationHours(this._lastEnergyTs, now, parseInt(this.getSetting('poll_interval'), 10));
     this._lastEnergyTs = now;
     this._homeKwh += ((homeW || 0) * h) / 1000;
     await this.setStoreValue('energy_ts', now);

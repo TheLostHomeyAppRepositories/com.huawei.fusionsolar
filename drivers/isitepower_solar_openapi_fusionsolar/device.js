@@ -56,7 +56,9 @@ class ISitePowerSolarDevice extends Device {
       await this._setCumulative('meter_power', stationKpi.totalEnergy);
     }
 
-    if (!this.getAvailable()) await this.setAvailable();
+    // Availability is the coordinator's call, made right after this returns — from what the
+    // plant delivered, the same as for every other cloud device. Setting it here as well made a
+    // device with no data flip to available and back on every poll (review 2026-10-10).
     logPollOk(this, 'Poll OK: PV=' + Math.round(v.solarW) + 'W');
   }
 

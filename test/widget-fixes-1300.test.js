@@ -102,7 +102,8 @@ test('the midnight baselines cover iSitePower too, in the widget\'s own order', 
   app.log = () => {}; app.error = () => {};
   app._cap = (dev, c) => (dev ? dev.getCapabilityValue(c) : null);
   const r = app._saveMidnightBaseline();
-  assert.deepStrictEqual(r.written, ['export', 'import']);
+  // Since 1.2.328 written names the PV and house baselines as well.
+  assert.deepStrictEqual(r.written, ['pv', 'house', 'export', 'import']);
   assert.strictEqual(settings.eb_pv_baseline.baseline, 1000);
   assert.strictEqual(settings.eb_house_baseline.baseline, 500);
   assert.strictEqual(settings.eb_grid_import_baseline.baseline, 200);

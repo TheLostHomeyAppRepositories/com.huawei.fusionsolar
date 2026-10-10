@@ -220,20 +220,12 @@ class FusionSolarApp extends App {
     if (attempt >= DELAYS_MS.length) return;
 
     this._baselineTimer = this.homey.setTimeout(() => {
-      const today  = this._todayStr();
-      const stored = (key) => { try { return this.homey.settings.get(key); } catch { return null; } };
-      const exportStored = stored('eb_grid_export_baseline');
-      const importStored = stored('eb_grid_import_baseline');
-      // An iSitePower plant also needs its PV and house baselines (1.2.300).
-      const extraDone = (key, driverId) => !this._getDevice(driverId)
-        || (stored(key) && stored(key).date === today);
-      if (exportStored && exportStored.date === today
-       && importStored && importStored.date === today
-       && extraDone('eb_pv_baseline', 'isitepower_solar_openapi_fusionsolar')
-       && extraDone('eb_house_baseline', 'isitepower_home_openapi_fusionsolar')) return; // already complete
-
-      const result = this._saveMidnightBaseline();
-      if (result.written.length === 2) return;                 // done, it logged its own lines
+      // Only the baselines today still lacks. All of them used to be written again whenever one
+      // was missing — the iSitePower PV one on the day its device was paired, say — which
+      // re-took the grid baselines from a later reading, so the day's import and export in the
+      // energy balance started over at about 0 on every such restart (review 2026-10-10).
+      const result = this._saveMidnightBaseline({ onlyMissing: true });
+      if (result.reason === null) return;                      // complete, it logged its own lines
 
       if (result.reason === 'no-reading' && attempt + 1 < DELAYS_MS.length) {
         this._ensureTodayBaseline(attempt + 1);
@@ -243,7 +235,7 @@ class FusionSolarApp extends App {
       const totalMin = Math.round(DELAYS_MS.reduce((a, b) => a + b, 0) / 60000);
       this.log(result.reason === 'no-source'
         ? 'No baseline for today: no inverter or grid meter is paired that carries cumulative grid counters, so there is nothing to snapshot'
-        : `No baseline for today: the grid counters were still unread after ${totalMin} min — the energy-balance widget's daily delta will be off until tomorrow`);
+        : `No baseline for today: the counters were still unread after ${totalMin} min — the energy-balance widget's daily delta will be off until tomorrow`);
     }, DELAYS_MS[attempt]);
   }
 
@@ -251,14 +243,16 @@ class FusionSolarApp extends App {
    * Snapshots the cumulative grid counters for today.
    *
    * Returns what it managed to do, so the caller can tell a race from a dead end:
-   *   { written: ['export','import'], reason: null }        both stored
+   *   { written: ['export','import'], reason: null }        all it had to write is stored
    *   { written: [],                  reason: 'no-source' } nothing to read from
-   *   { written: [...],               reason: 'no-reading'} source present, counter null
-   * The midnight timer ignores the return; _ensureTodayBaseline uses it to decide whether
-   * trying again could possibly help.
+   *   { written: [...],               reason: 'no-reading'} a source present, its counter null
+   * `written` also names 'pv' and 'house' on an iSitePower plant. The midnight timer writes
+   * every baseline and ignores the return; _ensureTodayBaseline passes `onlyMissing` and uses
+   * the return to decide whether trying again could possibly help.
    */
-  _saveMidnightBaseline() {
+  _saveMidnightBaseline({ onlyMissing = false } = {}) {
     const written = [];
+    let unread = false;
     try {
       const today = this._todayStr();
       const sun2000     = this._getDevice('sun2000_modbus');
@@ -270,7 +264,25 @@ class FusionSolarApp extends App {
       const ispGrid     = this._getDevice('isitepower_grid_openapi_fusionsolar');
       const ispSolar    = this._getDevice('isitepower_solar_openapi_fusionsolar');
       const ispHome     = this._getDevice('isitepower_home_openapi_fusionsolar');
-      if (!sun2000 && !sun2000emma && !pmOa && !sunOa && !ispGrid) return { written, reason: 'no-source' };
+      const gridSource  = sun2000 || sun2000emma || pmOa || sunOa || ispGrid;
+      // The iSitePower PV and house days count too: a plant with those devices and no grid
+      // device used to stop here, so their baselines were never written and both widgets showed
+      // "—" for good, while the log said no inverter was paired (review 2026-10-10).
+      if (!gridSource && !ispSolar && !ispHome) return { written, reason: 'no-source' };
+
+      const due = (key) => {
+        if (!onlyMissing) return true;
+        let stored = null;
+        try { stored = this.homey.settings.get(key); } catch { /* treated as missing */ }
+        return !(stored && stored.date === today);
+      };
+      const save = (key, kind, value, label) => {
+        if (!due(key)) return;
+        if (value === null) { unread = true; return; }
+        this.homey.settings.set(key, { date: today, baseline: value });
+        this.log(`Midnight baseline saved – ${label}: ${value} kWh`);
+        written.push(kind);
+      };
 
       // Cumulative grid counters — MUST use the same source priority as the
       // energy-balance widget's rawExport/rawImport (sun2000 → sun2000emma →
@@ -295,32 +307,18 @@ class FusionSolarApp extends App {
                       ?? this._cap(sunOa, 'meter_power.grid_import')
                       ?? this._cap(ispGrid, 'meter_power');
 
-      // Not part of the "both written" verdict below: only an iSitePower plant has them.
-      const pvTotal    = this._cap(ispSolar, 'meter_power');
-      const houseTotal = this._cap(ispHome, 'meter_power');
-      if (pvTotal !== null) {
-        this.homey.settings.set('eb_pv_baseline', { date: today, baseline: pvTotal });
-        this.log(`Midnight baseline saved – PV (iSitePower): ${pvTotal} kWh`);
-      }
-      if (houseTotal !== null) {
-        this.homey.settings.set('eb_house_baseline', { date: today, baseline: houseTotal });
-        this.log(`Midnight baseline saved – house (iSitePower): ${houseTotal} kWh`);
-      }
-
-      if (gridExport !== null) {
-        this.homey.settings.set('eb_grid_export_baseline', { date: today, baseline: gridExport });
-        this.log(`Midnight baseline saved – export: ${gridExport} kWh`);
-        written.push('export');
-      }
-      if (gridImport !== null) {
-        this.homey.settings.set('eb_grid_import_baseline', { date: today, baseline: gridImport });
-        this.log(`Midnight baseline saved – import: ${gridImport} kWh`);
-        written.push('import');
+      // Only an iSitePower plant has these two.
+      if (ispSolar) save('eb_pv_baseline', 'pv', this._cap(ispSolar, 'meter_power'), 'PV (iSitePower)');
+      if (ispHome)  save('eb_house_baseline', 'house', this._cap(ispHome, 'meter_power'), 'house (iSitePower)');
+      if (gridSource) {
+        save('eb_grid_export_baseline', 'export', gridExport, 'export');
+        save('eb_grid_import_baseline', 'import', gridImport, 'import');
       }
     } catch (err) {
       this.error('Failed to save midnight baseline:', err.message);
+      unread = true;
     }
-    return { written, reason: written.length === 2 ? null : 'no-reading' };
+    return { written, reason: unread ? 'no-reading' : null };
   }
 
   _getDevice(driverId) {

@@ -205,7 +205,7 @@ Dedicated driver for the Huawei iSitePower-M Grid meter. Registered as a cumulat
 | Capability      | Description                                                  |
 |-----------------|--------------------------------------------------------------|
 | Grid power      | Current import power (W)                                     |
-| Grid import     | Cumulative grid import (kWh)                                 |
+| Grid import     | Cumulative grid import (kWh) — with a Mains meter it follows that meter's increments from where this one stands, so it never jumps to the Mains meter's lifetime total; without one it is integrated by the app |
 | AC voltage      | AC voltage (V) — AC output (60010), else power converter (60092), else Mains meter (60001) |
 | AC current      | AC current (A) — same order of sources                       |
 | Grid frequency  | Frequency (Hz) — same order of sources                       |
@@ -221,7 +221,7 @@ Dedicated driver for the Huawei iSitePower-M Home consumption measurement. Regis
 | Home consumption   | Current home load power (W)                              |
 | Total consumption  | Home energy (kWh), integrated by the app from home load power since pairing |
 
-> If load data is temporarily unavailable from the API, the last known value is preserved (no drop to 0 W).
+> If load data is temporarily unavailable from the API, the last known power stays on display (no drop to 0 W), but no energy is counted for that time: Homey Energy books the total as real consumption. The same goes for a gap between two readings of more than two and a half poll intervals (at least 15 minutes) — also for the grid import and battery charge totals the app integrates itself.
 
 ---
 
@@ -1231,7 +1231,7 @@ Daily energy totals shown as relative bars, plus self-consumption and self-suffi
 Local sources come first everywhere: a Modbus or EMMA reading is seconds old and the cloud
 minutes at best, so the cloud is consulted only where nothing closer answers.
 
-> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start — retried after 1, 5 and 15 minutes, because ten seconds after start is a guess at how long an inverter needs for its first reading, and losing that race used to cost the whole day its baseline in silence. If the counters are still unread after that, the log says so instead. Installations with none of the devices that carry cumulative grid counters — SUN2000 Modbus, EMMA inverter, FusionSolar cloud inverter or meter, iSitePower grid — have nothing to snapshot at all, and the log says that too rather than repeating that it is writing one. An EMMA power meter needs no baseline: its own day counters are used directly. A hint is shown in the widget until the baseline is available.
+> **Midnight baseline:** the app records the cumulative grid export/import counter at 00:00:05 each night. Daily values are derived as `current − baseline`. If the app was not running at midnight the baseline is written on the next start — retried after 1, 5 and 15 minutes, because ten seconds after start is a guess at how long an inverter needs for its first reading, and losing that race used to cost the whole day its baseline in silence. If the counters are still unread after that, the log says so instead. A start writes only the baselines today still lacks, so a restart never re-takes the grid baselines from a later reading. Installations with none of the devices that carry cumulative counters — SUN2000 Modbus, EMMA inverter, FusionSolar cloud inverter or meter, iSitePower grid, solar or home — have nothing to snapshot at all, and the log says that too rather than repeating that it is writing one. An iSitePower plant without a grid device still gets its PV and house baselines. An EMMA power meter needs no baseline: its own day counters are used directly. A hint is shown in the widget until the baseline is available.
 
 - **Eigenverbrauch %** — share of PV energy used on-site (not exported)
 - **Autarkie %** — share of the house consumption that did not come from the grid: 1 − import ÷ consumption, against the very figures shown beside it

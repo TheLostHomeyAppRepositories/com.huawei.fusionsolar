@@ -2,7 +2,7 @@
 
 const { Device } = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
-const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_MAINS, DEV_TYPE_AC_OUTPUT, DEV_TYPE_SOLAR_GROUP, DEV_TYPE_BATTERY_RACK, calculate, integrationHours } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
 const capabilitySet = require('../../lib/capability-set');
 
@@ -23,6 +23,8 @@ class ISitePowerGridDevice extends Device {
     this._prevGridW      = 0;
     this._lastEnergyTs   = this.getStoreValue('energy_ts') || Date.now();
     this._importedKwh    = this.getStoreValue('imported_kwh') || 0;
+    const offset         = Number(this.getStoreValue('mains_offset'));
+    this._mainsOffset    = this.getStoreValue('mains_offset') == null || !Number.isFinite(offset) ? null : offset;
     await this._ensureCapabilities();
     await this._set('meter_power.exported', 0);
     this.homey.app.getCoordinator().register(this);
@@ -71,8 +73,25 @@ class ISitePowerGridDevice extends Device {
     // Cumulative grid import: prefer direct 60001 total_energy_consumption (authoritative meter
     // reading) over local time-integration. Guard with Math.max to prevent backward jumps when
     // only one of two Mains units returns data in a given poll cycle.
+    //
+    // Followed by its increments from where this meter stands, not copied. A first poll
+    // without Mains data — the grace cycle after pairing, a 407, the type missing from the first
+    // device list — started the integral below at 0, and the next poll with Mains data wrote its
+    // lifetime total: 0 → 4212.5 kWh, booked by Homey Energy as one interval of import (review
+    // 2026-10-10). The offset is fixed the first time Mains data is seen and kept in the store.
+    // It is 0 when this meter has shown nothing yet (it then reads the Mains meter's own total),
+    // and 0 when it already stands at or near that total — an installation that followed the
+    // Mains meter before this, where what was used while the app was down is real import. Only
+    // a meter well below it, counted up from 0 here, continues from where it stands.
     if (v.mainsTotalKwh !== null && v.mainsTotalKwh > 0) {
-      const newKwh = Math.max(this._importedKwh, v.mainsTotalKwh);
+      if (this._mainsOffset === null) {
+        const shown = this.getCapabilityValue('meter_power');
+        const following = shown === null || shown === undefined || this._importedKwh >= 0.95 * v.mainsTotalKwh;
+        this._mainsOffset = following ? 0 : this._importedKwh - v.mainsTotalKwh;
+        await this.setStoreValue('mains_offset', this._mainsOffset);
+        this.log(`Mains meter found: ${v.mainsTotalKwh} kWh — import follows its increments from ${this._importedKwh.toFixed(3)} kWh (offset ${this._mainsOffset.toFixed(3)})`);
+      }
+      const newKwh = Math.max(this._importedKwh, v.mainsTotalKwh + this._mainsOffset);
       if (newKwh !== this._importedKwh) {
         this._importedKwh = newKwh;
         await this.setStoreValue('imported_kwh', newKwh);
@@ -83,13 +102,15 @@ class ISitePowerGridDevice extends Device {
       await this._accumulate(gridW);
     }
 
-    if (!this.getAvailable()) await this.setAvailable();
+    // Availability is the coordinator's call, made right after this returns — from what the
+    // plant delivered, the same as for every other cloud device. Setting it here as well made a
+    // device with no data flip to available and back on every poll (review 2026-10-10).
     logPollOk(this, 'Poll OK: Grid=' + Math.round(gridW) + 'W (raw=' + Math.round(rawGridW) + 'W)');
   }
 
   async _accumulate(importW) {
     const now = Date.now();
-    const h = Math.max(0, Math.min(1, (now - this._lastEnergyTs) / 3600000));
+    const h = integrationHours(this._lastEnergyTs, now, parseInt(this.getSetting('poll_interval'), 10));
     this._lastEnergyTs = now;
     this._importedKwh += ((importW || 0) * h) / 1000;
     await this.setStoreValue('energy_ts', now);

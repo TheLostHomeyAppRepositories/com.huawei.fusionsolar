@@ -2,7 +2,7 @@
 
 const { Device } = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
-const { DEV_TYPE_BATTERY_RACK, calculate } = require('../../lib/isitepower-utils');
+const { DEV_TYPE_BATTERY_RACK, calculate, integrationHours } = require('../../lib/isitepower-utils');
 const { logPollOk } = require('../../lib/poll-log');
 const capabilitySet = require('../../lib/capability-set');
 
@@ -158,13 +158,15 @@ class ISitePowerBatteryDevice extends Device {
     }
     this._prevChargingState = chargingState;
 
-    if (!this.getAvailable()) await this.setAvailable();
+    // Availability is the coordinator's call, made right after this returns — from what the
+    // plant delivered, the same as for every other cloud device. Setting it here as well made a
+    // device with no data flip to available and back on every poll (review 2026-10-10).
     logPollOk(this, 'Poll OK: SoC=' + Math.round(v.soc ?? 0) + '% P=' + Math.round(signed) + 'W');
   }
 
   async _accumulateCharged(chargeW) {
     const now = Date.now();
-    const h = Math.max(0, Math.min(1, (now - this._lastEnergyTs) / 3600000));
+    const h = integrationHours(this._lastEnergyTs, now, parseInt(this.getSetting('poll_interval'), 10));
     this._lastEnergyTs = now;
     this._chargedKwh += ((chargeW || 0) * h) / 1000;
     await this.setStoreValue('energy_ts', now);
