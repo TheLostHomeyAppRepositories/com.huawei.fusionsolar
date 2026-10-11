@@ -126,21 +126,21 @@ function onHomeyReady(Homey) {
   // app language. See widgets/ems-device/api.js for the full rationale.
   var DICTS = (function () {
     var de = {
-      title: 'Batterienutzung', noBattery: 'Keine Batterie konfiguriert', unreachable: 'EMS-Gerät nicht erreichbar',
+      title: 'Batterienutzung', noBattery: 'Keine Batterie konfiguriert', unreachable: 'EMS-Gerät nicht erreichbar', noEms: 'Kein EMS-Gerät gefunden',
       stop: 'Stopp unter', kwhOf: 'von',
       zoneGreen: 'Solar frei', zoneRed: 'Geschützt — lädt Batterie',
       priceCharge: 'Preisgeladen', priceHold: 'Entladen gesperrt (Preis)', priceIdle: 'Preisladen aktiviert', writeFailed: 'Änderung fehlgeschlagen',
       aboveRamp: 'Höchstens {max} % — darüber beginnt die Rampe nicht mehr', invalidValue: 'Bitte 0 bis 100 % eingeben', stale: '⚠ nicht aktuell',
     };
     var nl = {
-      title: 'Batterijgebruik', noBattery: 'Geen batterij geconfigureerd', unreachable: 'EMS-apparaat niet bereikbaar',
+      title: 'Batterijgebruik', noBattery: 'Geen batterij geconfigureerd', unreachable: 'EMS-apparaat niet bereikbaar', noEms: 'Geen EMS-apparaat gevonden',
       stop: 'Stop onder', kwhOf: 'van',
       zoneGreen: 'Zon vrij', zoneRed: 'Beschermd — batterij laadt',
       priceCharge: 'Prijsladen actief', priceHold: 'Ontladen geblokkeerd (prijs)', priceIdle: 'Prijsladen ingeschakeld', writeFailed: 'Wijziging mislukt',
       aboveRamp: 'Hoogstens {max} % — daarboven begint de helling niet meer', invalidValue: 'Voer 0 tot 100 % in', stale: '⚠ niet actueel',
     };
     var en = {
-      title: 'Battery Usage', noBattery: 'No battery configured', unreachable: 'EMS device unreachable',
+      title: 'Battery Usage', noBattery: 'No battery configured', unreachable: 'EMS device unreachable', noEms: 'No EMS device found',
       stop: 'Stop below', kwhOf: 'of',
       zoneGreen: 'Solar free', zoneRed: 'Protected — battery charging',
       priceCharge: 'Price-charging', priceHold: 'Discharge held (price)', priceIdle: 'Price-charging enabled', writeFailed: 'Change failed',
@@ -291,6 +291,8 @@ function onHomeyReady(Homey) {
 
   function render(s) {
     applyLang(s && s.lang); // authoritative language, before anything is drawn
+    // No EMS device is a setup, not a fault (it said "unreachable"); the EMS history's words.
+    if (s && s.error === 'no_ems_device') { showNoData(T.noEms); syncHeight(); return; }
     if (!s || s.error) { showNoData(T.unreachable); syncHeight(); return; }
     if (!s.hasBattery)  { showNoData(T.noBattery); syncHeight(); return; }
     lastStatus = s;

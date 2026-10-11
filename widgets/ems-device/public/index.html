@@ -255,7 +255,7 @@ function onHomeyReady(Homey) {
   var DICTS = (function () {
     var de = {
       noSetting: 'Bitte Gerät in den Widget-Einstellungen auswählen',
-      unreachable: 'EMS-Gerät nicht erreichbar',
+      unreachable: 'EMS-Gerät nicht erreichbar', noEms: 'Kein EMS-Gerät gefunden',
       notFound: 'Gerät nicht mehr konfiguriert',
       connected: 'Verbunden', notConnected: 'Nicht verbunden',
       on: 'An', off: 'Aus',
@@ -269,7 +269,7 @@ function onHomeyReady(Homey) {
     };
     var nl = {
       noSetting: 'Selecteer een apparaat in de widget-instellingen',
-      unreachable: 'EMS-apparaat niet bereikbaar',
+      unreachable: 'EMS-apparaat niet bereikbaar', noEms: 'Geen EMS-apparaat gevonden',
       notFound: 'Apparaat niet meer geconfigureerd',
       connected: 'Verbonden', notConnected: 'Niet verbonden',
       on: 'Aan', off: 'Uit',
@@ -283,7 +283,7 @@ function onHomeyReady(Homey) {
     };
     var en = {
       noSetting: 'Select a device in widget settings',
-      unreachable: 'EMS device unreachable',
+      unreachable: 'EMS device unreachable', noEms: 'No EMS device found',
       notFound: 'Device no longer configured',
       connected: 'Connected', notConnected: 'Not connected',
       on: 'On', off: 'Off',
@@ -477,9 +477,15 @@ function onHomeyReady(Homey) {
     Homey.ready({ height: Math.ceil(card.getBoundingClientRect().bottom) + 16 });
     // Without a device there is no status poll, so the language would never arrive —
     // fetch it once so this message is localised too (the endpoint answers with
-    // { error: 'no_device_selected', lang } when no device is given).
+    // { error: 'no_device_selected', lang } when no device is given). Without an EMS device
+    // there is nothing to select either, and the widget says so instead.
     Homey.api('GET', '/status')
-      .then(function (r) { if (r && applyLang(r.lang)) showNoData(T.noSetting); })
+      .then(function (r) {
+        if (!r) return;
+        applyLang(r.lang);
+        showNoData(r.error === 'no_ems_device' ? T.noEms : T.noSetting);
+        fitHeight(Homey, document.body);
+      })
       .catch(function () {});
     return;
   }
@@ -516,7 +522,7 @@ function onHomeyReady(Homey) {
   var lastWriteDoneAt = 0;
   function errorText(code) {
     return code === 'not_found' ? T.notFound
-      : code === 'no_ems_device' ? T.unreachable
+      : code === 'no_ems_device' ? T.noEms
       : T.writeFailed;
   }
   function write(path, body, rollback, done) {
@@ -716,7 +722,9 @@ function onHomeyReady(Homey) {
 
   function render(s) {
     applyLang(s && s.lang); // authoritative language, before anything is drawn
-    if (!s || s.error === 'no_ems_device') { showNoData(T.unreachable); syncHeight(); return; }
+    // No EMS device is a setup, not a fault: it said "unreachable" before, as if something
+    // had broken. The words are the EMS history's.
+    if (!s || s.error === 'no_ems_device') { showNoData(s ? T.noEms : T.unreachable); syncHeight(); return; }
     if (!s || s.error === 'not_found')     { showNoData(T.notFound);   syncHeight(); return; }
     if (!s || s.error)                     { showNoData(T.unreachable); syncHeight(); return; }
 

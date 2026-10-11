@@ -141,7 +141,7 @@ function onHomeyReady(Homey) {
   // app language. See widgets/ems-device/api.js for the full rationale.
   var DICTS = (function () {
     var de = {
-      title: 'EMS Prognose', unreachable: 'EMS-Gerät nicht erreichbar',
+      title: 'EMS Prognose', unreachable: 'EMS-Gerät nicht erreichbar', noEms: 'Kein EMS-Gerät gefunden',
       solarLabel: 'Solar (Solcast)', priceLabel: 'Strompreis',
       now: 'jetzt', slotsAhead: 'Slot(s) voraus', updated: 'aktualisiert', minAgo: 'Min. her',
       neverUpdated: 'nie aktualisiert', staleWarn: '⚠ veraltet',
@@ -151,7 +151,7 @@ function onHomeyReady(Homey) {
       priceModeFixed: 'Fixpreis', priceModeVariable: 'Live-Preis (Flow)', priceModeDual: 'Hoch-/Niedertarif',
     };
     var nl = {
-      title: 'EMS-prognose', unreachable: 'EMS-apparaat niet bereikbaar',
+      title: 'EMS-prognose', unreachable: 'EMS-apparaat niet bereikbaar', noEms: 'Geen EMS-apparaat gevonden',
       solarLabel: 'Zon (Solcast)', priceLabel: 'Stroomprijs',
       now: 'nu', slotsAhead: 'slot(en) vooruit', updated: 'bijgewerkt', minAgo: 'min geleden',
       neverUpdated: 'nooit bijgewerkt', staleWarn: '⚠ verouderd',
@@ -161,7 +161,7 @@ function onHomeyReady(Homey) {
       priceModeFixed: 'Vaste prijs', priceModeVariable: 'Live prijs (flow)', priceModeDual: 'Hoog-/laagtarief',
     };
     var en = {
-      title: 'EMS Forecast', unreachable: 'EMS device unreachable',
+      title: 'EMS Forecast', unreachable: 'EMS device unreachable', noEms: 'No EMS device found',
       solarLabel: 'Solar (Solcast)', priceLabel: 'Electricity price',
       now: 'now', slotsAhead: 'slot(s) ahead', updated: 'updated', minAgo: 'min ago',
       neverUpdated: 'never updated', staleWarn: '⚠ stale',
@@ -477,6 +477,8 @@ function fitHeight(Homey, el) {
 
   function render(data) {
     applyLang(data && data.lang); // authoritative language, before anything is drawn
+    // No EMS device is a setup, not a fault (it said "unreachable"); the EMS history's words.
+    if (data && data.error === 'no_ems_device') { showNoData(T.noEms); syncHeight(); return; }
     if (!data || data.error) { showNoData(T.unreachable); syncHeight(); return; }
     content.style.display = 'block';
     noData.style.display  = 'none';
