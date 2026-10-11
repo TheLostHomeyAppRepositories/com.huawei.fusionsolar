@@ -81,6 +81,7 @@ class EmsDevice extends Device {
     this._schedulerFired         = new Map(); // taskId → 'YYYY-MM-DD HH:MM' it last ran for (lib/ems/price.js)
     this._schedulerCheckedAt     = null;      // when the scheduler last looked — its catch-up window starts here
     this._devCache               = new Map(); // per-tick device-object cache (cleared each tick)
+    this._ownById                = null;      // this app's devices by Homey id (rebuilt each tick)
 
     // Export limit coordinator state — persisted so an active limit survives an
     // app restart (otherwise the OFF trigger would never fire and the inverter
@@ -718,6 +719,7 @@ class EmsDevice extends Device {
     const enabled = this.getCapabilityValue('onoff') !== false;
     const hasKey  = !!this.getSetting('homey_api_key');
     this._devCache = new Map(); // fresh device snapshot per tick (see _cap)
+    this._ownById  = null;      // and a fresh list of this app's devices (see _ownDevice)
 
     // How much time has actually passed since the previous tick — measured, not assumed.
     // The two differ even at a fixed interval: the timer drifts, a tick itself takes
@@ -1017,15 +1019,68 @@ class EmsDevice extends Device {
   // purpose: a charger that drops off the network for a minute must not read as unplugged
   // and end the session, so "is the car plugged in?" still reads its last value.
   async _cap(deviceId, capId, { measured = false } = {}) {
+    // A device of this app is read where it lives. Over the local API the same values came
+    // with the whole device around them — some 20–40 KB of JSON per device per tick, fetched,
+    // parsed and dropped — and an EMS whose sources are all this app's (inverter, meter,
+    // battery, charger) now needs no HTTP at all; fetch and its library are then never
+    // loaded (1.2.331). Devices of other apps are read over the API as before.
+    const own = this._ownDevice(deviceId);
+    if (own) return this._ownCap(own, deviceId, capId, measured);
     if (!this._devCache.has(deviceId)) {
       this._devCache.set(deviceId, this._api.getDevice(deviceId).catch(() => null));
     }
     const device = await this._devCache.get(deviceId);
+    if (device) this._noteReadPath(deviceId, device.name, 'over the local Homey API');
     if (measured && device && this._noteAvailability(deviceId, device) === false) return null;
     const capObj = device?.capabilitiesObj || device?.capabilities || {};
     const entry  = !Array.isArray(capObj) ? capObj[capId] : null;
     if (entry === null || entry === undefined) return null;
     return typeof entry === 'object' ? (entry.value ?? null) : entry;
+  }
+
+  // This app's devices by Homey id. device.getId() is the id the EMS config stores — the
+  // settings page picks devices from the local API, which names them the same way. getId() is
+  // not in the SDK's documentation, but this app already relies on it (sensor chart, register
+  // list); were it ever to answer differently, nothing would be found here and every device
+  // would be read over the API as before. Built at most once per tick, so a device paired or
+  // removed in between is seen by the next one.
+  _ownDevice(deviceId) {
+    if (!this._ownById) {
+      this._ownById = new Map();
+      let drivers = {};
+      try { drivers = this.homey.drivers.getDrivers(); } catch (_) { /* none yet */ }
+      for (const driver of Object.values(drivers)) {
+        let devices = [];
+        try { devices = driver.getDevices(); } catch (_) { continue; }
+        for (const device of devices) {
+          try { this._ownById.set(device.getId(), device); } catch (_) { /* mid-teardown */ }
+        }
+      }
+    }
+    return this._ownById.get(deviceId) || null;
+  }
+
+  // The answer _cap gives for a device of this app: the same value, the same null for a
+  // capability it lacks, and for a measurement the same "unavailable reads as missing".
+  _ownCap(device, deviceId, capId, measured) {
+    try {
+      this._noteReadPath(deviceId, device.getName(), 'directly in the app');
+      if (measured && this._noteAvailability(deviceId, { name: device.getName(), available: device.getAvailable() }) === false) return null;
+      if (!device.hasCapability(capId)) return null;
+      const value = device.getCapabilityValue(capId);
+      return value === undefined ? null : value;
+    } catch (_) {
+      return null;   // deleted while the tick ran
+    }
+  }
+
+  // Once per device and app start, how the EMS reads it — the line that shows on a real Homey
+  // whether the direct path is taken.
+  _noteReadPath(deviceId, name, how) {
+    if (!this._readPathNoted) this._readPathNoted = new Set();
+    if (this._readPathNoted.has(deviceId)) return;
+    this._readPathNoted.add(deviceId);
+    this.log(`[EMS] "${name || deviceId}" is read ${how}`);
   }
 
   // One line when a device the EMS measures goes away, one when it is back — not one per tick.

@@ -3364,6 +3364,7 @@ function makeWidgetDevice(extra = {}) {
     _carStates: [],
     homey: { clock: { getTimezone: () => 'Europe/Zurich' }, settings: { set() {} } },
     _cap: async () => null,
+    _ownDevice: () => null,   // no device of this app: names come from the API, as these tests expect
     _stopTick() {}, _startTick() {},
     _validateConfig() { return false; },
     _getConfig() { return {}; },

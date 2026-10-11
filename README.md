@@ -768,7 +768,7 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 - The Smart Charger behind an EMMA is read through the **EMMA's** address and unit ID 0, not its own IP
 
 #### Energy Management System
-- A Homey API key (Homey → Settings → System → API Keys) with read/write access to Devices and Flows, entered in the EMS device's settings; without it the EMS stays in `error`
+- A Homey API key (Homey → Settings → System → API Keys) with read/write access to Devices and Flows, entered in the EMS device's settings; without it the EMS stays in `error`. Devices of this app (inverter, meter, battery, charger) are read directly inside the app; the key is used for devices of other apps (another wallbox, a car, a heat pump) and for flows
 - Configuration is done in App Settings → Energy Management
 
 > **Huawei hardware accepts exactly one Modbus TCP connection at a time.** A second program connecting — Home Assistant, EVCC, another Homey app, or the FusionSolar app left in local commissioning mode — takes the connection over, and the dongle then accepts the handshake and hangs up immediately. That looks nothing like a wiring or address fault, so the device now says what it is: *"192.168.x.x accepted the connection and closed it again — no register could be read. Huawei devices allow only one Modbus connection at a time: is another program reading this device?"* rather than blaming the battery or the meter. Also check that **Modbus TCP** is set to *Enable (unrestricted)* in the FusionSolar app under the dongle's parameter settings; *limited* produces the same symptom.

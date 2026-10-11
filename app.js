@@ -65,6 +65,7 @@ class FusionSolarApp extends App {
     this._registerSensorChartAutocomplete();
     this.homey.setTimeout(() => this._initCapHistory(), 5000);
     this._registerEmsDeviceAutocomplete();
+    this._scheduleMemoryLog();
 
     // EMS charger triggers — global cards, filter by charger_device_id arg vs state
     this.homey.flow
@@ -148,7 +149,29 @@ class FusionSolarApp extends App {
     if (this._midnightTimer)       this.homey.clearTimeout(this._midnightTimer);
     if (this._baselineTimer)       this.homey.clearTimeout(this._baselineTimer);
     if (this._capHistoryPollTimer) this.homey.clearInterval(this._capHistoryPollTimer);
+    if (this._memoryLogTimer)      this.homey.clearTimeout(this._memoryLogTimer);
     this._saveCapHistory(); // persist before shutdown
+  }
+
+  // One line on what the app occupies, ten minutes in: past the start-up burst, with the EMS
+  // ticking. Homey's own memory graph is coarse; this is the figure to compare one version
+  // with the next. undici is the library behind fetch() — loading it costs several MB, and
+  // only the calls to the local Homey API (lib/homey-local-api.js) bring it in.
+  _scheduleMemoryLog() {
+    this._memoryLogTimer = this.homey.setTimeout(() => {
+      this._memoryLogTimer = null;
+      this.log(FusionSolarApp.memoryLine());
+    }, FusionSolarApp.MEMORY_LOG_AFTER_MS);
+  }
+
+  static get MEMORY_LOG_AFTER_MS() { return 10 * 60 * 1000; }
+
+  static memoryLine(mem = process.memoryUsage(), modules = process.moduleLoadList) {
+    const mb = (bytes) => (bytes / 1048576).toFixed(1);
+    const undici = !Array.isArray(modules) ? 'unknown'
+      : modules.some((m) => String(m).includes('undici')) ? 'yes' : 'no';
+    return `Memory after 10 min: rss ${mb(mem.rss)} MB, heap ${mb(mem.heapUsed)}/${mb(mem.heapTotal)} MB, `
+      + `external ${mb(mem.external)} MB, undici (fetch) loaded: ${undici}`;
   }
 
 

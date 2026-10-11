@@ -1,0 +1,209 @@
+'use strict';
+
+// 1.2.331: the EMS reads this app's own devices where they live, not over the local Homey API.
+//
+// Every tick (15 s) fetched each source device over HTTP — the whole device object, 20–40 KB of
+// JSON, parsed for one or two values — even when it was this app's own inverter, meter or
+// battery. fetch() also brings in its library (undici), several MB that stay. Devices of other
+// apps (an Easee, a car, a heat pump) are still read over the API, with the same answers as
+// before. And one memory line ten minutes after the start, to compare versions on Homey.
+//
+// Run: node --test
+
+const test   = require('node:test');
+const assert = require('node:assert');
+const fs     = require('fs');
+const path   = require('path');
+const Module = require('module');
+
+const origLoad = Module._load;
+Module._load = function (request, parent, isMain) {
+  if (request === 'homey') return { Device: class {}, App: class {} };
+  return origLoad.call(this, request, parent, isMain);
+};
+const EmsDevice = require(path.join('..', 'drivers', 'energy_management', 'device.js'));
+const App       = require(path.join('..', 'app.js'));
+Module._load = origLoad;
+
+// lingering: values the device still holds for capabilities it no longer has.
+function ownDevice(id, name, caps, { available = true, throws = false, lingering = {} } = {}) {
+  const values = { ...lingering, ...caps };
+  return {
+    getId: () => id,
+    getName: () => name,
+    getAvailable: () => available,
+    hasCapability: (c) => c in caps,
+    getCapabilityValue: (c) => { if (throws) throw new Error('Device deleted'); return values[c]; },
+  };
+}
+
+function ems(own = [], foreign = {}) {
+  const d = Object.create(EmsDevice.prototype);
+  d.logs = [];
+  d.log = (...a) => d.logs.push(a.join(' '));
+  d.error = d.log;
+  d._devCache = new Map();
+  d._ownById = null;
+  d.indexed = 0;
+  d.homey = { drivers: { getDrivers: () => { d.indexed++; return { a: { getDevices: () => own } }; } } };
+  d.restCalls = [];
+  d._api = {
+    getDevice: async (id) => { d.restCalls.push(id); if (!(id in foreign)) throw new Error('HTTP 404'); return foreign[id]; },
+    getDevices: async () => { d.restCalls.push('*'); return foreign; },
+  };
+  return d;
+}
+const rest = (id, name, caps, available = true) => ({
+  id, name, available,
+  capabilitiesObj: Object.fromEntries(Object.entries(caps).map(([k, value]) => [k, { id: k, value }])),
+});
+
+// ── reading ────────────────────────────────────────────────────────────────────
+
+test('a device of this app is read in the process — no HTTP', async () => {
+  const d = ems([ownDevice('inv', 'Wechselrichter', { measure_power: 4210, 'meter_power.grid_import': 812.5 })]);
+  assert.strictEqual(await d._cap('inv', 'measure_power', { measured: true }), 4210);
+  assert.strictEqual(await d._cap('inv', 'meter_power.grid_import'), 812.5);
+  assert.deepStrictEqual(d.restCalls, []);
+});
+
+test('a device of another app is read over the API, as before', async () => {
+  const d = ems([ownDevice('inv', 'Wechselrichter', { measure_power: 4210 })],
+    { easee: rest('easee', 'Easee', { measure_power: 7100, evcharger_charging_state: 'plugged_in_charging' }) });
+  assert.strictEqual(await d._cap('easee', 'measure_power', { measured: true }), 7100);
+  assert.strictEqual(await d._cap('easee', 'evcharger_charging_state'), 'plugged_in_charging');
+  assert.deepStrictEqual(d.restCalls, ['easee'], 'one fetch per device per tick, still');
+});
+
+test('the same answers as over the API — value, null, missing capability', async () => {
+  const caps = { measure_power: -1500, onoff: false, evcharger_charging_state: 'plugged_in', measure_battery: null, zero: 0 };
+  const asked = ['measure_power', 'onoff', 'evcharger_charging_state', 'measure_battery', 'zero', 'not_there'];
+  const viaOwn  = ems([ownDevice('x', 'X', caps)]);
+  const viaRest = ems([], { x: rest('x', 'X', caps) });
+  for (const cap of asked) {
+    assert.deepStrictEqual(await viaOwn._cap('x', cap), await viaRest._cap('x', cap), cap);
+  }
+  // A capability the device no longer has is gone from its API object too, whatever value
+  // the device still holds for it.
+  const removed = ems([ownDevice('x', 'X', { measure_power: 1 }, { lingering: { 'measure_power.pv1': 812 } })]);
+  assert.strictEqual(await removed._cap('x', 'measure_power.pv1'), null);
+  const undefinedValue = ems([ownDevice('x', 'X', { measure_power: undefined })]);
+  assert.strictEqual(await undefinedValue._cap('x', 'measure_power'), null);
+});
+
+test('an unavailable device of this app: a measurement reads as missing, a state does not', async () => {
+  const d = ems([ownDevice('bat', 'Batterie', { measure_battery: 64, onoff: true }, { available: false })]);
+  assert.strictEqual(await d._cap('bat', 'measure_battery', { measured: true }), null);
+  assert.strictEqual(await d._cap('bat', 'onoff'), true);
+  assert.ok(d.logs.some((l) => /"Batterie" is unavailable/.test(l)));
+  // and the API path answers the same
+  const r = ems([], { bat: rest('bat', 'Batterie', { measure_battery: 64, onoff: true }, false) });
+  assert.strictEqual(await r._cap('bat', 'measure_battery', { measured: true }), null);
+  assert.strictEqual(await r._cap('bat', 'onoff'), true);
+});
+
+test('the log says once per device how it is read — the check on a real Homey', async () => {
+  const d = ems([ownDevice('inv', 'Wechselrichter', { measure_power: 1 })],
+    { easee: rest('easee', 'Easee', { measure_power: 2 }) });
+  for (let i = 0; i < 3; i++) {
+    await d._cap('inv', 'measure_power');
+    await d._cap('easee', 'measure_power');
+    d._devCache = new Map(); d._ownById = null;         // next tick
+  }
+  assert.deepStrictEqual(d.logs, [
+    '[EMS] "Wechselrichter" is read directly in the app',
+    '[EMS] "Easee" is read over the local Homey API',
+  ]);
+});
+
+test('a device deleted while the tick runs reads as missing, not as an error', async () => {
+  const d = ems([ownDevice('gone', 'Weg', { measure_power: 5 }, { throws: true })]);
+  assert.strictEqual(await d._cap('gone', 'measure_power'), null);
+});
+
+test('the list of this app\'s devices is built once per tick, and fresh for the next', async () => {
+  const own = [ownDevice('inv', 'Wechselrichter', { measure_power: 1 })];
+  const d = ems(own);
+  for (let i = 0; i < 6; i++) await d._cap('inv', 'measure_power');
+  assert.strictEqual(d.indexed, 1);
+  own.push(ownDevice('new', 'Neu', { measure_power: 2 }));
+  assert.strictEqual(await d._cap('new', 'measure_power'), null, 'not until the next tick');
+  d._ownById = null;                                   // what _tickBody does first
+  assert.strictEqual(await d._cap('new', 'measure_power'), 2);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'drivers', 'energy_management', 'device.js'), 'utf8');
+  const body = src.slice(src.indexOf('async _tickBody()'), src.indexOf('async _tickBody()') + 600);
+  assert.ok(/this\._ownById\s*=\s*null;/.test(body), '_tickBody no longer starts a fresh list');
+});
+
+test('without a driver list (or in a test fake) everything goes over the API, as before', async () => {
+  const d = ems([], { x: rest('x', 'X', { measure_power: 3 }) });
+  d.homey = {};
+  assert.strictEqual(await d._cap('x', 'measure_power'), 3);
+  assert.deepStrictEqual(d.restCalls, ['x']);
+});
+
+test('reading only this app\'s devices never loads the fetch library', async () => {
+  const d = ems([ownDevice('m', 'Zähler', { measure_power: 1 }), ownDevice('b', 'Batterie', { measure_battery: 50 })]);
+  d._api = { getDevice: (id) => fetch(`http://127.0.0.1:9/${id}`) };   // a real fetch, were it asked
+  await d._cap('m', 'measure_power', { measured: true });
+  await d._cap('b', 'measure_battery', { measured: true });
+  assert.ok(!process.moduleLoadList.some((m) => m.includes('undici')));
+});
+
+// ── the widget ─────────────────────────────────────────────────────────────────
+
+test('the widget names a device of this app without asking the API', async () => {
+  const d = ems([ownDevice('ocpp', 'Lader Garage', {})], { easee: rest('easee', 'Easee Home', {}) });
+  assert.strictEqual(await d._widgetDeviceName('ocpp'), 'Lader Garage');
+  assert.deepStrictEqual(d.restCalls, []);
+  assert.strictEqual(await d._widgetDeviceName('easee'), 'Easee Home');
+  assert.deepStrictEqual(d.restCalls, ['easee']);
+});
+
+test('the widget\'s device picker asks for the whole device list only when it has to', async () => {
+  const cfg = { chargers: [{ id: 'ocpp' }], heat_pump_devices: [{ id: 'wp' }] };
+  const allOwn = ems([ownDevice('ocpp', 'Lader', {}), ownDevice('wp', 'Wärmepumpe', {})]);
+  allOwn._getConfig = () => cfg;
+  assert.deepStrictEqual(await allOwn.getEmsControllableDevices(), [
+    { id: 'ocpp', kind: 'charger', name: 'Lader' },
+    { id: 'wp', kind: 'heat_pump', name: 'Wärmepumpe' },
+  ]);
+  assert.deepStrictEqual(allOwn.restCalls, [], 'the whole device list of the Homey was fetched');
+
+  const mixed = ems([ownDevice('ocpp', 'Lader', {})], { wp: rest('wp', 'Fremde WP', {}) });
+  mixed._getConfig = () => cfg;
+  assert.deepStrictEqual((await mixed.getEmsControllableDevices()).map((x) => x.name), ['Lader', 'Fremde WP']);
+  assert.deepStrictEqual(mixed.restCalls, ['*']);
+});
+
+// ── the memory line ────────────────────────────────────────────────────────────
+
+test('the memory line says what the process holds, and whether fetch\'s library is in', () => {
+  const mem = { rss: 57.3 * 1048576, heapUsed: 14.2 * 1048576, heapTotal: 18 * 1048576, external: 3.4 * 1048576 };
+  assert.strictEqual(App.memoryLine(mem, ['NativeModule internal/deps/undici/undici']),
+    'Memory after 10 min: rss 57.3 MB, heap 14.2/18.0 MB, external 3.4 MB, undici (fetch) loaded: yes');
+  assert.match(App.memoryLine(mem, ['NativeModule http']), /undici \(fetch\) loaded: no$/);
+  assert.match(App.memoryLine(mem, null), /undici \(fetch\) loaded: unknown$/, 'a runtime without process.moduleLoadList');
+});
+
+test('it is written once, ten minutes after the start, and the timer goes with the app', async () => {
+  const a = Object.create(App.prototype);
+  const logs = [];
+  const timers = [];
+  let cleared = null;
+  a.log = (...x) => logs.push(x.join(' '));
+  a.error = a.log;
+  a.homey = { setTimeout: (fn, ms) => { const t = { fn, ms }; timers.push(t); return t; }, clearTimeout: (t) => { cleared = t; }, clearInterval: () => {} };
+  a._scheduleMemoryLog();
+  assert.strictEqual(timers.length, 1);
+  assert.strictEqual(timers[0].ms, 10 * 60 * 1000);
+  const timer = a._memoryLogTimer;
+  await a.onUninit();
+  assert.strictEqual(cleared, timer);
+  timers[0].fn();
+  assert.ok(logs.some((l) => /^Memory after 10 min: rss \d+\.\d MB/.test(l)));
+  assert.strictEqual(a._memoryLogTimer, null);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  const onInit = src.slice(src.indexOf('async onInit()'), src.indexOf('async onUninit()'));
+  assert.ok(/this\._scheduleMemoryLog\(\);/.test(onInit), 'onInit no longer schedules it');
+});
