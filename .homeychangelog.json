@@ -1,4 +1,9 @@
 {
+  "1.2.335": {
+    "en": "For the first five minutes after a start, the log shows the app's memory at several points — to find what drives the memory peak right after starting. These lines are temporary.",
+    "de": "In den ersten fünf Minuten nach einem Start zeigt das Log den Speicher der App an mehreren Punkten – um herauszufinden, was die Speicherspitze direkt nach dem Start verursacht. Diese Zeilen sind vorübergehend.",
+    "nl": "In de eerste vijf minuten na een start toont het log het geheugen van de app op meerdere momenten — om te vinden wat de geheugenpiek direct na het starten veroorzaakt. Deze regels zijn tijdelijk."
+  },
   "1.2.334": {
     "en": "Energy Management System: the log line for a device of another app now also says how big the object read from the Homey API is and how many capabilities it has — to see whether reading single values would save memory. The memory card in the diagnostics shows every figure with one decimal.",
     "de": "Energieverwaltung: Die Log-Zeile für ein Gerät einer anderen App nennt jetzt auch, wie gross das von der Homey-API gelesene Objekt ist und wie viele Capabilities es hat – um zu sehen, ob das Lesen einzelner Werte Speicher sparen würde. Die Speicherkarte in der Diagnose zeigt alle Werte mit einer Nachkommastelle.",

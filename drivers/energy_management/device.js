@@ -648,6 +648,12 @@ class EmsDevice extends Device {
       // A completed tick means the loop caught up; only unbroken runs of skips count.
       this._consecSkips = 0;
       this._tickInProgress = false;
+      // The start-up memory trace (app.js): the first tick loads fetch's library and reads every
+      // device of another app at once — a candidate for the start-up peak.
+      if (!this._warmupDone) {
+        const app = this.homey && this.homey.app;
+        if (app && typeof app.traceStartMemory === 'function') app.traceStartMemory('EMS first tick done');
+      }
       this._warmupDone = true;
       this._tickCount += 1;
       // By elapsed time: at 20 ticks this was ~5 min only as long as a tick was 15 s.
