@@ -9382,7 +9382,7 @@
       // in Homey's developer tools — the app itself cannot read them (lib/memory-usage.js).
       var mem = d.mem;
       if (mem) {
-        var memRow = function(key, v) { return v === null || v === undefined ? '' : row(L(key), v + ' MB'); };
+        var memRow = function(key, v) { return v === null || v === undefined ? '' : row(L(key), Number(v).toFixed(1) + ' MB'); };
         var memRows = memRow('residentRss', mem.peakRss) +
           memRow('jsHeapUsed', mem.heapUsed) +
           memRow('jsHeapTotal', mem.heapTotal) +

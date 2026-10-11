@@ -65,7 +65,7 @@ test('one line when a device goes away, one when it is back — not one per tick
   devices.m = meter(true);
   for (let i = 0; i < 3; i++) { nextTick(d); await d._cap('m', 'measure_power', { measured: true }); }
   assert.deepStrictEqual(d.logs, [
-    '[EMS] "Grid meter" is read over the local Homey API',   // once per app start, since 1.2.331
+    '[EMS] "Grid meter" is read over the local Homey API (0.1 KB, 1 capabilities)',   // once per app start, since 1.2.331
     '[EMS] "Grid meter" is unavailable — its measurements are ignored until it is back',
     '[EMS] "Grid meter" is available again',
   ]);

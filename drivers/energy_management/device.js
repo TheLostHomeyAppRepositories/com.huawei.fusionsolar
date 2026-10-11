@@ -1020,7 +1020,7 @@ class EmsDevice extends Device {
       this._devCache.set(deviceId, this._api.getDevice(deviceId).catch(() => null));
     }
     const device = await this._devCache.get(deviceId);
-    if (device) this._noteReadPath(deviceId, device.name, 'over the local Homey API');
+    if (device) this._noteReadPath(deviceId, device.name, () => `over the local Homey API (${EmsDevice._apiObjectSize(device)})`);
     if (measured && device && this._noteAvailability(deviceId, device) === false) return null;
     const capObj = device?.capabilitiesObj || device?.capabilities || {};
     const entry  = !Array.isArray(capObj) ? capObj[capId] : null;
@@ -1065,12 +1065,28 @@ class EmsDevice extends Device {
   }
 
   // Once per device and app start, how the EMS reads it — the line that shows on a real Homey
-  // whether the direct path is taken.
+  // whether the direct path is taken. `how` may be a function, so what it costs to work out
+  // is paid only for that one line.
   _noteReadPath(deviceId, name, how) {
     if (!this._readPathNoted) this._readPathNoted = new Set();
     if (this._readPathNoted.has(deviceId)) return;
     this._readPathNoted.add(deviceId);
-    this.log(`[EMS] "${name || deviceId}" is read ${how}`);
+    this.log(`[EMS] "${name || deviceId}" is read ${typeof how === 'function' ? how() : how}`);
+  }
+
+  // What one read of a device over the API carries: the whole object, every capability with
+  // its title, units and options, for the one or two values the EMS uses. Measured to decide
+  // whether reading single values instead is worth it (2026-10-11).
+  static _apiObjectSize(device) {
+    let size = '?';
+    try {
+      const kb = JSON.stringify(device).length / 1024;
+      size = kb < 10 ? `${kb.toFixed(1)} KB` : `${Math.round(kb)} KB`;
+    } catch (_) { /* left '?' */ }
+    const caps = device && device.capabilitiesObj && typeof device.capabilitiesObj === 'object'
+      ? Object.keys(device.capabilitiesObj).length
+      : (device && Array.isArray(device.capabilities) ? device.capabilities.length : 0);
+    return `${size}, ${caps} capabilities`;
   }
 
   // One line when a device the EMS measures goes away, one when it is back — not one per tick.

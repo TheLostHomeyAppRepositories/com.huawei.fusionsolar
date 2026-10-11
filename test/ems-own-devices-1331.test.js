@@ -112,8 +112,33 @@ test('the log says once per device how it is read — the check on a real Homey'
   }
   assert.deepStrictEqual(d.logs, [
     '[EMS] "Wechselrichter" is read directly in the app',
-    '[EMS] "Easee" is read over the local Homey API',
+    '[EMS] "Easee" is read over the local Homey API (0.1 KB, 1 capabilities)',
   ]);
+});
+
+// 1.2.334: how much one API read carries — to decide whether reading single values pays.
+test('the line for a device of another app says how big the object is and how many capabilities it has', () => {
+  const caps = Object.fromEntries(Array.from({ length: 112 }, (_, i) => [`measure_temperature.c${i}`, {
+    id: `measure_temperature.c${i}`, type: 'number', title: `Temperatur ${i}`, units: '°C', value: 21.5,
+    lastUpdated: '2026-10-11T10:00:00.000Z', getable: true, setable: false, insights: true, decimals: 1,
+  }]));
+  const big = { id: 'lux', name: 'CTA Luxtronik', available: true, capabilitiesObj: caps };
+  const kb = Math.round(JSON.stringify(big).length / 1024);
+  assert.ok(kb >= 10, 'the fixture should be over 10 KB');
+  assert.strictEqual(EmsDevice._apiObjectSize(big), `${kb} KB, 112 capabilities`);
+  assert.strictEqual(EmsDevice._apiObjectSize({ capabilities: ['onoff', 'measure_power'] }), '0.0 KB, 2 capabilities');
+  assert.strictEqual(EmsDevice._apiObjectSize(null), '0.0 KB, 0 capabilities');
+  const circular = { capabilitiesObj: {} };
+  circular.self = circular;
+  assert.strictEqual(EmsDevice._apiObjectSize(circular), '?, 0 capabilities');
+});
+
+test('the size is worked out once per device and start, not on every tick', async () => {
+  let serialised = 0;
+  const easee = { ...rest('easee', 'Easee', { measure_power: 2 }), toJSON() { serialised++; return { id: 'easee' }; } };
+  const d = ems([], { easee });
+  for (let i = 0; i < 5; i++) { await d._cap('easee', 'measure_power'); d._devCache = new Map(); }
+  assert.strictEqual(serialised, 1);
 });
 
 test('a device deleted while the tick runs reads as missing, not as an error', async () => {
@@ -285,6 +310,7 @@ test('no runtime code calls process.memoryUsage() any more', () => {
 test('the diagnostics card shows what was read and skips what was not', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'settings', 'index.html'), 'utf8');
   assert.ok(/memRow\('residentRss', mem\.peakRss\)/.test(html));
+  assert.ok(/Number\(v\)\.toFixed\(1\) \+ ' MB'/.test(html), 'a whole number shows as "4 MB" beside "19.2 MB" again');
   assert.ok(!/mem\.arrayBuffers|mem\.rss\b/.test(html), 'the card still asks for a figure that is no longer read');
   for (const lang of ['en', 'de', 'nl']) {
     const labels = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8')).settings.diagLabels;

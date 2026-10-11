@@ -1,4 +1,9 @@
 {
+  "1.2.334": {
+    "en": "Energy Management System: the log line for a device of another app now also says how big the object read from the Homey API is and how many capabilities it has — to see whether reading single values would save memory. The memory card in the diagnostics shows every figure with one decimal.",
+    "de": "Energieverwaltung: Die Log-Zeile für ein Gerät einer anderen App nennt jetzt auch, wie gross das von der Homey-API gelesene Objekt ist und wie viele Capabilities es hat – um zu sehen, ob das Lesen einzelner Werte Speicher sparen würde. Die Speicherkarte in der Diagnose zeigt alle Werte mit einer Nachkommastelle.",
+    "nl": "Energiebeheer: de logregel voor een apparaat van een andere app vermeldt nu ook hoe groot het van de Homey-API gelezen object is en hoeveel capabilities het heeft — om te zien of het lezen van losse waarden geheugen zou besparen. De geheugenkaart in de diagnose toont alle waarden met één decimaal."
+  },
   "1.2.333": {
     "en": "The app reads its own memory use in a way that works on Homey: the usual call failed there and stopped 1.2.331. The memory line in the log and the memory card in the Energy Management diagnostics now show the peak memory, the JS heap and the native buffers — the card stayed empty on every Homey until now.",
     "de": "Die App liest ihren Speicherverbrauch jetzt auf eine Art, die auf Homey funktioniert: Der übliche Aufruf schlug dort fehl und hielt 1.2.331 an. Die Speicherzeile im Log und die Speicherkarte in der Diagnose der Energieverwaltung zeigen jetzt den Höchstwert des Speichers, den JS-Heap und die nativen Buffer – die Karte blieb bisher auf jedem Homey leer.",
