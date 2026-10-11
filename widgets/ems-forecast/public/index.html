@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+    /* One palette for every widget of this app (review 2026-10-11, package C). The same block
+       stands in each widget, because a widget cannot load another widget's files, and
+       test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+       the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+       dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+       is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+    :root {
+      --energy-pv: #F59E0B;
+      --energy-battery: #8B5CF6;
+      --energy-house: var(--homey-color-blue);
+      --energy-import: var(--homey-color-red);
+      --energy-export: var(--homey-color-green);
+    }
     /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
        pan, rubber-band scroll and long-press selection all read as the widget
        misbehaving when the user only meant to scroll the dashboard past it. */
@@ -53,7 +66,7 @@
     color: var(--homey-text-color-light);
   }
   .sec-status { min-height: var(--homey-line-height-small); }
-  .sec-status.warn { color: var(--homey-text-color-warning, #f5a524); }
+  .sec-status.warn { color: var(--homey-text-color-warning); }
 
   /* Max, now and min each stay on one line; in a phone column they used to break inside
      themselves into three lines each ("▲ / 6,42 / kW"). Now a whole figure moves to the next
@@ -63,9 +76,11 @@
   /* Room above the bars for the "now" figure. */
   .chart { display: flex; align-items: flex-end; height: 56px; gap: 1px; position: relative; }
   .bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0; position: relative; }
-  /* The figure for now sits between max and min, in the colour of its bar. Above the bar it
-     was cut off at the left edge, where "now" always is. */
-  .minmax-row .now { color: var(--homey-color-blue); font-weight: var(--homey-font-weight-bold); }
+  /* The figure for now sits between max and min. Above the bar it was cut off at the left
+     edge, where "now" always is. It is in the text colour, bold; its bar is the full-strength
+     one among lighter bars. A blue "now" bar inside the amber PV forecast read as the house
+     (review 2026-10-11). */
+  .minmax-row .now { color: var(--homey-text-color); font-weight: var(--homey-font-weight-bold); }
   .axis-row { display: flex; gap: 1px; margin-top: var(--homey-su-1); }
   .axis-cell { flex: 1; min-width: 2px; text-align: center; white-space: nowrap; overflow: visible; }
 
@@ -275,7 +290,8 @@ function fitHeight(Homey, el) {
 
   // Generic bar-chart renderer shared by both sections — mirrors the settings
   // page's own price-forecast chart (App Settings → Electricity Price).
-  // slots: [{ start, end, value }] ascending; colorFn(pct 0..100, isNow) -> css color.
+  // slots: [{ start, end, value }] ascending; colorFn(pct 0..100) -> css color. The bar for
+  // now is drawn at full strength, the others lighter.
   function renderChart(chartEl, axisEl, minMaxEl, slots, nowMs, opts) {
     if (!slots.length) {
       chartEl.innerHTML = '';
@@ -300,9 +316,10 @@ function fitHeight(Homey, el) {
       var pct    = Math.round(((s.value - min) / range) * 100);
       var height = Math.max(6, pct);
       var isNow  = s.start <= nowMs && nowMs < s.end;
-      var bg     = opts.colorFn(pct, isNow);
+      var bg     = opts.colorFn(pct);
       var title  = opts.formatLabel(s, isNow);
-      barsHtml += '<div class="bar" title="' + esc(title) + '" style="height:' + height + '%;background:' + bg + '">' +
+      var dim    = nowSlot && !isNow ? ';opacity:0.5' : '';
+      barsHtml += '<div class="bar" title="' + esc(title) + '" style="height:' + height + '%;background:' + bg + dim + '">' +
         '</div>';
     });
     chartEl.innerHTML = barsHtml;
@@ -358,9 +375,7 @@ function fitHeight(Homey, el) {
         return new Date(s.start).toLocaleString(activeLang || undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) +
           ': ' + fmtNum(s.value, 2) + ' kW' + (isNow ? ' (' + T.now + ')' : '');
       },
-      colorFn: function (pct, isNow) {
-        return isNow ? 'var(--homey-color-blue, #007aff)' : 'var(--homey-color-orange, #f5a524)';
-      },
+      colorFn: function () { return 'var(--energy-pv)'; },
     });
   }
 
@@ -399,8 +414,7 @@ function fitHeight(Homey, el) {
         return new Date(s.start).toLocaleString(activeLang || undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) +
           ': ' + fmtNum(s.value, 3) + ' ' + currency + (isNow ? ' (' + T.now + ')' : '');
       },
-      colorFn: function (pct, isNow) {
-        if (isNow) return 'var(--homey-color-blue, #007aff)';
+      colorFn: function (pct) {
         var hue = Math.round(120 - (pct / 100) * 120); // 120=green (cheap) → 0=red (expensive)
         return 'hsl(' + hue + ',65%,50%)';
       },

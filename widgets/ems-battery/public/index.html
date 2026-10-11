@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+    /* One palette for every widget of this app (review 2026-10-11, package C). The same block
+       stands in each widget, because a widget cannot load another widget's files, and
+       test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+       the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+       dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+       is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+    :root {
+      --energy-pv: #F59E0B;
+      --energy-battery: #8B5CF6;
+      --energy-house: var(--homey-color-blue);
+      --energy-import: var(--homey-color-red);
+      --energy-export: var(--homey-color-green);
+    }
     /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
        pan, rubber-band scroll and long-press selection all read as the widget
        misbehaving when the user only meant to scroll the dashboard past it. */
@@ -33,8 +46,6 @@
   /* In a phone column "Batterienutzung" pushed the charge level off the edge; the title gives
      way now, the figure does not (review 2026-10-11). */
   .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .soc.green  { color: var(--homey-color-green); }
-  .soc.red    { color: var(--homey-color-red); }
   .kwh-line, .status-line, .zone-field .pct, .zone-field label, .no-data {
     font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small);
     color: var(--homey-text-color-light);
@@ -47,8 +58,10 @@
     background: var(--homey-line-color-light); display: flex;
   }
   .bar-fill { height: 100%; transition: width 0.3s ease; }
-  .bar-fill.green  { background: var(--homey-color-green); }
-  .bar-fill.red    { background: var(--homey-color-red); }
+  /* The battery's colour, red below the stop level. The figure above stays in the text colour
+     (review 2026-10-11). */
+  .bar-fill.green  { background: var(--energy-battery); }
+  .bar-fill.red    { background: var(--homey-color-danger); }
   .bar-marker {
     position: absolute; top: -3px; width: 2px; height: 22px; background: var(--homey-text-color-light);
   }
@@ -68,8 +81,8 @@
     margin-top: var(--homey-su-3); padding-top: var(--homey-su-3); border-top: var(--homey-line);
   }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .status-dot.charge { background: var(--homey-color-green); }
-  .status-dot.hold   { background: var(--homey-color-orange, #f5a524); }
+  .status-dot.charge { background: var(--energy-battery); }
+  .status-dot.hold   { background: var(--homey-color-orange); }
   .status-dot.idle   { background: var(--homey-line-color); }
 
   .no-data { text-align: center; padding: var(--homey-su-4) var(--homey-su-1); }
@@ -231,7 +244,7 @@ function onHomeyReady(Homey) {
   function flashError(msg) {
     errorUntil = Date.now() + 4000;
     statusText.textContent = '⚠ ' + msg;
-    statusText.style.color = 'var(--homey-text-color-red, #ef4444)';
+    statusText.style.color = 'var(--homey-text-color-danger)';
     // The message is longer than the status it replaces and wraps; its last line was cut
     // off at the height of the status line (review 2026-10-11).
     syncHeight();

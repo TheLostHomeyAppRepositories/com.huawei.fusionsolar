@@ -87,7 +87,7 @@ function hover(names) {
   const el = () => ({ style: {}, innerHTML: '', offsetWidth: 100, offsetHeight: 60, clientWidth: 400 });
   const ctx = {
     activeLang: 'en', _nf: {}, CHART_H: 200, M: { top: 8, right: 8, bottom: 26, left: 46 },
-    COLORS: ['#22C55E', '#3B82F6', '#8B5CF6', '#EF4444'],
+    COLORS: ['var(--energy-pv)', 'var(--energy-battery)', 'var(--energy-import)', 'var(--energy-house)'], SPLIT: 2,
     xhairEl: el(), tipEl: el(),
     document: { querySelector: () => null, getElementById: () => el() },
     G: {
@@ -96,7 +96,7 @@ function hover(names) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['escHtml', 'fmtNum', 'fmt', 'fmtDay', 'fmtTime', 'valuesOf', 'findNearest', 'hideHover', 'showHover']) {
+  for (const f of ['escHtml', 'fmtNum', 'fmt', 'fmtDay', 'fmtTime', 'valuesOf', 'findNearest', 'hideHover', 'colorAt', 'showHover']) {
     vm.runInContext(fnSource(CHART, f), ctx);
   }
   vm.runInContext('showHover(196)', ctx);

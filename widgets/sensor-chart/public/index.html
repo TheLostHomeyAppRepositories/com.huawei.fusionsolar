@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sensor Chart</title>
 <style>
+    /* One palette for every widget of this app (review 2026-10-11, package C). The same block
+       stands in each widget, because a widget cannot load another widget's files, and
+       test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+       the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+       dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+       is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+    :root {
+      --energy-pv: #F59E0B;
+      --energy-battery: #8B5CF6;
+      --energy-house: var(--homey-color-blue);
+      --energy-import: var(--homey-color-red);
+      --energy-export: var(--homey-color-green);
+    }
     /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
        pan, rubber-band scroll and long-press selection all read as the widget
        misbehaving when the user only meant to scroll the dashboard past it. */
@@ -21,7 +34,9 @@
      big enough for a finger (1.2.300; the axes were 7–8 px, the legend 10 px). */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body { overflow: hidden; }
+  /* The text colour also draws the grid lines (currentColor): without it they were black on a
+     dark dashboard (review 2026-10-11). */
+  body { overflow: hidden; color: var(--homey-text-color); }
 
   /* ── Header row ── */
   /* The stepper takes ~95 px. In a phone column the legend beside it shrank until the series
@@ -238,7 +253,14 @@ function applyLang(code) {
 }
 
 /* ── Config ──────────────────────────────────────────── */
-var COLORS  = ['#22C55E', '#3B82F6', '#8B5CF6', '#EF4444'];
+/* The four slots are PV, battery, grid and house — the widget settings name them so — and
+   take those colours from the app's palette (top of the stylesheet). Before, PV was green and
+   the house red, the other widgets' export and import (review 2026-10-11). The grid draws
+   import red above zero and export green below; positive is import in every meter of this
+   app. SVG attributes do not resolve var(), so the chart sets them as style. */
+var COLORS  = ['var(--energy-pv)', 'var(--energy-battery)', 'var(--energy-import)', 'var(--energy-house)'];
+var SPLIT   = 2;
+function colorAt(i, v) { return (i === SPLIT && v < 0) ? 'var(--energy-export)' : COLORS[i]; }
 var CHART_H = 200;
 var M       = { top: 8, right: 8, bottom: 26, left: 46 };
 /* Preset time-range steps in hours. Beyond 24 h the app answers from its quarter-hour
@@ -411,11 +433,13 @@ function updateLegend(series, names) {
     var item = document.createElement('div');
     item.className = 'legend-item';
     var line = document.createElement('div');
-    line.className = 'legend-line'; line.style.background = COLORS[i];
+    line.className = 'legend-line';
+    line.style.background = i === SPLIT
+      ? 'linear-gradient(90deg, var(--energy-import) 50%, var(--energy-export) 50%)' : COLORS[i];
     var name = document.createElement('span');
     name.className = 'legend-name'; name.textContent = names[i] || ('S' + (i+1));
     var val = document.createElement('span');
-    val.className = 'legend-val'; val.style.color = COLORS[i];
+    val.className = 'legend-val';
     val.setAttribute('data-series-idx', i);
     // The app's current reading — none for a device that went away, instead of the last
     // value it ever had, drawn as if it were live.
@@ -488,9 +512,20 @@ function renderChart(series, hours) {
     if (!s || !s.points || !s.points.length) return;
     var c = COLORS[i];
     svg += '<linearGradient id="grd' + i + '" x1="0" y1="0" x2="0" y2="1">'
-         + '<stop offset="0%"   stop-color="' + c + '" stop-opacity="0.22"/>'
-         + '<stop offset="85%"  stop-color="' + c + '" stop-opacity="0.04"/>'
-         + '<stop offset="100%" stop-color="' + c + '" stop-opacity="0"/>'
+         + '<stop offset="0%"   style="stop-color:' + c + ';stop-opacity:0.22"/>'
+         + '<stop offset="85%"  style="stop-color:' + c + ';stop-opacity:0.04"/>'
+         + '<stop offset="100%" style="stop-color:' + c + ';stop-opacity:0"/>'
+         + '</linearGradient>';
+  });
+  /* The grid: red above the zero line, green below — for its line and, fainter, its area. */
+  var zeroY = Math.min(M.top + innerH, Math.max(M.top, ty(0)));
+  var zeroAt = ((zeroY - M.top) / innerH).toFixed(4);
+  ['gsplit', 'gsplitA'].forEach(function (id, k) {
+    var op = k ? ';stop-opacity:0.16' : '';
+    svg += '<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="0" y1="' + M.top
+         + '" x2="0" y2="' + (M.top + innerH) + '">'
+         + '<stop offset="' + zeroAt + '" style="stop-color:var(--energy-import)' + op + '"/>'
+         + '<stop offset="' + zeroAt + '" style="stop-color:var(--energy-export)' + op + '"/>'
          + '</linearGradient>';
   });
   svg += '</defs>';
@@ -542,20 +577,24 @@ function renderChart(series, hours) {
   /* Series: area fill + line + end dot */
   series.forEach(function(s, i) {
     if (!s || !s.points) return;
-    var base = (M.top + innerH).toFixed(1);
+    // Areas reach to the zero line, not to the bottom edge: the scale pads below zero, and a
+    // battery or the grid goes below it.
+    var base = zeroY.toFixed(1);
+    var stroke = i === SPLIT ? 'url(#gsplit)' : COLORS[i];
+    var fill   = i === SPLIT ? 'url(#gsplitA)' : 'url(#grd' + i + ')';
     var runs = runsOf(s.points);
     runs.forEach(function(run) {
       var coords = run.map(function(p) { return [tx(new Date(p.t).getTime()), ty(p.v)]; });
       if (coords.length < 2) {
         svg += '<circle cx="' + coords[0][0].toFixed(1) + '" cy="' + coords[0][1].toFixed(1)
-             + '" r="1.5" fill="' + COLORS[i] + '"/>';
+             + '" r="1.5" style="fill:' + colorAt(i, run[0].v) + '"/>';
         return;
       }
       var line = smoothPath(coords);
       var area = line + ' L' + coords[coords.length-1][0].toFixed(1) + ',' + base
                + ' L' + coords[0][0].toFixed(1) + ',' + base + ' Z';
-      svg += '<path d="' + area + '" fill="url(#grd' + i + ')" clip-path="url(#cc)"/>';
-      svg += '<path d="' + line + '" fill="none" stroke="' + COLORS[i]
+      svg += '<path d="' + area + '" style="fill:' + fill + '" clip-path="url(#cc)"/>';
+      svg += '<path d="' + line + '" fill="none" style="stroke:' + stroke
            + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#cc)"/>';
     });
     // The end dot marks "now" — only where there is a reading now.
@@ -564,9 +603,9 @@ function renderChart(series, hours) {
       var lpt = lastRun[lastRun.length - 1];
       var lp  = [tx(new Date(lpt.t).getTime()), ty(lpt.v)];
       svg += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1)
-           + '" r="5.5" fill="' + COLORS[i] + '" opacity="0.18"/>';
+           + '" r="5.5" style="fill:' + colorAt(i, lpt.v) + '" opacity="0.18"/>';
       svg += '<circle cx="' + lp[0].toFixed(1) + '" cy="' + lp[1].toFixed(1)
-           + '" r="2.8" fill="' + COLORS[i] + '"/>';
+           + '" r="2.8" style="fill:' + colorAt(i, lpt.v) + '"/>';
     }
   });
 
@@ -613,9 +652,9 @@ function showHover(mouseX) {
     if (!pt) return;
     rows++;
     html += '<div class="tt-row">'
-          + '<span class="tt-dot" style="background:' + COLORS[i] + '"></span>'
+          + '<span class="tt-dot" style="background:' + colorAt(i, pt.v) + '"></span>'
           + '<span class="tt-name">' + escHtml(names[i] || 'S'+(i+1)) + '</span>'
-          + '<span class="tt-val" style="color:' + COLORS[i] + '">' + fmt(pt.v) + '</span>'
+          + '<span class="tt-val">' + fmt(pt.v) + '</span>'
           + '</div>';
     /* update legend value to reflect hovered position */
     var el = document.querySelector('.legend-val[data-series-idx="' + i + '"]');

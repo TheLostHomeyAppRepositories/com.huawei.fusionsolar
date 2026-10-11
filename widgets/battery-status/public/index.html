@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Battery Status</title>
 <style>
+    /* One palette for every widget of this app (review 2026-10-11, package C). The same block
+       stands in each widget, because a widget cannot load another widget's files, and
+       test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+       the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+       dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+       is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+    :root {
+      --energy-pv: #F59E0B;
+      --energy-battery: #8B5CF6;
+      --energy-house: var(--homey-color-blue);
+      --energy-import: var(--homey-color-red);
+      --energy-export: var(--homey-color-green);
+    }
     /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
        pan, rubber-band scroll and long-press selection all read as the widget
        misbehaving when the user only meant to scroll the dashboard past it. */
@@ -75,7 +88,7 @@
     height: 100%;
     border-radius: 6px;
     transition: width 0.4s ease;
-    background: var(--homey-color-green);
+    background: var(--energy-battery);
   }
 
   .soc-meta {
@@ -192,7 +205,7 @@
 <div id="content">
 <div class="soc-row">
   <div class="soc-left">
-    <svg class="soc-icon" id="soc-batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--homey-color-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg class="soc-icon" id="soc-batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--energy-battery)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="7" width="16" height="10" rx="2"/>
       <line x1="22" y1="10" x2="22" y2="14"/>
     </svg>
@@ -220,7 +233,7 @@
 <div class="stats-row">
   <div class="row-tile">
     <div class="stat-label">
-      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--homey-color-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--energy-battery)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="19" x2="12" y2="5"/>
         <polyline points="5,12 12,5 19,12"/>
       </svg>
@@ -230,7 +243,7 @@
   </div>
   <div class="row-tile">
     <div class="stat-label">
-      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" style="stroke:#F97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="stat-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--energy-battery)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <polyline points="19,12 12,19 5,12"/>
       </svg>
@@ -423,13 +436,13 @@ function onHomeyReady(Homey) {
 
     // SoC
     var soc = data.soc;
-    var socColor = 'var(--homey-color-green)';
+    // The battery's own colour, red only when it runs low. A third, orange step for 20–39 %
+    // read as "discharging", the colour the direction had beside it (review 2026-10-11).
+    var socColor = 'var(--energy-battery)';
     if (soc !== null && soc !== undefined) {
       document.getElementById('soc-num').textContent = fmtNum(Math.round(soc), 0) + ' %';
       document.getElementById('soc-fill').style.width = Math.min(100, Math.max(0, soc)) + '%';
-      if      (soc < 20) socColor = 'var(--homey-color-red)';
-      else if (soc < 40) socColor = '#F97316';
-      else               socColor = 'var(--homey-color-green)';
+      if (soc < 20) socColor = 'var(--homey-color-danger)';
       document.getElementById('soc-fill').style.background = socColor;
       document.getElementById('soc-batt-icon').style.stroke = socColor;
     } else {
@@ -495,21 +508,19 @@ function onHomeyReady(Homey) {
     document.getElementById('power-val').textContent = fmtW(pw);
     var powerIcon = document.getElementById('power-icon');
     var powerDir  = document.getElementById('power-dir');
+    // Charging and discharging both in the battery's colour; the word says which way.
     if (pw > 50) {
-      powerIcon.style.stroke = 'var(--homey-color-green)';
+      powerIcon.style.stroke = 'var(--energy-battery)';
       powerIcon.setAttribute('class', 'power-icon pulsing');
       powerDir.textContent = T.charging;
-      powerDir.style.color = 'var(--homey-color-green)';
     } else if (pw < -50) {
-      powerIcon.style.stroke = '#F97316';
+      powerIcon.style.stroke = 'var(--energy-battery)';
       powerIcon.setAttribute('class', 'power-icon pulsing');
       powerDir.textContent = T.discharging;
-      powerDir.style.color = '#F97316';
     } else {
       powerIcon.style.stroke = 'var(--homey-text-color-light)';
       powerIcon.setAttribute('class', 'power-icon');
       powerDir.textContent = T.standby;
-      powerDir.style.color = '';
     }
 
     document.getElementById('charged-val').textContent    = fmtKwh(data.todayChargedKwh);

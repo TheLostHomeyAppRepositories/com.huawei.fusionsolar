@@ -15,18 +15,32 @@
       -webkit-touch-callout: none;
     }
 
-/* Colors come from Homey's own --homey-* variables (widget styling guide),
-   which follow the dashboard's light/dark setting. The previous version keyed
-   dark-mode overrides off ":root[data-theme=dark]" — that's the Artifacts
-   convention, not Homey's; Homey never sets that attribute, so this widget
-   was permanently stuck in light styling. The handful of accent dot colors
-   with no direct --homey- equivalent are now gated on Homey's actual
-   .homey-dark-mode marker class instead. */
-/* Sizes and spacing from Homey's widget styling guide too (1.2.300): no text below
-   --homey-font-size-small (it went down to 9 px), no second card inside Homey's frame, no
-   shadows, buttons big enough for a finger. The widget's name is Homey's title above the
-   tile, so it is not repeated inside it. The list scrolls inside the fixed height: a day
-   can hold a hundred events. */
+/* One palette for every widget of this app (review 2026-10-11, package C). The same block
+   stands in each widget, because a widget cannot load another widget's files, and
+   test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+   the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+   dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+   is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+:root {
+  --energy-pv: #F59E0B;
+  --energy-battery: #8B5CF6;
+  --energy-house: var(--homey-color-blue);
+  --energy-import: var(--homey-color-red);
+  --energy-export: var(--homey-color-green);
+}
+/* Sizes and spacing come from Homey's widget styling guide (1.2.300):
+   - no text below --homey-font-size-small (it went down to 9 px);
+   - no second card inside Homey's frame, no shadows;
+   - the widget's name is Homey's title above the tile, so it is not repeated inside it.
+
+   The height follows the list up to the manifest's 420 px; beyond that the list scrolls,
+   because a day can hold a hundred events (review 2026-10-11).
+
+   Each event is marked by what it is, not by a colour to learn:
+   - the icon says the kind (sun, plug, battery, car, warning);
+   - the colour says where the energy came from, or whether something went wrong.
+   Before, 22 fixed dot colours stood without a legend. Green meant solar, battery and a
+   device start alike, and grey meant waiting, stopped and a warning. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body { height: 100%; color: var(--homey-text-color); }
@@ -43,24 +57,37 @@ html, body { height: 100%; color: var(--homey-text-color); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--homey-su-2);
+  margin-bottom: var(--homey-su-1);
   flex-shrink: 0;
-  gap: var(--homey-su-1);
 }
+/* A 44 px target for a finger, drawn as a 32 px ring (they were 32 px, with ◀ ▶ ↻ as text). */
 .nav-btn, .refresh-btn {
-  width: 32px; height: 32px;
+  position: relative;
+  width: 44px; height: 44px;
   display: flex; align-items: center; justify-content: center;
   background: none;
-  border: var(--homey-line);
-  border-radius: 50%;
+  border: none;
   cursor: pointer;
-  font-size: var(--homey-font-size-small);
   color: var(--homey-text-color-blue, var(--homey-color-blue));
-  line-height: 1;
   flex-shrink: 0;
 }
-.refresh-btn { color: var(--homey-text-color-light); font-size: var(--homey-font-size-default); }
-.nav-btn:focus-visible, .refresh-btn:focus-visible { outline: 2px solid var(--homey-color-blue); outline-offset: 2px; }
+.nav-btn::before, .refresh-btn::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: var(--homey-line);
+  border-radius: 50%;
+}
+.nav-btn svg, .refresh-btn svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.refresh-btn { color: var(--homey-text-color-light); }
+/* In a phone column three buttons left the day 36 px ("He…"). The list refreshes itself
+   every 30 s and on return, so the refresh button gives way there. */
+@media (max-width: 239px) { .refresh-btn { display: none; } }
+.nav-btn:focus-visible, .refresh-btn:focus-visible { outline: none; }
+.nav-btn:focus-visible::before, .refresh-btn:focus-visible::before { border: 2px solid var(--homey-color-blue); }
 .nav-btn:disabled { color: var(--homey-text-color-light); opacity: 0.4; cursor: default; }
 
 .day-label-nav {
@@ -70,6 +97,7 @@ html, body { height: 100%; color: var(--homey-text-color); }
   color: var(--homey-text-color);
   text-align: center;
   flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -77,20 +105,19 @@ html, body { height: 100%; color: var(--homey-text-color); }
 
 /* Timeline */
 .timeline {
-  display: flex;
-  flex-direction: column;
   flex: 1;
   overflow-y: auto;
   padding-bottom: var(--homey-su-2);
   touch-action: pan-y;
 }
+#tl-list { display: flex; flex-direction: column; }
 
 .day-label {
   font-size: var(--homey-font-size-small);
   line-height: var(--homey-line-height-small);
   font-weight: var(--homey-font-weight-medium);
   color: var(--homey-text-color-light);
-  padding: var(--homey-su-2) 0 var(--homey-su-1) 22px;
+  padding: var(--homey-su-2) 0 var(--homey-su-1) 30px;
 }
 
 .event-row {
@@ -101,41 +128,41 @@ html, body { height: 100%; color: var(--homey-text-color); }
   position: relative;
 }
 
-/* Vertical line */
+/* The line that joins the marks */
 .event-row::before {
   content: '';
   position: absolute;
-  left: 6px;
-  top: 18px;
+  left: 10px;
+  top: 28px;
   bottom: -4px;
   width: 1px;
   background: var(--homey-line-color-light);
 }
 .event-row:last-child::before { display: none; }
 
-/* System events get a separator feel */
-.event-row.ev-system { margin: var(--homey-su-1) 0 2px; }
-.event-row.ev-system::before { background: var(--homey-line-color); }
-
-.dot {
-  width: 13px;
-  height: 13px;
+.mark {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 4px;
-  border: 2px solid var(--homey-background-color);
-  outline: 1px solid var(--homey-line-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--homey-line-light);
+  background: var(--homey-background-color);
 }
-
-/* System events: diamond shape instead of circle */
-.ev-system .dot {
-  border-radius: 3px;
-  transform: rotate(45deg);
-  width: 10px;
-  height: 10px;
-  margin-top: 5px;
-  margin-left: 1px;
+.mark svg {
+  width: 14px; height: 14px;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
 }
+.tone-pv      { color: var(--energy-pv); }
+.tone-grid    { color: var(--energy-import); }
+.tone-battery { color: var(--energy-battery); }
+.tone-export  { color: var(--energy-export); }
+.tone-on      { color: var(--homey-text-color); }
+.tone-off     { color: var(--homey-text-color-light); }
+.tone-warn    { color: var(--homey-color-warning); }
+.tone-error   { color: var(--homey-color-danger); }
 
 .event-body { flex: 1; min-width: 0; }
 
@@ -145,7 +172,7 @@ html, body { height: 100%; color: var(--homey-text-color); }
   gap: var(--homey-su-1);
 }
 
-.event-mode, .event-time, .event-detail {
+.event-mode, .event-time, .event-detail, .notice {
   font-size: var(--homey-font-size-small);
   line-height: var(--homey-line-height-small);
 }
@@ -157,7 +184,7 @@ html, body { height: 100%; color: var(--homey-text-color); }
   text-overflow: ellipsis;
 }
 
-/* System events dimmer label */
+/* App and forecast events stand back from what the EMS did */
 .ev-system .event-mode { color: var(--homey-text-color-light); }
 
 .event-time {
@@ -175,61 +202,28 @@ html, body { height: 100%; color: var(--homey-text-color); }
   text-overflow: ellipsis;
 }
 
+/* A failed refresh above the list it could not update */
+.notice { color: var(--homey-text-color-danger); padding-bottom: var(--homey-su-1); }
+
 .empty {
   font-size: var(--homey-font-size-small);
   line-height: var(--homey-line-height-small);
   color: var(--homey-text-color-light);
   text-align: center;
   padding: var(--homey-su-6) 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-
-/* ── Dot colours — deliberately constant across themes (each color IDs an
-   EMS mode/event type, not a text-on-background contrast choice) ── */
-.dot-solar-ev           { background: #34c759; }
-.dot-solar-hp           { background: #30d158; }
-.dot-solar-boiler       { background: #32ade6; }
-.dot-solar-pool         { background: #00c7be; }
-.dot-offpeak-ev         { background: #007aff; }
-.dot-lowtariff-ev       { background: #5ac8fa; }
-.dot-price-ev           { background: #5856d6; }
-.dot-instant-ev         { background: #af52de; }
-.dot-battery            { background: #ff9500; }
-.dot-holding            { background: #c7c7cc; }
-.dot-idle               { background: #d1d1d6; }
-.dot-disabled           { background: #d1d1d6; }
-.dot-error              { background: #ff3b30; }
-.dot-dev-start          { background: #34c759; }
-.dot-dev-stop           { background: #ff6b6b; }
-.dot-charger-start      { background: #007aff; }
-.dot-charger-amps       { background: #5ac8fa; }
-.dot-charger-stop       { background: #c7c7cc; }
-.dot-export-limit-on    { background: #ff9f0a; }
-.dot-export-limit-off   { background: #aeaeb2; }
-.dot-app-start          { background: #8e8e93; }
-.dot-app-update         { background: #5e5ce6; }
-
-/* The three neutral-grey dots are too washed-out on a dark card — darken them
-   using Homey's actual dark-mode marker class (not the Artifacts data-theme
-   attribute, which Homey never sets). */
-.homey-dark-mode .dot-holding  { background: #5a5a5f; }
-.homey-dark-mode .dot-idle     { background: #4a4a4f; }
-.homey-dark-mode .dot-disabled { background: #4a4a4f; }
 </style>
 </head>
 <body class="homey-widget">
 <div class="card">
   <div class="day-nav">
-    <button class="nav-btn" id="nav-prev">◀</button>
+    <button class="nav-btn" id="nav-prev"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15,5 8,12 15,19"/></svg></button>
     <div class="day-label-nav" id="nav-day-label">—</div>
-    <button class="nav-btn" id="nav-next" disabled>▶</button>
-    <button class="refresh-btn" id="refresh-btn">↻</button>
+    <button class="nav-btn" id="nav-next" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9,5 16,12 9,19"/></svg></button>
+    <button class="refresh-btn" id="refresh-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><polyline points="20,4 20,9 15,9"/></svg></button>
   </div>
   <div class="timeline" id="timeline">
-    <div class="empty" id="initialLoading">…</div>
+    <div id="tl-list"><div class="empty" id="initialLoading">…</div></div>
   </div>
 </div>
 
@@ -253,7 +247,7 @@ var DICTS = (function () {
     appUpdated: 'App aktualisiert', appStarted: 'App gestartet',
     emsStarted: 'EMS gestartet', emsStopped: 'EMS gestoppt',
     batFull: 'Batterie voll', batLow: 'Batterie tief', batCharge: 'Zwangsladung', batDischarge: 'Zwangsentladung', batHold: 'Hält', batNormal: 'Normalbetrieb',
-    started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt', stopIneffective: '⚠ Stopp wirkungslos',
+    started: 'gestartet', chargerStarted: 'Lader gestartet', chargerAdjusted: 'Lader angepasst', chargerStopped: 'Lader gestoppt', stopIneffective: 'Stopp wirkungslos',
     targetReached: 'Ladeziel erreicht', targetReleased: 'Ladeziel aufgehoben',
     manualOn: 'ausserhalb des EMS eingeschaltet', manualOff: 'ausserhalb des EMS ausgeschaltet', startNoEffect: 'gestartet, aber ohne Wirkung',
     forecastGateOn: 'Prognose-Sperre aktiv', forecastGateOff: 'Prognose-Sperre aufgehoben', noEms: 'Kein EMS-Gerät gefunden',
@@ -273,7 +267,7 @@ var DICTS = (function () {
     appUpdated: 'App bijgewerkt', appStarted: 'App gestart',
     emsStarted: 'EMS gestart', emsStopped: 'EMS gestopt',
     batFull: 'Accu vol', batLow: 'Accu laag', batCharge: 'Geforceerd laden', batDischarge: 'Geforceerd ontladen', batHold: 'Houdt vast', batNormal: 'Normale modus',
-    started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt', stopIneffective: '⚠ Stop had geen effect',
+    started: 'gestart', chargerStarted: 'Lader gestart', chargerAdjusted: 'Lader aangepast', chargerStopped: 'Lader gestopt', stopIneffective: 'Stop had geen effect',
     targetReached: 'Laaddoel bereikt', targetReleased: 'Laaddoel opgeheven',
     manualOn: 'buiten de EMS om ingeschakeld', manualOff: 'buiten de EMS om uitgeschakeld', startNoEffect: 'gestart, maar zonder effect',
     forecastGateOn: 'Prognoseblokkering actief', forecastGateOff: 'Prognoseblokkering opgeheven', noEms: 'Geen EMS-apparaat gevonden',
@@ -293,7 +287,7 @@ var DICTS = (function () {
     appUpdated: 'App updated', appStarted: 'App started',
     emsStarted: 'EMS started', emsStopped: 'EMS stopped',
     batFull: 'Battery full', batLow: 'Battery low', batCharge: 'Forced charge', batDischarge: 'Forced discharge', batHold: 'Holding', batNormal: 'Normal mode',
-    started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped', stopIneffective: '⚠ Stop had no effect',
+    started: 'started', chargerStarted: 'Charger started', chargerAdjusted: 'Charger adjusted', chargerStopped: 'Charger stopped', stopIneffective: 'Stop had no effect',
     targetReached: 'Charge target reached', targetReleased: 'Charge target released',
     manualOn: 'switched on outside the EMS', manualOff: 'switched off outside the EMS', startNoEffect: 'started, but without effect',
     forecastGateOn: 'Forecast gate closed', forecastGateOff: 'Forecast gate open', noEms: 'No EMS device found',
@@ -321,7 +315,9 @@ function applyStaticTexts() {
   document.getElementById('refresh-btn').title       = T.refresh;
   document.getElementById('refresh-btn').setAttribute('aria-label', T.refresh);
   document.getElementById('nav-prev').title           = T.prevDay;
+  document.getElementById('nav-prev').setAttribute('aria-label', T.prevDay);
   document.getElementById('nav-next').title           = T.nextDay;
+  document.getElementById('nav-next').setAttribute('aria-label', T.nextDay);
   var initial = document.getElementById('initialLoading');
   if (initial) initial.textContent = T.loading;
   document.getElementById('nav-day-label').textContent = navLabel(dayOffset);
@@ -334,14 +330,37 @@ function applyLang(code) {
   return true;
 }
 
-// ── Mode metadata ──────────────────────────────────────────────────────────
-var MODE_DOTS = {
-  solar_ev: 'dot-solar-ev', solar_hp: 'dot-solar-hp', solar_boiler: 'dot-solar-boiler', solar_pool: 'dot-solar-pool',
-  solar_dehumidifier: 'dot-solar-hp', solar_aircon: 'dot-solar-hp', solar_multi: 'dot-solar-hp',
-  offpeak_ev: 'dot-offpeak-ev', lowtariff_ev: 'dot-lowtariff-ev', price_ev: 'dot-price-ev', instant_ev: 'dot-instant-ev',
-  battery_priority: 'dot-battery', holding: 'dot-holding', idle: 'dot-idle', disabled: 'dot-disabled',
-  not_configured: 'dot-disabled', error: 'dot-error', export_limit_on: 'dot-export-limit-on', export_limit_off: 'dot-export-limit-off',
+// ── Marks ──────────────────────────────────────────────────────────────────
+// A mark is an icon and a tone. The tone is the colour of the energy behind the event —
+// sun, grid, battery, export — or on, off, warning, fault (review 2026-10-11).
+var ICONS = {
+  sun:      '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/>',
+  plug:     '<path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/>',
+  bolt:     '<polygon points="13,2 4,14 12,14 11,22 20,10 12,10"/>',
+  battery:  '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 10.5v3"/>',
+  pause:    '<path d="M9 6v12M15 6v12"/>',
+  dash:     '<path d="M6 12h12"/>',
+  alert:    '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  power:    '<path d="M12 3v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+  car:      '<path d="M3 16v-4l2.5-5h13L21 12v4z"/><circle cx="7.5" cy="16" r="2"/><circle cx="16.5" cy="16" r="2"/>',
+  flag:     '<path d="M5 21V4h12l-2.5 4 2.5 4H5"/>',
+  export:   '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  restart:  '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
+  update:   '<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>',
+  cloud:    '<path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6 9.5 4.25 4.25 0 0 0 7 18z"/>',
 };
+var MODE_MARKS = {
+  solar_ev: 'sun pv', solar_hp: 'sun pv', solar_boiler: 'sun pv', solar_pool: 'sun pv',
+  solar_dehumidifier: 'sun pv', solar_aircon: 'sun pv', solar_multi: 'sun pv',
+  offpeak_ev: 'plug grid', lowtariff_ev: 'plug grid', price_ev: 'plug grid', instant_ev: 'bolt grid',
+  battery_priority: 'battery battery', holding: 'pause off', idle: 'dash off', disabled: 'dash off',
+  not_configured: 'dash off', error: 'alert error', export_limit_on: 'export export', export_limit_off: 'export off',
+};
+function markHtml(mark) {
+  var p = String(mark || 'dash off').split(' ');
+  return '<span class="mark tone-' + p[1] + '"><svg viewBox="0 0 24 24" aria-hidden="true">'
+       + (ICONS[p[0]] || ICONS.dash) + '</svg></span>';
+}
 
 var EXTRACT_MODES = { solar_ev:1, offpeak_ev:1, instant_ev:1 };
 
@@ -401,7 +420,7 @@ function eventInfo(ev) {
   if (ev.type === 'system') {
     // The forecast gate is a system event too, and was labelled "App started" (1.2.299).
     if (ev.event === 'forecast_gate_on' || ev.event === 'forecast_gate_off') {
-      return { cls: 'ev-system', dot: ev.event === 'forecast_gate_on' ? 'dot-holding' : 'dot-app-start',
+      return { cls: 'ev-system', mark: ev.event === 'forecast_gate_on' ? 'cloud on' : 'cloud off',
                label: ev.event === 'forecast_gate_on' ? T.forecastGateOn : T.forecastGateOff,
                detail: ev.label || '' };
     }
@@ -409,21 +428,20 @@ function eventInfo(ev) {
     var isStart  = ev.event === 'app_start';
     return {
       cls:    'ev-system',
-      dot:    isUpdate ? 'dot-app-update' : 'dot-app-start',
+      mark:   isUpdate ? 'update off' : 'restart off',
       label:  isUpdate ? T.appUpdated : isStart ? T.appStarted : ev.event,
       detail: ev.label || '',
     };
   }
   if (ev.type === 'mode') {
     var modeLabel = T.modes[ev.event] || ev.event;
-    var modeDot   = MODE_DOTS[ev.event] || 'dot-idle';
     var statusText = EXTRACT_MODES[ev.event]
       ? (fmtStatusDetail(ev.label) || ev.label || '')
       : (ev.label || '');
     var hasStatus = statusText && statusText !== '—';
     return {
       cls:    '',
-      dot:    modeDot,
+      mark:   MODE_MARKS[ev.event] || 'dash off',
       label:  hasStatus ? statusText : modeLabel,
       detail: hasStatus ? modeLabel : '',
     };
@@ -434,8 +452,7 @@ function eventInfo(ev) {
     var BAT = { battery_full: T.batFull, battery_low: T.batLow, battery_charge: T.batCharge,
                 battery_discharge: T.batDischarge, battery_hold: T.batHold, battery_normal: T.batNormal };
     if (BAT[ev.event]) {
-      return { cls: '', dot: ev.event === 'battery_low' ? 'dot-dev-stop' : 'dot-dev-start',
-               label: BAT[ev.event], detail: ev.label || '' };
+      return { cls: '', mark: 'battery battery', label: BAT[ev.event], detail: ev.label || '' };
     }
     var devName = ev.label || (ev.deviceId ? ev.deviceId.slice(0, 8) : '');
     // Switched by hand, or started without effect: everything that was not 'start' used to
@@ -445,25 +462,30 @@ function eventInfo(ev) {
     var on = ev.event === 'start' || ev.event === 'manual_on';
     return {
       cls:    '',
-      dot:    on ? 'dot-dev-start' : 'dot-dev-stop',
+      mark:   ev.event === 'start_no_effect' ? 'alert warn' : on ? 'power on' : 'power off',
       label:  devName,
       detail: DEV[ev.event] || ev.event,
     };
   }
   if (ev.type === 'charger') {
-    if (ev.event === 'start')    return { cls:'', dot: 'dot-charger-start', label: ev.label || T.started, detail: T.chargerStarted  };
-    if (ev.event === 'set_amps') return { cls:'', dot: 'dot-charger-amps',  label: '→ ' + ev.label,       detail: T.chargerAdjusted };
-    if (ev.event === 'stop')     return { cls:'', dot: 'dot-charger-stop',  label: T.chargerStopped,      detail: ''                };
-    if (ev.event === 'stop_ineffective') return { cls:'', dot: 'dot-charger-stop', label: T.stopIneffective, detail: ev.label || '' };
-    if (ev.event === 'target_reached')   return { cls:'', dot: 'dot-charger-stop', label: T.targetReached,   detail: ev.label || '' };
-    if (ev.event === 'target_released')  return { cls:'', dot: 'dot-charger-amps', label: T.targetReleased,  detail: ev.label || '' };
+    if (ev.event === 'start')    return { cls:'', mark: 'car on',  label: ev.label || T.started, detail: T.chargerStarted  };
+    if (ev.event === 'set_amps') return { cls:'', mark: 'car on',  label: '→ ' + ev.label,       detail: T.chargerAdjusted };
+    if (ev.event === 'stop')     return { cls:'', mark: 'car off', label: T.chargerStopped,      detail: ''                };
+    if (ev.event === 'stop_ineffective') return { cls:'', mark: 'alert warn', label: T.stopIneffective, detail: ev.label || '' };
+    if (ev.event === 'target_reached')   return { cls:'', mark: 'flag on',    label: T.targetReached,   detail: ev.label || '' };
+    if (ev.event === 'target_released')  return { cls:'', mark: 'flag off',   label: T.targetReleased,  detail: ev.label || '' };
   }
-  return { cls: '', dot: 'dot-idle', label: ev.event, detail: ev.label || '' };
+  return { cls: '', mark: 'dash off', label: ev.event, detail: ev.label || '' };
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
+// A failed load used to replace the list, and the next tap on a day arrow replaced the
+// error with "no events" — as if the day had been quiet. The error now stays until a load
+// succeeds: alone when there is nothing to show, above the list when there is.
+var loadError = '';
+
 function render() {
-  var tl    = document.getElementById('timeline');
+  var list  = document.getElementById('tl-list');
   var start = dayStart(dayOffset);
   var end   = dayEnd(dayOffset);
 
@@ -473,11 +495,13 @@ function render() {
     .reverse(); // newest first
 
   if (!filtered.length) {
-    tl.innerHTML = '<div class="empty">' + esc(T.noEventsFor) + ' ' + esc(navLabel(dayOffset)) + '</div>';
+    list.innerHTML = '<div class="empty">'
+      + esc(loadError || (T.noEventsFor + ' ' + navLabel(dayOffset))) + '</div>';
+    fitList();
     return;
   }
 
-  var html = '';
+  var html = loadError ? '<div class="notice">' + esc(loadError) + '</div>' : '';
   var lastDay = '';
 
   for (var i = 0; i < filtered.length; i++) {
@@ -489,7 +513,7 @@ function render() {
     }
     var info = eventInfo(ev);
     html += '<div class="event-row ' + info.cls + '">';
-    html += '<div class="dot ' + info.dot + '"></div>';
+    html += markHtml(info.mark);
     html += '<div class="event-body">';
     html += '<div class="event-top">';
     html += '<span class="event-mode">' + esc(info.label) + '</span>';
@@ -501,7 +525,25 @@ function render() {
     html += '</div></div>';
   }
 
-  tl.innerHTML = html;
+  list.innerHTML = html;
+  fitList();
+}
+
+// The height follows the list, up to the manifest's 420 px; a longer day scrolls inside.
+// It stood at 420 px for a quiet day with two events too (review 2026-10-11).
+var MAX_H = 420, MIN_H = 120;
+var readied = false, fittedH = 0;
+function fitList() {
+  requestAnimationFrame(function () {
+    var tl   = document.getElementById('timeline');
+    var list = document.getElementById('tl-list');
+    var padTl   = parseFloat(getComputedStyle(tl).paddingBottom) || 0;
+    var padBody = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+    var need = Math.ceil(tl.getBoundingClientRect().top + list.offsetHeight + padTl + padBody);
+    var h = Math.max(MIN_H, Math.min(MAX_H, need));
+    if (!readied) { readied = true; fittedH = h; Homey.ready({ height: h }); return; }
+    if (h !== fittedH) { fittedH = h; Homey.setHeight(h); }
+  });
 }
 
 function esc(s) {
@@ -548,9 +590,9 @@ async function load(full) {
     var result = await Homey.api('GET', since ? '/history?since=' + since : '/history');
     applyLang(result && result.lang); // authoritative language, before anything is drawn
     if (!result || result.error) {
-      var msg = result && result.error === 'no_ems_device' ? T.noEms : ((result && result.error) || T.failedToLoad);
-      document.getElementById('timeline').innerHTML = '<div class="empty">' + esc(msg) + '</div>';
+      loadError = result && result.error === 'no_ems_device' ? T.noEms : ((result && result.error) || T.failedToLoad);
       renderedFor = '';
+      render();
       return;
     }
     var events = result.events || [];
@@ -563,12 +605,13 @@ async function load(full) {
       allEvents = allEvents.concat(events).slice(-400);
     }
     if (allEvents.length) newestTs = allEvents[allEvents.length - 1].ts;
+    loadError = '';
     var key = allEvents.length + ':' + newestTs + ':' + dayOffset + ':' + new Date().toDateString() + ':' + activeLang;
     if (key !== renderedFor) { renderedFor = key; render(); }
   } catch (err) {
-    document.getElementById('timeline').innerHTML =
-      '<div class="empty">' + esc(T.errorPrefix + (err.message || String(err))) + '</div>';
+    loadError = T.errorPrefix + (err.message || String(err));
     renderedFor = '';
+    render();
   } finally {
     loading = false;
     if (again) load(true);
@@ -594,7 +637,9 @@ applyStaticTexts();
 load(true);
 if (!document.hidden) startPolling();
 
-Homey.ready();
+// Ready with the height of the first drawing (fitList); a first load that never answers
+// still shows the widget after 3 s.
+setTimeout(function () { if (!readied) fitList(); }, 3000);
 } // onHomeyReady
 </script>
 </body>

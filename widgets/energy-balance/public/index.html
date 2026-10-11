@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Energy Balance</title>
 <style>
+    /* One palette for every widget of this app (review 2026-10-11, package C). The same block
+       stands in each widget, because a widget cannot load another widget's files, and
+       test/widgets-palette-1339.test.js keeps the copies equal. Each quantity has one colour on
+       the whole dashboard. Good, warning and fault use Homey's own semantic colours. Colours mark
+       dots, lines, bars and icons; figures stay in the text colour, because amber text on white
+       is 2.2:1. Homey has no yellow and no purple, so PV and the battery bring their own. */
+    :root {
+      --energy-pv: #F59E0B;
+      --energy-battery: #8B5CF6;
+      --energy-house: var(--homey-color-blue);
+      --energy-import: var(--homey-color-red);
+      --energy-export: var(--homey-color-green);
+    }
     /* Hold still under fingers. A dashboard tile is not a document: pinch-zoom,
        pan, rubber-band scroll and long-press selection all read as the widget
        misbehaving when the user only meant to scroll the dashboard past it. */
@@ -153,52 +166,52 @@
 <div class="bar-section">
   <div class="bar-header">
     <div class="bar-label">
-      <div class="bar-dot" style="background:#F59E0B"></div>
+      <div class="bar-dot" style="background:var(--energy-pv)"></div>
       <span id="label-pv-today"></span>
     </div>
     <div class="bar-value" id="pv-val">—</div>
   </div>
   <div class="bar-track">
-    <div class="bar-fill" id="pv-fill" style="width:0%;background:#F59E0B"></div>
+    <div class="bar-fill" id="pv-fill" style="width:0%;background:var(--energy-pv)"></div>
   </div>
 </div>
 
 <div class="bar-section">
   <div class="bar-header">
     <div class="bar-label">
-      <div class="bar-dot" style="background:var(--homey-color-green)"></div>
+      <div class="bar-dot" style="background:var(--energy-export)"></div>
       <span id="label-export-today"></span>
     </div>
     <div class="bar-value" id="export-val">—</div>
   </div>
   <div class="bar-track">
-    <div class="bar-fill" id="export-fill" style="width:0%;background:var(--homey-color-green)"></div>
+    <div class="bar-fill" id="export-fill" style="width:0%;background:var(--energy-export)"></div>
   </div>
 </div>
 
 <div class="bar-section">
   <div class="bar-header">
     <div class="bar-label">
-      <div class="bar-dot" style="background:var(--homey-color-red)"></div>
+      <div class="bar-dot" style="background:var(--energy-import)"></div>
       <span id="label-import-today"></span>
     </div>
     <div class="bar-value" id="import-val">—</div>
   </div>
   <div class="bar-track">
-    <div class="bar-fill" id="import-fill" style="width:0%;background:var(--homey-color-red)"></div>
+    <div class="bar-fill" id="import-fill" style="width:0%;background:var(--energy-import)"></div>
   </div>
 </div>
 
 <div class="bar-section">
   <div class="bar-header">
     <div class="bar-label">
-      <div class="bar-dot" style="background:var(--homey-color-blue)"></div>
+      <div class="bar-dot" style="background:var(--energy-house)"></div>
       <span id="label-house-today"></span>
     </div>
     <div class="bar-value" id="house-val">—</div>
   </div>
   <div class="bar-track">
-    <div class="bar-fill" id="house-fill" style="width:0%;background:var(--homey-color-blue)"></div>
+    <div class="bar-fill" id="house-fill" style="width:0%;background:var(--energy-house)"></div>
   </div>
 </div>
 
@@ -219,7 +232,7 @@
 <div class="chip-row" id="batt-row" style="display:none">
   <div class="chip">
     <div class="chip-head">
-      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--homey-color-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--energy-battery)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="19" x2="12" y2="5"/>
         <polyline points="5,12 12,5 19,12"/>
       </svg>
@@ -229,7 +242,7 @@
   </div>
   <div class="chip">
     <div class="chip-head">
-      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:#F97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="batt-icon" viewBox="0 0 24 24" fill="none" style="stroke:var(--energy-battery)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <polyline points="19,12 12,19 5,12"/>
       </svg>
@@ -381,13 +394,6 @@ function barPct(val, maxVal) {
   return Math.min(100, Math.max(0, (val / maxVal) * 100));
 }
 
-function pctColor(pct) {
-  if (pct === null || pct === undefined) return '';
-  if (pct >= 80) return 'var(--homey-color-green)';
-  if (pct >= 50) return '#F59E0B';
-  return 'var(--homey-color-red)';
-}
-
 function onHomeyReady(Homey) {
   var content = document.getElementById('content');
   var statusEl = document.getElementById('status');
@@ -441,24 +447,24 @@ function onHomeyReady(Homey) {
     document.getElementById('house-val').textContent   = fmtKwh(house);
     document.getElementById('house-fill').style.width  = (house !== null ? barPct(house, maxVal) : 0) + '%';
 
+    // The two shares are figures in the text colour, without a rating. They were green from
+    // 80 %, amber from 50 % and red below that. Thresholds the same for every plant judged
+    // what they cannot know, the amber text reached 2.2:1, and amber is PV's colour two rows
+    // up (review 2026-10-11).
     // Eigenverbrauch %
     var scEl = document.getElementById('sc-val');
     if (sc !== null && sc !== undefined) {
       scEl.textContent = fmtNum(sc, 0) + ' %';
-      scEl.style.color = pctColor(sc);
     } else {
       scEl.textContent = '—';
-      scEl.style.color = '';
     }
 
     // Autarkie %
     var autEl = document.getElementById('autarkie-val');
     if (aut !== null && aut !== undefined) {
       autEl.textContent = fmtNum(aut, 0) + ' %';
-      autEl.style.color = pctColor(aut);
     } else {
       autEl.textContent = '—';
-      autEl.style.color = '';
     }
 
     // Battery row: only show when at least one value available

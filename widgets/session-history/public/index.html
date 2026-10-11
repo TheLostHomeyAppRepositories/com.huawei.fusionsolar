@@ -15,12 +15,11 @@
       -webkit-touch-callout: none;
     }
 
-  /* Colors come from Homey's own --homey-* variables (widget styling guide),
-     which follow the dashboard's light/dark setting — NOT the OS-level
-     prefers-color-scheme, which widgets don't reliably get. The purple/orange
-     "active session" accent has no direct --homey- equivalent, so its dark-mode
-     shade is gated on Homey's own .homey-dark-mode class instead of a media
-     query — that class reflects the dashboard's actual theme choice. */
+  /* Colors come from Homey's own --homey-* variables (widget styling guide), which follow
+     the dashboard's light/dark setting. The running session is outlined in Homey's highlight
+     colour, a paused one in orange; the text stays in the text colour. It was purple and
+     orange text on a tint before: purple is the battery's colour on this dashboard, and the
+     orange "Paused" text reached 2.6:1 (review 2026-10-11). */
   /* Sizes and spacing from Homey's widget styling guide too: no text below
      --homey-font-size-small, no second card inside Homey's own frame, no shadows, and
      the list grows with its rows instead of scrolling in a fixed box (1.2.300). */
@@ -42,30 +41,24 @@
   .bottom-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 var(--homey-su-2); }
   .duration-energy b { color: var(--homey-text-color); font-weight: var(--homey-font-weight-bold); font-variant-numeric: tabular-nums; }
   .active {
-    background: rgba(109, 74, 255, 0.1);
+    border: 1px solid var(--homey-color-highlight);
     border-radius: var(--homey-border-radius-small);
     padding: var(--homey-su-2) var(--homey-su-3);
     margin-bottom: var(--homey-su-1);
-    border-bottom: none;
   }
-  .active .date-range { color: #6d4aff; }
+  .active:last-child { border-bottom: 1px solid var(--homey-color-highlight); }
   .live-dot {
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-    background: #6d4aff; margin-right: var(--homey-su-1);
+    background: var(--homey-color-highlight); margin-right: var(--homey-su-1);
   }
-  .active.paused { background: rgba(255, 149, 0, 0.1); }
-  .active.paused .date-range { color: #e08600; }
-  .active.paused .live-dot { background: #ff9500; }
+  .active.paused, .active.paused:last-child { border-color: var(--homey-color-orange); }
+  .active.paused .live-dot { background: var(--homey-color-orange); }
   .empty {
     font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small);
     color: var(--homey-text-color-light); padding: var(--homey-su-3) 0; text-align: center;
   }
   body.stale .duration-energy b { opacity: 0.45; }
 
-  /* Homey's own dark-mode marker (see comment above) — lighten the two accent
-     colors for contrast against a dark card, exactly as before. */
-  .homey-dark-mode .active .date-range { color: #9678ff; }
-  .homey-dark-mode .active.paused .date-range { color: #ffb04d; }
 </style>
 </head>
 <body class="homey-widget">

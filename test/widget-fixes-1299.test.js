@@ -396,7 +396,7 @@ const HIST = read('widgets', 'ems-history', 'public', 'index.html');
 function histContext(lang) {
   const ctx = { navigator: { language: 'en-US' } };
   vm.createContext(ctx);
-  const modeDots = HIST.match(/var MODE_DOTS = \{[\s\S]*?\};/)[0];
+  const modeDots = HIST.match(/var MODE_MARKS = \{[\s\S]*?\};/)[0];
   const extract  = HIST.match(/var EXTRACT_MODES = \{[^}]*\};/)[0];
   vm.runInContext([dictsSource(HIST), fnSource(HIST, 'dictFor'), modeDots, extract,
     fnSource(HIST, 'fmtStatusDetail'), fnSource(HIST, 'eventInfo'), `var T = dictFor('${lang}');`].join('\n'), ctx);
