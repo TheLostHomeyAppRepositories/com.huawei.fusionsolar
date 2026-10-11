@@ -319,89 +319,22 @@ test('the diagnostics card shows what was read and skips what was not', () => {
   }
 });
 
-// ── 1.2.335: the start-up memory trace ─────────────────────────────────────────
+// ── 1.2.335–1.2.336: the start-up memory trace, removed again in 1.2.337 ───────
 //
-// Every start climbs to about 100 MB RSS within minutes. A line at fixed moments of the start,
-// and one after the EMS's first tick, shows in which stretch it climbs.
+// It showed the start-up peak (~100 MB) belonging to no single stretch. Its lines were
+// temporary; this keeps them from coming back by accident.
 
-function traceApp() {
-  const a = Object.create(App.prototype);
-  a.logs = [];
-  a.timers = [];
-  a.log = (...x) => a.logs.push(x.join(' '));
-  a.error = a.log;
-  a.homey = {
-    setTimeout: (fn, ms) => { const t = { fn, ms }; a.timers.push(t); return t; },
-    clearTimeout: (t) => { a.cleared = (a.cleared || []).concat([t]); },
-    clearInterval: () => {},
-  };
-  return a;
-}
-
-test('a trace line names the stretch, the seconds since the start and the figures', () => {
-  const a = traceApp();
-  a.traceStartMemory('too early');
-  assert.deepStrictEqual(a.logs, [], 'a line before the trace was started');
-  a._startTraceAt = Date.now() - 31_000;
-  a.traceStartMemory('30s');
-  assert.match(a.logs[0], /^Start memory \+31s \[30s\]: peak rss \d+\.\d MB, heap \d+\.\d\/\d+\.\d MB, external \d+\.\d MB$/);
-  a._startTraceAt = Date.now() - (6 * 60 + 1) * 1000;
-  a.traceStartMemory('late');
-  assert.strictEqual(a.logs.length, 1, 'a line after the six-minute window');
+test('the temporary start-up trace is gone', () => {
+  for (const f of ['app.js', path.join('drivers', 'energy_management', 'device.js')]) {
+    const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    assert.ok(!/traceStartMemory|_scheduleStartTrace|START_TRACE_/.test(src), f);
+  }
+  assert.strictEqual(typeof App.prototype.traceStartMemory, 'undefined');
 });
 
-test('the fixed moments are 15 s, 30 s, 1, 2 and 5 min after the start, and go with the app', async () => {
-  const a = traceApp();
-  a._startTraceAt = Date.now();
-  a._scheduleStartTrace();
-  assert.deepStrictEqual(a.timers.map((t) => Math.round(t.ms / 1000)), [15, 30, 60, 120, 300]);
-  a.timers[2].fn();
-  assert.match(a.logs[0], /\[60s\]/);
-  await a.onUninit();
-  for (const t of a.timers) assert.ok(a.cleared.includes(t), 'a trace timer outlives the app');
-});
-
-test('the app traces its start, its end of onInit and the restored sensor-chart history', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8').replace(/\r\n/g, '\n');
-  const onInit = src.slice(src.indexOf('async onInit()'), src.indexOf('static matchCarTarget'));
-  assert.ok(/this\._wrapLogger\(\);[^\n]*\n\s*this\._startTraceAt = Date\.now\(\);\n\s*this\.traceStartMemory\('app start'\);/.test(onInit),
-    'the first trace no longer follows the log capture directly');
-  assert.ok(/this\.traceStartMemory\('app ready'\);\n\s*this\._scheduleStartTrace\(\);\n\s*\}\n/.test(onInit),
-    'onInit no longer ends with the "app ready" trace and the timed ones');
-  assert.ok(/series in history`\);\n\s*this\.traceStartMemory\('sensor chart restored'\);/.test(src));
-});
-
-test('the EMS traces its first tick, and only that one', async () => {
-  const traced = [];
-  const d = Object.create(EmsDevice.prototype);
-  d.log = () => {};
-  d.homey = { app: { traceStartMemory: (l) => traced.push(l) } };
-  d._diag = { tickCount: 0, maxTickMs: 0, tickErrors: 0 };
-  d._tickBody = async () => {};
-  d._flushMode = async () => {};
-  d._saveHistory = () => {};
-  d._warmupDone = false;
-  d._tickCount = 0;
-  for (let i = 0; i < 3; i++) await d._tick();
-  assert.deepStrictEqual(traced, ['EMS first tick done']);
-});
-
-// 1.2.336: inside the sensor-chart restore, where the start put on 10 MB in two seconds.
-test('the sensor-chart restore is traced before loading, after reading, after the orphan check and at the end', () => {
-  const a = traceApp();
-  a._startTraceAt = Date.now();
-  a._capHistory = new Map();
-  a._capHistoryCoarse = new Map();
-  a._capHistoryInited = false;
-  a.homey.setInterval = () => ({});
-  a.homey.drivers = { getDrivers: () => ({ d: { getDevices: () => [] } }) };
-  a.homey.settings = { get: () => null, getKeys: () => [], unset: () => {} };
-  a._initCapHistory();
-  const labels = a.logs.filter((l) => l.startsWith('Start memory')).map((l) => /\[(.+)\]/.exec(l)[1]);
-  assert.deepStrictEqual(labels, [
-    'sensor chart: before load',
-    'sensor chart: series read',
-    'sensor chart: orphans checked',
-    'sensor chart restored',
-  ]);
+test('the ten-minute memory line stays', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(/this\._scheduleMemoryLog\(\);/.test(src));
+  assert.match(App.memoryLine({ peakRss: 1, heapUsed: 2, heapTotal: 3, external: 4 }, []),
+    /^Memory after 10 min: peak rss 1\.0 MB, heap 2\.0\/3\.0 MB, external 4\.0 MB, undici \(fetch\) loaded: no$/);
 });

@@ -1,4 +1,9 @@
 {
+  "1.2.337": {
+    "en": "The temporary memory points of the start-up log are removed again. They showed that the brief memory peak after a start comes from the start as a whole, not from one part of the app. The memory line ten minutes after the start stays.",
+    "de": "Die vorübergehenden Speicher-Messpunkte im Start-Log sind wieder entfernt. Sie haben gezeigt, dass die kurze Speicherspitze nach einem Start vom Start als Ganzes kommt, nicht von einem einzelnen Teil der App. Die Speicherzeile zehn Minuten nach dem Start bleibt.",
+    "nl": "De tijdelijke geheugenmeetpunten in het startlog zijn weer verwijderd. Ze toonden dat de korte geheugenpiek na een start van de start als geheel komt, niet van één deel van de app. De geheugenregel tien minuten na de start blijft."
+  },
   "1.2.336": {
     "en": "Three more temporary memory points in the start-up log, inside the restore of the sensor chart history.",
     "de": "Drei weitere vorübergehende Speicher-Messpunkte im Start-Log, innerhalb der Wiederherstellung des Sensor-Chart-Verlaufs.",

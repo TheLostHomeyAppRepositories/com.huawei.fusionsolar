@@ -13,8 +13,6 @@ class FusionSolarApp extends App {
   async onInit() {
     this._appLogBuffer = [];
     this._wrapLogger(); // capture stdout/stderr into the ring buffer for the Settings → Logs tab
-    this._startTraceAt = Date.now();
-    this.traceStartMemory('app start');
     // Before any driver registers a card: every action card logs what it was asked to do,
     // and why it refused — see lib/change-log.js.
     changeLog.wrapFlowCards(this.homey, (...a) => this.log(...a));
@@ -123,8 +121,6 @@ class FusionSolarApp extends App {
       .getTriggerCard('ems_set_car_target')
       .registerRunListener(FusionSolarApp.matchCarTarget);
 
-    this.traceStartMemory('app ready');
-    this._scheduleStartTrace();
   }
 
   /**
@@ -156,7 +152,6 @@ class FusionSolarApp extends App {
     if (this._baselineTimer)       this.homey.clearTimeout(this._baselineTimer);
     if (this._capHistoryPollTimer) this.homey.clearInterval(this._capHistoryPollTimer);
     if (this._memoryLogTimer)      this.homey.clearTimeout(this._memoryLogTimer);
-    for (const t of this._startTraceTimers || []) this.homey.clearTimeout(t);
     this._saveCapHistory(); // persist before shutdown
   }
 
@@ -193,29 +188,12 @@ class FusionSolarApp extends App {
     return `peak rss ${mb(mem.peakRss)} MB, heap ${mb(mem.heapUsed)}/${mb(mem.heapTotal)} MB, external ${mb(mem.external)} MB`;
   }
 
-  // ─── Start-up memory trace (2026-10-11) ──────────────────────────────────────
-  // Every start climbs to about 100 MB RSS within the first minutes and gives half of it back
-  // over the next ten; Homey may end an app whose RSS is too high. These lines show in which
-  // stretch of the start it climbs: the peak only ever rises, so the first line that reads
-  // about 100 MB names the stretch that put it there. Temporary — to be removed once the cause
-  // is known. Called by the app at fixed moments and by the EMS after its first tick.
-  static get START_TRACE_AT_S()      { return [15, 30, 60, 120, 300]; }
-  static get START_TRACE_WINDOW_MS() { return 6 * 60 * 1000; }
-
-  traceStartMemory(label) {
-    if (!this._startTraceAt) return;
-    const sinceMs = Date.now() - this._startTraceAt;
-    if (sinceMs > FusionSolarApp.START_TRACE_WINDOW_MS) return;
-    try {
-      this.log(`Start memory +${Math.round(sinceMs / 1000)}s [${label}]: ${FusionSolarApp.memoryFigures(readMemory())}`);
-    } catch (_) { /* a diagnostic never takes the app down */ }
-  }
-
-  _scheduleStartTrace() {
-    this._startTraceTimers = FusionSolarApp.START_TRACE_AT_S.map((s) => this.homey.setTimeout(() => {
-      this.traceStartMemory(`${s}s`);
-    }, Math.max(0, this._startTraceAt + s * 1000 - Date.now())));
-  }
+  // The start-up peak (2026-10-11, 1.2.335/1.2.336): every start reaches about 100 MB RSS and
+  // gives half of it back within ten minutes. Traced point by point on a Homey, it belonged to
+  // no one stretch — once it was there before the app's onInit ran, once only after the EMS's
+  // first tick — and always stopped at the same height: the start's short-lived allocations
+  // (SDK, manifest, compiling the code, undici, the first reads) let Node's heap grow that far,
+  // and Node decides when it hands the memory back. The trace was removed again in 1.2.337.
 
 
   /**
@@ -694,13 +672,11 @@ class FusionSolarApp extends App {
     this._capHistoryInited = true;
 
     // Restore persisted history from settings before taking the first snapshot
-    this.traceStartMemory('sensor chart: before load');
     this._loadCapHistory();
 
     // Snapshot current values immediately, then every 60 s
     this._snapshotAllCaps();
     this.log(`sensor-chart: ${this._capHistory.size} series in history`);
-    this.traceStartMemory('sensor chart restored');
 
     this._capHistoryPollCount  = 0;
     this._capHistoryPollTimer  = this.homey.setInterval(() => {
@@ -767,9 +743,7 @@ class FusionSolarApp extends App {
       enumerationComplete = false;
       this.error('sensor-chart: _loadCapHistory error:', e.message);
     }
-    this.traceStartMemory('sensor chart: series read');
     this._pruneOrphanCapHistory(validLogIds, enumerationComplete);
-    this.traceStartMemory('sensor chart: orphans checked');
   }
 
   /**
