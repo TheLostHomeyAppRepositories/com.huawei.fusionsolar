@@ -160,7 +160,14 @@ class FusionSolarApp extends App {
   _scheduleMemoryLog() {
     this._memoryLogTimer = this.homey.setTimeout(() => {
       this._memoryLogTimer = null;
-      this.log(FusionSolarApp.memoryLine());
+      // A diagnostic must never take the app down. A throw in a timer is uncaught, and in
+      // 1.2.331 the app crashed within the ten minutes this line was due (2026-10-11); what
+      // fails is written instead, so the next log says why.
+      try {
+        this.log(FusionSolarApp.memoryLine());
+      } catch (err) {
+        this.log(`Memory after 10 min: not readable — ${(err && err.message) || err}`);
+      }
     }, FusionSolarApp.MEMORY_LOG_AFTER_MS);
   }
 

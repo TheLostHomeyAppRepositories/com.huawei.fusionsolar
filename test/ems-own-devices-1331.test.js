@@ -203,6 +203,17 @@ test('it is written once, ten minutes after the start, and the timer goes with t
   timers[0].fn();
   assert.ok(logs.some((l) => /^Memory after 10 min: rss \d+\.\d MB/.test(l)));
   assert.strictEqual(a._memoryLogTimer, null);
+  // 1.2.332: whatever fails while reading the figures is written, not thrown — a throw in a
+  // timer is uncaught and takes the whole app down (the app crashed within the ten minutes).
+  const real = App.memoryLine;
+  App.memoryLine = () => { throw new Error('EPERM: uv_resident_set_memory'); };
+  try {
+    a._scheduleMemoryLog();
+    assert.doesNotThrow(() => timers[1].fn());
+    assert.ok(logs.includes('Memory after 10 min: not readable — EPERM: uv_resident_set_memory'), logs.join(' | '));
+  } finally {
+    App.memoryLine = real;
+  }
   const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   const onInit = src.slice(src.indexOf('async onInit()'), src.indexOf('async onUninit()'));
   assert.ok(/this\._scheduleMemoryLog\(\);/.test(onInit), 'onInit no longer schedules it');

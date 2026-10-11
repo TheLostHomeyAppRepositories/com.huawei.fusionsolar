@@ -1,4 +1,9 @@
 {
+  "1.2.332": {
+    "en": "The memory line in the log can no longer stop the app: if the figures cannot be read, the line says why instead.",
+    "de": "Die Speicherzeile im Log kann die App nicht mehr anhalten: Lassen sich die Werte nicht lesen, sagt die Zeile stattdessen, warum.",
+    "nl": "De geheugenregel in het log kan de app niet meer stoppen: als de waarden niet te lezen zijn, zegt de regel in plaats daarvan waarom."
+  },
   "1.2.331": {
     "en": "Energy Management System: devices of this app — inverter, meter, battery, charger — are now read directly inside the app instead of over the local Homey API. That spares a full device object over HTTP per device every 15 seconds, and saves memory and CPU; an energy management that only uses devices of this app no longer needs HTTP at all while it runs. Devices of other apps are read as before. The log says once per device how it is read, and ten minutes after the start it shows one line with the app's memory use.",
     "de": "Energieverwaltung: Geräte dieser App – Wechselrichter, Zähler, Batterie, Lader – werden jetzt direkt in der App gelesen statt über die lokale Homey-API. Das erspart alle 15 Sekunden pro Gerät ein ganzes Geräteobjekt über HTTP und spart Speicher und CPU; eine Energieverwaltung, die nur Geräte dieser App nutzt, braucht im Betrieb gar kein HTTP mehr. Geräte anderer Apps werden wie bisher gelesen. Das Log sagt einmal pro Gerät, wie es gelesen wird, und zeigt zehn Minuten nach dem Start eine Zeile mit dem Speicherverbrauch der App.",
