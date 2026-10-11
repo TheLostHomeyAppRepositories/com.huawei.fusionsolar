@@ -179,9 +179,10 @@ test('the widget\'s device picker asks for the whole device list only when it ha
 // ── the memory line ────────────────────────────────────────────────────────────
 
 test('the memory line says what the process holds, and whether fetch\'s library is in', () => {
-  const mem = { rss: 57.3 * 1048576, heapUsed: 14.2 * 1048576, heapTotal: 18 * 1048576, external: 3.4 * 1048576 };
+  const mem = { peakRss: 97.3, heapUsed: 14.2, heapTotal: 18, external: 3.4 };   // MB, as lib/memory-usage.js reads them
   assert.strictEqual(App.memoryLine(mem, ['NativeModule internal/deps/undici/undici']),
-    'Memory after 10 min: rss 57.3 MB, heap 14.2/18.0 MB, external 3.4 MB, undici (fetch) loaded: yes');
+    'Memory after 10 min: peak rss 97.3 MB, heap 14.2/18.0 MB, external 3.4 MB, undici (fetch) loaded: yes');
+  assert.match(App.memoryLine({ ...mem, peakRss: null }, []), /peak rss \? MB/, 'a figure that could not be read');
   assert.match(App.memoryLine(mem, ['NativeModule http']), /undici \(fetch\) loaded: no$/);
   assert.match(App.memoryLine(mem, null), /undici \(fetch\) loaded: unknown$/, 'a runtime without process.moduleLoadList');
 });
@@ -201,7 +202,7 @@ test('it is written once, ten minutes after the start, and the timer goes with t
   await a.onUninit();
   assert.strictEqual(cleared, timer);
   timers[0].fn();
-  assert.ok(logs.some((l) => /^Memory after 10 min: rss \d+\.\d MB/.test(l)));
+  assert.ok(logs.some((l) => /^Memory after 10 min: peak rss \d+\.\d MB/.test(l)), logs.join(' | '));
   assert.strictEqual(a._memoryLogTimer, null);
   // 1.2.332: whatever fails while reading the figures is written, not thrown — a throw in a
   // timer is uncaught and takes the whole app down (the app crashed within the ten minutes).
@@ -217,4 +218,77 @@ test('it is written once, ten minutes after the start, and the timer goes with t
   const src = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   const onInit = src.slice(src.indexOf('async onInit()'), src.indexOf('async onUninit()'));
   assert.ok(/this\._scheduleMemoryLog\(\);/.test(onInit), 'onInit no longer schedules it');
+});
+
+// ── 1.2.333: reading memory without /proc ──────────────────────────────────────
+//
+// On Homey, process.memoryUsage() throws "ENOENT: no such file or directory,
+// uv_resident_set_memory" — its container has no /proc. That stopped 1.2.331 and left the EMS
+// diagnostics' memory card empty on every Homey. Each test here runs with that thrower in place.
+
+const { readMemory } = require('../lib/memory-usage');
+
+function onHomey(fn) {
+  const real = process.memoryUsage;
+  process.memoryUsage = () => { throw new Error('ENOENT: no such file or directory, uv_resident_set_memory'); };
+  try { return fn(); } finally { process.memoryUsage = real; }
+}
+
+test('the figures are read without process.memoryUsage()', () => {
+  const m = onHomey(() => readMemory());
+  for (const k of ['peakRss', 'heapUsed', 'heapTotal', 'external']) {
+    assert.strictEqual(typeof m[k], 'number', k);
+    assert.ok(m[k] >= 0, k);
+  }
+  assert.ok(m.heapUsed <= m.heapTotal);
+  assert.ok(m.peakRss > m.heapUsed, 'the peak RSS is the whole process, more than the heap');
+});
+
+test('a figure that cannot be read is null, and nothing throws', () => {
+  const v8 = require('v8');
+  const realHeap = v8.getHeapStatistics;
+  const realUsage = process.resourceUsage;
+  v8.getHeapStatistics = () => { throw new Error('nope'); };
+  process.resourceUsage = () => { throw new Error('nope'); };
+  try {
+    assert.deepStrictEqual(readMemory(), { peakRss: null, heapUsed: null, heapTotal: null, external: null });
+  } finally {
+    v8.getHeapStatistics = realHeap;
+    process.resourceUsage = realUsage;
+  }
+});
+
+test('the log line and the EMS diagnostics both work on Homey', () => {
+  const line = onHomey(() => App.memoryLine());
+  assert.match(line, /^Memory after 10 min: peak rss \d+\.\d MB, heap \d+\.\d\/\d+\.\d MB, external \d+\.\d MB, undici \(fetch\) loaded: (yes|no)$/);
+  const d = Object.create(EmsDevice.prototype);
+  const mem = onHomey(() => d._memUsage());
+  assert.ok(mem && typeof mem.peakRss === 'number' && typeof mem.heapUsed === 'number', JSON.stringify(mem));
+});
+
+test('no runtime code calls process.memoryUsage() any more', () => {
+  const files = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (['node_modules', '.homeybuild', 'test', 'scripts', '.git', 'docs'].includes(e.name)) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(js|html)$/.test(e.name)) files.push(p);
+    }
+  };
+  walk(path.join(__dirname, '..'));
+  const callers = files.filter((f) => /process\.memoryUsage\s*\(/.test(fs.readFileSync(f, 'utf8')
+    .replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')));
+  assert.deepStrictEqual(callers.map((f) => path.relative(path.join(__dirname, '..'), f)), []);
+});
+
+test('the diagnostics card shows what was read and skips what was not', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'settings', 'index.html'), 'utf8');
+  assert.ok(/memRow\('residentRss', mem\.peakRss\)/.test(html));
+  assert.ok(!/mem\.arrayBuffers|mem\.rss\b/.test(html), 'the card still asks for a figure that is no longer read');
+  for (const lang of ['en', 'de', 'nl']) {
+    const labels = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'locales', `${lang}.json`), 'utf8')).settings.diagLabels;
+    assert.ok(/RSS/.test(labels.residentRss), lang);
+    assert.ok(!('arrayBuffers' in labels), lang);
+  }
 });

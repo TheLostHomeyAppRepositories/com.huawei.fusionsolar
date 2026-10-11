@@ -1,4 +1,9 @@
 {
+  "1.2.333": {
+    "en": "The app reads its own memory use in a way that works on Homey: the usual call failed there and stopped 1.2.331. The memory line in the log and the memory card in the Energy Management diagnostics now show the peak memory, the JS heap and the native buffers — the card stayed empty on every Homey until now.",
+    "de": "Die App liest ihren Speicherverbrauch jetzt auf eine Art, die auf Homey funktioniert: Der übliche Aufruf schlug dort fehl und hielt 1.2.331 an. Die Speicherzeile im Log und die Speicherkarte in der Diagnose der Energieverwaltung zeigen jetzt den Höchstwert des Speichers, den JS-Heap und die nativen Buffer – die Karte blieb bisher auf jedem Homey leer.",
+    "nl": "De app leest haar geheugengebruik nu op een manier die op Homey werkt: de gebruikelijke aanroep mislukte daar en stopte 1.2.331. De geheugenregel in het log en de geheugenkaart in de diagnose van het energiebeheer tonen nu het piekgeheugen, de JS-heap en de native buffers — de kaart bleef tot nu toe op elke Homey leeg."
+  },
   "1.2.332": {
     "en": "The memory line in the log can no longer stop the app: if the figures cannot be read, the line says why instead.",
     "de": "Die Speicherzeile im Log kann die App nicht mehr anhalten: Lassen sich die Werte nicht lesen, sagt die Zeile stattdessen, warum.",

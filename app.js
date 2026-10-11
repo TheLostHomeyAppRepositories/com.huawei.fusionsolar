@@ -6,6 +6,7 @@ const changeLog           = require('./lib/change-log');
 const { downsample }      = require('./lib/chart-downsample');
 const { isReachable }     = require('./lib/widget-data');
 const localTime           = require('./lib/local-time');
+const { readMemory }      = require('./lib/memory-usage');
 
 class FusionSolarApp extends App {
 
@@ -154,15 +155,17 @@ class FusionSolarApp extends App {
   }
 
   // One line on what the app occupies, ten minutes in: past the start-up burst, with the EMS
-  // ticking. Homey's own memory graph is coarse; this is the figure to compare one version
-  // with the next. undici is the library behind fetch() — loading it costs several MB, and
-  // only the calls to the local Homey API (lib/homey-local-api.js) bring it in.
+  // ticking — the figures to compare one version with the next. The current RSS and PSS are in
+  // Homey's developer tools; the app cannot read them (see lib/memory-usage.js). undici is the
+  // library behind fetch() — loading it costs several MB, and only the calls to the local
+  // Homey API (lib/homey-local-api.js) bring it in.
   _scheduleMemoryLog() {
     this._memoryLogTimer = this.homey.setTimeout(() => {
       this._memoryLogTimer = null;
-      // A diagnostic must never take the app down. A throw in a timer is uncaught, and in
-      // 1.2.331 the app crashed within the ten minutes this line was due (2026-10-11); what
-      // fails is written instead, so the next log says why.
+      // A diagnostic must never take the app down: a throw in a timer is uncaught. In 1.2.331
+      // process.memoryUsage() threw here on Homey (no /proc in its container) and stopped the
+      // app (2026-10-11); lib/memory-usage.js reads without /proc and never throws, and this
+      // stays as the second guard.
       try {
         this.log(FusionSolarApp.memoryLine());
       } catch (err) {
@@ -173,11 +176,11 @@ class FusionSolarApp extends App {
 
   static get MEMORY_LOG_AFTER_MS() { return 10 * 60 * 1000; }
 
-  static memoryLine(mem = process.memoryUsage(), modules = process.moduleLoadList) {
-    const mb = (bytes) => (bytes / 1048576).toFixed(1);
+  static memoryLine(mem = readMemory(), modules = process.moduleLoadList) {
+    const mb = (v) => (v === null || v === undefined ? '?' : v.toFixed(1));
     const undici = !Array.isArray(modules) ? 'unknown'
       : modules.some((m) => String(m).includes('undici')) ? 'yes' : 'no';
-    return `Memory after 10 min: rss ${mb(mem.rss)} MB, heap ${mb(mem.heapUsed)}/${mb(mem.heapTotal)} MB, `
+    return `Memory after 10 min: peak rss ${mb(mem.peakRss)} MB, heap ${mb(mem.heapUsed)}/${mb(mem.heapTotal)} MB, `
       + `external ${mb(mem.external)} MB, undici (fetch) loaded: ${undici}`;
   }
 

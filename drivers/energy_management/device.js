@@ -3,6 +3,7 @@
 const { Device }    = require('homey');
 const { withSettingsLog } = require('../../lib/change-log');
 const HomeyLocalApi = require('../../lib/homey-local-api');
+const { readMemory } = require('../../lib/memory-usage');
 
 const {
   TICK_MS, TICK_MIN_S, TICK_MAX_S, GRID_SENSOR_HOLD_MS, CHARGER_STATE_HOLD_MS, BATTERY_SOC_HOLD_MS, SLOW_REFRESH_MS, HISTORY_SAVE_MS, TICK_MAX_DT_MS,
@@ -695,22 +696,11 @@ class EmsDevice extends Device {
     };
   }
 
-  // process.memoryUsage() in MB. rss = total resident; heapUsed/heapTotal = V8 JS heap;
-  // external/arrayBuffers = C++-bound buffers (Modbus/OCPP network I/O).
+  // The app's memory in MB: peak RSS since the start, the V8 heap, and the buffers outside it
+  // (Modbus/OCPP network I/O). process.memoryUsage() was read here and threw on every Homey —
+  // its container has no /proc — so this card never showed there; see lib/memory-usage.js.
   _memUsage() {
-    try {
-      const m  = process.memoryUsage();
-      const mb = (b) => Math.round((b / 1048576) * 10) / 10;
-      return {
-        rss:          mb(m.rss),
-        heapUsed:     mb(m.heapUsed),
-        heapTotal:    mb(m.heapTotal),
-        external:     mb(m.external),
-        arrayBuffers: mb(m.arrayBuffers),
-      };
-    } catch (e) {
-      return null;
-    }
+    return readMemory();
   }
 
   async _tickBody() {

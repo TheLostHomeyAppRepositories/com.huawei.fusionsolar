@@ -9378,15 +9378,16 @@
         html += card(L('gridImportCeilingTitle'), ceilRows);
       }
 
-      // Process memory (whole app). Watch RSS over time: stable = baseline, rising = leak.
+      // Process memory (whole app). The peak RSS only ever rises; the current RSS and PSS are
+      // in Homey's developer tools — the app itself cannot read them (lib/memory-usage.js).
       var mem = d.mem;
       if (mem) {
-        var memRows = row(L('residentRss'), mem.rss + ' MB') +
-          row(L('jsHeapUsed'), mem.heapUsed + ' MB') +
-          row(L('jsHeapTotal'), mem.heapTotal + ' MB') +
-          row(L('nativeBuffers'), mem.external + ' MB') +
-          row(L('arrayBuffers'), mem.arrayBuffers + ' MB');
-        html += card(L('memoryTitle'), memRows);
+        var memRow = function(key, v) { return v === null || v === undefined ? '' : row(L(key), v + ' MB'); };
+        var memRows = memRow('residentRss', mem.peakRss) +
+          memRow('jsHeapUsed', mem.heapUsed) +
+          memRow('jsHeapTotal', mem.heapTotal) +
+          memRow('nativeBuffers', mem.external);
+        if (memRows) html += card(L('memoryTitle'), memRows);
       }
 
       return html;
