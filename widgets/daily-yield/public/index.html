@@ -23,11 +23,15 @@
 
   #content { display: flex; flex-direction: column; gap: var(--homey-su-3); }
 
+  /* Today and the lifetime total side by side need ~215 px; in a phone column the total
+     was pushed past the frame and cut off. It goes below today there instead
+     (review 2026-10-11). */
   .main-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: var(--homey-su-4);
+    gap: var(--homey-su-2) var(--homey-su-4);
   }
 
   .label {
@@ -52,6 +56,7 @@
   }
 
   .total-block { text-align: right; }
+  @media (max-width: 239px) { .total-block { text-align: left; } } /* on its own line below today */
 
   .total-value {
     font-size: var(--homey-font-size-default);
@@ -94,6 +99,7 @@
     font-weight: var(--homey-font-weight-bold);
     color: var(--homey-color-green);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .opt-dot {

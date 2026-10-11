@@ -24,10 +24,14 @@
   body { overflow: hidden; }
 
   /* ── Header row ── */
+  /* The stepper takes ~95 px. In a phone column the legend beside it shrank until the series
+     names were gone and only the coloured values were left to tell them apart. Below ~250 px
+     the stepper takes its own line now (review 2026-10-11). */
   .header {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: var(--homey-su-2);
+    gap: var(--homey-su-1) var(--homey-su-2);
     margin-bottom: var(--homey-su-2);
     min-height: 28px;
   }
@@ -36,7 +40,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0 var(--homey-su-3);
-    flex: 1;
+    flex: 1 1 150px;
     min-width: 0;
   }
 
@@ -76,6 +80,7 @@
     align-items: center;
     gap: var(--homey-su-1);
     flex-shrink: 0;
+    margin-left: auto;
   }
 
   .step-btn {
@@ -504,8 +509,9 @@ function renderChart(series, hours) {
   }
 
   /* X time labels — as many as fit at the guide's text size: three on a narrow chart or
-     over several days, five otherwise. The outer two hug the edges. */
-  var nX = (innerW < 260 || hours > 48) ? 2 : 4;
+     over several days, five otherwise. The outer two hug the edges. Below ~140 px of plot
+     three labels ran into each other; only the two ends are named there (review 2026-10-11). */
+  var nX = innerW < 140 ? 1 : (innerW < 260 || hours > 48) ? 2 : 4;
   for (var j = 0; j <= nX; j++) {
     var xt = tMin + tRange * j / nX;
     var anchor = j === 0 ? 'start' : j === nX ? 'end' : 'middle';
@@ -783,7 +789,9 @@ function onHomeyReady(Homey) {
         Homey.ready({ height: Math.ceil(document.getElementById('chart-wrap').getBoundingClientRect().bottom) + 8 });
       });
     } else {
-      fitHeight(Homey, document.getElementById('chart-wrap'));
+      // The body, as for the first height: chart-wrap's bottom without the body's padding
+      // made the widget 8 px shorter from the second poll on (review 2026-10-11).
+      fitHeight(Homey, document.body);
     }
   }
 
@@ -844,7 +852,21 @@ function onHomeyReady(Homey) {
     hideHover();
   });
 
-  window.addEventListener('resize', function() { _wrapRect = null; });
+  // A changed width redraws at once; the SVG used to keep its old width until the next poll,
+  // up to a minute later (review 2026-10-11).
+  var resizeFrame = null;
+  window.addEventListener('resize', function() {
+    _wrapRect = null;
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(function() {
+      resizeFrame = null;
+      if (!G.ready || !G.series) return;
+      var names = G.names;
+      renderChart(G.series, G.hours);
+      G.names = names;
+      settle();
+    });
+  });
 
   /* ── Start ── */
   load();

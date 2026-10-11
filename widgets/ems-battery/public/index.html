@@ -29,7 +29,10 @@
     font-size: var(--homey-font-size-default); line-height: var(--homey-line-height-default);
     font-weight: var(--homey-font-weight-bold);
   }
-  .soc { font-variant-numeric: tabular-nums; }
+  .soc { font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+  /* In a phone column "Batterienutzung" pushed the charge level off the edge; the title gives
+     way now, the figure does not (review 2026-10-11). */
+  .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .soc.green  { color: var(--homey-color-green); }
   .soc.red    { color: var(--homey-color-red); }
   .kwh-line, .status-line, .zone-field .pct, .zone-field label, .no-data {
@@ -229,6 +232,9 @@ function onHomeyReady(Homey) {
     errorUntil = Date.now() + 4000;
     statusText.textContent = '⚠ ' + msg;
     statusText.style.color = 'var(--homey-text-color-red, #ef4444)';
+    // The message is longer than the status it replaces and wraps; its last line was cut
+    // off at the height of the status line (review 2026-10-11).
+    syncHeight();
   }
   // The app's answer codes, in words. With the surplus ramp on, the stop is the ramp's
   // lower point and has to stay below its upper one — a value at or above it is refused

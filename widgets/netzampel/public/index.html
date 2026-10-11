@@ -80,6 +80,11 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+  /* Beside the 56 px light a phone column leaves ~70 px, and "10,5 kW" at 32 px is ~105:
+     it was cut off. A step smaller there (review 2026-10-11). */
+  @media (max-width: 239px) {
+    .status-value { font-size: var(--homey-font-size-large); line-height: var(--homey-line-height-large); }
+  }
 
   /* Stats row */
   .stats {
@@ -291,7 +296,10 @@ function onHomeyReady(Homey) {
   var sub    = document.getElementById('status-sub');
 
   // Ready once, with the height of the first drawing: on a narrow dashboard the stats
-  // wrap to a second line, and a fixed height cut them off.
+  // wrap to a second line, and a fixed height cut them off. After that the height follows
+  // the content: the stats row and the sub-text wrap as the values widen during the day
+  // ("850 W" becomes "10,5 kW"), and a height measured once at the start cut the bottom
+  // row off (review 2026-10-11).
   var readied = false;
   function settle() {
     if (!readied) {
@@ -299,7 +307,9 @@ function onHomeyReady(Homey) {
       requestAnimationFrame(function () {
         Homey.ready({ height: Math.ceil(content.getBoundingClientRect().bottom) + 16 });
       });
+      return;
     }
+    fitHeight(Homey, document.body);
   }
 
   function render(data) {
@@ -383,6 +393,7 @@ function onHomeyReady(Homey) {
         settle();
       } else {
         sub.textContent = T.stale;
+        settle();
       }
     },
   });

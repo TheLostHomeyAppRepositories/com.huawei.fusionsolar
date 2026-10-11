@@ -77,15 +77,18 @@
     text-align: center;
   }
 
+  /* Two chips side by side need ~200 px; in a phone column "Eigenverbrauch" was cut to
+     "Ei…" and "100 %" broke over two lines. They stack there instead (review 2026-10-11). */
   .chip-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--homey-su-2);
   }
 
   /* Chips are outlined, not tinted: Homey's styling guide draws boxes with its line
      colours, which follow light and dark mode by themselves. */
   .chip {
-    flex: 1;
+    flex: 1 1 96px;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -109,6 +112,7 @@
     line-height: var(--homey-line-height-large);
     font-weight: var(--homey-font-weight-bold);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .chip-head { display: flex; align-items: center; gap: var(--homey-su-1); min-width: 0; }

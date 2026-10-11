@@ -25,9 +25,17 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; color: var(--homey-text-color); }
   .card { display: flex; flex-direction: column; gap: var(--homey-su-2); }
+  /* The sections live in #content, not in .card directly, so the gap has to be set here too:
+     with only .card's, every section touched the next — control rows, select and the stats
+     line drew their borders onto each other (review 2026-10-11). The script clears the inline
+     display rather than setting 'block', which would undo this. */
+  #content { display: flex; flex-direction: column; gap: var(--homey-su-2); }
   .small { font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small); }
-  .head { display: flex; align-items: center; justify-content: space-between; gap: var(--homey-su-2); }
+  /* In a narrow column the badge ("Nicht verbunden", ~125 px) left the name no room at all.
+     The name now claims 96 px before anything else; below that the badge goes to its own line. */
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--homey-su-1) var(--homey-su-2); }
   .name {
+    flex: 1 1 96px; min-width: 0;
     font-size: var(--homey-font-size-default); line-height: var(--homey-line-height-default);
     font-weight: var(--homey-font-weight-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
@@ -71,10 +79,12 @@
     appearance: none; -webkit-appearance: none;
   }
 
-  .stats {
-    display: flex; justify-content: space-between; gap: var(--homey-su-2);
-    padding-top: var(--homey-su-3); border-top: var(--homey-line);
+  /* Three figures side by side need ~270 px; in a phone column they ran off the edge. They
+     now fall to two columns, then one, instead (review 2026-10-11). */
+  .stats, .car-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: var(--homey-su-2);
   }
+  .stats { padding-top: var(--homey-su-3); border-top: var(--homey-line); }
   .stat-value {
     font-size: var(--homey-font-size-default); line-height: var(--homey-line-height-default);
     font-weight: var(--homey-font-weight-bold); color: var(--homey-text-color-blue, var(--homey-color-blue));
@@ -93,7 +103,7 @@
   .surplus-row { display: flex; align-items: center; justify-content: space-between; gap: var(--homey-su-2); }
   .surplus-row .value {
     font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small);
-    font-weight: var(--homey-font-weight-bold); color: var(--homey-text-color);
+    font-weight: var(--homey-font-weight-bold); color: var(--homey-text-color); white-space: nowrap;
   }
 
   /* ── Car sub-card (only for charger kind, when a car is assigned) ── */
@@ -116,9 +126,9 @@
   .car-bar-marker { position: absolute; top: -2px; width: 2px; height: 14px; background: var(--homey-text-color-light); }
   /* Ladeziel-Auswahl. Bewusst unter dem Balken statt als Markierungen darauf: der Track ist
      10 px hoch und hat overflow:hidden, Tippziele darin waeren winzig und abgeschnitten. */
-  .car-picks { display: flex; gap: var(--homey-su-2); }
+  .car-picks { display: flex; gap: var(--homey-su-1); }
   .car-pick {
-    flex: 1; min-height: 32px; font: inherit;
+    flex: 1; min-width: 0; min-height: 32px; font: inherit; white-space: nowrap; padding: 0 2px;
     font-size: var(--homey-font-size-small); font-weight: var(--homey-font-weight-medium);
     color: var(--homey-text-color-light); background: transparent;
     border: var(--homey-line); border-radius: 999px; cursor: pointer;
@@ -127,7 +137,6 @@
   .car-pick.is-active { color: var(--homey-text-color); border-color: var(--homey-color-green); }
   .car-pick:disabled { opacity: 0.5; cursor: default; }
   .car-pick.is-error { border-color: var(--homey-color-red); }
-  .car-stats { display: flex; justify-content: space-between; gap: var(--homey-su-2); }
   .car-stat-value {
     font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small);
     font-weight: var(--homey-font-weight-bold); color: var(--homey-text-color); font-variant-numeric: tabular-nums;
@@ -625,7 +634,7 @@ function onHomeyReady(Homey) {
     surplusRow.style.display = 'none';
 
     if (s.carName) {
-      carSection.style.display = 'block';
+      carSection.style.display = '';
       carNameEl.textContent = s.carName;
       carStatusEl.textContent = !s.connected ? T.notConnected : (isCharging ? T.chargingActive : T.waitingSurplus);
 
@@ -708,7 +717,7 @@ function onHomeyReady(Homey) {
     if (!s || s.error === 'not_found')     { showNoData(T.notFound);   syncHeight(); return; }
     if (!s || s.error)                     { showNoData(T.unreachable); syncHeight(); return; }
 
-    content.style.display = 'block';
+    content.style.display = '';
     noData.style.display  = 'none';
 
     if (s.kind === 'charger') renderCharger(s); else renderSimple(s);

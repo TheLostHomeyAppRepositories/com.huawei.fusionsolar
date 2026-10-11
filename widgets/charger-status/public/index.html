@@ -59,14 +59,15 @@
     font-size: var(--homey-font-size-small); line-height: var(--homey-line-height-small);
     color: var(--homey-text-color-light);
     /* Always occupy one line, even when empty — states differ in whether
-       they have a sub-line (Charging doesn't, Paused/Smart do), and the
-       widget height is measured once, so a variable text block leaves a
-       trail in some states and would clip in others */
+       they have a sub-line (Charging doesn't, Paused/Smart do), and a height
+       that changed with every state change would make the tile jump */
     min-height: var(--homey-line-height-small);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* Power, amps and session time side by side need ~200 px; in a phone column the session
+     time ran off the edge. They fall to two columns there instead (review 2026-10-11). */
   .stats {
-    display: flex; justify-content: space-between; gap: var(--homey-su-2);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: var(--homey-su-2);
     margin-top: var(--homey-su-3); padding-top: var(--homey-su-3); border-top: var(--homey-line);
   }
   .stat-value {
@@ -273,6 +274,7 @@ function onHomeyReady(Homey) {
     }
   }
 
+  var readied = false; // set once Homey.ready has been sent; until then the height is not ours to change
   function render(s) {
     if (!s || s.error) {
       statusLabel.textContent = T.notAvailable;
@@ -340,6 +342,10 @@ function onHomeyReady(Homey) {
       sessionStartTime = null;
     }
     tickTimer();
+    // The height was measured once, with "—" in the status line. "Lädt · 11,0 kW (16 A) /
+    // 3-phasig" wraps in a phone column, pushed the stats down and their labels were cut
+    // off; fitHeight was here all along and never called (review 2026-10-11).
+    if (readied) fitHeight(Homey, document.body);
   }
 
   // Every 10 s (it asked every 5 s; a charger's meter values arrive every 10 to 60 s). The
@@ -351,7 +357,7 @@ function onHomeyReady(Homey) {
     onOk: function (s) { applyLang(s && s.lang); render(s); },
     onFail: function (first) {
       if (first) render({ error: T.unreachable });
-      else statusSub.textContent = T.stale;
+      else { statusSub.textContent = T.stale; if (readied) fitHeight(Homey, document.body); }
     },
   });
   var tickTimerId = null;
@@ -372,6 +378,7 @@ function onHomeyReady(Homey) {
     // ceil it and add only a hairline for webview chrome.
     const rect = document.getElementById('card').getBoundingClientRect();
     Homey.ready({ height: Math.ceil(rect.bottom) + 8 });
+    readied = true;
   });
 }
 </script>

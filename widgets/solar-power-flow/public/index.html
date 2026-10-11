@@ -58,6 +58,18 @@
   }
   .node-sub { min-height: var(--homey-line-height-small); font-weight: var(--homey-font-weight-medium); }
 
+  /* The side nodes sit at 16 % and 84 % of the width. In a phone column that put
+     "Einspeisung" past the left edge and the values onto the hub. They now keep 38 px from the
+     edge (half their widest line), and the values step down a size below 200 px
+     (review 2026-10-11). */
+  #node-grid { left: max(16%, 38px) !important; }
+  #node-batt { left: min(84%, calc(100% - 38px)) !important; }
+  @media (max-width: 199px) {
+    .node-value { font-size: var(--homey-font-size-default); line-height: var(--homey-line-height-default); }
+  }
+  /* Below 180 px the side values reach the hub itself; the lines still meet in the middle. */
+  @media (max-width: 179px) { .hub { display: none !important; } } /* .hub below sets display */
+
   /* ── Hub circle ── */
   .hub {
     position: absolute;
@@ -338,7 +350,11 @@ function setCoords(id, x1, y1, x2, y2) {
 
 function positionLines() {
   var wrap  = document.getElementById('flow-wrap');
-  var hub   = rel(document.getElementById('hub'),       wrap);
+  var hubEl = document.getElementById('hub');
+  // A hidden hub (narrow columns, see the CSS) has no box: the lines then meet at the centre.
+  var wr    = wrap.getBoundingClientRect();
+  var hub   = hubEl.offsetWidth ? rel(hubEl, wrap)
+    : { top: wr.height / 2, bottom: wr.height / 2, left: wr.width / 2, right: wr.width / 2, cx: wr.width / 2, cy: wr.height / 2 };
   var pv    = rel(document.getElementById('node-pv'),   wrap);
   var house = rel(document.getElementById('node-house'),wrap);
   var grid  = rel(document.getElementById('node-grid'), wrap);
@@ -372,6 +388,9 @@ function setLine(id, anim, color) {
 function onHomeyReady(Homey) {
   // The same height as the manifest: one height, no jump on the first load.
   Homey.ready({ height: 252 });
+  // The lines are drawn between the nodes as they stand; after a rotation or a resized column
+  // they stayed where the nodes had been until the next poll (review 2026-10-11).
+  window.addEventListener('resize', function () { positionLines(); });
 
   var thr = 50; // activity threshold in W
   try {

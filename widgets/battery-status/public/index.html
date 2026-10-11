@@ -25,10 +25,13 @@
   #content { display: flex; flex-direction: column; gap: var(--homey-su-3); }
 
   /* --- SoC row --- */
+  /* In a phone column the bar beside the number shrank to nothing and "noch 12h 45min" ran
+     past the edge. Below ~250 px the bar takes its own line instead (review 2026-10-11). */
   .soc-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--homey-su-3);
+    gap: var(--homey-su-2) var(--homey-su-3);
   }
 
   .soc-left {
@@ -54,7 +57,7 @@
   }
 
   .soc-bar-wrap {
-    flex: 1;
+    flex: 1 1 140px;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -77,6 +80,7 @@
 
   .soc-meta {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: var(--homey-su-2);
@@ -90,8 +94,9 @@
   /* --- Power row --- */
   .power-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--homey-su-2);
+    gap: 0 var(--homey-su-2);
   }
 
   .power-icon {
@@ -106,6 +111,7 @@
     font-weight: var(--homey-font-weight-bold);
     color: var(--homey-text-color);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .power-label {
@@ -117,12 +123,13 @@
   /* --- Stats row --- */
   .stats-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--homey-su-2);
   }
 
   /* Outlined, not tinted: the guide draws boxes with its line colours. */
   .row-tile {
-    flex: 1;
+    flex: 1 1 120px;
     min-width: 0;
     border: var(--homey-line);
     border-radius: var(--homey-border-radius-small);
@@ -155,6 +162,7 @@
     font-weight: var(--homey-font-weight-bold);
     color: var(--homey-text-color);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   /* --- Skeleton --- */
@@ -376,7 +384,9 @@ function fmtRemaining(hours) {
 }
 
 function onHomeyReady(Homey) {
-  // The same height as the manifest: one height, no jump on the first load.
+  // The same height as the manifest: one height, no jump on the first load. From the first
+  // answer on, the height follows the content: in a phone column the bar and the totals wrap,
+  // and the fixed 178 px cut the bottom row off (review 2026-10-11).
   Homey.ready({ height: 178 });
 
   // Reported by gsommer as issue #33: charging at 2 kW from 50 %, a 15 kWh battery was
@@ -511,10 +521,11 @@ function onHomeyReady(Homey) {
   poller({
     ms: 15000,
     run: function () { return Homey.api('GET', '/', {}); },
-    onOk: function (data) { applyLang(data && data.lang); if (data) render(data); },
+    onOk: function (data) { applyLang(data && data.lang); if (data) render(data); fitHeight(Homey, document.body); },
     onFail: function (first) {
       document.body.classList.remove('loading');
       document.getElementById('batt-status').textContent = first ? T.appDown : T.stale;
+      fitHeight(Homey, document.body);
     },
   });
 }

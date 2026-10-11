@@ -55,7 +55,11 @@
   .sec-status { min-height: var(--homey-line-height-small); }
   .sec-status.warn { color: var(--homey-text-color-warning, #f5a524); }
 
-  .minmax-row { display: flex; justify-content: space-between; margin: var(--homey-su-2) 0 var(--homey-su-1); font-variant-numeric: tabular-nums; }
+  /* Max, now and min each stay on one line; in a phone column they used to break inside
+     themselves into three lines each ("▲ / 6,42 / kW"). Now a whole figure moves to the next
+     line instead (review 2026-10-11). */
+  .minmax-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--homey-su-2); margin: var(--homey-su-2) 0 var(--homey-su-1); font-variant-numeric: tabular-nums; }
+  .minmax-row > span { white-space: nowrap; }
   /* Room above the bars for the "now" figure. */
   .chart { display: flex; align-items: flex-end; height: 56px; gap: 1px; position: relative; }
   .bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0; position: relative; }
