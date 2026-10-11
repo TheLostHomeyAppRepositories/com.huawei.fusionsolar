@@ -385,3 +385,23 @@ test('the EMS traces its first tick, and only that one', async () => {
   for (let i = 0; i < 3; i++) await d._tick();
   assert.deepStrictEqual(traced, ['EMS first tick done']);
 });
+
+// 1.2.336: inside the sensor-chart restore, where the start put on 10 MB in two seconds.
+test('the sensor-chart restore is traced before loading, after reading, after the orphan check and at the end', () => {
+  const a = traceApp();
+  a._startTraceAt = Date.now();
+  a._capHistory = new Map();
+  a._capHistoryCoarse = new Map();
+  a._capHistoryInited = false;
+  a.homey.setInterval = () => ({});
+  a.homey.drivers = { getDrivers: () => ({ d: { getDevices: () => [] } }) };
+  a.homey.settings = { get: () => null, getKeys: () => [], unset: () => {} };
+  a._initCapHistory();
+  const labels = a.logs.filter((l) => l.startsWith('Start memory')).map((l) => /\[(.+)\]/.exec(l)[1]);
+  assert.deepStrictEqual(labels, [
+    'sensor chart: before load',
+    'sensor chart: series read',
+    'sensor chart: orphans checked',
+    'sensor chart restored',
+  ]);
+});

@@ -694,6 +694,7 @@ class FusionSolarApp extends App {
     this._capHistoryInited = true;
 
     // Restore persisted history from settings before taking the first snapshot
+    this.traceStartMemory('sensor chart: before load');
     this._loadCapHistory();
 
     // Snapshot current values immediately, then every 60 s
@@ -766,7 +767,9 @@ class FusionSolarApp extends App {
       enumerationComplete = false;
       this.error('sensor-chart: _loadCapHistory error:', e.message);
     }
+    this.traceStartMemory('sensor chart: series read');
     this._pruneOrphanCapHistory(validLogIds, enumerationComplete);
+    this.traceStartMemory('sensor chart: orphans checked');
   }
 
   /**

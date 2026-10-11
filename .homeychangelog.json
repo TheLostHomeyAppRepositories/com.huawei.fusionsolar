@@ -1,4 +1,9 @@
 {
+  "1.2.336": {
+    "en": "Three more temporary memory points in the start-up log, inside the restore of the sensor chart history.",
+    "de": "Drei weitere vorübergehende Speicher-Messpunkte im Start-Log, innerhalb der Wiederherstellung des Sensor-Chart-Verlaufs.",
+    "nl": "Drie extra tijdelijke geheugenmeetpunten in het startlog, binnen het herstel van de sensor-chartgeschiedenis."
+  },
   "1.2.335": {
     "en": "For the first five minutes after a start, the log shows the app's memory at several points — to find what drives the memory peak right after starting. These lines are temporary.",
     "de": "In den ersten fünf Minuten nach einem Start zeigt das Log den Speicher der App an mehreren Punkten – um herauszufinden, was die Speicherspitze direkt nach dem Start verursacht. Diese Zeilen sind vorübergehend.",
