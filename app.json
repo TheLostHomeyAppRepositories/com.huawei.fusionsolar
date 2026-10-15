@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2991,9 +2991,9 @@
               },
               "value": "",
               "hint": {
-                "en": "The charger's serial number — Easee adds it to the OCPP URL — or the charge point ID if one is set. The charger connects to ws://[Homey-IP]:[port]/[station-id] — the port is the OCPP Port below, 8887 unless changed.",
-                "de": "Die Seriennummer der Ladestation — Easee hängt sie an die OCPP-URL an — oder die Charge-Point-ID, falls eine gesetzt ist. Die Ladestation verbindet sich zu ws://[Homey-IP]:[Port]/[station-id] — der Port ist der OCPP Port weiter unten, 8887, sofern nicht geändert.",
-                "nl": "Het serienummer van de laadpaal — Easee voegt het toe aan de OCPP-URL — of de charge point ID als die is ingesteld. De laadpaal maakt verbinding met ws://[Homey-IP]:[poort]/[station-id] — de poort is de OCPP Poort hieronder, 8887 tenzij gewijzigd."
+                "en": "The charger's serial number: the Easee Installer app adds it to the OCPP URL by itself. The charger connects to ws://[Homey-IP]:[port]/[station-id] — the port is the OCPP Port below, 8887 unless changed.",
+                "de": "Die Seriennummer der Ladestation: Die Easee Installer App hängt sie selbst an die OCPP-URL an. Die Ladestation verbindet sich zu ws://[Homey-IP]:[Port]/[station-id] — der Port ist der OCPP Port weiter unten, 8887, sofern nicht geändert.",
+                "nl": "Het serienummer van de laadpaal: de Easee Installer-app voegt het zelf toe aan de OCPP-URL. De laadpaal maakt verbinding met ws://[Homey-IP]:[poort]/[station-id] — de poort is de OCPP Poort hieronder, 8887 tenzij gewijzigd."
               },
               "highlight": true
             },
@@ -3009,9 +3009,9 @@
               "min": 1024,
               "max": 65535,
               "hint": {
-                "en": "WebSocket port the OCPP server listens on. Use the same port in the OCPP URL in the Easee Installer app (Settings → OCPP → Server): ws://[Homey-IP]:[port] (default: 8887).",
-                "de": "WebSocket Port des OCPP Servers. Denselben Port in der OCPP-URL in der Easee Installer App angeben (Einstellungen → OCPP → Server): ws://[Homey-IP]:[Port] (Standard: 8887).",
-                "nl": "WebSocket poort van de OCPP server. Dezelfde poort gebruiken in de OCPP-URL in de Easee Installer-app (Instellingen → OCPP → Server): ws://[Homey-IP]:[poort] (standaard: 8887)."
+                "en": "WebSocket port the OCPP server listens on. Use the same port in the OCPP URL in the Easee Installer app (Settings → OCPP → Server): ws://[Homey-IP]:[port], nothing after the port — the app adds the Station ID (default: 8887).",
+                "de": "WebSocket Port des OCPP Servers. Denselben Port in der OCPP-URL in der Easee Installer App angeben (Einstellungen → OCPP → Server): ws://[Homey-IP]:[Port], nichts nach dem Port — die App hängt die Station-ID selbst an (Standard: 8887).",
+                "nl": "WebSocket poort van de OCPP server. Dezelfde poort gebruiken in de OCPP-URL in de Easee Installer-app (Instellingen → OCPP → Server): ws://[Homey-IP]:[poort], niets na de poort — de app voegt de Station ID zelf toe (standaard: 8887)."
               }
             },
             {

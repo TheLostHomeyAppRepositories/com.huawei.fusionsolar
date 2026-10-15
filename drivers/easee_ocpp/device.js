@@ -168,13 +168,25 @@ class EaseeOcppDevice extends Device {
   // Read by OcppServer: the unit of every charging profile sent to this charger.
   get ocppChargingRateUnit() { return 'A'; }
 
-  // Read by OcppServer when the charger connects or boots — what it is told, in this order.
-  // Every measurand here is in Easee's MeterValuesSampledData list.
+  // Read by OcppServer: the stack level of the default profile. evcc puts it on the charger's
+  // highest (ChargeProfileMaxStackLevel, 10 on an Easee), so no profile already on the charger
+  // outranks it.
+  get ocppDefaultStackLevel() { return 10; }
+
+  // Read by OcppServer when the charger connects or boots — what it is told, in this order. A
+  // list is offered value by value until the charger takes one, and read back if it takes none.
+  //   - Measurands: all of Easee's list that this device shows, then evcc's three for an Easee.
+  //   - Sample interval: 30 s. Andi's Easee refused 10 s (2026-10-15); evcc's Easee template
+  //     documents 30 s as the minimum and uses it.
+  //   - Heartbeat: 60 s instead of a day, so an idle charger is not taken for offline.
   ocppConfiguration() {
     return [
-      ['MeterValuesSampledData', 'Power.Active.Import,Energy.Active.Import.Register,Current.Import,Voltage,Temperature'],
-      ['MeterValueSampleInterval', '10'],
-      ['HeartbeatInterval', '60'],
+      ['MeterValuesSampledData', [
+        'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature',
+        'Energy.Active.Import.Register,Power.Active.Import,Current.Import',
+      ]],
+      ['MeterValueSampleInterval', ['30', '60']],
+      ['HeartbeatInterval', ['60']],
     ];
   }
 
@@ -613,7 +625,18 @@ class EaseeOcppDevice extends Device {
 
   // ─── Called by OcppServer ────────────────────────────────────────────────
 
+  // From the server: a charger connected under another Station ID while this device waits for
+  // its own — Andi's Easee came as its serial number to a device set to "easee" (2026-10-15). Said on the
+  // tile and, once the watchdog gives up, in the offline text; the log is not where one looks.
+  onOtherStation(stationId) {
+    this._otherStationId = stationId;
+    this.log(`[Easee] A charger connected as "${stationId}", but this device waits for "${this.getSetting('station_id')}" — `
+      + `enter ${stationId} as the Station ID`);
+    this._set('ocpp_last_message', `Other Station ID: ${stationId}`).catch(() => {});
+  }
+
   onOcppConnected() {
+    this._otherStationId = null;
     this.log('[Easee] Charger connected');
     this._set('ocpp_server_status', 'connected').catch(() => {});
     // A moment to settle before being told anything, the same two seconds the server waits
@@ -1795,7 +1818,9 @@ class EaseeOcppDevice extends Device {
 
       this.chargerOffline = true;
       this.log(`[Easee] Charger OFFLINE: ${silentMs === null ? 'never connected' : Math.round(silentMs / 1000) + 's silent'}`);
-      await this.setUnavailable('Charger offline — no OCPP messages received').catch(() => {});
+      await this.setUnavailable(this._otherStationId
+        ? `No charger with Station ID "${this.getSetting('station_id')}" — "${this._otherStationId}" connected instead; enter it as the Station ID`
+        : 'Charger offline — no OCPP messages received').catch(() => {});
       await this._updateSessionStatus(this._chargingState());
 
       const expected = Date.now() < this._expectedOfflineUntil;

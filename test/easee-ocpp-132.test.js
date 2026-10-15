@@ -77,8 +77,8 @@ test('an Easee is told what it knows how to sample, how often, and to say hello 
   await s._configureCharger('EH123456', ws);
   const keys = s.sent.filter((c) => c.action === 'ChangeConfiguration').map((c) => [c.payload.key, c.payload.value]);
   assert.deepStrictEqual(keys, [
-    ['MeterValuesSampledData', 'Power.Active.Import,Energy.Active.Import.Register,Current.Import,Voltage,Temperature'],
-    ['MeterValueSampleInterval', '10'],
+    ['MeterValuesSampledData', 'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature'],
+    ['MeterValueSampleInterval', '30'],   // 10 s was refused (1.3.4)
     ['HeartbeatInterval', '60'],
   ]);
   // Easee's own list (Supported Config Keys (Home)): nothing else may be asked for.

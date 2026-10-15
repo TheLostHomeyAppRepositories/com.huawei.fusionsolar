@@ -34,8 +34,8 @@
     2. <em>Update existing site</em> → choose the site<br>
     3. <em>Circuits</em> → choose the charger, then choose it once more<br>
     4. <em>Settings</em> → <em>OCPP</em> → <em>Server</em><br>
-    5. <strong>OCPP URL:</strong> <code>ws://[Homey-IP]:8887</code><br>
-    Easee adds the charger's serial number to the URL unless a charge point ID is set — that is the Station ID below.<br>
+    5. <strong>OCPP URL:</strong> <code>ws://[Homey-IP]:8887</code> — the URL only, nothing after the port<br>
+    The app adds the Station ID itself: the charger's serial number (e.g. <code>EH12AB34</code>). Enter that number as the Station ID below, or leave it empty.<br>
     <em>Without the Installer app:</em> Easee's commissioning API — <code>POST /local-ocpp/v1/connection-details/{serial}</code> with connectivityMode <code>DualProtocol</code> and the same url, then <code>POST /local-ocpp/v1/connections/chargers/{serial}</code>. Easee's guide: <em>developer.easee.com → Direct OCPP (Home) → Commissioning for users</em>.
   </div>
 
@@ -47,7 +47,7 @@
   <div class="field">
     <label>Station ID <span style="font-weight:400;color:#aaa">(optional)</span></label>
     <input type="text" id="station-id" placeholder="the charger's serial number (leave empty to accept any)" />
-    <p class="hint">The charger's serial number, as on its label and in the Easee app — or the charge point ID if one is set. Case-sensitive.<br><strong>Leave empty</strong> to accept the first charger that connects, regardless of its Station ID. Useful if you don't know the ID in advance: the app log then names it (<em>Client connected: …</em>).</p>
+    <p class="hint">The charger's serial number, as on its label and in the Easee app — the Installer app adds it to the URL by itself. Case-sensitive.<br><strong>Leave empty</strong> to accept the first charger that connects, regardless of its Station ID. Useful if you don't know the ID in advance: the app log then names it (<em>Client connected: …</em>).</p>
   </div>
 
   <div class="field">

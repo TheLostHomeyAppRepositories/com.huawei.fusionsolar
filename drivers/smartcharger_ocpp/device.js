@@ -591,7 +591,18 @@ class SmartChargerOcppDevice extends Device {
 
   // ─── Called by OcppServer ────────────────────────────────────────────────
 
+  // From the server: a charger connected under another Station ID while this device waits for
+  // its own — Andi's Easee came as its serial number to a device set to "easee" (2026-10-15). Said on the
+  // tile and, once the watchdog gives up, in the offline text; the log is not where one looks.
+  onOtherStation(stationId) {
+    this._otherStationId = stationId;
+    this.log(`[OCPP] A charger connected as "${stationId}", but this device waits for "${this.getSetting('station_id')}" — `
+      + `enter ${stationId} as the Station ID`);
+    this._set('ocpp_last_message', `Other Station ID: ${stationId}`).catch(() => {});
+  }
+
   onOcppConnected() {
+    this._otherStationId = null;
     this.log('[OCPP] Charger connected');
     this._set('ocpp_server_status', 'connected').catch(() => {});
     // A moment to settle before being told anything, the same two seconds the server waits
@@ -1773,7 +1784,9 @@ class SmartChargerOcppDevice extends Device {
 
       this.chargerOffline = true;
       this.log(`[OCPP] Charger OFFLINE: ${silentMs === null ? 'never connected' : Math.round(silentMs / 1000) + 's silent'}`);
-      await this.setUnavailable('Charger offline — no OCPP messages received').catch(() => {});
+      await this.setUnavailable(this._otherStationId
+        ? `No charger with Station ID "${this.getSetting('station_id')}" — "${this._otherStationId}" connected instead; enter it as the Station ID`
+        : 'Charger offline — no OCPP messages received').catch(() => {});
       await this._updateSessionStatus(this._chargingState());
 
       const expected = Date.now() < this._expectedOfflineUntil;

@@ -605,7 +605,9 @@ the FusionSolar app: *Services* → *Commission Device*, connect to the charger'
 A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OCPP 1.6J, which Easee calls *Direct OCPP* and still marks as beta (firmware 344 or later). The charger talks to Homey directly, without the Easee cloud in between (since 1.3.2). It shares the OCPP server and the flow cards with the Smart Charger (OCPP) device, and shows the same readings, buttons and session history. What differs:
 
 - **Limits in amperes.** An Easee accepts no watt-based charging schedules, so every limit goes out in A, and 0 A as 0 A.
-- **Readings.** When the charger connects, it is told to sample power, energy, current, voltage and temperature every 10 s (its own default is not to sample at all) and to send a heartbeat every 60 s instead of once a day, so an idle charger is not taken for offline.
+- **Readings.** When the charger connects, it is told to sample energy, power, current, voltage and temperature every 30 s, the Easee's minimum (its own default is not to sample at all; since 1.3.4, 10 s before). A list or a value it refuses is followed by the next — energy, power and current alone, 60 s — and one it refuses throughout is read back into the app log. It is also told to send a heartbeat every 60 s instead of once a day, so an idle charger is not taken for offline.
+- **The default profile on stack level 10**, the Easee's highest, so no profile already on the charger outranks it (since 1.3.4).
+- **Firmware.** Connecting needs firmware 344; setting the charging current over OCPP may need a newer one (evcc reports testing with beta firmware 9012). The app log names the charger's firmware at every boot (`[OcppServer] <serial>: Easee …, firmware …`).
 - **No vehicle SoC tile**, since an Easee does not report the car's state of charge, and **no charger model setting**.
 - **Target power as Homey's EV charger page processes it:** rounded down to whole amps (5000 W single-phase charges at 4830 W, so a surplus is never overshot), and idle below 6 A on every phase. The power range is written to Homey only when the phase setting changes it.
 
@@ -617,9 +619,9 @@ Easee's own OCPP needs firmware 344 or later and the charger on WiFi. It is swit
 2. *Update existing site* → choose the site.
 3. *Circuits* → choose the charger, then choose it once more.
 4. *Settings* → *OCPP* → *Server*.
-5. Enter `ws://<Homey-IP>:8887` as the OCPP URL.
+5. Enter `ws://<Homey-IP>:8887` as the OCPP URL — the URL only, nothing after the port. The app adds the Station ID itself: the charger's serial number.
 
-In Homey, add an **Easee Charger (OCPP)** device with the charger's serial number as Station ID: Easee adds it to the URL unless a charge point ID is set. Not sure which ID it uses? Leave the Station ID empty; the device then takes the first charger that connects, and the app log names it (`Client connected: …`). With a password for OCPP at Easee (`basicAuthPassword`), enter it as the password: the user name is the Station ID, and the pairing fills it in when left empty.
+In Homey, add an **Easee Charger (OCPP)** device with the charger's serial number as Station ID, or leave the Station ID empty: the device then takes the first charger that connects, and the app log names it (`Client connected: …`). A device whose Station ID does not match says on its tile which ID connected instead (since 1.3.4), and correcting it takes effect without the charger reconnecting. With a password for OCPP at Easee (`basicAuthPassword`), enter it as the password: the user name is the Station ID, and the pairing fills it in when left empty.
 
 **Without the Installer app**, Easee's commissioning API does the same (Easee's guide: developer.easee.com → *Direct OCPP (Home)* → *Commissioning for users*). Both calls need the bearer token of your Easee account:
 
