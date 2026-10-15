@@ -954,7 +954,7 @@
         "hint": "Het huis wordt uit dezelfde opwek gevoed, dus een hoog aandeel bij hoog huisverbruik kan netafname veroorzaken.",
         "evStepUpFrom": "Vanaf laadstand",
         "evStepUp": "mag de EV-lader één trede hoger laden",
-        "evStepUpHint": "Is de accu zo vol, dan mag de EV-lader de volgende trede nemen, ook als het overschot die niet helemaal haalt, en de accu levert de rest: minder dan één trede, dus 230 W op één fase en 690 W op drie. Zonder deze regel gaat die rest naar het net. Een lader met faseomschakeling gaat dan al vanaf 4140 W overschot naar drie fasen in plaats van vanaf 4830 W. 4 procentpunten lager neemt de lader weer de trede die in het overschot past, en de accu vult zich weer. Zet de waarde net onder de maximale laadstand van de accu. De regel geldt niet zolang er stroom van het net wordt afgenomen. 0 = uit.",
+        "evStepUpHint": "Is de accu zo vol, dan mag de EV-lader de volgende trede nemen, ook als het overschot die niet helemaal haalt, en de accu levert de rest: minder dan één trede, dus 230 W op één fase en 690 W op drie. Zonder deze regel gaat die rest naar het net. Een lader met faseomschakeling gaat dan al vanaf 4140 W overschot naar drie fasen in plaats van vanaf 4830 W. 4 procentpunten lager neemt de lader weer de trede die in het overschot past, en de accu vult zich weer. Na een verlaging mag de lader al na één minuut in plaats van na vijf weer ophogen. Zet de waarde net onder de maximale laadstand van de accu. De regel geldt niet zolang er stroom van het net wordt afgenomen. 0 = uit.",
         "nowSoc": "Accu nu {soc}%",
         "nowShare": "apparaten krijgen {pct}% van de opwek",
         "nowWatts": "{w} W van {surplus} W",
