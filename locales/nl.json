@@ -817,7 +817,7 @@
       "fullBattery": "Accu vol: volgende trede",
       "fullBatteryOn": "vanaf",
       "fullBatteryOff": "%, terug onder",
-      "fullBatteryHint": "% — Vanaf het eerste getal geldt de thuisaccu als vol. De lader mag dan de volgende trede nemen, ook als het overschot die niet helemaal haalt, en de accu levert de rest: minder dan één trede, dus 230 W op één fase en 690 W op drie. Zonder deze regel gaat die rest naar het net. Onder het tweede getal neemt de lader weer de trede die in het overschot past, en de accu vult zich weer. Zet het eerste getal net onder de maximale laadstand van de accu. De regel geldt niet zolang er stroom van het net wordt afgenomen.",
+      "fullBatteryHint": "% — Vanaf het eerste getal geldt de thuisaccu als vol. De lader mag dan de volgende trede nemen, ook als het overschot die niet helemaal haalt, en de accu levert de rest: minder dan één trede, dus 230 W op één fase en 690 W op drie. Zonder deze regel gaat die rest naar het net. Onder het tweede getal neemt de lader weer de trede die in het overschot past, en de accu vult zich weer. Een lader met faseomschakeling gaat dan al vanaf 4140 W overschot naar drie fasen in plaats van vanaf 4830 W, en pas onder 3450 W in plaats van onder 4140 W terug naar één. Zet het eerste getal net onder de maximale laadstand van de accu. De regel geldt niet zolang er stroom van het net wordt afgenomen.",
       "maxCurrentTitle": "Max. stroom (A)",
       "phasesTitle": "Aantal fasen dat deze lader gebruikt",
       "autoPhaseSwitchTitle": "Automatisch faseschakelen: onder 4140 W (6A × 3f) gebruikt de EMS 1-fase laden; daarboven of gelijk wordt naar 3-fase geschakeld",

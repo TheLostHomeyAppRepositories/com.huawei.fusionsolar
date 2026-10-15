@@ -817,7 +817,7 @@
       "fullBattery": "Akku voll: nächste Stufe",
       "fullBatteryOn": "ab",
       "fullBatteryOff": "%, zurück unter",
-      "fullBatteryHint": "% — Ab dem ersten Wert gilt die Hausbatterie als voll. Der Lader darf dann die nächsthöhere Stufe nehmen, auch wenn der Überschuss sie nicht ganz erreicht, und die Batterie liefert den Rest: weniger als eine Stufe, also einphasig 230 W und dreiphasig 690 W. Ohne die Regel ginge dieser Rest ins Netz. Unter dem zweiten Wert nimmt der Lader wieder die Stufe, die ganz in den Überschuss passt, und die Batterie füllt sich. Den ersten Wert knapp unter den maximalen Ladestand der Batterie setzen. Bei Netzbezug gilt die Regel nicht.",
+      "fullBatteryHint": "% — Ab dem ersten Wert gilt die Hausbatterie als voll. Der Lader darf dann die nächsthöhere Stufe nehmen, auch wenn der Überschuss sie nicht ganz erreicht, und die Batterie liefert den Rest: weniger als eine Stufe, also einphasig 230 W und dreiphasig 690 W. Ohne die Regel ginge dieser Rest ins Netz. Unter dem zweiten Wert nimmt der Lader wieder die Stufe, die ganz in den Überschuss passt, und die Batterie füllt sich. Ein Lader mit Phasenumschaltung geht dann schon ab 4140 W Überschuss auf drei Phasen statt ab 4830 W, und erst unter 3450 W statt unter 4140 W zurück auf eine. Den ersten Wert knapp unter den maximalen Ladestand der Batterie setzen. Bei Netzbezug gilt die Regel nicht.",
       "maxCurrentTitle": "Max. Strom (A)",
       "phasesTitle": "Anzahl Phasen, die dieser Lader nutzt",
       "autoPhaseSwitchTitle": "Automatische Phasenumschaltung: unter 4140 W (6A × 3ph) lädt das EMS 1-phasig; ab diesem Wert schaltet er auf 3-phasig um",
