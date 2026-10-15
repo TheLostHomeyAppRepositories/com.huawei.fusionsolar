@@ -649,12 +649,12 @@ The ramp is opt-in: with both SoC points at 0 it is off, and the hard stop is th
 
 **A full battery lets the charger take the next step** (since 1.3.1). In solar mode a charger takes the highest current that fits the surplus, and once running it keeps 250 W free before it steps up. While the home battery charges, it absorbs that remainder. Once the battery is full, the remainder goes to the grid: up to 940 W at three phases.
 
-- **From the charger's *Battery full* level** (default 97 %), the charger may take the next step up even when the surplus falls slightly short, and the full battery supplies the rest. That is always less than one step: 230 W on one phase, 690 W on three. The 250 W reserve falls away too. The status line then begins with *Akku voll*.
-- **Below the second level** (default 93 %), the charger takes the step that fits the surplus again, and the battery refills.
+- **The level** is set with the battery, under *Home Batteries → surplus split*: *From charge level [97] % the EV charger may charge one step higher* (since 1.3.3; one value for all chargers, 0 = off). The line only appears once an EV charger is configured. From that level the charger may take the next step up even when the surplus falls slightly short, and the full battery supplies the rest. That is always less than one step: 230 W on one phase, 690 W on three. The 250 W reserve falls away too. The status line then begins with *Akku voll*.
+- **4 points lower** (93 % by default), the charger takes the step that fits the surplus again, and the battery refills.
 - **A charger with phase switching** (since 1.3.2) moves both phase edges one three-phase step lower while the battery is full: three phases from 4140 W of surplus instead of 4830 W, and back to one phase only below 3450 W instead of 4140 W. The 690 W between the two edges stays, so it does not flap more than before. On a surplus between 3.7 and 4.8 kW it used to switch six times an hour and export the rest at 16 A on one phase; it now stays at three phases.
 - **The step is measured against the real surplus**, which is the budget less what the battery is discharging. So the charger cannot climb step by step on the battery: with the battery covering the gap, the meter reads zero, and a budget taken from the meter alone would always look like room for one more step.
 - **When the rule ends**, a running charger is measured the same way, rounded down, until the battery no longer pays for its step, for at most 15 minutes. Otherwise the step would stay: the plain rule cannot see a battery that covers it.
-- **Limits:** the rule never applies while power is drawn from the grid, and it needs a battery power reading. It can be switched off per charger under *EV Chargers*.
+- **Limits:** the rule never applies while power is drawn from the grid, and it needs a battery power reading. Setting the level to 0 switches it off.
 
 Two guards sit under the ramp, both from field measurements:
 

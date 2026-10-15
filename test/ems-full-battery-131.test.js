@@ -14,8 +14,6 @@
 
 const test   = require('node:test');
 const assert = require('node:assert');
-const fs     = require('fs');
-const path   = require('path');
 
 const chargerMixin        = require('../lib/ems/chargerControl');
 const timingMixin         = require('../lib/ems/timing');
@@ -130,7 +128,7 @@ test('full from the upper level, back below the lower one, with the gap in betwe
   assert.ok(d.logs.some((l) => /battery full/.test(l)) && d.logs.some((l) => /back to the rung/.test(l)), 'both changes logged once');
 });
 
-test('the levels come from the charger, with 97 / 93 % as defaults', () => {
+test('the rule reads its levels from the charger object, 97 / 93 % by default', () => {
   const d = makeDevice();
   const c = charger1({ batFullOnPct: 90, batFullOffPct: 85 });
   assert.ok(d._fullBatteryRule(c, { soc: 90, powerW: 0 }, 0, false, 1000, T0).roundUp);
@@ -243,37 +241,5 @@ test('_evaluateEvChargers: battery full, the charger takes the next rung and say
     assert.doesNotMatch(d._lastMode.text, /Akku voll/);
   } finally {
     Date.now = realNow;
-  }
-});
-
-// ── settings ─────────────────────────────────────────────────────────────────────────
-
-const read = (...p) => fs.readFileSync(path.join(__dirname, '..', ...p), 'utf8').replace(/\r\n/g, '\n');
-
-test('the levels are per charger: settings page, validation, charger object', () => {
-  const page = read('settings', 'index.html');
-  assert.match(page, /fullChk\.className = 'ems-charger-fulltopup';/);
-  assert.match(page, /fullChk\.checked = !\(stored && stored\.full_battery_topup === false\);/, 'on unless switched off');
-  assert.match(page, /c\.full_battery_topup = fullChkEl \? fullChkEl\.checked : true;/);
-  assert.match(page, /c\.full_battery_on_pct  = \(isFinite\(fullOnP\)  && fullOnP  >= 50 && fullOnP  <= 100\) \? fullOnP  : 97;/);
-  assert.match(page, /entry\.appendChild\(stepRow\); entry\.appendChild\(fullRow\);/);
-
-  const dev = read('drivers', 'energy_management', 'device.js');
-  assert.match(dev, /clamp\(c, 'full_battery_on_pct', 50, 100\);/);
-  assert.match(dev, /full_battery_off_pct ≥ on/);
-  assert.match(dev, /batFullTopUp:  c\.full_battery_topup !== false,/);
-  assert.match(dev, /batFullOnPct:  pctOrUndef\(c\.full_battery_on_pct\),/);
-  // An empty field must not become 0 %, which would round up all day.
-  const pctOrUndef = eval(dev.match(/const pctOrUndef = (\(v\) => [^;]*);/)[1]);
-  assert.strictEqual(pctOrUndef(''), undefined);
-  assert.strictEqual(pctOrUndef(null), undefined);
-  assert.strictEqual(pctOrUndef('95'), 95);
-
-  for (const l of ['en', 'de', 'nl']) {
-    const c = require(`../locales/${l}.json`).settings.chargers;
-    for (const k of ['fullBattery', 'fullBatteryOn', 'fullBatteryOff', 'fullBatteryHint']) {
-      assert.ok(c[k], `${l}: ${k}`);
-    }
-    assert.doesNotMatch(c.fullBatteryHint, /Home Assistant/);
   }
 });
