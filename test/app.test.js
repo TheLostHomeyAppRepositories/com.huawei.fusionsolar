@@ -378,7 +378,7 @@ test('the battery announcement thresholds are named in all three locales', () =>
 
 // ── the adjustment-interval hint quotes a constant ───────────────────────────
 // The field governs stepping UP; stepping down is immediate. FLIP_COOLDOWN_MS is the wait
-// before a START after a stop — since 1.3.5 nothing else (it used to lock stepping up after
+// before a START after a stop — since 1.3.1 nothing else (it used to lock stepping up after
 // every step down too). Asked about directly ("Geht es nur um das Erhöhen? Was passiert bzgl.
 // reduzieren?"), so the hint says all three things, and the third one names a number that
 // lives in code. If the constant moves, the hint lies.

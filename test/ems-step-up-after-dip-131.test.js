@@ -1,8 +1,8 @@
 'use strict';
 
-// After a dip, a running charger steps up on its adjustment interval alone (1.3.5).
+// After a dip, a running charger steps up on its adjustment interval alone (1.3.1).
 //
-// Until 1.3.4 every step DOWN also locked stepping up for FLIP_COOLDOWN_MS (5 min). That
+// Until 1.3.0 every step DOWN also locked stepping up for FLIP_COOLDOWN_MS (5 min). That
 // was a second, longer copy of the adjustment interval (step_hold_s), and nobody could set
 // it. On a house without room for the remainder it meant five minutes of export after every
 // dip: Andi's meter on 2026-10-15 at 16:27 showed 487 W, with the charger held at 7 A against
@@ -44,7 +44,7 @@ const charger = (drawn) => ({ id: 'c1', connected: true, minAmps: 6, maxAmps: 16
 const amps = (d) => d._getChargerState('c1').currentAmps;
 const seeded = (patch) => { const d = makeDevice(); Object.assign(d._getChargerState('c1'), patch); return d; };
 
-test('FLIP_COOLDOWN_MS stays five minutes, and the 1.3.4 one-minute variant is gone', () => {
+test('FLIP_COOLDOWN_MS stays five minutes, and the one-minute variant of a test build is gone', () => {
   assert.strictEqual(FLIP_COOLDOWN_MS, 5 * 60_000);
   assert.strictEqual(constants.BAT_FULL_FLIP_COOLDOWN_MS, undefined);
 });

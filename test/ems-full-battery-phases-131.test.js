@@ -1,6 +1,6 @@
 'use strict';
 
-// Battery full, the phase count too (1.3.2, review 2026-10-15).
+// Battery full, the phase count too (1.3.1, review 2026-10-15).
 //
 // Andi's log from 2026-10-15, afternoon, battery at 100 % from 12:48. The surplus sat
 // between 3.7 and 4.8 kW, and the charger switched between one and three phases six times
@@ -10,7 +10,7 @@
 // The cause is the switch rule. Three phases need 4830 W (6 A × 3 × 230 plus a rung of
 // headroom), and the charger drops back the moment the surplus falls below 4140 W. At
 // 16 A on one phase (3680 W) the rest went to the grid: −1273 W at 14:57, −531 W at 15:13.
-// The 1.3.1 rule rounded up within one phase count only.
+// The first test build of the rule rounded up within one phase count only.
 //
 // With the battery full, both edges now sit one three-phase rung lower: three phases from
 // 4140 W of real surplus, back to one phase below 3450 W. The 690 W between the two stays.

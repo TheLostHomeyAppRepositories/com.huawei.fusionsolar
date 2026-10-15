@@ -1,8 +1,8 @@
 'use strict';
 
-// Battery full: one setting with the battery, not two per charger (1.3.3).
+// Battery full: one setting with the battery, not two per charger (1.3.1).
 //
-// 1.3.1–1.3.2 asked for the "full" level and the level to fall back below at every EV
+// The first test builds of 1.3.1 asked for the "full" level and the level to fall back below at every EV
 // charger. Andi, 2026-10-15: the level belongs to the battery. The surplus split beside it
 // already says "from charge level X % the devices get Y %", and a second charger should not
 // need it entered again. So: Home batteries → surplus split, one line:
@@ -79,7 +79,7 @@ test('the settings page: one line under the surplus split, saved and loaded with
   assert.match(PAGE, /<input id="ems-ev-step-up-soc" type="number" value="97" min="0" max="100"/);
   assert.match(PAGE, /ev_step_up_soc:\s+\(function\(\) \{\n\s+var v = parseInt\(document\.getElementById\('ems-ev-step-up-soc'\)\.value, 10\);\n\s+return \(isFinite\(v\) && v >= 0 && v <= 100\) \? v : 97;/);
   assert.match(PAGE, /document\.getElementById\('ems-ev-step-up-soc'\)\.value = \(cfg\.ev_step_up_soc !== undefined && cfg\.ev_step_up_soc !== null && cfg\.ev_step_up_soc !== ''\) \? cfg\.ev_step_up_soc : 97;/);
-  // The per-charger row of 1.3.1–1.3.2 is gone.
+  // The per-charger row of the first test builds is gone.
   assert.doesNotMatch(PAGE, /ems-charger-fulltopup|ems-charger-fullon|ems-charger-fulloff|fullRow/);
 });
 
