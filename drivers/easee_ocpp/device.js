@@ -30,6 +30,11 @@
 //     is closed after STALE_TXN_GRACE_MS, not only one beside Available.
 //   - A limit the charger refuses is an error, not "Charging limit set".
 //   - Each MeterValues message is logged in one line, measurand by measurand.
+// And from the next one, 00:24–00:26 (1.3.7): the transaction started, the profile was
+// accepted, and the Easee went SuspendedEVSE offering 0 A of the 16 A set. A charger that
+// offers less is now named on the tile too, and asked for its own schedule
+// (GetCompositeSchedule): 16 A there means the limit comes from outside OCPP — the Easee app or
+// cloud, a schedule, the circuit — 0 A means from OCPP.
 //
 // The charger is pointed at Homey through Easee's commissioning API (connection details with
 // url ws://[Homey-IP]:[port], then apply). Without a chargePointId it connects as its serial
@@ -1138,6 +1143,25 @@ class EaseeOcppDevice extends Device {
       this._offeredNote = `Offers ${offered} A, set ${setA} A`;
     } else {
       this.log(`[Easee] The charger offers ${offered} A of the ${setA} A set — a limit of its own (circuit, Easee app) is lower`);
+      this._offeredNote = `Offers ${offered} A, set ${setA} A`;
+      this._logChargerSchedule().catch(() => {});
+    }
+  }
+
+  // The charger's own view of its limit, into the log — once per mismatch (1.3.7).
+  async _logChargerSchedule() {
+    const server = this._ocppServer();
+    if (!server || typeof server.getCompositeScheduleAsync !== 'function') return;
+    try {
+      const r = await server.getCompositeScheduleAsync(this.getSetting('station_id'), 1, 60);
+      const sched   = r && r.chargingSchedule;
+      const periods = (sched && sched.chargingSchedulePeriod) || [];
+      const first   = periods[0];
+      this.log(`[Easee] Its own schedule: ${r && r.status}`
+        + (first ? ` — ${first.limit} ${sched.chargingRateUnit || ''} now`
+          + ` (${first.limit > 0 ? 'so the lower current comes from outside OCPP: the Easee app or cloud, a schedule, the circuit' : 'so OCPP itself holds it at 0'})` : ''));
+    } catch (err) {
+      this.log(`[Easee] Its own schedule could not be read: ${err.message}`);
     }
   }
 
