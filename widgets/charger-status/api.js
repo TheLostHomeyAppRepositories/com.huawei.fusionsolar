@@ -2,12 +2,14 @@
 
 const { getDevice, lang } = require('../../lib/widget-data');
 
-// Charger lookup: OCPP first (full session data), then EMMA Modbus
+// Charger lookup: OCPP first (full session data) — the Huawei driver, then the Easee one —
+// then EMMA Modbus
 // (telemetry-only — getWidgetStatus degrades gracefully). Uses the driver
 // registry rather than OcppServer.getInstance() so merely opening the
 // widget never boots the OCPP WebSocket server.
 function getChargerDevice(homey) {
   return getDevice(homey, 'smartcharger_ocpp')
+    || getDevice(homey, 'easee_ocpp')
     || getDevice(homey, 'smartcharger_emma_modbus');
 }
 

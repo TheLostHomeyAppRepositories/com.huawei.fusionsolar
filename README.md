@@ -524,7 +524,7 @@ controlled with the Smart Charger (OCPP) device.
 
 ### Smart Charger (OCPP)
 
-Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible EV chargers (Huawei SCharger, Easee Home, and others) can connect directly to Homey without a cloud intermediary. One Homey device is created per charger (Station ID). Chargers set to different ports each get a server of their own, so changing or saving one never cuts the other off (since 1.2.323).
+Runs an OCPP 1.6 JSON WebSocket server (port 8887 unless changed) so compatible EV chargers (Huawei SCharger and others) can connect directly to Homey without a cloud intermediary. An Easee has a device of its own, [Easee Charger (OCPP)](#easee-charger-ocpp), on the same server. One Homey device is created per charger (Station ID). Chargers set to different ports each get a server of their own, so changing or saving one never cuts the other off (since 1.2.323).
 
 #### Readable Capabilities
 
@@ -597,6 +597,39 @@ the FusionSolar app: *Services* → *Commission Device*, connect to the charger'
 | Charging | Default charging current | 10A | Current used by auto-start and by "Start charging" without an ampere value; a change during a session applies from the next start |
 | Display | Show vehicle battery level | on | Off removes the tile for cars that do not report their state of charge |
 | Notifications | Timeline notifications | on | Posts car connected (auto-start off), charging started/paused/resumed/stopped, limit changes, a car that draws no power, car disconnected, and charger offline/back online. Off also silences the offline warning |
+
+---
+
+### Easee Charger (OCPP)
+
+A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OCPP 1.6J, which Easee calls *Direct OCPP* and still marks as beta (firmware 344 or later). The charger talks to Homey directly, without the Easee cloud in between (since 1.3.2). It shares the OCPP server and the flow cards with the Smart Charger (OCPP) device, and shows the same readings, buttons and session history. What differs:
+
+- **Limits in amperes.** An Easee accepts no watt-based charging schedules, so every limit goes out in A, and 0 A as 0 A.
+- **Readings.** When the charger connects, it is told to sample power, energy, current, voltage and temperature every 10 s (its own default is not to sample at all) and to send a heartbeat every 60 s instead of once a day, so an idle charger is not taken for offline.
+- **No vehicle SoC tile**, since an Easee does not report the car's state of charge, and **no charger model setting**.
+- **Target power as Homey's EV charger page processes it:** rounded down to whole amps (5000 W single-phase charges at 4830 W, so a surplus is never overshot), and idle below 6 A on every phase. The power range is written to Homey only when the phase setting changes it.
+
+#### Setup (Easee)
+
+Easee's own OCPP is switched on through Easee's commissioning API, not in the Easee app (Easee's guide: developer.easee.com → *Direct OCPP (Home)* → *Commissioning for users*). Both calls need the bearer token of your Easee account, and the charger must be on WiFi.
+
+1. Store the connection for the charger's serial number:
+   `POST https://api.easee.com/local-ocpp/v1/connection-details/{serial}`
+   ```json
+   {
+     "connectivityMode": "DualProtocol",
+     "websocketConnectionArgs": { "url": "ws://<Homey-IP>:8887" }
+   }
+   ```
+   Optional: `chargePointId` (without it the charger connects as its serial number) and `basicAuthPassword`.
+2. Apply it with the `version` from the answer:
+   `POST https://api.easee.com/local-ocpp/v1/connections/chargers/{serial}` with `{ "version": "…" }`
+
+In Homey, add an **Easee Charger (OCPP)** device with the serial number, or your `chargePointId`, as Station ID. With a `basicAuthPassword`, enter it as the password: the user name is the Station ID, and the pairing fills it in when left empty. To switch OCPP off again, store the connection details with `"connectivityMode": "OcppOff"` and apply them, or pair the charger with another operator in the Easee app.
+
+#### Device Settings
+
+As for the Smart Charger (OCPP), without *Charger model* and *Show vehicle battery level*; *Charger vendor* defaults to Easee.
 
 ---
 
@@ -758,6 +791,11 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 - Charger and Homey on the same local network
 - Charger's OCPP backend set to `ws://<Homey-IP>:8887/<station-id>` — 8887 is the default; the port can be set per device (one server per port) — and that port reachable from the charger (not blocked by a firewall)
 - Huawei SCharger: firmware V100R023C10SPC220 or newer
+
+#### Easee Charger (OCPP)
+- Easee charger with firmware 344 or newer, on WiFi
+- Easee's own OCPP switched on with Easee's commissioning API, url `ws://<Homey-IP>:8887` (see [Setup (Easee)](#setup-easee))
+- Charger and Homey on the same local network, the port reachable from the charger
 
 #### SDongle A
 - SDongle A reachable over LAN
@@ -947,17 +985,17 @@ out — they are no longer offered for new flows, and existing flows keep workin
 | Remote dispatch mode changed | Battery LUNA 2000 (Modbus) | `mode` | Fires when the remote charge/discharge control mode changes (e.g. switched by a third-party scheduling service). |
 | EV charging started | Smart Charger (EMMA Modbus) | – | Fires when the app sees voltage appear on the charger's output (above 10 V on any phase). The charger has no register for its charging state, so this is how a session is recognised. |
 | EV charging stopped | Smart Charger (EMMA Modbus) | – | Fires when the voltage on the charger's output disappears (10 V or less on every phase). The charger has no register for its charging state, so this is how the end of a session is recognised. |
-| Charger reported a fault (OCPP) | Smart Charger (OCPP) | `error_code`, `vendor_error_code`, `info`, `status` | Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature. |
-| EV charging started (OCPP) | Smart Charger (OCPP) | `amps`, `phases`, `phase_label`, `message`, `transaction_id`, `meter_start` | Fires once power actually flows (above 100 W) after the charger has started a transaction, or right away when a start card releases a car that was waiting. Not fired when the car draws nothing, nor when charging continues after a pause — that is "Charging resumed (OCPP)". |
-| EV charging stopped (OCPP) | Smart Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start in which the car never drew power — there was no "EV charging started" for it either; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |
-| EV plugged in — waiting for start (OCPP) | Smart Charger (OCPP) | – | Fires when a car plugs in and auto-start charging is disabled. Use this to start charging manually from a flow. |
-| EV charger state changed (OCPP) | Smart Charger (OCPP) | `state` | Fires on every status report from the charger (OCPP StatusNotification), mapped to idle / connected / charging / error — the state can be the same as before. |
-| EV disconnected (OCPP) | Smart Charger (OCPP) | `connected_minutes`, `message` | Fires when the cable is physically unplugged from the charger (rawStatus=Available). |
-| Charger went offline (OCPP) | Smart Charger (OCPP) | `message` | Fires when no OCPP message has been received from the charger for 3 minutes. Not fired for 5 minutes after a reboot command. |
-| Charger came back online (OCPP) | Smart Charger (OCPP) | `message` | Fires when the charger reconnects after "Charger went offline (OCPP)" has fired. |
-| Charging paused (OCPP) | Smart Charger (OCPP) | `resume_amps`, `message` | Fires when charging is paused via the masked-stop mechanism. |
-| Charging resumed (OCPP) | Smart Charger (OCPP) | `amps`, `phases`, `phase_label`, `message` | Fires when power is flowing again after a pause (power-verified). |
-| Charging limit changed (OCPP) | Smart Charger (OCPP) | `amps`, `previous_amps`, `phases`, `phase_label`, `message` | Fires when the charging current limit is changed during an active session. |
+| Charger reported a fault (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `error_code`, `vendor_error_code`, `info`, `status` | Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature. |
+| EV charging started (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `amps`, `phases`, `phase_label`, `message`, `transaction_id`, `meter_start` | Fires once power actually flows (above 100 W) after the charger has started a transaction, or right away when a start card releases a car that was waiting. Not fired when the car draws nothing, nor when charging continues after a pause — that is "Charging resumed (OCPP)". |
+| EV charging stopped (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start in which the car never drew power — there was no "EV charging started" for it either; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |
+| EV plugged in — waiting for start (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | – | Fires when a car plugs in and auto-start charging is disabled. Use this to start charging manually from a flow. |
+| EV charger state changed (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `state` | Fires on every status report from the charger (OCPP StatusNotification), mapped to idle / connected / charging / error — the state can be the same as before. |
+| EV disconnected (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `connected_minutes`, `message` | Fires when the cable is physically unplugged from the charger (rawStatus=Available). |
+| Charger went offline (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `message` | Fires when no OCPP message has been received from the charger for 3 minutes. Not fired for 5 minutes after a reboot command. |
+| Charger came back online (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `message` | Fires when the charger reconnects after "Charger went offline (OCPP)" has fired. |
+| Charging paused (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `resume_amps`, `message` | Fires when charging is paused via the masked-stop mechanism. |
+| Charging resumed (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `amps`, `phases`, `phase_label`, `message` | Fires when power is flowing again after a pause (power-verified). |
+| Charging limit changed (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `amps`, `previous_amps`, `phases`, `phase_label`, `message` | Fires when the charging current limit is changed during an active session. |
 | Solar forecast updated | Energy Management System | `remaining_today_kwh`, `next_6h_kwh`, `peak_kw` | Fires when a fresh Solcast PV forecast has been fetched. |
 | EMS mode changed | Energy Management System | `mode` | Fires when the Energy Management System switches to a different operating mode. |
 | EMS wants to set charger current | Energy Management System | `amps`, `phase1`, `phase2`, `phase3`, `charger_device_id` | Fires when the EMS wants to change an EV charger's current. Paste the Charger Device ID from the EMS settings. Use the [amps], [phase1], [phase2], [phase3] tokens in the charger action: [amps] is the current per phase, [phase2] and [phase3] are 0 when charging on one phase, and 0 A means stop charging. |
@@ -1011,10 +1049,10 @@ out — they are no longer offered for new flows, and existing flows keep workin
 | Battery working mode is / is not | Battery LUNA 2000 (Modbus / EMMA Modbus) | Checks the current storage working mode of the LUNA2000 battery. |
 | Excess PV energy use in TOU mode is / is not | Battery LUNA 2000 (Modbus / EMMA Modbus) | Checks how excess PV energy is used in TOU mode (feed to grid or charge battery). In any other working mode the setting does nothing. |
 | Remote dispatch mode is / is not | Battery LUNA 2000 (Modbus) | Checks the current remote charge/discharge control mode of the LUNA2000 battery. |
-| Charger is / is not online | Smart Charger (OCPP) | True while OCPP messages are arriving from the charger. Worth checking before any charging action — they all fail on an offline charger. |
-| Charger is charging / not charging | Smart Charger (OCPP) | True while the charger reports the status Charging — what the charger says, not measured power — as opposed to the cable merely being connected. |
-| Car is / is not plugged in | Smart Charger (OCPP) | True whenever the cable is connected — while waiting for a start, charging, paused, and after charging has finished (Finishing). False while the charger reports Unavailable or Faulted: it cannot tell then. |
-| Session status is / is not | Smart Charger (OCPP) | The status shown on the device, for the cases the plainer conditions do not separate — finishing, fully charged, waiting for a start. |
+| Charger is / is not online | Smart Charger (OCPP), Easee Charger (OCPP) | True while OCPP messages are arriving from the charger. Worth checking before any charging action — they all fail on an offline charger. |
+| Charger is charging / not charging | Smart Charger (OCPP), Easee Charger (OCPP) | True while the charger reports the status Charging — what the charger says, not measured power — as opposed to the cable merely being connected. |
+| Car is / is not plugged in | Smart Charger (OCPP), Easee Charger (OCPP) | True whenever the cable is connected — while waiting for a start, charging, paused, and after charging has finished (Finishing). False while the charger reports Unavailable or Faulted: it cannot tell then. |
+| Session status is / is not | Smart Charger (OCPP), Easee Charger (OCPP) | The status shown on the device, for the cases the plainer conditions do not separate — finishing, fully charged, waiting for a start. |
 | Expected solar today is more / less than | Energy Management System | True when the Solcast forecast for the rest of today (until midnight) is above the given number of kWh. |
 | Expected solar until a time is below / not below | Energy Management System | True when the Solcast forecast for the PV production remaining from now until the given time today is below the threshold (kWh). Returns 0 once that time has passed. Useful for deadline planning, e.g. "the sun won't cover the car by 18:00, start grid charging". |
 | Expected solar in the next hours is more / less than | Energy Management System | True when the Solcast forecast for the next N hours is above the given number of kWh. |
@@ -1075,7 +1113,7 @@ out — they are no longer offered for new flows, and existing flows keep workin
 | Set excess PV energy use in TOU mode | Only takes effect in the working mode "Time of Use (TOU)": whether surplus solar goes into the grid or charges the battery (EMMA register 40001). In any other mode the setting does nothing. |
 | Set max grid charging power | Sets the maximum power the LUNA2000 battery may draw from the grid for charging via EMMA Modbus (register 40002), 0–50 kW. Huawei defines it for the working mode "Time of Use (TOU)". |
 
-#### Smart Charger (OCPP)
+#### Smart Charger (OCPP), Easee Charger (OCPP)
 
 | Card | Description |
 |---|---|

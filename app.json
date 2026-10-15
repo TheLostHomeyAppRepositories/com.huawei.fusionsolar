@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -2712,6 +2712,525 @@
                 "en": "The charger can only report the car's state of charge if the car sends it over OCPP, and many cars do not. Turn this off to remove the tile instead of leaving it empty.",
                 "de": "Die Ladestation kann den Ladestand des Autos nur melden, wenn das Auto ihn über OCPP sendet — viele Autos tun das nicht. Ausschalten entfernt die Kachel, statt sie leer stehen zu lassen.",
                 "nl": "Het laadpunt kan het laadniveau van de auto alleen melden als de auto dit via OCPP verstuurt, en veel auto’s doen dat niet. Uitschakelen verwijdert de tegel in plaats van hem leeg te laten staan."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Notifications",
+            "de": "Benachrichtigungen",
+            "nl": "Meldingen"
+          },
+          "children": [
+            {
+              "id": "enable_timeline_notifications",
+              "type": "checkbox",
+              "label": {
+                "en": "Enable Timeline notifications",
+                "de": "Zeitleisten-Benachrichtigungen aktivieren",
+                "nl": "Tijdlijn-meldingen inschakelen"
+              },
+              "value": true,
+              "hint": {
+                "en": "Posts to the timeline when the car connects or disconnects, charging starts, pauses, resumes or stops, the charging limit changes, the car draws no power, and when the charger goes offline or comes back. Switching this off silences the offline warning too.",
+                "de": "Meldet in der Timeline, wenn das Auto angeschlossen oder getrennt wird, das Laden startet, pausiert, fortgesetzt wird oder stoppt, sich das Ladelimit ändert, das Auto keinen Strom zieht, und wenn die Ladestation offline geht oder zurückkommt. Ausgeschaltet entfällt auch die Offline-Warnung.",
+                "nl": "Plaatst berichten op de tijdlijn wanneer de auto wordt aangesloten of losgekoppeld, het laden start, pauzeert, hervat of stopt, de laadlimiet verandert, de auto geen stroom afneemt, en wanneer de laadpaal offline gaat of terugkomt. Uitgeschakeld vervalt ook de offline-waarschuwing."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "easee_ocpp",
+      "name": {
+        "en": "Easee Charger (OCPP)",
+        "de": "Easee Charger (OCPP)",
+        "nl": "Easee Charger (OCPP)"
+      },
+      "class": "evcharger",
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "energy": {
+        "evCharger": true,
+        "meterPowerImportedCapability": "meter_power"
+      },
+      "capabilities": [
+        "evcharger_charging",
+        "session_status",
+        "charging_profile",
+        "status_summary",
+        "target_power",
+        "target_power_mode",
+        "target_current",
+        "measure_power",
+        "evcharger_charging_state",
+        "meter_power",
+        "ocpp_server_status",
+        "ocpp_last_message",
+        "measure_current",
+        "measure_current.l1",
+        "measure_current.l2",
+        "measure_current.l3",
+        "measure_voltage",
+        "measure_voltage.l1",
+        "measure_voltage.l2",
+        "measure_voltage.l3",
+        "measure_temperature",
+        "pause_charging",
+        "resume_charging",
+        "charge_now",
+        "release_charger",
+        "meter_session_energy",
+        "session_duration"
+      ],
+      "capabilitiesOptions": {
+        "target_power": {
+          "title": {
+            "en": "Target Charging Power",
+            "de": "Ziel-Ladeleistung",
+            "nl": "Beoogd laadvermogen"
+          },
+          "min": 0,
+          "max": 22000,
+          "step": 230,
+          "excludeMin": 0,
+          "excludeMax": 1380
+        },
+        "target_current": {
+          "title": {
+            "en": "Max Charging Current",
+            "de": "Maximaler Ladestrom",
+            "nl": "Maximale laadstroom"
+          }
+        },
+        "measure_power": {
+          "title": {
+            "en": "Charging Power",
+            "de": "Ladeleistung",
+            "nl": "Laadvermogen"
+          }
+        },
+        "meter_power": {
+          "title": {
+            "en": "Total Energy Charged",
+            "de": "Gesamtgeladene Energie",
+            "nl": "Totale geladen energie"
+          }
+        },
+        "ocpp_server_status": {
+          "title": {
+            "en": "OCPP Server Status",
+            "de": "OCPP Server Status",
+            "nl": "OCPP Server Status"
+          }
+        },
+        "ocpp_last_message": {
+          "title": {
+            "en": "Last OCPP Message",
+            "de": "Letzte OCPP Nachricht",
+            "nl": "Laatste OCPP bericht"
+          }
+        },
+        "measure_current": {
+          "title": {
+            "en": "Current Total",
+            "de": "Gesamtstrom",
+            "nl": "Totaalstroom"
+          }
+        },
+        "measure_current.l1": {
+          "title": {
+            "en": "Current L1",
+            "de": "Strom L1",
+            "nl": "Stroom L1"
+          }
+        },
+        "measure_current.l2": {
+          "title": {
+            "en": "Current L2",
+            "de": "Strom L2",
+            "nl": "Stroom L2"
+          }
+        },
+        "measure_current.l3": {
+          "title": {
+            "en": "Current L3",
+            "de": "Strom L3",
+            "nl": "Stroom L3"
+          }
+        },
+        "measure_voltage": {
+          "title": {
+            "en": "Voltage (avg)",
+            "de": "Spannung (Ø)",
+            "nl": "Spanning (gem.)"
+          }
+        },
+        "measure_voltage.l1": {
+          "title": {
+            "en": "Voltage L1",
+            "de": "Spannung L1",
+            "nl": "Spanning L1"
+          }
+        },
+        "measure_voltage.l2": {
+          "title": {
+            "en": "Voltage L2",
+            "de": "Spannung L2",
+            "nl": "Spanning L2"
+          }
+        },
+        "measure_voltage.l3": {
+          "title": {
+            "en": "Voltage L3",
+            "de": "Spannung L3",
+            "nl": "Spanning L3"
+          }
+        },
+        "measure_temperature": {
+          "title": {
+            "en": "Temperature",
+            "de": "Temperatur",
+            "nl": "Temperatuur"
+          }
+        },
+        "session_status": {
+          "title": {
+            "en": "Session Status",
+            "de": "Sitzungsstatus",
+            "nl": "Sessiestatus"
+          }
+        },
+        "charging_profile": {
+          "title": {
+            "en": "Charging Profile",
+            "de": "Ladeprofil",
+            "nl": "Laadprofiel"
+          }
+        },
+        "status_summary": {
+          "title": {
+            "en": "Status Summary",
+            "de": "Statuszusammenfassung",
+            "nl": "Statussamenvatting"
+          }
+        },
+        "pause_charging": {
+          "title": {
+            "en": "Pause Charging",
+            "de": "Laden pausieren",
+            "nl": "Laden pauzeren"
+          }
+        },
+        "resume_charging": {
+          "title": {
+            "en": "Resume Charging",
+            "de": "Laden fortsetzen",
+            "nl": "Laden hervatten"
+          }
+        },
+        "charge_now": {
+          "title": {
+            "en": "Charge Now",
+            "de": "Jetzt laden",
+            "nl": "Nu laden"
+          },
+          "desc": {
+            "en": "One tap for urgent charging: charges at 16A until full, overriding any solar/off-peak session.",
+            "de": "Ein Tipp fuer dringliches Laden: laedt mit 16A bis voll, uebersteuert Solar/Nebenzeit.",
+            "nl": "Een tik voor dringend laden: laadt op 16A tot vol, overschrijft zonne-energie/dal-uur."
+          }
+        },
+        "release_charger": {
+          "maintenanceAction": true,
+          "title": {
+            "en": "Release Charger",
+            "de": "Ladestation freigeben",
+            "nl": "Lader vrijgeven"
+          },
+          "desc": {
+            "en": "Forces the connector back to Operative. Use if the charger is stuck Unavailable or the cable is locked after a pause.",
+            "de": "Setzt den Anschluss auf Operative zurueck. Verwenden wenn die Ladestation feststeckt.",
+            "nl": "Zet de connector terug op Operative. Gebruik dit als de lader vastzit op Niet beschikbaar."
+          }
+        }
+      },
+      "images": {
+        "small": "/drivers/easee_ocpp/assets/images/small.png",
+        "large": "/drivers/easee_ocpp/assets/images/large.png",
+        "xlarge": "/drivers/easee_ocpp/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "start"
+        }
+      ],
+      "settings": [
+        {
+          "type": "group",
+          "label": {
+            "en": "Connection",
+            "de": "Verbindung",
+            "nl": "Verbinding"
+          },
+          "children": [
+            {
+              "id": "station_id",
+              "type": "text",
+              "label": {
+                "en": "Station ID",
+                "de": "Station ID",
+                "nl": "Station ID"
+              },
+              "value": "",
+              "hint": {
+                "en": "The charger's serial number, or the chargePointId if you gave Easee's commissioning API one. The charger connects to ws://[Homey-IP]:[port]/[station-id] — the port is the OCPP Port below, 8887 unless changed.",
+                "de": "Die Seriennummer der Ladestation oder die chargePointId, falls du der Inbetriebnahme-API von Easee eine mitgegeben hast. Die Ladestation verbindet sich zu ws://[Homey-IP]:[Port]/[station-id] — der Port ist der OCPP Port weiter unten, 8887, sofern nicht geändert.",
+                "nl": "Het serienummer van de laadpaal, of de chargePointId als je die aan de commissioning-API van Easee hebt meegegeven. De laadpaal maakt verbinding met ws://[Homey-IP]:[poort]/[station-id] — de poort is de OCPP Poort hieronder, 8887 tenzij gewijzigd."
+              },
+              "highlight": true
+            },
+            {
+              "id": "ocpp_port",
+              "type": "number",
+              "label": {
+                "en": "OCPP Port",
+                "de": "OCPP Port",
+                "nl": "OCPP Poort"
+              },
+              "value": 8887,
+              "min": 1024,
+              "max": 65535,
+              "hint": {
+                "en": "WebSocket port the OCPP server listens on. Use the same port in the url you give Easee's commissioning API: ws://[Homey-IP]:[port] (default: 8887).",
+                "de": "WebSocket Port des OCPP Servers. Denselben Port in der url angeben, die du der Inbetriebnahme-API von Easee mitgibst: ws://[Homey-IP]:[Port] (Standard: 8887).",
+                "nl": "WebSocket poort van de OCPP server. Dezelfde poort gebruiken in de url die je aan de commissioning-API van Easee meegeeft: ws://[Homey-IP]:[poort] (standaard: 8887)."
+              }
+            },
+            {
+              "id": "ocpp_username",
+              "type": "text",
+              "label": {
+                "en": "Username (optional)",
+                "de": "Benutzername (optional)",
+                "nl": "Gebruikersnaam (optioneel)"
+              },
+              "value": "",
+              "hint": {
+                "en": "Leave empty to skip authentication. With a basicAuthPassword set at Easee, enter the Station ID here — an Easee logs in with its own id as the user name.",
+                "de": "Leer lassen um Authentifizierung zu überspringen. Mit einem basicAuthPassword bei Easee hier die Station-ID eintragen — eine Easee meldet sich mit ihrer eigenen ID als Benutzername an.",
+                "nl": "Leeg laten om authenticatie over te slaan. Met een basicAuthPassword bij Easee hier de Station ID invullen — een Easee meldt zich aan met zijn eigen id als gebruikersnaam."
+              }
+            },
+            {
+              "id": "ocpp_password",
+              "type": "password",
+              "label": {
+                "en": "Password (optional)",
+                "de": "Passwort (optional)",
+                "nl": "Wachtwoord (optioneel)"
+              },
+              "value": "",
+              "hint": {
+                "en": "The basicAuthPassword you gave Easee's commissioning API. Only used if a username is set.",
+                "de": "Das basicAuthPassword, das du der Inbetriebnahme-API von Easee mitgegeben hast. Wird nur verwendet wenn ein Benutzername gesetzt ist.",
+                "nl": "Het basicAuthPassword dat je aan de commissioning-API van Easee hebt meegegeven. Alleen gebruikt als een gebruikersnaam is ingesteld."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Charger",
+            "de": "Ladestation",
+            "nl": "Laadpaal"
+          },
+          "children": [
+            {
+              "id": "charger_vendor",
+              "type": "text",
+              "label": {
+                "en": "Charger vendor",
+                "de": "Hersteller der Ladestation",
+                "nl": "Laadpaalfabrikant"
+              },
+              "value": "Easee",
+              "hint": {
+                "en": "Not read from the charger — defaults to \"Easee\", but you can edit it freely.",
+                "de": "Wird nicht von der Ladestation ausgelesen — Standard ist \"Easee\", kann aber frei geändert werden.",
+                "nl": "Wordt niet uitgelezen van de lader — standaard \"Easee\", maar vrij aanpasbaar."
+              }
+            },
+            {
+              "id": "number_of_phases",
+              "type": "dropdown",
+              "label": {
+                "en": "Number of phases",
+                "de": "Anzahl der Phasen",
+                "nl": "Aantal fasen"
+              },
+              "value": "3",
+              "highlight": true,
+              "values": [
+                {
+                  "id": "1",
+                  "label": {
+                    "en": "1 (Mono-Phase)",
+                    "de": "1 (Mono-Phase)",
+                    "nl": "1 (Mono-Phase)"
+                  }
+                },
+                {
+                  "id": "3",
+                  "label": {
+                    "en": "3 (Tri-Phase)",
+                    "de": "3 (Tri-Phase)",
+                    "nl": "3 (Tri-Phase)"
+                  }
+                }
+              ],
+              "hint": {
+                "en": "How your charger is wired — Mono-Phase or Tri-Phase. Never auto-detected — check your charger installation and set this to match. The app uses it to turn power into charging current (power = current × 230 V × phases).",
+                "de": "Wie deine Ladestation verkabelt ist — Mono-Phase oder Tri-Phase. Wird nie automatisch erkannt — überprüfe die Installation und stelle es entsprechend ein. Die App rechnet damit Leistung in Ladestrom um (Leistung = Strom × 230 V × Phasen).",
+                "nl": "Hoe je lader is aangesloten — Mono-Phase of Tri-Phase. Nooit automatisch gedetecteerd — controleer de installatie en stel dit dienovereenkomstig in. De app rekent er vermogen mee om naar laadstroom (vermogen = stroom × 230 V × fasen)."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Charging",
+            "de": "Laden",
+            "nl": "Laden"
+          },
+          "children": [
+            {
+              "id": "auto_start_charging",
+              "type": "checkbox",
+              "label": {
+                "en": "Auto-start charging when car connects",
+                "de": "Laden automatisch starten wenn Auto angeschlossen",
+                "nl": "Automatisch starten bij aansluiten auto"
+              },
+              "value": true,
+              "hint": {
+                "en": "When enabled, charging begins automatically as soon as the car plugs in. When disabled, use the 'Start charging' flow action or the on/off button to start manually.",
+                "de": "Wenn aktiviert, beginnt der Ladevorgang automatisch sobald das Auto angeschlossen wird. Wenn deaktiviert, mit der Flow-Aktion 'Laden starten' oder dem Ein/Aus-Schalter manuell starten.",
+                "nl": "Indien ingeschakeld begint het laden automatisch zodra de auto wordt aangesloten. Indien uitgeschakeld, gebruik de flow-actie 'Starten met laden' of de aan/uit-knop om handmatig te starten."
+              }
+            },
+            {
+              "id": "default_charging_amps",
+              "type": "dropdown",
+              "label": {
+                "en": "Default charging current",
+                "de": "Standard-Ladestrom",
+                "nl": "Standaard laadstroom"
+              },
+              "value": "10",
+              "values": [
+                {
+                  "id": "6",
+                  "label": {
+                    "en": "6A",
+                    "de": "6A",
+                    "nl": "6A"
+                  }
+                },
+                {
+                  "id": "7",
+                  "label": {
+                    "en": "7A",
+                    "de": "7A",
+                    "nl": "7A"
+                  }
+                },
+                {
+                  "id": "8",
+                  "label": {
+                    "en": "8A",
+                    "de": "8A",
+                    "nl": "8A"
+                  }
+                },
+                {
+                  "id": "9",
+                  "label": {
+                    "en": "9A",
+                    "de": "9A",
+                    "nl": "9A"
+                  }
+                },
+                {
+                  "id": "10",
+                  "label": {
+                    "en": "10A",
+                    "de": "10A",
+                    "nl": "10A"
+                  }
+                },
+                {
+                  "id": "11",
+                  "label": {
+                    "en": "11A",
+                    "de": "11A",
+                    "nl": "11A"
+                  }
+                },
+                {
+                  "id": "12",
+                  "label": {
+                    "en": "12A",
+                    "de": "12A",
+                    "nl": "12A"
+                  }
+                },
+                {
+                  "id": "13",
+                  "label": {
+                    "en": "13A",
+                    "de": "13A",
+                    "nl": "13A"
+                  }
+                },
+                {
+                  "id": "14",
+                  "label": {
+                    "en": "14A",
+                    "de": "14A",
+                    "nl": "14A"
+                  }
+                },
+                {
+                  "id": "15",
+                  "label": {
+                    "en": "15A",
+                    "de": "15A",
+                    "nl": "15A"
+                  }
+                },
+                {
+                  "id": "16",
+                  "label": {
+                    "en": "16A",
+                    "de": "16A",
+                    "nl": "16A"
+                  }
+                }
+              ],
+              "hint": {
+                "en": "Charging current used when auto-start triggers or when 'Start charging' is called without a specific ampere value. A change during a session applies from the next start.",
+                "de": "Ladestrom der verwendet wird wenn Auto-Start ausgelöst wird oder 'Laden starten' ohne spezifischen Ampere-Wert aufgerufen wird. Eine Änderung während einer Ladung gilt ab dem nächsten Start.",
+                "nl": "Laadstroom die wordt gebruikt wanneer auto-start wordt geactiveerd of 'Starten met laden' wordt aangeroepen zonder een specifieke ampèrewaarde. Een wijziging tijdens een sessie geldt vanaf de volgende start."
               }
             }
           ]
@@ -9209,7 +9728,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9267,7 +9786,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9343,7 +9862,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9446,7 +9965,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -9466,7 +9985,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9497,7 +10016,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9537,7 +10056,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9568,7 +10087,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9599,7 +10118,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9639,7 +10158,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -9697,7 +10216,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ],
         "tokens": [
@@ -10932,7 +11451,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "number",
@@ -10969,7 +11488,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -10994,7 +11513,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "number",
@@ -11031,7 +11550,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -11051,7 +11570,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -11071,7 +11590,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -11091,7 +11610,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -11116,7 +11635,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "number",
@@ -11185,7 +11704,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "number",
@@ -11254,7 +11773,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "dropdown",
@@ -13336,7 +13855,7 @@
           {
             "name": "device",
             "type": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -13645,7 +14164,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -13665,7 +14184,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -13685,7 +14204,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           }
         ]
       },
@@ -13710,7 +14229,7 @@
           {
             "type": "device",
             "name": "device",
-            "filter": "driver_id=smartcharger_ocpp"
+            "filter": "driver_id=smartcharger_ocpp||driver_id=easee_ocpp"
           },
           {
             "type": "dropdown",

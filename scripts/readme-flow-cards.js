@@ -27,7 +27,7 @@ const DRIVER_ORDER = [
   'isitepower_grid_openapi_fusionsolar', 'isitepower_home_openapi_fusionsolar',
   'sdongle_a_modbus', 'sun2000_modbus', 'sun2000_emma_modbus',
   'luna2000_modbus', 'luna2000_emma_modbus', 'dtsu666_modbus', 'powermeter_emma_modbus',
-  'smartcharger_emma_modbus', 'smartcharger_ocpp', 'energy_management',
+  'smartcharger_emma_modbus', 'smartcharger_ocpp', 'easee_ocpp', 'energy_management',
 ];
 
 function driversOf(card) {

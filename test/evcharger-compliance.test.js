@@ -31,7 +31,7 @@ const HOMEY_ENUM = [
   'plugged_in', 'plugged_out',
 ];
 
-const CHARGERS = ['smartcharger_ocpp', 'smartcharger_emma_modbus'];
+const CHARGERS = ['smartcharger_ocpp', 'easee_ocpp', 'smartcharger_emma_modbus'];
 const driver = (id) => APP.drivers.find((d) => d.id === id);
 
 test('both chargers carry what the documentation asks of an EV charger', () => {

@@ -37,7 +37,8 @@ module.exports = {
     // phases, stop reason), so it stays the first choice where one is paired.
     // Driver-registry lookup so opening the widget never boots the OCPP WebSocket server
     // as a side effect.
-    const device = getDevice(homey, 'smartcharger_ocpp');
+    // The Easee driver is a copy of the OCPP one and keeps the same history.
+    const device = getDevice(homey, 'smartcharger_ocpp') || getDevice(homey, 'easee_ocpp');
     if (device && device.getSessionHistory) {
       const history = (await device.getSessionHistory()).slice(0, MAX_ROWS);
       const current = device.getCurrentSessionInfo();
