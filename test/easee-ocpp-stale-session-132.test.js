@@ -1,6 +1,6 @@
 'use strict';
 
-// Andi's Easee log of 2026-10-16 00:16 (1.3.6). Run: node --test
+// Andi's Easee log of 2026-10-16 00:16. Run: node --test
 //
 //   [Easee] Restored session: txnId=1792100076, amps=16, owner=user
 //   ← StatusNotification {"status":"Preparing"}

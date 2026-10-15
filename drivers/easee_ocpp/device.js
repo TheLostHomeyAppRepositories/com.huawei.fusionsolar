@@ -15,7 +15,7 @@
 //   - No vehicle SoC tile: an AC charger cannot know the car's state of charge.
 //   - No Huawei model setting and no Huawei phase spreading: the 6 A floor is checked for
 //     the phases requested.
-// And from evcc's OCPP charger (1.3.5, compared on Andi's request 2026-10-16):
+// And from evcc's OCPP charger (compared on Andi's request 2026-10-16):
 //   A. A pause holds the transaction at 0 A instead of ending it with RemoteStop, which on an
 //      Easee also switches free charging off; a resume raises the limit again.
 //   B. Only the wired phase count: evcc offers no phase switching for an Easee, and a charger
@@ -24,13 +24,13 @@
 //      the log when it does not follow the limit (current control may need newer firmware).
 //   D. The total power, or the phases summed when only those arrive.
 //   E. After configuring: Operative, and status and readings asked for at once.
-// And from Andi's log of 2026-10-16 00:16 (1.3.6):
+// And from Andi's log of 2026-10-16 00:16:
 //   - Every limit goes out as the default profile (ocppTxDefaultOnly), as evcc does.
 //   - A transaction the charger no longer has — it reports Preparing, Finishing or Available —
 //     is closed after STALE_TXN_GRACE_MS, not only one beside Available.
 //   - A limit the charger refuses is an error, not "Charging limit set".
 //   - Each MeterValues message is logged in one line, measurand by measurand.
-// And from the next one, 00:24–00:26 (1.3.7): the transaction started, the profile was
+// And from the next one, 00:24–00:26: the transaction started, the profile was
 // accepted, and the Easee went SuspendedEVSE offering 0 A of the 16 A set. A charger that
 // offers less is now named on the tile too, and asked for its own schedule
 // (GetCompositeSchedule): 16 A there means the limit comes from outside OCPP — the Easee app or
@@ -180,8 +180,8 @@ const REMOVE_CAPABILITIES = [
   'button.resume_charging',
   'button.release_charger',
   'resume_automation',
-  // Andi, 2026-10-16 (1.3.8), from the Smart Charger (OCPP) the Easee was copied from:
-  //   release_charger — the app makes the charger operative on every connection since 1.3.5,
+  // Andi, 2026-10-16, from the Smart Charger (OCPP) the Easee was copied from:
+  //   release_charger — the app makes the charger operative on every connection,
   //     and a pause at 0 A never leaves an Easee unavailable. The flow card stays.
   //   charging_profile — "11.0 kW / 16A / 3P" repeated the target power and current, and the
   //     phase count of an Easee is fixed.
@@ -198,7 +198,7 @@ class EaseeOcppDevice extends Device {
   get ocppChargingRateUnit() { return 'A'; }
 
   // Read by OcppServer: every limit as the default profile, the running transaction included —
-  // never a TxProfile that names a transaction (1.3.6, see the header).
+  // never a TxProfile that names a transaction (see the header).
   get ocppTxDefaultOnly() { return true; }
 
   // Read by OcppServer: the stack level of the default profile. evcc puts it on the charger's
@@ -224,7 +224,7 @@ class EaseeOcppDevice extends Device {
     ];
   }
 
-  // Read by OcppServer after the keys above (E, 1.3.5): operative — a charger left unavailable
+  // Read by OcppServer after the keys above (E): operative — a charger left unavailable
   // takes no car — and its status and readings now, not at their next change. evcc does both on
   // setup. After an app restart the charger has not booted and says nothing new until something
   // changes, so the device showed what it knew before the restart.
@@ -776,7 +776,7 @@ class EaseeOcppDevice extends Device {
     // one starts, after one stops). Andi's Easee came back after an app update reporting
     // Preparing, with the car plugged in and the transaction the app had restored long gone
     // (2026-10-16): every limit went to that transaction, and "Charge now" raised a limit
-    // instead of starting (1.3.6).
+    // instead of starting.
     if (NO_TRANSACTION_STATUSES.has(rawStatus) && this._txnId) this._watchStaleTransaction(this._txnId);
     // The car's own "done": it stopped drawing with the charger still offering current.
     if (rawStatus === 'SuspendedEV' && this._txnId && this._carDoneAt === null) this._carDoneAt = Date.now();
@@ -986,7 +986,7 @@ class EaseeOcppDevice extends Device {
   onMeterValues(payload) {
     if (payload.connectorId !== undefined && payload.connectorId !== 1) return;
     // One line per message with every value as sent, while the field test asks what an Easee
-    // delivers: totals or phases, whether Current.Offered follows the limit (1.3.6).
+    // delivers: totals or phases, whether Current.Offered follows the limit.
     const parts = [];
     for (const mv of (payload.meterValue || [])) {
       for (const sv of (mv.sampledValue || [])) {
@@ -997,7 +997,7 @@ class EaseeOcppDevice extends Device {
 
     for (const mv of (payload.meterValue || [])) {
       const sampledValues = mv.sampledValue || [];
-      // D (1.3.5): a value without a phase is the total; values per phase are summed, and only
+      // D: a value without a phase is the total; values per phase are summed, and only
       // used when no total came. Every Power.Active.Import used to overwrite the tile, so a
       // charger sending L1, L2 and L3 showed the last phase alone. As evcc does.
       const sums = {
@@ -1028,7 +1028,7 @@ class EaseeOcppDevice extends Device {
             break;
           }
 
-          // C (1.3.5): what the charger offers the car, per phase — the highest of them.
+          // C: what the charger offers the car, per phase — the highest of them.
           case 'Current.Offered':
             offeredA = Math.max(offeredA ?? 0, val);
             break;
@@ -1122,7 +1122,7 @@ class EaseeOcppDevice extends Device {
   }
 
   /**
-   * Whether the charger offers the car the current it was given (C, 1.3.5). evcc reads
+   * Whether the charger offers the car the current it was given (C). evcc reads
    * Current.Offered for this. Easee's own OCPP controls the current only from a newer firmware
    * than it connects with (evcc tested a beta, 9012), and this is where that shows: a car offered
    * 16 A after 8 A was set. Said once a mismatch has held for two readings — the first one after
@@ -1153,7 +1153,7 @@ class EaseeOcppDevice extends Device {
     }
   }
 
-  // The charger's own view of its limit, into the log — once per mismatch (1.3.7).
+  // The charger's own view of its limit, into the log — once per mismatch.
   async _logChargerSchedule() {
     const server = this._ocppServer();
     if (!server || typeof server.getCompositeScheduleAsync !== 'function') return;
@@ -1480,7 +1480,7 @@ class EaseeOcppDevice extends Device {
   async startCharging(amps, overridePhases, owner, { fromResume = false } = {}) {
     if (!fromResume) {
       // A paused session first: held at 0 A it still has its transaction, and the branch
-      // below would set a limit the hold then swallows instead of resuming (A, 1.3.5).
+      // below would set a limit the hold then swallows instead of resuming (A).
       if (this.stitchedSession && this.stitchedSession.paused && this.stitchedSession.holdAtZero && this._txnId) {
         this.log(`[Easee] Start on a paused session — resuming${amps != null ? ` at ${amps}A` : ''}`);
         if (amps != null) {
@@ -1632,7 +1632,7 @@ class EaseeOcppDevice extends Device {
     const prior        = this.stitchedSession;
     const pauseOwner   = this.sessionOwner;
 
-    // A (1.3.5): the transaction is held at 0 A, not ended. evcc pauses an OCPP charger this
+    // A: the transaction is held at 0 A, not ended. evcc pauses an OCPP charger this
     // way; the RemoteStop of the other driver ends the transaction, and on an Easee it also
     // switches free charging off. No StopTransaction is ours to swallow (stopRequested false),
     // and the session's energy stays in its one transaction.
@@ -1686,7 +1686,7 @@ class EaseeOcppDevice extends Device {
 
     const { resumeAmps, resumePhases } = this.stitchedSession;
 
-    // A (1.3.5): held at 0 A, the transaction is still there — raise its limit. "Charging
+    // A: held at 0 A, the transaction is still there — raise its limit. "Charging
     // resumed" waits for power, as after a start. Without the transaction (the charger ended it
     // meanwhile) the session is started anew below.
     if (this.stitchedSession.holdAtZero && this._txnId) {
@@ -2429,7 +2429,7 @@ class EaseeOcppDevice extends Device {
   }
 
   // ─── The limit in force, on the slider ───────────────────────────────────
-  // Named for the text capability it also wrote until 1.3.8 (charging_profile, removed).
+  // Named for the text capability it also wrote in the test builds (charging_profile, removed).
 
   async _updateChargingProfile() {
     const amps   = this._txnAmps || this.pendingStartAmps || parseInt(this.getSetting('default_charging_amps'), 10) || 16;
@@ -2476,7 +2476,7 @@ class EaseeOcppDevice extends Device {
     }
   }
 
-  // B (1.3.5): an Easee is not known to switch phases over OCPP. evcc offers no phase switching
+  // B: an Easee is not known to switch phases over OCPP. evcc offers no phase switching
   // for it — the charger takes amperes and names neither switching key — and Easee documents
   // none. If it ignores the count, "16 A on one phase" charges 16 A on three: 11 kW instead of
   // 3.7. Until a test shows otherwise, only the wired count is accepted, and it is checked
@@ -2490,7 +2490,7 @@ class EaseeOcppDevice extends Device {
   }
 
   // A limit the charger refused is the caller's error: a flow card fails, the slider shows it,
-  // and nothing reports a limit that is not in force. Until 1.3.6 the answer was logged and
+  // and nothing reports a limit that is not in force. In a test build the answer was logged and
   // "Charging limit set to 16A" followed — six times in Andi's log, every one Rejected.
   _assertAccepted(response, what) {
     const status = response && response.status;

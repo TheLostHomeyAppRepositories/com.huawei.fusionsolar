@@ -1,6 +1,6 @@
 'use strict';
 
-// A–E from the comparison with evcc's OCPP charger (1.3.5). Run: node --test
+// A–E from the comparison with evcc's OCPP charger. Run: node --test
 //
 // Andi, 2026-10-16: "Prüfe nochmals ganz genau, ob wir anhand evcc alles richtig machen …
 // Fehlen Capabilities? Fehlen Steuerungen?" — and, on the five gaps found: "Ja, A-E bauen".

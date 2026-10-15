@@ -1,14 +1,14 @@
 'use strict';
 
-// Two capabilities fewer on the Easee (1.3.8). Run: node --test
+// Two capabilities fewer on the Easee. Run: node --test
 //
 // Andi, 2026-10-16, asked which capabilities the Easee driver should lose, then: "1 und 2
 // entfernen".
 //   1. release_charger — ChangeAvailability → Operative, a maintenance action. The app sends
-//      it on every connection since 1.3.5, and a pause at 0 A never leaves an Easee
+//      it on every connection, and a pause at 0 A never leaves an Easee
 //      unavailable. The shared flow card stays.
 //   2. charging_profile — "11.0 kW / 16A / 3P", the target power and current once more; the
-//      phase count of an Easee is fixed since 1.3.5.
+//      phase count of an Easee is fixed.
 // A device paired before loses both on its next start; the Smart Charger (OCPP) keeps them.
 
 const Module = require('module');

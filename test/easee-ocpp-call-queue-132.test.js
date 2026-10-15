@@ -1,6 +1,6 @@
 'use strict';
 
-// Andi's Easee log of 2026-10-16 00:24–00:26 (1.3.7), firmware 344. Run: node --test
+// Andi's Easee log of 2026-10-16 00:24–00:26, firmware 344. Run: node --test
 //
 // 1. Right after its boot the Easee answered none of the calls the server had sent at once —
 //    configuration, boot profile, starting current, a card — and dropped the connection after

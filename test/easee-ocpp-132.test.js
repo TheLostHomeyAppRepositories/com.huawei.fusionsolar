@@ -77,8 +77,8 @@ test('an Easee is told what it knows how to sample, how often, and to say hello 
   await s._configureCharger('EH123456', ws);
   const keys = s.sent.filter((c) => c.action === 'ChangeConfiguration').map((c) => [c.payload.key, c.payload.value]);
   assert.deepStrictEqual(keys, [
-    ['MeterValuesSampledData', 'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature'],   // Current.Offered since 1.3.5
-    ['MeterValueSampleInterval', '30'],   // 10 s was refused (1.3.4)
+    ['MeterValuesSampledData', 'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature'],   // with Current.Offered
+    ['MeterValueSampleInterval', '30'],   // 10 s was refused
     ['HeartbeatInterval', '60'],
   ]);
   // Easee's own list (Supported Config Keys (Home)): nothing else may be asked for.
@@ -102,7 +102,7 @@ test('the 6 A floor holds per phase requested, with no Huawei phase spreading', 
   d.getSetting = (k) => ({ number_of_phases: '3' })[k];
   d._phaseLabel = Easee.prototype._phaseLabel;
   assert.doesNotThrow(() => d._validateProfileRequest(6, 3));
-  // Since 1.3.5 only the wired phase count (B): an Easee is not known to switch over OCPP.
+  // Only the wired phase count (B): an Easee is not known to switch over OCPP.
   assert.throws(() => d._validateProfileRequest(6, 1), /does not switch phases over OCPP/);
   assert.throws(() => d._validateProfileRequest(5, 3), /6A minimum/);
   d.getSetting = (k) => ({ number_of_phases: '1' })[k];
@@ -241,7 +241,7 @@ test('the pairing page explains Easee’s commissioning, and a password brings i
   assert.match(html, /\|\| \(password \? stationId : ''\)/);
 });
 
-// 1.3.3 — Andi's way in, from the Easee Installer app (2026-10-15): site → circuits → charger
+// Andi's way in, from the Easee Installer app (2026-10-15): site → circuits → charger
 // → Settings → OCPP → Server → OCPP URL. Shown first; the API above is the alternative.
 test('the Installer app comes first, on the pairing page, in the hints and in the README', () => {
   const html = read('drivers/easee_ocpp/pair/start.html');

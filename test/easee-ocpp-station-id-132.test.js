@@ -1,6 +1,6 @@
 'use strict';
 
-// The Easee's first connection, and what evcc knows about it (1.3.4). Run: node --test
+// The Easee's first connection, and what evcc knows about it. Run: node --test
 //
 // Andi's log, 2026-10-15 23:36: the Easee connected under its serial number while its device
 // waited for the Station ID "easee". The server logged "Catch-all device matched" with no such
@@ -87,7 +87,7 @@ test('a refused interval is followed by the next, and one refused throughout is 
 });
 
 test('a refused measurand list falls back step by step, down to evcc’s three for an Easee', async () => {
-  // Since 1.3.5 with Current.Offered in between (C).
+  // With Current.Offered in between (C).
   const s = server({
     answer: (action, p) => ({ status: p.key === 'MeterValuesSampledData' && /Voltage|Offered/.test(p.value) ? 'Rejected' : 'Accepted' }),
   });

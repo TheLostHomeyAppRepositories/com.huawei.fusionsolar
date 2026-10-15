@@ -1,6 +1,6 @@
 'use strict';
 
-// The Easee driver is hidden from pairing (1.3.9). Run: node --test
+// The Easee driver is hidden from pairing. Run: node --test
 //
 // Andi, 2026-10-16: "Setze den Driver auf deprecated: true damit niemand ihn sieht" — until it
 // has been tested on a charger. Homey then leaves it out of "Add device"; a device already
@@ -30,5 +30,5 @@ test('a device already paired keeps its flow cards and its widgets', () => {
 });
 
 test('the README says it is not offered for pairing', () => {
-  assert.match(read('README.md'), /### Easee Charger \(OCPP\)\r?\n\r?\n> \*\*Not offered for pairing\*\* \(since 1\.3\.9\)/);
+  assert.match(read('README.md'), /### Easee Charger \(OCPP\)\r?\n\r?\n> \*\*Not offered for pairing\*\*: the driver is marked deprecated/);
 });
