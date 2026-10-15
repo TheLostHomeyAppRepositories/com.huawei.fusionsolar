@@ -602,6 +602,8 @@ the FusionSolar app: *Services* → *Commission Device*, connect to the charger'
 
 ### Easee Charger (OCPP)
 
+> **Not offered for pairing** (since 1.3.9): the driver is marked deprecated in the manifest, so *Add device* does not list it, until it has been tested on a charger. A device already paired keeps working.
+
 A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OCPP 1.6J, which Easee calls *Direct OCPP* and still marks as beta (firmware 344 or later). The charger talks to Homey directly, without the Easee cloud in between (since 1.3.2). It shares the OCPP server and the flow cards with the Smart Charger (OCPP) device, and shows the same readings, buttons and session history — without *Charging profile* and the maintenance action *Release charger* (since 1.3.8: the app makes the charger operative on every connection, and the profile line repeated the target power and current). What differs:
 
 - **Limits in amperes.** An Easee accepts no watt-based charging schedules, so every limit goes out in A, and 0 A as 0 A.
