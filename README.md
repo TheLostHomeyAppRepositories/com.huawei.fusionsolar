@@ -611,7 +611,17 @@ A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OC
 
 #### Setup (Easee)
 
-Easee's own OCPP is switched on through Easee's commissioning API, not in the Easee app (Easee's guide: developer.easee.com → *Direct OCPP (Home)* → *Commissioning for users*). Both calls need the bearer token of your Easee account, and the charger must be on WiFi.
+Easee's own OCPP needs firmware 344 or later and the charger on WiFi. It is switched on in the **Easee Installer app** (since 1.3.3 described here first):
+
+1. Open the Easee Installer app and sign in.
+2. *Update existing site* → choose the site.
+3. *Circuits* → choose the charger, then choose it once more.
+4. *Settings* → *OCPP* → *Server*.
+5. Enter `ws://<Homey-IP>:8887` as the OCPP URL.
+
+In Homey, add an **Easee Charger (OCPP)** device with the charger's serial number as Station ID: Easee adds it to the URL unless a charge point ID is set. Not sure which ID it uses? Leave the Station ID empty; the device then takes the first charger that connects, and the app log names it (`Client connected: …`). With a password for OCPP at Easee (`basicAuthPassword`), enter it as the password: the user name is the Station ID, and the pairing fills it in when left empty.
+
+**Without the Installer app**, Easee's commissioning API does the same (Easee's guide: developer.easee.com → *Direct OCPP (Home)* → *Commissioning for users*). Both calls need the bearer token of your Easee account:
 
 1. Store the connection for the charger's serial number:
    `POST https://api.easee.com/local-ocpp/v1/connection-details/{serial}`
@@ -625,7 +635,7 @@ Easee's own OCPP is switched on through Easee's commissioning API, not in the Ea
 2. Apply it with the `version` from the answer:
    `POST https://api.easee.com/local-ocpp/v1/connections/chargers/{serial}` with `{ "version": "…" }`
 
-In Homey, add an **Easee Charger (OCPP)** device with the serial number, or your `chargePointId`, as Station ID. With a `basicAuthPassword`, enter it as the password: the user name is the Station ID, and the pairing fills it in when left empty. To switch OCPP off again, store the connection details with `"connectivityMode": "OcppOff"` and apply them, or pair the charger with another operator in the Easee app.
+Without a `chargePointId` the charger connects as its serial number. To switch OCPP off again through the API, store the connection details with `"connectivityMode": "OcppOff"` and apply them, or pair the charger with another operator in the Easee app.
 
 #### Device Settings
 
@@ -794,7 +804,7 @@ The opposite direction is reported honestly too. What the EMS actually fires to 
 
 #### Easee Charger (OCPP)
 - Easee charger with firmware 344 or newer, on WiFi
-- Easee's own OCPP switched on with Easee's commissioning API, url `ws://<Homey-IP>:8887` (see [Setup (Easee)](#setup-easee))
+- Easee's own OCPP switched on in the Easee Installer app (*Settings* → *OCPP* → *Server*) or with Easee's commissioning API, OCPP URL `ws://<Homey-IP>:8887` (see [Setup (Easee)](#setup-easee))
 - Charger and Homey on the same local network, the port reachable from the charger
 
 #### SDongle A

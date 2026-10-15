@@ -239,6 +239,34 @@ test('the pairing page explains Easee’s commissioning, and a password brings i
   assert.match(html, /\|\| \(password \? stationId : ''\)/);
 });
 
+// 1.3.3 — Andi's way in, from the Easee Installer app (2026-10-15): site → circuits → charger
+// → Settings → OCPP → Server → OCPP URL. Shown first; the API above is the alternative.
+test('the Installer app comes first, on the pairing page, in the hints and in the README', () => {
+  const html = read('drivers/easee_ocpp/pair/start.html');
+  const steps = ['Easee Installer app', '<em>Update existing site</em>', '<em>Circuits</em>',
+    '<em>Settings</em> → <em>OCPP</em> → <em>Server</em>', 'ws://[Homey-IP]:8887'];
+  let at = -1;
+  for (const s of steps) {
+    const i = html.indexOf(s, at + 1);
+    assert.ok(i > at, `"${s}" is missing or out of order`);
+    at = i;
+  }
+  assert.ok(html.indexOf('Easee Installer app') < html.indexOf('local-ocpp/v1/connection-details'),
+    'the API comes before the Installer app');
+  const set = (id) => flat(driver('easee_ocpp').settings).find((s) => s.id === id);
+  assert.match(set('ocpp_port').hint.de, /Easee Installer App angeben \(Einstellungen → OCPP → Server\)/);
+  assert.match(set('ocpp_port').hint.en, /Easee Installer app \(Settings → OCPP → Server\)/);
+  for (const lang of ['en', 'de', 'nl']) {
+    for (const id of ['station_id', 'ocpp_port', 'ocpp_username', 'ocpp_password']) {
+      assert.doesNotMatch(set(id).hint[lang], /commissioning-API|commissioning API|Inbetriebnahme-API/,
+        `${id} (${lang}) still sends the user to the API`);
+    }
+  }
+  const readme = read('README.md');
+  const setup = readme.slice(readme.indexOf('#### Setup (Easee)'), readme.indexOf('#### Device Settings', readme.indexOf('#### Setup (Easee)')));
+  assert.ok(setup.indexOf('Easee Installer app') > 0 && setup.indexOf('Easee Installer app') < setup.indexOf('local-ocpp'));
+});
+
 // ── the widgets ─────────────────────────────────────────────────────────────
 
 function homeyWith(byId) {
