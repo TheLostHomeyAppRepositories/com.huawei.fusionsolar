@@ -15,6 +15,15 @@
 //   - No vehicle SoC tile: an AC charger cannot know the car's state of charge.
 //   - No Huawei model setting and no Huawei phase spreading: the 6 A floor is checked for
 //     the phases requested.
+// And from evcc's OCPP charger (1.3.5, compared on Andi's request 2026-10-16):
+//   A. A pause holds the transaction at 0 A instead of ending it with RemoteStop, which on an
+//      Easee also switches free charging off; a resume raises the limit again.
+//   B. Only the wired phase count: evcc offers no phase switching for an Easee, and a charger
+//      that ignores the count charges three phases at the current meant for one.
+//   C. Current.Offered — what the charger really offers the car — on a tile of its own, and in
+//      the log when it does not follow the limit (current control may need newer firmware).
+//   D. The total power, or the phases summed when only those arrive.
+//   E. After configuring: Operative, and status and readings asked for at once.
 //
 // The charger is pointed at Homey through Easee's commissioning API (connection details with
 // url ws://[Homey-IP]:[port], then apply). Without a chargePointId it connects as its serial
@@ -131,6 +140,7 @@ const REQUIRED_CAPABILITIES = [
   'ocpp_server_status',
   'ocpp_last_message',
   'measure_current',
+  'measure_current.offered',
   'measure_current.l1',
   'measure_current.l2',
   'measure_current.l3',
@@ -182,11 +192,24 @@ class EaseeOcppDevice extends Device {
   ocppConfiguration() {
     return [
       ['MeterValuesSampledData', [
-        'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature',
+        'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature',
+        'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered',
         'Energy.Active.Import.Register,Power.Active.Import,Current.Import',
       ]],
       ['MeterValueSampleInterval', ['30', '60']],
       ['HeartbeatInterval', ['60']],
+    ];
+  }
+
+  // Read by OcppServer after the keys above (E, 1.3.5): operative — a charger left unavailable
+  // takes no car — and its status and readings now, not at their next change. evcc does both on
+  // setup. After an app restart the charger has not booted and says nothing new until something
+  // changes, so the device showed what it knew before the restart.
+  ocppAfterConfiguration() {
+    return [
+      ['ChangeAvailability', { connectorId: 0, type: 'Operative' }],
+      ['TriggerMessage', { requestedMessage: 'StatusNotification', connectorId: 1 }],
+      ['TriggerMessage', { requestedMessage: 'MeterValues', connectorId: 1 }],
     ];
   }
 
@@ -935,6 +958,14 @@ class EaseeOcppDevice extends Device {
 
     for (const mv of (payload.meterValue || [])) {
       const sampledValues = mv.sampledValue || [];
+      // D (1.3.5): a value without a phase is the total; values per phase are summed, and only
+      // used when no total came. Every Power.Active.Import used to overwrite the tile, so a
+      // charger sending L1, L2 and L3 showed the last phase alone. As evcc does.
+      const sums = {
+        power:  { total: null, phases: 0, seen: false },
+        energy: { total: null, phases: 0, seen: false },
+      };
+      let offeredA = null;
 
       for (const sv of sampledValues) {
         const measurand = sv.measurand || 'Energy.Active.Import.Register';
@@ -947,45 +978,20 @@ class EaseeOcppDevice extends Device {
         switch (measurand) {
 
           case 'Power.Active.Import': {
-            const powerW = Math.round(val);
-            this._set('measure_power', powerW).catch(() => {});
-            this._trackLastNonZero('measure_power', powerW);
-
-            // Power-verified start: first real draw → announce started / resumed
-            if (this._startVerify && this._startVerify.txId === this._txnId && powerW > LOW_POWER_W) {
-              const v = this._startVerify;
-              this._startVerify = null;
-              if (this._pendingStartNotificationTimeout) {
-                this.homey.clearTimeout(this._pendingStartNotificationTimeout);
-                this._pendingStartNotificationTimeout = null;
-              }
-              this.log(`[Easee] Power flowing (${powerW}W) — announcing verified ${v.isMaskedResume ? 'resume' : 'start'}`);
-              this._announceVerifiedStart(v).catch((err) => this.log(`[Easee] Announce error: ${err.message}`));
-            }
-
-            // Low-power streak: Charging but ~0W for 3 min → 'finishing'
-            if (this._txnId && this._chargingState() === 'charging') {
-              if (powerW < LOW_POWER_W) {
-                if (!this._lowPowerSince) this._lowPowerSince = Date.now();
-                // As long as 'finishing' waits, and kept apart from the streak, which a status
-                // change resets.
-                if (this._carDoneAt === null && Date.now() - this._lowPowerSince >= LOW_POWER_FINISH_MS) {
-                  this._carDoneAt = this._lowPowerSince;
-                }
-              } else {
-                this._lowPowerSince = null;
-                this._carDoneAt     = null;
-              }
-              this._updateSessionStatus('charging').catch(() => {});
-            } else {
-              this._lowPowerSince = null;
-            }
+            const sum = sums.power;
+            if (sv.phase) { sum.phases += val; sum.seen = true; } else sum.total = val;
             break;
           }
 
-          case 'Energy.Active.Import.Register':
-            this._setMeterReading(val).catch(() => {});
-            this._trackLastNonZero('meter_power', val / 1000);
+          case 'Energy.Active.Import.Register': {
+            const sum = sums.energy;
+            if (sv.phase) { sum.phases += val; sum.seen = true; } else sum.total = val;
+            break;
+          }
+
+          // C (1.3.5): what the charger offers the car, per phase — the highest of them.
+          case 'Current.Offered':
+            offeredA = Math.max(offeredA ?? 0, val);
             break;
 
           case 'SoC':
@@ -1023,9 +1029,87 @@ class EaseeOcppDevice extends Device {
       }
       if (countA > 0) this._set('measure_current', totalA).catch(() => {});
       if (countV > 0) this._set('measure_voltage', totalV / countV).catch(() => {});
+
+      const power = sums.power.total ?? (sums.power.seen ? sums.power.phases : null);
+      if (power !== null) this._onPower(Math.round(power));
+      const energy = sums.energy.total ?? (sums.energy.seen ? sums.energy.phases : null);
+      if (energy !== null) {
+        this._setMeterReading(energy).catch(() => {});
+        this._trackLastNonZero('meter_power', energy / 1000);
+      }
+      if (offeredA !== null) {
+        this._set('measure_current.offered', offeredA).catch(() => {});
+        this._checkOfferedCurrent(offeredA);
+      }
     }
 
-    this._set('ocpp_last_message', 'MeterValues received').catch(() => {});
+    this._set('ocpp_last_message', this._offeredNote || 'MeterValues received').catch(() => {});
+  }
+
+  // One power reading, total or summed (D): the tile, the verified start, the low-power streak.
+  _onPower(powerW) {
+    this._set('measure_power', powerW).catch(() => {});
+    this._trackLastNonZero('measure_power', powerW);
+
+    // Power-verified start: first real draw → announce started / resumed
+    if (this._startVerify && this._startVerify.txId === this._txnId && powerW > LOW_POWER_W) {
+      const v = this._startVerify;
+      this._startVerify = null;
+      if (this._pendingStartNotificationTimeout) {
+        this.homey.clearTimeout(this._pendingStartNotificationTimeout);
+        this._pendingStartNotificationTimeout = null;
+      }
+      this.log(`[Easee] Power flowing (${powerW}W) — announcing verified ${v.isMaskedResume ? 'resume' : 'start'}`);
+      this._announceVerifiedStart(v).catch((err) => this.log(`[Easee] Announce error: ${err.message}`));
+    }
+
+    // Low-power streak: Charging but ~0W for 3 min → 'finishing'
+    if (this._txnId && this._chargingState() === 'charging') {
+      if (powerW < LOW_POWER_W) {
+        if (!this._lowPowerSince) this._lowPowerSince = Date.now();
+        // As long as 'finishing' waits, and kept apart from the streak, which a status
+        // change resets.
+        if (this._carDoneAt === null && Date.now() - this._lowPowerSince >= LOW_POWER_FINISH_MS) {
+          this._carDoneAt = this._lowPowerSince;
+        }
+      } else {
+        this._lowPowerSince = null;
+        this._carDoneAt     = null;
+      }
+      this._updateSessionStatus('charging').catch(() => {});
+    } else {
+      this._lowPowerSince = null;
+    }
+  }
+
+  /**
+   * Whether the charger offers the car the current it was given (C, 1.3.5). evcc reads
+   * Current.Offered for this. Easee's own OCPP controls the current only from a newer firmware
+   * than it connects with (evcc tested a beta, 9012), and this is where that shows: a car offered
+   * 16 A after 8 A was set. Said once a mismatch has held for two readings — the first one after
+   * a change may still carry the old value — and once per pair of figures.
+   */
+  _checkOfferedCurrent(offeredA) {
+    if (!this._txnId || this._autoStartBlocked) { this._offeredMismatch = null; this._offeredNote = null; return; }
+    const paused = !!(this.stitchedSession && this.stitchedSession.paused);
+    const setA   = paused ? 0 : this._txnAmps;
+    if (!Number.isFinite(setA)) return;
+    const offered = Math.round(offeredA * 10) / 10;
+    if (Math.abs(offered - setA) <= 1) { this._offeredMismatch = null; this._offeredNote = null; return; }
+    const key = `${setA}/${offered}`;
+    const m = this._offeredMismatch && this._offeredMismatch.key === key ? this._offeredMismatch : { key, count: 0, said: false };
+    m.count++;
+    this._offeredMismatch = m;
+    if (m.count < 2 || m.said) return;
+    m.said = true;
+    if (offered > setA) {
+      this.log(`[Easee] The charger offers ${offered} A although ${setA} A was set — it does not follow the limit; `
+        + 'current control over OCPP may need a newer Easee firmware');
+      // Kept on the tile while it lasts: every MeterValues would overwrite it otherwise.
+      this._offeredNote = `Offers ${offered} A, set ${setA} A`;
+    } else {
+      this.log(`[Easee] The charger offers ${offered} A of the ${setA} A set — a limit of its own (circuit, Easee app) is lower`);
+    }
   }
 
   async onStartTransaction(payload, txnId) {
@@ -1337,6 +1421,17 @@ class EaseeOcppDevice extends Device {
    */
   async startCharging(amps, overridePhases, owner, { fromResume = false } = {}) {
     if (!fromResume) {
+      // A paused session first: held at 0 A it still has its transaction, and the branch
+      // below would set a limit the hold then swallows instead of resuming (A, 1.3.5).
+      if (this.stitchedSession && this.stitchedSession.paused && this.stitchedSession.holdAtZero && this._txnId) {
+        this.log(`[Easee] Start on a paused session — resuming${amps != null ? ` at ${amps}A` : ''}`);
+        if (amps != null) {
+          this._validateProfileRequest(amps, this._getPhases());
+          this._txnAmps = amps;
+          this.stitchedSession.resumeAmps = amps;
+        }
+        return this.resumeCharging(owner || 'user');
+      }
       if (this._txnId && !this._autoStartBlocked) {
         if (amps != null && amps !== this._txnAmps) {
           this.log(`[Easee] Start on a running session — applying ${amps}A as its limit`);
@@ -1370,6 +1465,7 @@ class EaseeOcppDevice extends Device {
   }
 
   async _startChargingInner(amps, overridePhases, owner) {
+    this._refuseOtherPhases(overridePhases);
     const stationId   = this.getSetting('station_id');
     const server      = this._ocppServer();
     const defaultAmps = parseInt(this.getSetting('default_charging_amps'), 10) || 16;
@@ -1478,11 +1574,16 @@ class EaseeOcppDevice extends Device {
     const prior        = this.stitchedSession;
     const pauseOwner   = this.sessionOwner;
 
+    // A (1.3.5): the transaction is held at 0 A, not ended. evcc pauses an OCPP charger this
+    // way; the RemoteStop of the other driver ends the transaction, and on an Easee it also
+    // switches free charging off. No StopTransaction is ours to swallow (stopRequested false),
+    // and the session's energy stays in its one transaction.
     this.stitchedSession = {
       originalStartTime:   prior ? prior.originalStartTime   : this._txnStartTime,
       accumulatedEnergyWh: prior ? (prior.accumulatedEnergyWh || 0) : 0,
       paused:              true,
-      stopRequested:       true,
+      stopRequested:       false,
+      holdAtZero:          true,
       resuming:            false,
       resumeAmps,
       resumePhases,
@@ -1491,15 +1592,18 @@ class EaseeOcppDevice extends Device {
     this.isPaused = true;
     await this._persistStitched();
 
-    this.log(`[Easee] Masked pause: stopping transaction ${this._txnId} (context=${context || 'user'}, will resume at ${resumeAmps}A)`);
+    this.log(`[Easee] Pause: transaction ${this._txnId} held at 0 A (context=${context || 'user'}, will resume at ${resumeAmps}A)`);
 
     const pauseMessage = 'Charging paused';
 
     try {
-      const stopResponse = await this._ocppServer().remoteStopAsync(this.getSetting('station_id'), this._txnId);
-      if (stopResponse && stopResponse.status === 'Rejected') {
-        throw new Error('Charger rejected the stop request');
+      const holdResponse = await this._ocppServer()
+        .setTxProfileAsync(this.getSetting('station_id'), this._txnId, BLOCK_AMPS, this._getPhases());
+      if (holdResponse && holdResponse.status && holdResponse.status !== 'Accepted') {
+        throw new Error(`Charger answered ${holdResponse.status} to the 0 A limit`);
       }
+      await this._set('evcharger_charging', false);
+      await this._updateSessionStatus(this._chargingState());
       await this._postNotification('⏸️', 'Charging Paused', pauseMessage);
       this.homey.flow.getDeviceTriggerCard('ocpp_charging_paused')
         .trigger(this, { resume_amps: resumeAmps, message: pauseMessage })
@@ -1523,6 +1627,39 @@ class EaseeOcppDevice extends Device {
     }
 
     const { resumeAmps, resumePhases } = this.stitchedSession;
+
+    // A (1.3.5): held at 0 A, the transaction is still there — raise its limit. "Charging
+    // resumed" waits for power, as after a start. Without the transaction (the charger ended it
+    // meanwhile) the session is started anew below.
+    if (this.stitchedSession.holdAtZero && this._txnId) {
+      const amps = this._txnAmps || resumeAmps;
+      this._validateProfileRequest(amps, this._getPhases());
+      this.stitchedSession.paused   = false;
+      this.stitchedSession.resuming = true;
+      this.isPaused = false;
+      await this._persistStitched();
+      this.log(`[Easee] Resume: transaction ${this._txnId} back to ${amps}A`);
+      try {
+        const r = await this._ocppServer()
+          .setTxProfileAsync(this.getSetting('station_id'), this._txnId, amps, this._getPhases());
+        if (r && r.status && r.status !== 'Accepted') throw new Error(`Charger answered ${r.status} to ${amps} A`);
+      } catch (e) {
+        this.log(`[Easee] Resume failed: ${e.message}`);
+        this.stitchedSession.paused   = true;
+        this.stitchedSession.resuming = false;
+        this.isPaused = true;
+        await this._persistStitched();
+        throw e;
+      }
+      this._txnAmps = amps;
+      await this._saveSession();
+      await this._set('target_current', amps);
+      this._updateChargingProfile().catch(() => {});
+      this._startVerify = { txId: this._txnId, isMaskedResume: true, activeAmps: amps };
+      await this._updateSessionStatus(this._chargingState());
+      return;
+    }
+
     this.stitchedSession.paused   = false;
     this.stitchedSession.resuming = true;
     this.isPaused = false;
@@ -1698,6 +1835,18 @@ class EaseeOcppDevice extends Device {
   async setChargingLimit(amps, overridePhases, source) {
     if (!Number.isInteger(amps) || amps < MIN_AMPS || amps > MAX_AMPS) {
       throw new Error(`Invalid amps: ${amps}. Must be a whole number between ${MIN_AMPS} and ${MAX_AMPS}.`);
+    }
+
+    this._refuseOtherPhases(overridePhases);
+
+    // A — paused at 0 A: the new current waits for the resume. Sent now, it would lift the hold
+    // while the device still read "paused".
+    if (this.stitchedSession && this.stitchedSession.paused && this.stitchedSession.holdAtZero) {
+      this._txnAmps = amps;
+      this.stitchedSession.resumeAmps = amps;
+      await this._persistStitched();
+      this.log(`[Easee] ${amps}A kept for the resume — the session is paused at 0 A`);
+      return;
     }
 
     // Set phase override first so _getPhases() returns the right value for validate
@@ -2269,8 +2418,22 @@ class EaseeOcppDevice extends Device {
     if (requestedPhases > devicePhases) {
       throw new Error(`This charger is configured as ${this._phaseLabel(devicePhases)} — a ${this._phaseLabel(requestedPhases)} profile can't be delivered on it.`);
     }
+    this._refuseOtherPhases(requestedPhases);
     if (amps < 6) {
       throw new Error(`Below the 6A minimum charging current (IEC hardware floor) — ${amps}A ${this._phaseLabel(requestedPhases)} can't be delivered.`);
+    }
+  }
+
+  // B (1.3.5): an Easee is not known to switch phases over OCPP. evcc offers no phase switching
+  // for it — the charger takes amperes and names neither switching key — and Easee documents
+  // none. If it ignores the count, "16 A on one phase" charges 16 A on three: 11 kW instead of
+  // 3.7. Until a test shows otherwise, only the wired count is accepted, and it is checked
+  // before anything is changed — a refused request must not leave its phase count behind.
+  _refuseOtherPhases(requestedPhases) {
+    const devicePhases = this._devicePhases();
+    if ((requestedPhases === 1 || requestedPhases === 3) && requestedPhases !== devicePhases) {
+      throw new Error(`An Easee does not switch phases over OCPP — this one is set to ${this._phaseLabel(devicePhases)}, `
+        + `so a ${this._phaseLabel(requestedPhases)} limit is refused. Change "Number of phases" if the wiring differs.`);
     }
   }
 

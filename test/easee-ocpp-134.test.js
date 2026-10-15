@@ -76,7 +76,7 @@ test('a refused interval is followed by the next, and one refused throughout is 
   s._devices.set('EH12AB34', device(Easee.prototype, 'EH12AB34'));
   await s._configureCharger('EH12AB34', ws);
   assert.deepStrictEqual(changes(s), [
-    'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature',
+    'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature',
     'MeterValueSampleInterval=30',
     'MeterValueSampleInterval=60',
     'HeartbeatInterval=60',
@@ -86,17 +86,19 @@ test('a refused interval is followed by the next, and one refused throughout is 
   assert.ok(s.logs.some((l) => /EH12AB34 keeps MeterValueSampleInterval = 0/.test(l)), s.logs.join('\n'));
 });
 
-test('a refused measurand list falls back to evcc’s three for an Easee', async () => {
+test('a refused measurand list falls back step by step, down to evcc’s three for an Easee', async () => {
+  // Since 1.3.5 with Current.Offered in between (C).
   const s = server({
-    answer: (action, p) => ({ status: p.key === 'MeterValuesSampledData' && /Voltage/.test(p.value) ? 'Rejected' : 'Accepted' }),
+    answer: (action, p) => ({ status: p.key === 'MeterValuesSampledData' && /Voltage|Offered/.test(p.value) ? 'Rejected' : 'Accepted' }),
   });
   s._devices.set('EH12AB34', device(Easee.prototype, 'EH12AB34'));
   await s._configureCharger('EH12AB34', new FakeSocket());
-  assert.deepStrictEqual(changes(s).slice(0, 2), [
-    'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature',
+  assert.deepStrictEqual(changes(s).slice(0, 3), [
+    'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature',
+    'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered',
     'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import',
   ]);
-  assert.ok(!s.calls.some((c) => c.action === 'GetConfiguration'), 'the second list was taken — nothing to read back');
+  assert.ok(!s.calls.some((c) => c.action === 'GetConfiguration'), 'the last list was taken — nothing to read back');
 });
 
 test('a charger that boots as it connects is configured once', async () => {

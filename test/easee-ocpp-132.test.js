@@ -77,7 +77,7 @@ test('an Easee is told what it knows how to sample, how often, and to say hello 
   await s._configureCharger('EH123456', ws);
   const keys = s.sent.filter((c) => c.action === 'ChangeConfiguration').map((c) => [c.payload.key, c.payload.value]);
   assert.deepStrictEqual(keys, [
-    ['MeterValuesSampledData', 'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage,Temperature'],
+    ['MeterValuesSampledData', 'Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,Temperature'],   // Current.Offered since 1.3.5
     ['MeterValueSampleInterval', '30'],   // 10 s was refused (1.3.4)
     ['HeartbeatInterval', '60'],
   ]);
@@ -101,7 +101,9 @@ test('the 6 A floor holds per phase requested, with no Huawei phase spreading', 
   const d = Object.create(Easee.prototype);
   d.getSetting = (k) => ({ number_of_phases: '3' })[k];
   d._phaseLabel = Easee.prototype._phaseLabel;
-  assert.doesNotThrow(() => d._validateProfileRequest(6, 1), '6 A on one phase of a three-phase Easee is deliverable');
+  assert.doesNotThrow(() => d._validateProfileRequest(6, 3));
+  // Since 1.3.5 only the wired phase count (B): an Easee is not known to switch over OCPP.
+  assert.throws(() => d._validateProfileRequest(6, 1), /does not switch phases over OCPP/);
   assert.throws(() => d._validateProfileRequest(5, 3), /6A minimum/);
   d.getSetting = (k) => ({ number_of_phases: '1' })[k];
   assert.throws(() => d._validateProfileRequest(10, 3), /can't be delivered/);
