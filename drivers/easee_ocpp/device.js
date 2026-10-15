@@ -164,12 +164,10 @@ const REQUIRED_CAPABILITIES = [
   'measure_voltage.l3',
   'measure_temperature',
   'session_status',
-  'charging_profile',
   'status_summary',
   'pause_charging',
   'resume_charging',
   'charge_now',
-  'release_charger',
   'meter_session_energy',
   'session_duration',
 ];
@@ -182,6 +180,13 @@ const REMOVE_CAPABILITIES = [
   'button.resume_charging',
   'button.release_charger',
   'resume_automation',
+  // Andi, 2026-10-16 (1.3.8), from the Smart Charger (OCPP) the Easee was copied from:
+  //   release_charger — the app makes the charger operative on every connection since 1.3.5,
+  //     and a pause at 0 A never leaves an Easee unavailable. The flow card stays.
+  //   charging_profile — "11.0 kW / 16A / 3P" repeated the target power and current, and the
+  //     phase count of an Easee is fixed.
+  'release_charger',
+  'charging_profile',
   // Migrated to the standard EV capability `evcharger_charging` (Homey v12.4.5+),
   // which auto-generates the native "Start charging" / "Is charging" flow cards.
   'onoff',
@@ -1263,7 +1268,7 @@ class EaseeOcppDevice extends Device {
       this._quickAbortCount = 0;
       this._txnId = null; this._txnStartTime = null;
       this._txnMeterStart = 0;
-      // Deliberately preserve _txnAmps — it's the resume target shown by charging_profile.
+      // Deliberately preserve _txnAmps — it's the resume target.
       this._autoStartBlocked = false;
       this._lowPowerSince = null;
       this._startVerify   = null;
@@ -2178,12 +2183,6 @@ class EaseeOcppDevice extends Device {
       await this.setChargingLimit(value);
     });
 
-    if (this.hasCapability('release_charger')) {
-      this.registerCapabilityListener('release_charger', async () => {
-        await this.releaseCharger();
-      });
-    }
-
     if (this.hasCapability('pause_charging')) {
       this.registerCapabilityListener('pause_charging', async () => {
         await this.pauseCharging('user');
@@ -2429,13 +2428,11 @@ class EaseeOcppDevice extends Device {
     }
   }
 
-  // ─── Charging profile capability ─────────────────────────────────────────
+  // ─── The limit in force, on the slider ───────────────────────────────────
+  // Named for the text capability it also wrote until 1.3.8 (charging_profile, removed).
 
   async _updateChargingProfile() {
     const amps   = this._txnAmps || this.pendingStartAmps || parseInt(this.getSetting('default_charging_amps'), 10) || 16;
-    const phases = this._getPhases();
-    const kw     = (Math.floor(amps * phases * 230 / 100) / 10).toFixed(1);
-    await this._set('charging_profile', `${kw} kW / ${amps}A / ${phases}P`);
     await this._set('target_current', amps);
   }
 

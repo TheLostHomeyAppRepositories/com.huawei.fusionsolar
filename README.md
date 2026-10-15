@@ -602,7 +602,7 @@ the FusionSolar app: *Services* → *Commission Device*, connect to the charger'
 
 ### Easee Charger (OCPP)
 
-A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OCPP 1.6J, which Easee calls *Direct OCPP* and still marks as beta (firmware 344 or later). The charger talks to Homey directly, without the Easee cloud in between (since 1.3.2). It shares the OCPP server and the flow cards with the Smart Charger (OCPP) device, and shows the same readings, buttons and session history. What differs:
+A copy of the Smart Charger (OCPP) device for an Easee charger on Easee's own OCPP 1.6J, which Easee calls *Direct OCPP* and still marks as beta (firmware 344 or later). The charger talks to Homey directly, without the Easee cloud in between (since 1.3.2). It shares the OCPP server and the flow cards with the Smart Charger (OCPP) device, and shows the same readings, buttons and session history — without *Charging profile* and the maintenance action *Release charger* (since 1.3.8: the app makes the charger operative on every connection, and the profile line repeated the target power and current). What differs:
 
 - **Limits in amperes.** An Easee accepts no watt-based charging schedules, so every limit goes out in A, and 0 A as 0 A.
 - **Readings.** When the charger connects, it is told to sample energy, power, current, voltage and temperature every 30 s, the Easee's minimum (its own default is not to sample at all; since 1.3.4, 10 s before). A list or a value it refuses is followed by the next — energy, power and current alone, 60 s — and one it refuses throughout is read back into the app log. It is also told to send a heartbeat every 60 s instead of once a day, so an idle charger is not taken for offline.
