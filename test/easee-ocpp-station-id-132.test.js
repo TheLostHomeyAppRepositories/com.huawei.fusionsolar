@@ -98,7 +98,8 @@ test('a refused measurand list falls back step by step, down to evcc’s three f
     'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered',
     'MeterValuesSampledData=Energy.Active.Import.Register,Power.Active.Import,Current.Import',
   ]);
-  assert.ok(!s.calls.some((c) => c.action === 'GetConfiguration'), 'the last list was taken — nothing to read back');
+  assert.ok(!s.calls.some((c) => c.action === 'GetConfiguration' && c.payload.key[0] === 'MeterValuesSampledData'),
+    'the last list was taken — nothing to read back');
 });
 
 test('a charger that boots as it connects is configured once', async () => {

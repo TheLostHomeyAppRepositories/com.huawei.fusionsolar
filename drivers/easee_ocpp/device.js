@@ -30,6 +30,13 @@
 //     is closed after STALE_TXN_GRACE_MS, not only one beside Available.
 //   - A limit the charger refuses is an error, not "Charging limit set".
 //   - Each MeterValues message is logged in one line, measurand by measurand.
+// Release 1.3.3, step 1 after re-reading Easee's Smart Charging page (Andi, 2026-10-16):
+//   - The Easee keeps charging profiles in flash — 100,000 writes, at most 25 a day advised —
+//     so an unchanged profile is not written again, and every write is counted in the log.
+//   - Its own keys are read out at every connection (ocppReadKeys). Phase mode, dynamic current
+//     and free charging are documented for Easee's cloud OCPP only; whether firmware 344 knows
+//     them decides step 2. "The lowest limit will always apply": a DynamicChargerCurrent of 0,
+//     set from the Easee app or cloud, holds the charger at 0 A whatever a profile says.
 // And from the next one, 00:24–00:26: the transaction started, the profile was
 // accepted, and the Easee went SuspendedEVSE offering 0 A of the 16 A set. A charger that
 // offers less is now named on the tile too, and asked for its own schedule
@@ -57,7 +64,6 @@ const RESUME_IN_FLIGHT_MS = 60_000;
 // still attached; wide enough to cover the gap between them, short enough that a charger
 // reconnecting minutes later is served again.
 const INIT_PROFILE_DEDUP_MS = 10_000;
-const IDLE_GUARD_MS       = 300_000;
 const QUICK_ABORT_MS      = 2000;
 // How long a transaction may stand beside "Available" before it is closed here. A charger
 // unplugged while offline delivers its queued StopTransaction when it is back, usually
@@ -196,6 +202,20 @@ class EaseeOcppDevice extends Device {
 
   // Read by OcppServer: the unit of every charging profile sent to this charger.
   get ocppChargingRateUnit() { return 'A'; }
+
+  // Read by OcppServer: charging profiles go to flash on an Easee (Easee, Smart Charging &
+  // Profiles: 100,000 writes in its life, at most 25 schedules a day advised, the warranty at
+  // stake beyond that). The server skips a profile the charger already holds and counts the rest.
+  get ocppProfileWritesPerDay() { return 25; }
+
+  // Read by OcppServer after configuring: Easee's own keys, one request each, into the log.
+  //   LockConnectorPhaseMode — Lock1Phase, Auto, Lock3Phase: one phase or three (step 2).
+  //   DynamicChargerCurrent / DynamicCircuitCurrent — Easee's real-time limits; the lowest of
+  //     all limits applies, so 0 here is a charger held at 0 A.
+  //   FreeCharging / FreeChargingIdTag — charging without a start from outside.
+  ocppReadKeys() {
+    return ['LockConnectorPhaseMode', 'DynamicChargerCurrent', 'DynamicCircuitCurrent', 'FreeCharging', 'FreeChargingIdTag'];
+  }
 
   // Read by OcppServer: every limit as the default profile, the running transaction included —
   // never a TxProfile that names a transaction (see the header).
@@ -2064,24 +2084,11 @@ class EaseeOcppDevice extends Device {
 
   // ─── Idle guard ─────────────────────────────────────────────────────────
 
+  // The other driver refreshes the 0 A default every five minutes while auto-start is off. An
+  // Easee keeps its profiles in flash — through reboots, and at most 25 writes a day advised —
+  // so it holds the 0 A without being told again, and 288 writes a day would wear it (1.3.3).
   _startIdleGuard() {
     this._clearIdleGuard();
-    const autoStart = this.getSetting('auto_start_charging') !== false;
-    if (!autoStart) {
-      this._idleGuardTimer = this.homey.setInterval(async () => {
-        // Skip while a start sequence is in flight, or after a restart
-        // while waiting for the charger to reconnect and send StatusNotification.
-        if (this._startInFlight || this.assumeActiveFromRestart) return;
-        if (!this._txnId) {
-          try {
-            const r = await this._ocppServer()
-              .setMaxCurrentAsync(this.getSetting('station_id'), BLOCK_AMPS, this._getPhases());
-            this.log(`[Easee] Idle guard: refreshed 0A TxDefaultProfile → ${(r && r.status) || 'no status'}`);
-          } catch (e) { this.log(`[Easee] Idle guard refresh failed: ${e.message}`); }
-        }
-      }, IDLE_GUARD_MS);
-      this.log('[Easee] Idle guard started (auto-start OFF)');
-    }
   }
 
   _clearIdleGuard() {
