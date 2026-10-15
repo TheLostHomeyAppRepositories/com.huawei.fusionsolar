@@ -24,6 +24,12 @@
 //      the log when it does not follow the limit (current control may need newer firmware).
 //   D. The total power, or the phases summed when only those arrive.
 //   E. After configuring: Operative, and status and readings asked for at once.
+// And from Andi's log of 2026-10-16 00:16 (1.3.6):
+//   - Every limit goes out as the default profile (ocppTxDefaultOnly), as evcc does.
+//   - A transaction the charger no longer has — it reports Preparing, Finishing or Available —
+//     is closed after STALE_TXN_GRACE_MS, not only one beside Available.
+//   - A limit the charger refuses is an error, not "Charging limit set".
+//   - Each MeterValues message is logged in one line, measurand by measurand.
 //
 // The charger is pointed at Homey through Easee's commissioning API (connection details with
 // url ws://[Homey-IP]:[port], then apply). Without a chargePointId it connects as its serial
@@ -52,6 +58,9 @@ const QUICK_ABORT_MS      = 2000;
 // unplugged while offline delivers its queued StopTransaction when it is back, usually
 // within seconds; one that rebooted may never send it at all.
 const STALE_TXN_GRACE_MS  = 30_000;
+// The connector states with no transaction on them (OCPP 1.6): a transaction still held beside
+// one of them has ended — see _watchStaleTransaction.
+const NO_TRANSACTION_STATUSES = new Set(['Available', 'Preparing', 'Finishing']);
 const MAX_SESSION_HIST    = 10;
 const OFFLINE_AFTER_MS    = 180_000;
 const LOW_POWER_W         = 100;
@@ -177,6 +186,10 @@ class EaseeOcppDevice extends Device {
 
   // Read by OcppServer: the unit of every charging profile sent to this charger.
   get ocppChargingRateUnit() { return 'A'; }
+
+  // Read by OcppServer: every limit as the default profile, the running transaction included —
+  // never a TxProfile that names a transaction (1.3.6, see the header).
+  get ocppTxDefaultOnly() { return true; }
 
   // Read by OcppServer: the stack level of the default profile. evcc puts it on the charger's
   // highest (ChargeProfileMaxStackLevel, 10 on an Easee), so no profile already on the charger
@@ -749,7 +762,12 @@ class EaseeOcppDevice extends Device {
     const rawStatus  = payload.status || '';
     const homeyState = OCPP_STATUS_MAP[rawStatus] || 'idle';
     this._lastRawStatus = rawStatus;
-    if (rawStatus === 'Available' && this._txnId) this._watchStaleTransaction(this._txnId);
+    // Not only Available: Preparing and Finishing are no transaction either (OCPP 1.6 — before
+    // one starts, after one stops). Andi's Easee came back after an app update reporting
+    // Preparing, with the car plugged in and the transaction the app had restored long gone
+    // (2026-10-16): every limit went to that transaction, and "Charge now" raised a limit
+    // instead of starting (1.3.6).
+    if (NO_TRANSACTION_STATUSES.has(rawStatus) && this._txnId) this._watchStaleTransaction(this._txnId);
     // The car's own "done": it stopped drawing with the charger still offering current.
     if (rawStatus === 'SuspendedEV' && this._txnId && this._carDoneAt === null) this._carDoneAt = Date.now();
 
@@ -793,12 +811,15 @@ class EaseeOcppDevice extends Device {
     if (this._staleTxnTimer) return;
     this._staleTxnTimer = this.homey.setTimeout(() => {
       this._staleTxnTimer = null;
-      if (this._txnId !== txnId || this._lastRawStatus !== 'Available') return;
-      this.log(`[Easee] Transaction ${txnId} ended while the charger was away — it reports Available `
+      const status = this._lastRawStatus;
+      if (this._txnId !== txnId || !NO_TRANSACTION_STATUSES.has(status)) return;
+      this.log(`[Easee] Transaction ${txnId} ended while the charger was away — it reports ${status} `
         + `and sent no StopTransaction in ${STALE_TXN_GRACE_MS / 1000} s; closing it here`);
       this._locallyClosedTxnId = txnId;
       const meterStop = Math.round((this.getCapabilityValue('meter_power') || 0) * 1000);
-      this.onStopTransaction({ transactionId: txnId, meterStop, reason: 'EVDisconnected', closedLocally: true })
+      // Unplugged only when the charger says Available; Preparing and Finishing have the car on it.
+      const reason = status === 'Available' ? 'EVDisconnected' : 'Other';
+      this.onStopTransaction({ transactionId: txnId, meterStop, reason, closedLocally: true })
         .catch((err) => this.log('[Easee] Closing the stale transaction failed:', err.message));
     }, STALE_TXN_GRACE_MS);
   }
@@ -954,7 +975,15 @@ class EaseeOcppDevice extends Device {
 
   onMeterValues(payload) {
     if (payload.connectorId !== undefined && payload.connectorId !== 1) return;
-    this.log('[Easee] MeterValues');
+    // One line per message with every value as sent, while the field test asks what an Easee
+    // delivers: totals or phases, whether Current.Offered follows the limit (1.3.6).
+    const parts = [];
+    for (const mv of (payload.meterValue || [])) {
+      for (const sv of (mv.sampledValue || [])) {
+        parts.push(`${sv.measurand || 'Energy.Active.Import.Register'}${sv.phase ? `[${sv.phase}]` : ''}=${sv.value}${sv.unit ? ` ${sv.unit}` : ''}`);
+      }
+    }
+    this.log(`[Easee] MeterValues${payload.transactionId != null ? ` (tx ${payload.transactionId})` : ''}: ${parts.join(', ') || '(empty)'}`);
 
     for (const mv of (payload.meterValue || [])) {
       const sampledValues = mv.sampledValue || [];
@@ -1871,10 +1900,11 @@ class EaseeOcppDevice extends Device {
     }
 
     if (this._txnId && !this._autoStartBlocked) {
+      const r = await server.setTxProfileAsync(stationId, this._txnId, amps, this._getPhases());
+      this.log(`[Easee] Limit ${amps}A → ${JSON.stringify(r)}`);
+      this._assertAccepted(r, `${amps} A`);
       this._txnAmps = amps;
       await this._saveSession();
-      const r = await server.setTxProfileAsync(stationId, this._txnId, amps, this._getPhases());
-      this.log(`[Easee] setTxProfile response: ${JSON.stringify(r)}`);
       await this._set('target_current', amps);
       this._updateChargingProfile().catch(() => {});
 
@@ -1896,9 +1926,10 @@ class EaseeOcppDevice extends Device {
       }
     } else {
       // No active transaction: remember for next start
-      this.pendingStartAmps = amps;
       const r = await server.setMaxCurrentAsync(stationId, amps, this._getPhases());
-      this.log(`[Easee] setMaxCurrent response: ${JSON.stringify(r)}`);
+      this.log(`[Easee] Limit ${amps}A for the next start → ${JSON.stringify(r)}`);
+      this._assertAccepted(r, `${amps} A`);
+      this.pendingStartAmps = amps;
       await this._set('target_current', amps);
       this._updateChargingProfile().catch(() => {});
     }
@@ -2435,6 +2466,14 @@ class EaseeOcppDevice extends Device {
       throw new Error(`An Easee does not switch phases over OCPP — this one is set to ${this._phaseLabel(devicePhases)}, `
         + `so a ${this._phaseLabel(requestedPhases)} limit is refused. Change "Number of phases" if the wiring differs.`);
     }
+  }
+
+  // A limit the charger refused is the caller's error: a flow card fails, the slider shows it,
+  // and nothing reports a limit that is not in force. Until 1.3.6 the answer was logged and
+  // "Charging limit set to 16A" followed — six times in Andi's log, every one Rejected.
+  _assertAccepted(response, what) {
+    const status = response && response.status;
+    if (status && status !== 'Accepted') throw new Error(`The charger refused ${what} (${status})`);
   }
 
   // ─── Label helpers ────────────────────────────────────────────────────────
