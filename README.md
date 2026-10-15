@@ -647,6 +647,14 @@ The ramp is opt-in: with both SoC points at 0 it is off, and the hard stop is th
 
 **Chargers are steered by what they measure** (since 1.2.308). A charger that ignores its start — drawing under 500 W although the EMS started it — is started once more after 90 s and stopped after 5 minutes, then left alone for 5, 10, 20, up to 30 minutes before the next try from surplus; a car that is full or at its own limit looks the same and is handled the same way. Until 1.2.308 the current the EMS had commanded counted as drawn, so such a charger kept its share of the surplus indefinitely. A charger switched out of EMS control (widget or settings) is left alone entirely: its draw is no longer counted as surplus the EMS could hand out, and the current last commanded to it is forgotten.
 
+**A full battery lets the charger take the next step** (since 1.3.1). In solar mode a charger takes the highest current that fits the surplus, and once running it keeps 250 W free before it steps up. While the home battery charges, it absorbs that remainder. Once the battery is full, the remainder goes to the grid: up to 940 W at three phases.
+
+- **From the charger's *Battery full* level** (default 97 %), the charger may take the next step up even when the surplus falls slightly short, and the full battery supplies the rest. That is always less than one step: 230 W on one phase, 690 W on three. The 250 W reserve falls away too. The status line then begins with *Akku voll*.
+- **Below the second level** (default 93 %), the charger takes the step that fits the surplus again, and the battery refills.
+- **The step is measured against the real surplus**, which is the budget less what the battery is discharging. So the charger cannot climb step by step on the battery: with the battery covering the gap, the meter reads zero, and a budget taken from the meter alone would always look like room for one more step.
+- **When the rule ends**, a running charger is measured the same way, rounded down, until the battery no longer pays for its step, for at most 15 minutes. Otherwise the step would stay: the plain rule cannot see a battery that covers it.
+- **Limits:** the rule never applies while power is drawn from the grid, and it needs a battery power reading. It can be switched off per charger under *EV Chargers*.
+
 Two guards sit under the ramp, both from field measurements:
 
 - **The share can never exceed what the battery is actually absorbing.** The budget's whole justification is "what a device may claim is what the battery would otherwise have taken" — so while the battery *discharges* it lends nothing. Without this, a charger climbed 1.6 → 6.9 kW in eleven minutes financed entirely by the battery, invisible to every meter-based guard because the inverter holds the grid near zero during discharge. Installations without a battery power sensor keep the old behaviour: capping on a guess would be worse than not capping.

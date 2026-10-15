@@ -29,6 +29,10 @@ const chargerStateMixin   = require('../../lib/ems/chargerState');
 const deviceDiagMixin     = require('../../lib/ems/deviceDiag');
 const widgetMixin         = require('../../lib/ems/widget');
 
+// A stored percentage, or undefined when there is none. An empty field must not become 0:
+// a "full" level of 0 % would round every charger up all day.
+const pctOrUndef = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
+
 class EmsDevice extends Device {
 
   async onInit() {
@@ -418,6 +422,16 @@ class EmsDevice extends Device {
       // 0 is a valid answer here and the default: it means 'reduce immediately', which is
       // what every install did before the field existed.
       clamp(c, 'step_down_hold_s', 0, 600);
+      // Battery full: the next rung up from on_pct, back below off_pct (lib/ems/chargerControl.js
+      // _fullBatteryRule). Below 50 % a battery is not "full" in any sense the rule means.
+      clamp(c, 'full_battery_on_pct', 50, 100);
+      clamp(c, 'full_battery_off_pct', 0, 100);
+      if (c.full_battery_on_pct != null && c.full_battery_off_pct != null
+          && Number(c.full_battery_off_pct) >= Number(c.full_battery_on_pct)) {
+        const off = Math.max(0, Number(c.full_battery_on_pct) - 1);
+        warns.push(`full_battery_off_pct ≥ on → ${off}`);
+        c.full_battery_off_pct = off;
+      }
     }
     for (const key of ['heat_pump_devices', 'boiler_devices', 'pool_devices', 'dehumidifier_devices', 'aircon_devices']) {
       for (const d of (cfg[key] || [])) {
@@ -1482,6 +1496,12 @@ class EmsDevice extends Device {
         // Per-charger; falls back to the global STEP_HOLD_MS default (30 s).
         stepHoldMs:  Math.max(0, Number(c.step_hold_s) || 30) * 1000,
         stepDownHoldMs: Math.max(0, Number(c.step_down_hold_s) || 0) * 1000,
+        // Battery full: from on_pct the charger may take the next rung above the surplus,
+        // below off_pct it rounds down again. On unless switched off; missing figures fall
+        // back to BAT_FULL_ON_PCT / BAT_FULL_OFF_PCT in chargerControl.js.
+        batFullTopUp:  c.full_battery_topup !== false,
+        batFullOnPct:  pctOrUndef(c.full_battery_on_pct),
+        batFullOffPct: pctOrUndef(c.full_battery_off_pct),
         // Per-device "EMS controls this device" toggle — undefined/missing means
         // enabled (backward-compatible default). See lib/ems/widget.js.
         enabled:     c.enabled !== false,

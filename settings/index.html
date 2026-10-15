@@ -6076,13 +6076,58 @@
       stepRow.appendChild(downLbl); stepRow.appendChild(downInput);
       stepRow.appendChild(stepHint);
 
+      // Battery full (per charger): from the first level on, the charger may take the next
+      // rung above the surplus and the full battery covers the gap; below the second it
+      // rounds down again. On by default. See lib/ems/chargerControl.js _fullBatteryRule.
+      var fullRow = document.createElement('div');
+      fullRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 2px 2px';
+      var fullChk = document.createElement('input');
+      fullChk.type = 'checkbox';
+      fullChk.className = 'ems-charger-fulltopup';
+      fullChk.style.cssText = 'margin-left:4px;cursor:pointer';
+      fullChk.checked = !(stored && stored.full_battery_topup === false);
+      var fullLbl = document.createElement('span');
+      fullLbl.textContent = _H.__('settings.chargers.fullBattery');
+      fullLbl.style.cssText = 'font-size:12px;color:var(--c-label-2);min-width:100px;cursor:pointer';
+      fullLbl.onclick = function() { fullChk.checked = !fullChk.checked; _syncFullRow(); };
+      var fullNum = function(cls, field, value, min, max) {
+        var el = document.createElement('input');
+        el.type = 'number';
+        el.className = cls;
+        el.dataset.field = field;
+        el.value = value;
+        el.min = min; el.max = max; el.step = 1;
+        el.style.cssText = 'width:64px;padding:6px 8px;border:1px solid var(--c-separator);border-radius:6px;font-size:13px;outline:none';
+        return el;
+      };
+      var fullOn  = fullNum('ems-charger-fullon',  'full_battery_on_pct',
+        (stored && stored.full_battery_on_pct != null) ? stored.full_battery_on_pct : 97, 50, 100);
+      var fullOff = fullNum('ems-charger-fulloff', 'full_battery_off_pct',
+        (stored && stored.full_battery_off_pct != null) ? stored.full_battery_off_pct : 93, 0, 99);
+      var fullOnLbl = document.createElement('span');
+      fullOnLbl.textContent = _H.__('settings.chargers.fullBatteryOn');
+      fullOnLbl.style.cssText = 'font-size:12px;color:var(--c-label-2)';
+      var fullOffLbl = document.createElement('span');
+      fullOffLbl.textContent = _H.__('settings.chargers.fullBatteryOff');
+      fullOffLbl.style.cssText = 'font-size:12px;color:var(--c-label-2)';
+      var fullHint = document.createElement('span');
+      fullHint.textContent = _H.__('settings.chargers.fullBatteryHint');
+      fullHint.style.cssText = 'font-size:12px;color:var(--c-label-strong);line-height:1.4;flex:1;min-width:190px';
+      function _syncFullRow() { fullOn.disabled = fullOff.disabled = !fullChk.checked; }
+      fullChk.addEventListener('change', _syncFullRow);
+      _syncFullRow();
+      fullRow.appendChild(fullChk); fullRow.appendChild(fullLbl);
+      fullRow.appendChild(fullOnLbl); fullRow.appendChild(fullOn);
+      fullRow.appendChild(fullOffLbl); fullRow.appendChild(fullOff);
+      fullRow.appendChild(fullHint);
+
       var capsInfo = document.createElement('div');
       capsInfo.className = 'ems-caps-info';
 
       var flowSection = document.createElement('div');
       flowSection.className = 'ems-flow-section';
 
-      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(carRow); entry.appendChild(stepRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
+      entry.appendChild(row); entry.appendChild(configRow); entry.appendChild(modeRow); entry.appendChild(carRow); entry.appendChild(stepRow); entry.appendChild(fullRow); entry.appendChild(capsInfo); entry.appendChild(flowSection);
       list.appendChild(entry);
 
       entry.dataset.chargerStartCard = (stored && stored.start_card) || '';
@@ -8583,6 +8628,17 @@
         var downEl = entry.querySelector('.ems-charger-stepdownhold');
         var downS  = downEl ? parseInt(downEl.value, 10) : 0;
         c.step_down_hold_s = (isFinite(downS) && downS > 0) ? downS : 0;
+        // Battery full: on/off and the two levels. Written in both directions, like enabled
+        // below, so an unticked box is stored as off and not read back as the default.
+        var fullChkEl = entry.querySelector('.ems-charger-fulltopup');
+        c.full_battery_topup = fullChkEl ? fullChkEl.checked : true;
+        var fullOnEl  = entry.querySelector('.ems-charger-fullon');
+        var fullOffEl = entry.querySelector('.ems-charger-fulloff');
+        var fullOnP  = fullOnEl  ? parseInt(fullOnEl.value, 10)  : 97;
+        var fullOffP = fullOffEl ? parseInt(fullOffEl.value, 10) : 93;
+        c.full_battery_on_pct  = (isFinite(fullOnP)  && fullOnP  >= 50 && fullOnP  <= 100) ? fullOnP  : 97;
+        c.full_battery_off_pct = (isFinite(fullOffP) && fullOffP >= 0  && fullOffP < c.full_battery_on_pct)
+          ? fullOffP : Math.max(0, c.full_battery_on_pct - 4);
         var phkChk = entry.querySelector('.ems-row-phase-switch');
         if (phkChk && phkChk.checked) c.phase_switch = true;
         // Written explicitly in both directions so the settings page and the widget always
