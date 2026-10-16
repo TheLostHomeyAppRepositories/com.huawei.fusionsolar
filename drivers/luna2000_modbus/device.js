@@ -694,6 +694,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW = self._forcePowerW('charge', power);
         const socRaw  = Math.round(Math.max(0, Math.min(100, target_soc)) * 10);
         self.log(`Force charge: power=${powerW} W, target SoC=${target_soc}% (raw ${socRaw})`);
+        self._warnGridChargeCap(powerW, 'Force charge');
         // The target SoC goes first: a run must never start on a stale target.
         return forceSequence('Force charge', 'charge', [
           [writeModbusRegister, 47101, socRaw, `target SoC (${target_soc}%)`],
@@ -724,6 +725,7 @@ class LUNA2000ModbusDevice extends Device {
         const powerW = self._forcePowerW('charge', power);
         const durationMin = Math.round(Math.max(1, Math.min(1440, duration)));
         self.log(`Force charge for ${durationMin} min: power=${powerW} W`);
+        self._warnGridChargeCap(powerW, 'Force charge (timed)');
         // Reg 47083 (hardware timer) stops the run after the minutes — with mode 47246 = 0,
         // which is what makes the battery count them at all.
         return forceSequence('Force charge (timed)', 'charge', [
@@ -1601,6 +1603,24 @@ class LUNA2000ModbusDevice extends Device {
   // falsy: a battery whose discharging was blocked at 0 W (issue #31) still got a forced
   // discharge of up to 5 kW. A limit of 0 now refuses the card with the reason; a limit not
   // read yet, right after a start, leaves the ceiling to the battery, which enforces its own.
+  /**
+   * A forced charge from the grid — at night, say — is held to the grid charge power (register
+   * 47242), which cannot exceed its limit (47244, 2000 W by Huawei's default). Measured by
+   * ArnarS (forum, 2026-10-15): "Start charging with 3000 W until 76 %" at night, the battery
+   * took 126 W; with "Set grid charge power to 1500 W" it charged at that pace and reached its
+   * target. The card cannot tell where the energy will come from, so it only says so in the
+   * log when the power asked for is above the grid charge power — the value the poll reads
+   * into the device settings. With charging from the grid switched off that value is not kept
+   * up to date (see the settings sync), and nothing is said.
+   */
+  _warnGridChargeCap(powerW, label) {
+    if (this.getSetting('charge_from_grid') === false) return;
+    const gridW = parseFloat(this.getSetting('max_grid_charge_power'));
+    if (!Number.isFinite(gridW) || powerW <= gridW) return;
+    this.log(`${label}: ${powerW} W asked, but the grid charge power is ${Math.round(gridW)} W — from the grid the battery `
+      + 'charges at most that (raise it with "Set grid charge power", within "Set max power charge from grid")');
+  }
+
   _forcePowerW(kind, power) {
     const limit = parseFloat(this.getSetting(kind === 'charge' ? 'max_charge_power' : 'max_discharge_power'));
     if (Number.isFinite(limit) && limit <= 0) {
