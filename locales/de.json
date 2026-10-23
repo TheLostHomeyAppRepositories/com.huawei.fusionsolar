@@ -51,6 +51,7 @@
       "batteryNotOnRS485": "Keine Batterie am RS485-Bus des SUN2000. RS485-Kabel zwischen Wechselrichter und LUNA2000 prüfen.",
       "meterNotDetected": "DTSU666 Energiezähler nicht erkannt.",
       "chargerNotDetected": "Smart Charger nicht erkannt.",
+      "chargerIsEmma": "Geräte-ID {{id}} antwortet als „{{name}}“, nicht als Charger. Hinter einer EMMA hat der Charger eine eigene Geräte-ID — der Tester in den App-Einstellungen findet sie.",
       "emmaNotDetected": "EMMA Modul nicht erkannt.",
       "sdongleANotDetected": "SDongle A nicht erkannt."
     },

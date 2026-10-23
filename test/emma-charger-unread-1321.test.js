@@ -56,7 +56,9 @@ function fakeCharger() {
   d._sessionStartedAt = null;
   d._sessionMeterStartKwh = null;
   d._lastMeterKwh = null;
-  d._lastMeterAt = null;
+  d._meterStep = null;
+  d._lastStepAt = null;
+  d._powerBasis = null;
   d._powerEstW = 0;
   d.log = (...a) => d.logs.push(a.join(' '));
   d.error = () => {};
@@ -162,11 +164,14 @@ test('while the state is not known yet, the power the meter does show is not zer
   // Only the voltages are missing: the lifetime counter moves, and that is a measurement.
   const d = fakeCharger();
   const volts = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
+  // Since 1.3.5 the estimate runs from one step of the counter to a later one, two minutes
+  // or more apart (emma-charger-135.test.js).
   await d.poll(read({ kwh: 100, unread: volts }));
-  d._lastMeterAt -= 30_000;                              // thirty seconds later …
-  await d.poll(read({ kwh: 100.05, unread: volts }));   // … 50 Wh more
+  await d.poll(read({ kwh: 100.05, unread: volts }));   // the counter steps: the span starts
+  d._meterStep.at -= 120_000;                            // two minutes later …
+  await d.poll(read({ kwh: 100.25, unread: volts }));   // … 200 Wh more
   assert.ok(d.values.measure_power > 5900 && d.values.measure_power <= 6000,
-    `measure_power ${d.values.measure_power} W — 50 Wh in 30 s is 6 kW`);
+    `measure_power ${d.values.measure_power} W — 200 Wh in 120 s is 6 kW`);
 });
 
 test('a register the EMMA does not have still reads as 0 V, as before', async () => {

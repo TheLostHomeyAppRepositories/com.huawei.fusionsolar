@@ -51,6 +51,7 @@
       "batteryNotOnRS485": "No battery on SUN2000 RS485 bus. Check the RS485 cable between inverter and LUNA2000.",
       "meterNotDetected": "DTSU666 power meter not detected.",
       "chargerNotDetected": "Smart Charger not detected.",
+      "chargerIsEmma": "Unit ID {{id}} answers as \"{{name}}\", not as the charger. Behind an EMMA the charger has a unit ID of its own — the Tester in the app settings finds it.",
       "emmaNotDetected": "EMMA module not detected.",
       "sdongleANotDetected": "SDongle A not detected."
     },

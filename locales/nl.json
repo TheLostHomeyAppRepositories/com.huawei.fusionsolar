@@ -51,6 +51,7 @@
       "batteryNotOnRS485": "Geen batterij op RS485-bus van SUN2000. Controleer de RS485-kabel tussen omvormer en LUNA2000.",
       "meterNotDetected": "DTSU666 energiemeter niet gedetecteerd.",
       "chargerNotDetected": "Smart Charger niet gedetecteerd.",
+      "chargerIsEmma": "Apparaat-ID {{id}} antwoordt als \"{{name}}\", niet als de lader. Achter een EMMA heeft de lader een eigen apparaat-ID — de Tester in de app-instellingen vindt die.",
       "emmaNotDetected": "EMMA-module niet gedetecteerd.",
       "sdongleANotDetected": "SDongle A niet gedetecteerd."
     },

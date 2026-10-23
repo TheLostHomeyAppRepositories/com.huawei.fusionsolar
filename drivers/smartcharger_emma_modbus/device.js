@@ -6,7 +6,7 @@ const {
   SMARTCHARGER_REGISTERS,
   isSmartChargerDataValid,
 } = require('../../lib/modbus-registers');
-const { readModbusRegisters, parseIntSafe, unavailableMessage, notRead } = require('../../lib/modbus-client');
+const { readModbusRegisters, parseIntSafe, unavailableMessage, notRead, refused } = require('../../lib/modbus-client');
 const { logPollOk, logPollError } = require('../../lib/poll-log');
 const modbusPolling = require('../../lib/modbus-polling');
 
@@ -20,6 +20,22 @@ const VOLTAGES = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
 // out on its own — one or two polls, not more. Past that the registers are not coming, and
 // the state falls back to what it always was without them: unplugged.
 const VOLTS_UNREAD_MAX_HELD = 3;
+
+// The charger's own registers — everything this driver reads except the name at 30000.
+// When the device answering refuses every one of them, it is not the charger: on an EMMA's
+// own unit 30000 is the EMMA's name and these come back with exception 3 (see refused() in
+// lib/modbus-client.js). Pairing asks the same of the registers it probes (driver.js).
+const CHARGER_VALUES = ['ratedPower', ...VOLTAGES, 'totalEnergyCharged', 'chargerTemperature'];
+
+// The power is estimated from one step of the lifetime counter to a later one at least this
+// far apart, never from one poll to the next. Measured on an EMMA (log 965c9d46, 2026-10-23):
+// the counter moves in steps, so a 30 s poll caught either none (0 W) or two — 24 230 W, about
+// 200 Wh in 30 s, while the whole house, car included, used 9–13 kW. Each end of a span is seen
+// up to one poll late, and over two minutes and more those two delays largely cancel.
+const POWER_MIN_SPAN_MS = 120_000;
+// How long the last estimate stands without a step, as a multiple of the span it came from.
+// Between two steps the car is still charging; past twice the usual wait it has stopped.
+const POWER_HOLD_FACTOR = 2;
 
 // Homey's evcharger_charging_state is a fixed enum and accepts only these five words:
 // plugged_in_charging, plugged_in_discharging, plugged_in_paused, plugged_in, plugged_out.
@@ -65,11 +81,13 @@ class SmartChargerModbusDevice extends Device {
     // ── Session tracking (for the Charger Status widget) ──────────────────
     // No session registers exist — a "session" is the span the derived
     // charging state stays 'charging'. Energy comes from the lifetime
-    // counter delta; live watts are estimated from that same delta.
+    // counter delta; live watts are estimated from its steps (_estimatePower).
     this._sessionStartedAt     = null;
     this._sessionMeterStartKwh = null;
     this._lastMeterKwh         = null;
-    this._lastMeterAt          = null;
+    this._meterStep            = null;   // { kWh, at }: the step the next estimate starts from
+    this._lastStepAt           = null;
+    this._powerBasis           = null;   // { kWh, spanMs }: what the current estimate came from
     this._powerEstW            = 0;
     try {
       const sess = await this.getStoreValue('mbSession');
@@ -150,6 +168,21 @@ class SmartChargerModbusDevice extends Device {
         return;
       }
 
+      // A name, and every charger register refused: the device answering is not the charger.
+      // The name was all the check above asks for, so a device paired on the EMMA's own unit
+      // reported "Poll OK: state=idle" for good, with not one value behind it — two of them on
+      // the installation that showed it (log f3b5238a). Counted like any failed poll, so one
+      // odd answer does not take the device down.
+      if (CHARGER_VALUES.every((k) => refused(d, k))) {
+        this._failureCount += 1;
+        logPollError(this, `Not the charger (${this._failureCount}): unit ${modbusId} answers as "${d.offeringName}" `
+          + 'and refuses every charger register', 'not-the-charger');
+        if (this._failureCount >= 3) {
+          await this.setUnavailable(this.homey.__('modbus.errors.chargerIsEmma', { id: modbusId, name: d.offeringName }));
+        }
+        return;
+      }
+
       // Offering name — only update if it changed and is non-empty
       if (d.offeringName) {
         await this._set('smartcharger_offering_name', d.offeringName);
@@ -168,21 +201,9 @@ class SmartChargerModbusDevice extends Device {
       // Total energy charged (kWh)
       await this._set('meter_power', d.totalEnergyCharged ?? null);
 
-      // Live power estimate from the lifetime-counter delta (no power
-      // register exists). Counter resolution is 1 Wh, poll ≥10 s →
-      // ±~120 W accuracy at 30 s polls. 0 W while not charging.
-      const nowTs = Date.now();
-      if (d.totalEnergyCharged != null && this._lastMeterKwh != null && this._lastMeterAt) {
-        const dtMs = nowTs - this._lastMeterAt;
-        if (dtMs > 0) {
-          const deltaWh = (d.totalEnergyCharged - this._lastMeterKwh) * 1000;
-          this._powerEstW = Math.max(0, Math.round(deltaWh * 3_600_000 / dtMs));
-        }
-      }
-      if (d.totalEnergyCharged != null) {
-        this._lastMeterKwh = d.totalEnergyCharged;
-        this._lastMeterAt  = nowTs;
-      }
+      // Live power estimate from the lifetime counter (no power register exists).
+      // 0 W while not charging — see below.
+      this._estimatePower(d.totalEnergyCharged, Date.now());
 
       // Charger temperature (°C)
       await this._set('measure_temperature', d.chargerTemperature ?? null);
@@ -210,8 +231,13 @@ class SmartChargerModbusDevice extends Device {
         this._voltsUnread = 0;
       }
 
-      // measure_power: estimated while charging, 0 while idle
-      if (chargingState === 'idle') this._powerEstW = 0;
+      // measure_power: estimated while charging, 0 while idle. The next charge starts its
+      // estimate afresh, rather than spreading its first step over the hours in between.
+      if (chargingState === 'idle') {
+        this._powerEstW  = 0;
+        this._powerBasis = null;
+        this._meterStep  = null;
+      }
       await this._set('measure_power', this._powerEstW);
 
       if (chargingState !== null) {
@@ -246,8 +272,13 @@ class SmartChargerModbusDevice extends Device {
 
       this._failureCount = 0;
       if (!this.getAvailable()) await this.setAvailable();
+      // The power and what it came from, so a log shows the counter's step size as well.
+      const basis = this._powerBasis;
       logPollOk(this, 'Poll OK: state=' + (chargingState ?? 'unknown')
-        + (held ? ` (voltages not read, ${this._voltsUnread}/${VOLTS_UNREAD_MAX_HELD} — last state kept)` : ''));
+        + (held ? ` (voltages not read, ${this._voltsUnread}/${VOLTS_UNREAD_MAX_HELD} — last state kept)` : '')
+        + `, P≈${this._powerEstW} W`
+        + (basis ? ` (${+basis.kWh.toFixed(3)} kWh in ${Math.round(basis.spanMs / 1000)} s)` : '')
+        + (d.totalEnergyCharged != null ? `, meter ${d.totalEnergyCharged} kWh` : ''));
 
     } catch (err) {
       this._failureCount += 1;
@@ -259,6 +290,53 @@ class SmartChargerModbusDevice extends Device {
       }
     } finally {
       this._fetchInProgress = false;
+    }
+  }
+
+  // ─── Power estimate ────────────────────────────────────────────────────────
+
+  /**
+   * Charging power from the lifetime counter, taken from one step of it to a later one.
+   *
+   * Until 1.3.5 it was the counter's rise from one poll to the next, which is only right for a
+   * counter that moves on every poll. This one does not (see POWER_MIN_SPAN_MS): the estimate
+   * jumped between 0 W and twice the real power, and the double looked enough like the PV
+   * output that it was reported as the wrong register.
+   *
+   * Both ends of a span are steps, first seen at the poll after they happened, so the energy
+   * between them is exact and only the timing is off — by at most one poll interval, against a
+   * span of two minutes or more. The estimate stands between steps, and drops to 0 W once no
+   * step has come for twice the span it was taken over. A reading that went missing changes
+   * nothing; a counter that went back (replaced, reset) starts over.
+   *
+   * @param {number|null} kWh  the counter as read this poll
+   * @param {number} now       ms
+   */
+  _estimatePower(kWh, now) {
+    if (kWh === null || kWh === undefined) return;
+    const prev = this._lastMeterKwh;
+    this._lastMeterKwh = kWh;
+    if (prev === null || prev === undefined || kWh < prev) {
+      this._meterStep = null;
+      return;
+    }
+    if (kWh > prev) {
+      this._lastStepAt = now;
+      const from = this._meterStep;
+      // The first step seen is only where the measurement starts: when the counter moved
+      // before it is not known.
+      if (!from) { this._meterStep = { kWh, at: now }; return; }
+      const spanMs = now - from.at;
+      if (spanMs < POWER_MIN_SPAN_MS) return;
+      this._powerEstW  = Math.round((kWh - from.kWh) * 1000 * 3_600_000 / spanMs);
+      this._powerBasis = { kWh: kWh - from.kWh, spanMs };
+      this._meterStep  = { kWh, at: now };
+      return;
+    }
+    if (this._powerBasis && now - this._lastStepAt > POWER_HOLD_FACTOR * this._powerBasis.spanMs) {
+      this._powerEstW  = 0;
+      this._powerBasis = null;
+      this._meterStep  = null;
     }
   }
 
