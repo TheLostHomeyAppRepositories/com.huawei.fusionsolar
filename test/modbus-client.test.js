@@ -877,8 +877,8 @@ test('readModbusRegisters — a device that reads cleanly again says so, once', 
   try {
     const lines = await captureModbusLog(async () => {
       await withServer(async (port) => {
-        // A second register that answers: since 1.3.6 a poll in which nothing at all answered
-        // is a failed poll, not a degraded one (modbus-silent-136.test.js).
+        // A second register that answers: since 1.3.5 a poll in which nothing at all answered
+        // is a failed poll, not a degraded one (modbus-silent-135.test.js).
         // Far from LIVE so it is a batch of its own, and not a nameplate address the cache
         // would serve.
         const regs = { power: [LIVE, 1, 'UINT16', '', 0], status: [33000, 1, 'UINT16', '', 0] };
