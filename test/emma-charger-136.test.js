@@ -1,6 +1,6 @@
 'use strict';
 
-// The Smart Charger behind an EMMA: its power, and whose answer it is reading (1.3.5).
+// The Smart Charger behind an EMMA: its power, and whose answer it is reading (1.3.6).
 // Run: node --test
 //
 // Three logs from one installation (f3b5238a, 2a291433, 965c9d46; 2026-10-23):

@@ -164,8 +164,8 @@ test('while the state is not known yet, the power the meter does show is not zer
   // Only the voltages are missing: the lifetime counter moves, and that is a measurement.
   const d = fakeCharger();
   const volts = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
-  // Since 1.3.5 the estimate runs from one step of the counter to a later one, two minutes
-  // or more apart (emma-charger-135.test.js).
+  // Since 1.3.6 the estimate runs from one step of the counter to a later one, two minutes
+  // or more apart (emma-charger-136.test.js).
   await d.poll(read({ kwh: 100, unread: volts }));
   await d.poll(read({ kwh: 100.05, unread: volts }));   // the counter steps: the span starts
   d._meterStep.at -= 120_000;                            // two minutes later …

@@ -1,6 +1,6 @@
 'use strict';
 
-// A device that takes the connection and answers nothing is a failed poll (1.3.5).
+// A device that takes the connection and answers nothing is a failed poll (1.3.6).
 // Run: node --test
 //
 // Log 8db9a58f (2026-10-23, v1.3.4, "Non legge i dati"): a SUN2000 moved from an address that

@@ -1,10 +1,10 @@
 'use strict';
 
-// Which nulls a device refused, and the bookkeeping surviving the nameplate cache (1.3.5).
+// Which nulls a device refused, and the bookkeeping surviving the nameplate cache (1.3.6).
 // Run: node --test
 //
 // refused(): a register the device answered with a Modbus exception. Needed to tell the EMMA's
-// own unit from the charger behind it — see emma-charger-135.test.js.
+// own unit from the charger behind it — see emma-charger-136.test.js.
 //
 // The cache: on a block holding a nameplate register, every poll after the first is served
 // partly from the cache and rebuilt into a new object. `unread` stayed behind on the old one,

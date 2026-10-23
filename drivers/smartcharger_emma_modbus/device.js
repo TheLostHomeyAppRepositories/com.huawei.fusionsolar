@@ -298,7 +298,7 @@ class SmartChargerModbusDevice extends Device {
   /**
    * Charging power from the lifetime counter, taken from one step of it to a later one.
    *
-   * Until 1.3.5 it was the counter's rise from one poll to the next, which is only right for a
+   * Until 1.3.6 it was the counter's rise from one poll to the next, which is only right for a
    * counter that moves on every poll. This one does not (see POWER_MIN_SPAN_MS): the estimate
    * jumped between 0 W and twice the real power, and the double looked enough like the PV
    * output that it was reported as the wrong register.
