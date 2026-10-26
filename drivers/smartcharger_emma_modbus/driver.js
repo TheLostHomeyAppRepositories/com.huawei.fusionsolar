@@ -38,15 +38,15 @@ class SmartChargerModbusDriver extends Driver {
         await resumePairedDevices(paused);
       }
 
-      // Every charger register refused: this unit is not the charger. With a name it is the EMMA
-      // itself — on its own unit 30000 holds the EMMA's name (see CHARGER_VALUES in device.js);
-      // without one nothing answers as a charger at all (unit 1 in log f3b5238a refused even the
-      // name, with exception 4). Pairing used to take both, and the device then said "idle" with
-      // nothing behind it, or "not detected" from its third poll on.
-      const chargerValues = Object.keys(probeRegisters).filter((k) => k !== 'offeringName');
-      if (chargerValues.every((k) => refused(data, k))) {
+      // The rated power refused: this unit is not the charger — the same test the device makes
+      // on every poll (device.js). With a name it is the EMMA itself, whose own unit holds the
+      // EMMA's name at 30000; without one nothing answers as a charger at all (unit 1 in log
+      // f3b5238a refused even the name, with exception 4). Pairing used to take both, and the
+      // device then said "idle" with nothing behind it, or "charging" with the EMMA's meter
+      // voltages (log 2aafa4d3), or "not detected" from its third poll on.
+      if (refused(data, 'ratedPower')) {
         this.log(`Pairing refused at ${address}:${port} id=${modbusId}: `
-          + (data.offeringName ? `answers as "${data.offeringName}", ` : '') + 'refuses every charger register');
+          + (data.offeringName ? `answers as "${data.offeringName}", ` : '') + 'refuses the rated power (30076)');
         throw new Error(data.offeringName
           ? this.homey.__('modbus.errors.chargerIsEmma', { id: modbusId, name: data.offeringName })
           : this.homey.__('modbus.errors.chargerNotDetected'));

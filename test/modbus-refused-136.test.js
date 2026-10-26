@@ -51,20 +51,35 @@ const REGS = {
   value3:   [32000, 1, 'UINT16', '', 0],
   absent:   [34000, 1, 'UINT16', '', 0],
   timedOut: [36000, 1, 'UINT16', '', 0],
-  busy:     [38000, 1, 'UINT16', '', 0],
+  failure:  [38000, 1, 'UINT16', '', 0],
+  // 1.3.7: the codes that say "not now" or speak for a gateway are not a refusal
+  busy:     [40000, 1, 'UINT16', '', 0],
+  ack:      [42000, 1, 'UINT16', '', 0],
+  gateway:  [44000, 1, 'UINT16', '', 0],
+  target:   [46000, 1, 'UINT16', '', 0],
 };
 const answer = (start, count) => {
   if (start === 32000) throw exception(3);
   if (start === 34000) throw exception(2);
   if (start === 36000) throw new Error('Req timed out');
   if (start === 38000) throw exception(4);
+  if (start === 40000) throw exception(6);
+  if (start === 42000) throw exception(5);
+  if (start === 44000) throw exception(10);
+  if (start === 46000) throw exception(11);
   return respond(count);
 };
 
-test('refused() names what the device said no to, whatever the code — a timeout said nothing', async () => {
+test('refused() names what the device turned down (codes 1–4) — busy, a gateway or a timeout said nothing', async () => {
   const out = await readRegisters(REGS, { readHoldingRegisters: async (s, c) => answer(s, c) });
   assert.strictEqual(refused(out, 'value3'), true, 'exception 3');
-  assert.strictEqual(refused(out, 'busy'), true, 'exception 4');
+  assert.strictEqual(refused(out, 'failure'), true, 'exception 4');
+  // Until 1.3.7 every code counted: an SDongle answering a poll with "busy" throughout
+  // (log 82295e2c) would have read as every register refused.
+  for (const k of ['busy', 'ack', 'gateway', 'target']) {
+    assert.strictEqual(refused(out, k), false, k);
+    assert.strictEqual(notRead(out, k), true, `${k} is not read, as before`);
+  }
   assert.strictEqual(refused(out, 'absent'), true, 'exception 2 is a refusal as well');
   assert.strictEqual(refused(out, 'timedOut'), false, 'a timeout is not an answer');
   assert.strictEqual(refused(out, 'name'), false);

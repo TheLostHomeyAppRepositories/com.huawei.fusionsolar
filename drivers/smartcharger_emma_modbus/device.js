@@ -21,11 +21,10 @@ const VOLTAGES = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
 // the state falls back to what it always was without them: unplugged.
 const VOLTS_UNREAD_MAX_HELD = 3;
 
-// The charger's own registers — everything this driver reads except the name at 30000.
-// When the device answering refuses every one of them, it is not the charger: on an EMMA's
-// own unit 30000 is the EMMA's name and these come back with exception 3 (see refused() in
-// lib/modbus-client.js). Pairing asks the same of the registers it probes (driver.js).
-const CHARGER_VALUES = ['ratedPower', ...VOLTAGES, 'totalEnergyCharged', 'chargerTemperature'];
+// The highest phase voltage the charger's register table allows ([0, 800] V). A higher one
+// is not this charger's: on one EMMA's own unit, 30500–30505 hold its smart meter's status
+// and voltages at gain 100, which read here at gain 10 as some 2300 V (log 2aafa4d3).
+const MAX_PHASE_VOLTAGE = 800;
 
 // The power is estimated from one step of the lifetime counter to a later one at least this
 // far apart, never from one poll to the next. Measured on an EMMA (log 965c9d46, 2026-10-23):
@@ -168,15 +167,21 @@ class SmartChargerModbusDevice extends Device {
         return;
       }
 
-      // A name, and every charger register refused: the device answering is not the charger.
-      // The name was all the check above asks for, so a device paired on the EMMA's own unit
-      // reported "Poll OK: state=idle" for good, with not one value behind it — two of them on
-      // the installation that showed it (log f3b5238a). Counted like any failed poll, so one
-      // odd answer does not take the device down.
-      if (CHARGER_VALUES.every((k) => refused(d, k))) {
+      // A name, and the rated power refused: the device answering is not the charger. Every
+      // charger has a rated power at 30076 — the Tester will not confirm one without it — and
+      // once read it is served from the nameplate cache, so only a unit that never had one
+      // can refuse it poll after poll. The name was all the check above asks for, so a device
+      // paired on the EMMA's own unit reported "Poll OK: state=idle" for good, with not one
+      // value behind it (log f3b5238a).
+      //
+      // Until 1.3.7 it took every charger register refused, and that was not enough: one
+      // EMMA answers 30500–30505 on its own unit with its smart meter's values, and the
+      // device read those as phase voltages and showed "charging" with no car (log 2aafa4d3).
+      // Counted like any failed poll, so one odd answer does not take the device down.
+      if (refused(d, 'ratedPower')) {
         this._failureCount += 1;
         logPollError(this, `Not the charger (${this._failureCount}): unit ${modbusId} answers as "${d.offeringName}" `
-          + 'and refuses every charger register', 'not-the-charger');
+          + 'and refuses the rated power (30076) every charger has', 'not-the-charger');
         if (this._failureCount >= 3) {
           await this.setUnavailable(this.homey.__('modbus.errors.chargerIsEmma', { id: modbusId, name: d.offeringName }));
         }
@@ -191,6 +196,22 @@ class SmartChargerModbusDevice extends Device {
       // Rated power (kW) — static spec value
       if (d.ratedPower !== null && d.ratedPower !== undefined) {
         await this._set('smartcharger_rated_power', d.ratedPower);
+      }
+
+      // A voltage the charger cannot have is not a reading of it (see MAX_PHASE_VOLTAGE): it
+      // is neither shown nor taken for a cable, and counts as not read — the last state stands
+      // for a few polls, as for any voltage that did not arrive.
+      const implausible = VOLTAGES.filter((k) => typeof d[k] === 'number' && d[k] > MAX_PHASE_VOLTAGE);
+      if (implausible.length) {
+        if (!this._implausibleLogged) {
+          this._implausibleLogged = true;
+          this.log(`[SmartCharger] Ignoring phase voltage(s) above ${MAX_PHASE_VOLTAGE} V: `
+            + implausible.map((k) => `${k}=${d[k]}`).join(', ') + ' — not this charger\'s registers');
+        }
+        for (const k of implausible) {
+          d[k] = null;
+          if (d.unread) d.unread.add(k);
+        }
       }
 
       // Phase voltages (V)

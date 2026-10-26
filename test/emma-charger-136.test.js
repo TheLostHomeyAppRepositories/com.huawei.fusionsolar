@@ -240,7 +240,7 @@ test('a name with every charger register refused is the EMMA: unavailable at the
   assert.strictEqual(d.unavailable, 'modbus.errors.chargerIsEmma {"id":0,"name":"EMMA-A02"}');
   assert.deepStrictEqual(d.values, {}, 'the EMMA\'s answer was published as the charger\'s');
   assert.ok(!d.logs.some((l) => /Poll OK/.test(l)), 'it still said "Poll OK"');
-  assert.match(d.errors[0], /^Not the charger \(1\): unit 0 answers as "EMMA-A02" and refuses every charger register$/);
+  assert.match(d.errors[0], /^Not the charger \(1\): unit 0 answers as "EMMA-A02" and refuses the rated power \(30076\) every charger has$/);
   // and the charger answering again is taken at once
   await d.poll(read());
   assert.strictEqual(d.unavailable, null);
@@ -254,9 +254,41 @@ test('registers that were only not read are not taken for the EMMA', async () =>
   assert.ok(!d.errors.some((l) => /Not the charger/.test(l)));
 });
 
+// Log 2aafa4d3 (Thomas_Scherzinger, 1.3.6): this EMMA calls itself "SmartHEMS" and answers
+// 30500–30505 on its own unit — its smart meter's status and voltages at gain 100, so the
+// charger's phases B and C read some 2300 V — while the rated power, the energy and the
+// temperature are refused. "Every charger register refused" let it through, and the device
+// showed "charging" with no car.
+const smartHems = () => read({ name: 'SmartHEMS', volts: [0, 2305.1, 2298.7],
+  refused: ['ratedPower', 'totalEnergyCharged', 'chargerTemperature'] });
+
+test('an EMMA that answers the voltages but not the rated power is still not the charger', async () => {
+  const d = fakeCharger(0);
+  await d.poll(smartHems(), smartHems(), smartHems());
+  assert.strictEqual(d.unavailable, 'modbus.errors.chargerIsEmma {"id":0,"name":"SmartHEMS"}');
+  assert.deepStrictEqual(d.values, {}, 'the EMMA\'s meter was published as the charger');
+  assert.ok(!d.fired.includes('smartcharger_charging_started'), 'it started a charge');
+});
+
+test('a voltage above 800 V is not the charger\'s: not shown, not a cable, said once', async () => {
+  const d = fakeCharger(3);
+  await d.poll(read());                                                  // charging
+  await d.poll(read({ volts: [2305.1, 231, 229] }));                     // one phase out of range
+  assert.strictEqual(d.values['measure_voltage.phase1'], 230, 'the 2305 V was shown');
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
+  await d.poll(read({ volts: [2305.1, 2298.7, 2301] }));                 // all three
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging', 'held, as for any voltage not read');
+  await d.poll(read({ volts: [2305.1, 2298.7, 2301] }), read({ volts: [2305.1, 2298.7, 2301] }),
+    read({ volts: [2305.1, 2298.7, 2301] }));
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_out', 'still held after three polls without a voltage');
+  assert.strictEqual(d.logs.filter((l) => /above 800 V/.test(l)).length, 1, d.logs.join(' | '));
+  assert.match(d.logs.find((l) => /above 800 V/.test(l)), /phaseAVoltage=2305\.1/);
+  assert.strictEqual(d.values['measure_voltage.phase2'], 231);
+});
+
 test('a charger that refuses only some of its registers is still the charger', async () => {
   const d = fakeCharger(3);
-  for (let i = 0; i < 4; i++) await d.poll(read({ refused: ['ratedPower', 'chargerTemperature'] }));
+  for (let i = 0; i < 4; i++) await d.poll(read({ refused: ['totalEnergyCharged', 'chargerTemperature'] }));
   assert.strictEqual(d.unavailable, null);
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
 });
@@ -279,8 +311,12 @@ test('pairing turns the EMMA\'s unit away with the reason, and takes the charger
   reads.push(read({ name: null, refused: [...VALUES, 'offeringName'] }));
   await assert.rejects(ask(1), (err) => err.message === 'modbus.errors.chargerNotDetected');
 
+  // the EMMA that answers its meter's voltages (log 2aafa4d3)
+  reads.push(smartHems());
+  await assert.rejects(ask(0), (err) => err.message === 'modbus.errors.chargerIsEmma {"id":0,"name":"SmartHEMS"}');
+
   // a charger that refuses some of its registers is still a charger
-  reads.push(read({ refused: ['ratedPower', 'chargerTemperature'] }));
+  reads.push(read({ refused: ['totalEnergyCharged', 'chargerTemperature'] }));
   assert.strictEqual((await ask(3)).success, true);
 
   reads.push(read());

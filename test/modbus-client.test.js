@@ -134,6 +134,11 @@ test('parseBuffer — decodes each supported type', () => {
   assert.strictEqual(parseBuffer(Buffer.from([0x00, 0x01, 0x00, 0x00]), 'UINT32'), 65536);
   assert.strictEqual(parseBuffer(Buffer.from([0xFF, 0xFF, 0xFF, 0xFF]), 'INT32'), -1);
   assert.strictEqual(parseBuffer(Buffer.from('SUN2000\0\0'), 'STRING'), 'SUN2000');
+  // Up to the first NUL (1.3.7): this 30-byte model field held two names and was shown as one,
+  // "SUN2000-3KTL-M1SUN2000-4KTL-M" (log 82295e2c). Padding in front is still skipped.
+  assert.strictEqual(parseBuffer(Buffer.from('SUN2000-3KTL-M1\0SUN2000-4KTL-M'), 'STRING'), 'SUN2000-3KTL-M1');
+  assert.strictEqual(parseBuffer(Buffer.from('\0\0EMMA-A02\0'), 'STRING'), 'EMMA-A02');
+  assert.strictEqual(parseBuffer(Buffer.from('\0\0\0\0'), 'STRING'), '');
   assert.strictEqual(parseBuffer(Buffer.from([0, 0, 0, 1, 0, 0, 0, 0]), 'UINT64'), 4294967296);
 });
 
