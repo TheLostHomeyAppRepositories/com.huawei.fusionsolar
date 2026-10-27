@@ -506,14 +506,15 @@ Reads grid data via the EMMA Energy Management Module (unit ID 0). Registered as
 
 ### Smart Charger (EMMA Modbus)
 
-Reads EV charger data via the EMMA (the EMMA's IP address, unit ID 0). Read-only — charging is
-controlled with the Smart Charger (OCPP) device.
+Reads EV charger data via the EMMA (the EMMA's IP address, and the charger's own unit ID behind
+it — 3 and 24 have been seen; the EMMA's own unit answers with the EMMA's name and is turned away).
+Read-only — charging is controlled with the Smart Charger (OCPP) device.
 
 | Capability           | Description                              |
 |----------------------|------------------------------------------|
 | Charging             | Read-only: on while charging             |
-| Charging state       | `plugged_in_charging` while any phase voltage is above 10 V, otherwise `plugged_out` (a car that is plugged in but not drawing current reads as unplugged). If the voltages cannot be read, the last state stands for up to three polls |
-| Charging power       | Estimated from the energy counter between polls (no power register); 0 W when not charging (W) |
+| Charging state       | `plugged_in_charging` from the energy counter's first rise until it has stood still for six minutes, or twice its last step-to-step span if that is longer; otherwise `plugged_out`, and at once when every phase reads 0 V. The voltages alone do not count: some chargers report their supply voltage with no car (until 1.3.8 any phase above 10 V did). A car that is plugged in but not drawing current reads as unplugged. If the counter cannot be read, the last state stands for up to three polls |
+| Charging power       | Estimated from the energy counter, from one step of it to a later one at least two minutes apart (no power register); 0 W when not charging (W) |
 | Rated power          | Maximum charging power of the station (kW)|
 | Model name           | Charger product name                     |
 | Phase A/B/C voltage  | Current phase voltages (V)               |
@@ -1006,8 +1007,8 @@ out — they are no longer offered for new flows, and existing flows keep workin
 | Backup power SoC changed | Battery LUNA 2000 (Modbus / EMMA Modbus) | `soc` | Fires whenever the backup power reserve (register 47102 on a LUNA2000 via the inverter, 30373 via EMMA) changes — whether you changed it here, in FusionSolar, or on the inverter itself. The token holds the new percentage, which is what you need to keep another setting a fixed margin above it. |
 | Excess PV energy use in TOU mode changed | Battery LUNA 2000 (Modbus / EMMA Modbus) | `mode` | Fires when the excess PV energy setting changes between 'Feed to Grid' and 'Charge Battery'. |
 | Remote dispatch mode changed | Battery LUNA 2000 (Modbus) | `mode` | Fires when the remote charge/discharge control mode changes (e.g. switched by a third-party scheduling service). |
-| EV charging started | Smart Charger (EMMA Modbus) | – | Fires when the app sees voltage appear on the charger's output (above 10 V on any phase). The charger has no register for its charging state, so this is how a session is recognised. |
-| EV charging stopped | Smart Charger (EMMA Modbus) | – | Fires when the voltage on the charger's output disappears (10 V or less on every phase). The charger has no register for its charging state, so this is how the end of a session is recognised. |
+| EV charging started | Smart Charger (EMMA Modbus) | – | Fires at the first rise of the charger's energy counter. The charger has no register for its charging state, so a session is recognised by the energy it counts. |
+| EV charging stopped | Smart Charger (EMMA Modbus) | – | Fires once the charger's energy counter has stood still for six minutes (longer during a slow charge), or at once when every phase reads 0 V. The charger has no register for its charging state, so this is how the end of a session is recognised. |
 | Charger reported a fault (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `error_code`, `vendor_error_code`, `info`, `status` | Fires when the charger reports a fault of its own. The error code is the charger’s, not the app’s — for example GroundFailure, OverCurrentFailure or HighTemperature. |
 | EV charging started (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `amps`, `phases`, `phase_label`, `message`, `transaction_id`, `meter_start` | Fires once power actually flows (above 100 W) after the charger has started a transaction, or right away when a start card releases a car that was waiting. Not fired when the car draws nothing, nor when charging continues after a pause — that is "Charging resumed (OCPP)". |
 | EV charging stopped (OCPP) | Smart Charger (OCPP), Easee Charger (OCPP) | `energy_delivered_kwh`, `energy_delivered_wh`, `energy_delivered_formatted`, `duration_minutes`, `duration_formatted`, `reason`, `amps`, `phases`, `message` | Fires when the charger reports the end of a transaction (OCPP StopTransaction). Not fired for a pause, nor for a start in which the car never drew power — there was no "EV charging started" for it either; a paused session that is then stopped or unplugged fires it once, with the totals of the whole session. |

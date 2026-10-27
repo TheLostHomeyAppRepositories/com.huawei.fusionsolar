@@ -222,7 +222,8 @@ test('a charge too short for an estimate leaves no starting point behind for the
 test('the poll line says the power, what it came from and the counter', async () => {
   const d = fakeCharger();
   await d.poll(read({ kwh: 100.0 }));
-  assert.match(d.logs.at(-1), /^Poll OK: state=charging, P≈0 W, meter 100 kWh$/);
+  // Since 1.3.8 a counter seen once has not risen yet: not charging (emma-charger-state-138).
+  assert.match(d.logs.at(-1), /^Poll OK: state=idle, P≈0 W, meter 100 kWh$/);
   d._powerEstW = 12_000;
   d._powerBasis = { kWh: 0.4000000000000057, spanMs: 120_400 };
   d._pollLogAt = undefined;
@@ -270,27 +271,38 @@ test('an EMMA that answers the voltages but not the rated power is still not the
   assert.ok(!d.fired.includes('smartcharger_charging_started'), 'it started a charge');
 });
 
-test('a voltage above 800 V is not the charger\'s: not shown, not a cable, said once', async () => {
-  const d = fakeCharger(3);
-  await d.poll(read());                                                  // charging
-  await d.poll(read({ volts: [2305.1, 231, 229] }));                     // one phase out of range
-  assert.strictEqual(d.values['measure_voltage.phase1'], 230, 'the 2305 V was shown');
-  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
-  await d.poll(read({ volts: [2305.1, 2298.7, 2301] }));                 // all three
-  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging', 'held, as for any voltage not read');
-  await d.poll(read({ volts: [2305.1, 2298.7, 2301] }), read({ volts: [2305.1, 2298.7, 2301] }),
-    read({ volts: [2305.1, 2298.7, 2301] }));
-  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_out', 'still held after three polls without a voltage');
-  assert.strictEqual(d.logs.filter((l) => /above 800 V/.test(l)).length, 1, d.logs.join(' | '));
-  assert.match(d.logs.find((l) => /above 800 V/.test(l)), /phaseAVoltage=2305\.1/);
-  assert.strictEqual(d.values['measure_voltage.phase2'], 231);
+test('a voltage above 800 V is not the charger\'s: not shown, not a voltage that says "no", said once', async () => {
+  const realNow = Date.now;
+  let now = 1_800_000_000_000;
+  Date.now = () => now;
+  try {
+    const d = fakeCharger(3);
+    const at = (s, r) => { now = 1_800_000_000_000 + s * 1000; return d.poll(r); };
+    await at(0,  read({ kwh: 100.0 }));
+    await at(30, read({ kwh: 100.1 }));                                  // charging
+    await at(60, read({ volts: [2305.1, 231, 229], kwh: 100.2 }));       // one phase out of range
+    assert.strictEqual(d.values['measure_voltage.phase1'], 230, 'the 2305 V was shown');
+    assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
+    // Since 1.3.8 the counter decides (emma-charger-state-138): three phases out of range say
+    // nothing either way, and the charge stands while the counter rises.
+    await at(90,  read({ volts: [2305.1, 2298.7, 2301], kwh: 100.3 }));
+    await at(120, read({ volts: [2305.1, 2298.7, 2301], kwh: 100.4 }));
+    assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
+    assert.deepStrictEqual(d.fired, ['smartcharger_charging_started']);
+    assert.strictEqual(d.logs.filter((l) => /above 800 V/.test(l)).length, 1, d.logs.join(' | '));
+    assert.match(d.logs.find((l) => /above 800 V/.test(l)), /phaseAVoltage=2305\.1/);
+    assert.strictEqual(d.values['measure_voltage.phase2'], 231);
+  } finally { Date.now = realNow; }
 });
 
 test('a charger that refuses only some of its registers is still the charger', async () => {
   const d = fakeCharger(3);
   for (let i = 0; i < 4; i++) await d.poll(read({ refused: ['totalEnergyCharged', 'chargerTemperature'] }));
   assert.strictEqual(d.unavailable, null);
-  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
+  assert.strictEqual(d.values.smartcharger_offering_name, 'SCharger-22KT-S0');
+  // Without its energy counter nothing says it charges (emma-charger-state-138).
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_out');
+  assert.ok(d.logs.some((l) => /Energy counter not read for 4 polls/.test(l)));
 });
 
 test('pairing turns the EMMA\'s unit away with the reason, and takes the charger\'s', async () => {

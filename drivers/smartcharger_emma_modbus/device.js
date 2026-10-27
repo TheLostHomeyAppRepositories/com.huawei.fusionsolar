@@ -13,13 +13,14 @@ const modbusPolling = require('../../lib/modbus-polling');
 const DEFAULT_INTERVAL_S = 30;
 const MIN_INTERVAL_S     = 10;
 
-// The three registers the charging state is derived from.
+// The three phase voltages. They can tell that no current flows, not that it does (see
+// _fetchAndUpdate).
 const VOLTAGES = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
-// How many polls in a row the last state stands in for voltages that were not read. A flow
-// card writing to another device on the same EMMA cuts a poll short, and a batch can time
-// out on its own — one or two polls, not more. Past that the registers are not coming, and
-// the state falls back to what it always was without them: unplugged.
-const VOLTS_UNREAD_MAX_HELD = 3;
+// How many polls in a row the last state stands in for an energy counter that was not read.
+// A flow card writing to another device on the same EMMA cuts a poll short, and a batch can
+// time out on its own — one or two polls, not more. Past that the register is not coming, and
+// without it nothing says the car is charging.
+const UNREAD_MAX_HELD = 3;
 
 // The highest phase voltage the charger's register table allows ([0, 800] V). A higher one
 // is not this charger's: on one EMMA's own unit, 30500–30505 hold its smart meter's status
@@ -35,6 +36,12 @@ const POWER_MIN_SPAN_MS = 120_000;
 // How long the last estimate stands without a step, as a multiple of the span it came from.
 // Between two steps the car is still charging; past twice the usual wait it has stopped.
 const POWER_HOLD_FACTOR = 2;
+// The least time without a step after which a charge counts as over — and before the first
+// span, the only one. A counter in 0.1 kWh steps moves every 4.3 minutes at 1.4 kW (6 A on
+// one phase, the least a car is offered), and each step is seen up to a poll late. Twice the
+// last span alone would end a charge whose car tapers off at the end, and start it again at
+// the next step.
+const COUNTER_STILL_MS = 6 * 60_000;
 
 // Homey's evcharger_charging_state is a fixed enum and accepts only these five words:
 // plugged_in_charging, plugged_in_discharging, plugged_in_paused, plugged_in, plugged_out.
@@ -88,6 +95,10 @@ class SmartChargerModbusDevice extends Device {
     this._lastStepAt           = null;
     this._powerBasis           = null;   // { kWh, spanMs }: what the current estimate came from
     this._powerEstW            = 0;
+    this._stillSince           = null;   // the last step, or the first reading if none since
+    this._counterRunning       = null;   // true / false once the counter has said; null before
+    this._stepFromKwh          = null;   // the reading before the last step
+    this._meterUnread          = 0;
     try {
       const sess = await this.getStoreValue('mbSession');
       if (sess && sess.startedAt) {
@@ -229,35 +240,53 @@ class SmartChargerModbusDevice extends Device {
       // Charger temperature (°C)
       await this._set('measure_temperature', d.chargerTemperature ?? null);
 
-      // Derive charging state from voltage presence:
-      // If any phase voltage > 10 V, a car session is likely active
-      const live = VOLTAGES.some((k) => (d[k] ?? 0) > 10);
-      let chargingState = live ? 'charging' : 'idle';
-      // A voltage that was not READ is not 0 V. `?? 0` made it one, so a poll cut short in
-      // the middle of a charge read as the car being unplugged: "charging stopped" fired, the
-      // session ended, and the next poll started both again — one charge, two sessions
-      // (review 2026-10-10). The last state stands instead, for a few polls; null when there
-      // is none yet, and then nothing below is touched. A register the EMMA says it does not
-      // have (exception 2) is still 0 V, as before.
+      // Charging is the lifetime counter rising (_estimatePower). Until 1.3.8 it was any phase
+      // above 10 V, and that only holds for a charger that measures behind its contactor. The
+      // FusionCharge in log 72d9130e reports its supply voltage with no car at all, and showed
+      // "charging" from the moment it was added. The register table has nothing else: no state,
+      // no cable, no current.
+      //
+      // The voltages can still say no — three phases at 0 V carry no current, whatever the
+      // counter last did. A phase the EMMA says it does not have (exception 2) counts as 0 V, as
+      // it always has; one that was not read, or read out of range, says nothing.
+      const voltsSayNo = VOLTAGES.some((k) => typeof d[k] === 'number')
+        && VOLTAGES.every((k) => !notRead(d, k) && (d[k] ?? 0) <= 10);
+      // A counter that was not READ has not stood still. The last state stands for a few polls
+      // instead (review 2026-10-10: a poll cut short in the middle of a charge ended it, and the
+      // next one started a second session); null when there is none yet, and then nothing below
+      // is touched.
+      const meterMissing = d.totalEnergyCharged === null || d.totalEnergyCharged === undefined;
+      this._meterUnread = meterMissing ? (this._meterUnread || 0) + 1 : 0;
+      let chargingState;
       let held = false;
-      if (!live && notRead(d, ...VOLTAGES)) {
-        this._voltsUnread = (this._voltsUnread || 0) + 1;
-        if (this._voltsUnread <= VOLTS_UNREAD_MAX_HELD) {
-          chargingState = this._prevChargingState;
-          held = true;
-        } else if (this._voltsUnread === VOLTS_UNREAD_MAX_HELD + 1) {
-          this.log(`[SmartCharger] Phase voltages not read for ${this._voltsUnread} polls — taking the charger as unplugged`);
+      if (voltsSayNo) {
+        chargingState = 'idle';
+      } else if (meterMissing && this._meterUnread <= UNREAD_MAX_HELD) {
+        chargingState = this._prevChargingState;
+        held = true;
+      } else if (meterMissing) {
+        chargingState = 'idle';
+        if (this._meterUnread === UNREAD_MAX_HELD + 1) {
+          this.log(`[SmartCharger] Energy counter not read for ${this._meterUnread} polls — taking the charger as not charging`);
         }
+      } else if (this._counterRunning === true) {
+        chargingState = 'charging';
+      } else if (this._counterRunning === false) {
+        chargingState = 'idle';
       } else {
-        this._voltsUnread = 0;
+        // The counter has not said yet: just after a restart, it has not moved and has not
+        // stood still for long. A charge the store says was running goes on until it does.
+        chargingState = this._prevChargingState ?? (this._sessionStartedAt ? 'charging' : 'idle');
       }
 
       // measure_power: estimated while charging, 0 while idle. The next charge starts its
-      // estimate afresh, rather than spreading its first step over the hours in between.
+      // estimate afresh, rather than spreading its first step over the hours in between —
+      // and its first step is what says it has started.
       if (chargingState === 'idle') {
-        this._powerEstW  = 0;
-        this._powerBasis = null;
-        this._meterStep  = null;
+        this._powerEstW      = 0;
+        this._powerBasis     = null;
+        this._meterStep      = null;
+        this._counterRunning = false;
       }
       await this._set('measure_power', this._powerEstW);
 
@@ -279,7 +308,7 @@ class SmartChargerModbusDevice extends Device {
         // Session anchors for the widget: set on idle→charging, cleared on charging→idle
         if (chargingState === 'charging' && !this._sessionStartedAt) {
           this._sessionStartedAt     = Date.now();
-          this._sessionMeterStartKwh = d.totalEnergyCharged ?? null;
+          this._sessionMeterStartKwh = this._stepFromKwh ?? d.totalEnergyCharged ?? null;
           await this.setStoreValue('mbSession', { startedAt: this._sessionStartedAt, meterStartKwh: this._sessionMeterStartKwh }).catch(() => {});
           this.log('[SmartCharger] Session started');
         } else if (chargingState !== 'charging' && this._sessionStartedAt) {
@@ -296,7 +325,7 @@ class SmartChargerModbusDevice extends Device {
       // The power and what it came from, so a log shows the counter's step size as well.
       const basis = this._powerBasis;
       logPollOk(this, 'Poll OK: state=' + (chargingState ?? 'unknown')
-        + (held ? ` (voltages not read, ${this._voltsUnread}/${VOLTS_UNREAD_MAX_HELD} — last state kept)` : '')
+        + (held ? ` (energy counter not read, ${this._meterUnread}/${UNREAD_MAX_HELD} — last state kept)` : '')
         + `, P≈${this._powerEstW} W`
         + (basis ? ` (${+basis.kWh.toFixed(3)} kWh in ${Math.round(basis.spanMs / 1000)} s)` : '')
         + (d.totalEnergyCharged != null ? `, meter ${d.totalEnergyCharged} kWh` : ''));
@@ -330,6 +359,10 @@ class SmartChargerModbusDevice extends Device {
    * step has come for twice the span it was taken over. A reading that went missing changes
    * nothing; a counter that went back (replaced, reset) starts over.
    *
+   * The same steps say whether the car charges at all (_counterRunning): from the first one,
+   * and until the counter has stood still for twice the last span, or COUNTER_STILL_MS if that
+   * is longer.
+   *
    * @param {number|null} kWh  the counter as read this poll
    * @param {number} now       ms
    */
@@ -338,11 +371,16 @@ class SmartChargerModbusDevice extends Device {
     const prev = this._lastMeterKwh;
     this._lastMeterKwh = kWh;
     if (prev === null || prev === undefined || kWh < prev) {
-      this._meterStep = null;
+      this._meterStep  = null;
+      this._stillSince = now;
       return;
     }
     if (kWh > prev) {
-      this._lastStepAt = now;
+      // A charge is seen at its first step, so its energy counts from the reading before it.
+      this._stepFromKwh    = prev;
+      this._lastStepAt     = now;
+      this._stillSince     = now;
+      this._counterRunning = true;
       const from = this._meterStep;
       // The first step seen is only where the measurement starts: when the counter moved
       // before it is not known.
@@ -354,10 +392,15 @@ class SmartChargerModbusDevice extends Device {
       this._meterStep  = { kWh, at: now };
       return;
     }
-    if (this._powerBasis && now - this._lastStepAt > POWER_HOLD_FACTOR * this._powerBasis.spanMs) {
+    const holdMs = this._powerBasis ? POWER_HOLD_FACTOR * this._powerBasis.spanMs : 0;
+    if (this._powerBasis && now - this._lastStepAt > holdMs) {
       this._powerEstW  = 0;
       this._powerBasis = null;
       this._meterStep  = null;
+    }
+    if (this._stillSince !== null && this._stillSince !== undefined
+        && now - this._stillSince > Math.max(holdMs, COUNTER_STILL_MS)) {
+      this._counterRunning = false;
     }
   }
 

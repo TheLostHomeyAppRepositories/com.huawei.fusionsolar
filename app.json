@@ -1,6 +1,6 @@
 {
   "id": "com.huawei.fusionsolar",
-  "version": "1.3.7",
+  "version": "1.3.8",
   "compatibility": ">=12.13.0",
   "sdk": 3,
   "platforms": [
@@ -9667,9 +9667,9 @@
           "nl": "Laden van het voertuig gestart"
         },
         "hint": {
-          "en": "Fires when the app sees voltage appear on the charger's output (above 10 V on any phase). The charger has no register for its charging state, so this is how a session is recognised.",
-          "de": "Wird ausgelöst, wenn die App am Ausgang der Wallbox Spannung erkennt (über 10 V auf einer Phase). Die Wallbox hat kein Register für ihren Ladezustand; daran wird eine Sitzung erkannt.",
-          "nl": "Wordt geactiveerd wanneer de app spanning ziet op de uitgang van de laadpaal (boven 10 V op een fase). De laadpaal heeft geen register voor zijn laadstatus; zo wordt een sessie herkend."
+          "en": "Fires at the first rise of the charger's energy counter. The charger has no register for its charging state, so a session is recognised by the energy it counts.",
+          "de": "Wird ausgelöst, sobald der Energiezähler der Wallbox steigt. Die Wallbox hat kein Register für ihren Ladezustand; eine Sitzung wird an der gezählten Energie erkannt.",
+          "nl": "Wordt geactiveerd zodra de energieteller van de laadpaal stijgt. De laadpaal heeft geen register voor zijn laadstatus; een sessie wordt herkend aan de getelde energie."
         },
         "args": [
           {
@@ -9687,9 +9687,9 @@
           "nl": "Laden van het voertuig gestopt"
         },
         "hint": {
-          "en": "Fires when the voltage on the charger's output disappears (10 V or less on every phase). The charger has no register for its charging state, so this is how the end of a session is recognised.",
-          "de": "Wird ausgelöst, wenn die Spannung am Ausgang der Wallbox verschwindet (auf allen Phasen höchstens 10 V). Die Wallbox hat kein Register für ihren Ladezustand; daran wird das Ende einer Sitzung erkannt.",
-          "nl": "Wordt geactiveerd wanneer de spanning op de uitgang van de laadpaal verdwijnt (op alle fasen hooguit 10 V). De laadpaal heeft geen register voor zijn laadstatus; zo wordt het einde van een sessie herkend."
+          "en": "Fires once the charger's energy counter has stood still for six minutes (longer during a slow charge), or at once when every phase reads 0 V. The charger has no register for its charging state, so this is how the end of a session is recognised.",
+          "de": "Wird ausgelöst, wenn der Energiezähler der Wallbox sechs Minuten lang stillsteht (bei langsamem Laden länger), oder sofort, wenn alle Phasen 0 V zeigen. Die Wallbox hat kein Register für ihren Ladezustand; daran wird das Ende einer Sitzung erkannt.",
+          "nl": "Wordt geactiveerd wanneer de energieteller van de laadpaal zes minuten stilstaat (bij langzaam laden langer), of meteen wanneer alle fasen 0 V tonen. De laadpaal heeft geen register voor zijn laadstatus; zo wordt het einde van een sessie herkend."
         },
         "args": [
           {

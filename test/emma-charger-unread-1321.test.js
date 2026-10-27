@@ -1,12 +1,15 @@
 'use strict';
 
-// The EMMA charger and the voltages it was not given (review 2026-10-10, 1.2.321).
+// The EMMA charger and the values it was not given (review 2026-10-10, 1.2.321).
 //
-// This charger has no register that says "a cable is plugged in"; the state is derived from
-// the phase voltages. A voltage that was not read — a poll cut short by a flow card writing to
-// another device on the same EMMA, a batch that timed out — came back null, and `?? 0` made
-// it 0 V. In the middle of a charge that read as the car being unplugged: "charging stopped"
-// fired, the session ended, and the next poll started both again.
+// This charger has no register that says "a cable is plugged in". Until 1.3.8 the state came
+// from the phase voltages, and a voltage that was not read — a poll cut short by a flow card
+// writing to another device on the same EMMA, a batch that timed out — came back null, and
+// `?? 0` made it 0 V. In the middle of a charge that read as the car being unplugged:
+// "charging stopped" fired, the session ended, and the next poll started both again.
+//
+// Since 1.3.8 the state comes from the lifetime energy counter (emma-charger-state-138), and
+// the rule moved with it: a counter that was not read has not stood still.
 //
 // Run: node --test
 
@@ -29,6 +32,13 @@ Module._load = function (request, parent, isMain) {
 };
 const ChargerDevice = require(path.join('..', 'drivers', 'smartcharger_emma_modbus', 'device.js'));
 Module._load = origLoad;
+
+// The device's clock, moved by each poll.
+const T0 = 1_800_000_000_000;
+let now = T0;
+const realNow = Date.now;
+Date.now = () => now;
+test.after(() => { Date.now = realNow; });
 
 // A read result shaped as the real client returns it: values, plus the non-enumerable set of
 // registers that were not read.
@@ -60,6 +70,10 @@ function fakeCharger() {
   d._lastStepAt = null;
   d._powerBasis = null;
   d._powerEstW = 0;
+  d._stillSince = null;
+  d._counterRunning = null;
+  d._stepFromKwh = null;
+  d._meterUnread = 0;
   d.log = (...a) => d.logs.push(a.join(' '));
   d.error = () => {};
   d.getName = () => 'EMMA charger';
@@ -76,43 +90,42 @@ function fakeCharger() {
     __: (k) => k,
     flow: { getDeviceTriggerCard: (id) => ({ trigger: async () => { d.fired.push(id); } }) },
   };
+  // One poll every 30 s from the clock's start, each handed the next read.
+  d.t = 0;
   d.poll = async (...results) => {
-    for (const r of results) { reads.push(r); await d._fetchAndUpdate(); }
+    for (const r of results) { now = T0 + d.t * 1000; d.t += 30; reads.push(r); await d._fetchAndUpdate(); }
   };
   return d;
 }
 
 const sessionsStarted = (d) => d.logs.filter((l) => /Session started/.test(l)).length;
+// Two polls whose counter steps: the charge is under way.
+const charging = (d) => d.poll(read({ kwh: 100 }), read({ kwh: 100.1 }));
 
-test('a poll that did not read the voltages does not end a charge', async () => {
+test('a poll that did not read the counter does not end a charge', async () => {
   const d = fakeCharger();
-  await d.poll(read(), read({ kwh: 100.1 }));
+  await charging(d);
   const startedAt = d._sessionStartedAt;
   assert.ok(startedAt);
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started']);
   await d.poll(read({ unread: CUT }));                  // cut short by a write elsewhere
-  assert.deepStrictEqual(d.fired, [], 'a trigger fired on a poll that read nothing about the car');
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started'], 'a trigger fired on a poll that read nothing about the car');
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
   assert.strictEqual(d.values.evcharger_charging, true);
   assert.strictEqual(d._sessionStartedAt, startedAt, 'the session was ended');
   await d.poll(read({ kwh: 100.3 }));
-  assert.deepStrictEqual(d.fired, [], 'no "stopped", no "started" — one charge');
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started'], 'no "stopped", no second "started" — one charge');
   assert.strictEqual(sessionsStarted(d), 1, 'one charge, two sessions');
 });
 
-test('only the voltages decide — a cut that spared one live phase is still a charge', async () => {
+test('voltages that were not read say nothing — the counter goes on deciding', async () => {
   const d = fakeCharger();
-  await d.poll(read());
-  await d.poll(read({ volts: [230, null, null], unread: ['phaseBVoltage', 'phaseCVoltage'] }));
-  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
-  assert.deepStrictEqual(d.fired, []);
-});
-
-test('a car plugged in during a cut poll is seen at once if one phase was read live', async () => {
-  const d = fakeCharger();
-  await d.poll(read({ volts: [0, 0, 0] }));
-  await d.poll(read({ volts: [230, null, null], unread: ['phaseBVoltage', 'phaseCVoltage'] }));
+  await charging(d);
+  await d.poll(read({ volts: [0, null, null], kwh: 100.2, unread: ['phaseBVoltage', 'phaseCVoltage'] }));
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging',
-    'a live phase was overruled by the two that were not read');
+    'one phase at 0 V and two not read were taken for an unplug');
+  await d.poll(read({ volts: [null, null, null], kwh: 100.3, unread: ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'] }));
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
   assert.deepStrictEqual(d.fired, ['smartcharger_charging_started']);
 });
 
@@ -126,29 +139,43 @@ test('an idle charger stays idle across a cut poll — it is not "started" eithe
 
 test('a real unplug is still seen, on the first poll that reads it', async () => {
   const d = fakeCharger();
-  await d.poll(read(), read({ unread: CUT }), read({ volts: [0, 0, 0] }));
-  assert.deepStrictEqual(d.fired, ['smartcharger_charging_stopped']);
+  await charging(d);
+  await d.poll(read({ unread: CUT }), read({ volts: [0, 0, 0], kwh: 100.1 }));
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started', 'smartcharger_charging_stopped']);
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_out');
   assert.strictEqual(d._sessionStartedAt, null);
 });
 
-test('voltages that stay unread are given up on after three polls, and that is logged', async () => {
+test('a counter that stays unread is given up on after three polls, and that is logged', async () => {
   const d = fakeCharger();
-  await d.poll(read());
-  await d.poll(read({ unread: CUT }), read({ unread: CUT }), read({ unread: CUT }));
-  assert.deepStrictEqual(d.fired, [], 'three cut polls are still held');
+  await charging(d);
+  await d.poll(read({ unread: CUT }), read({ unread: CUT }));
+  d._pollLogAt = undefined;                              // let the next "Poll OK" line through
   await d.poll(read({ unread: CUT }));
-  assert.deepStrictEqual(d.fired, ['smartcharger_charging_stopped']);
-  assert.ok(d.logs.some((l) => /Phase voltages not read for 4 polls — taking the charger as unplugged/.test(l)));
-  // and a good read starts the count again
-  await d.poll(read(), read({ unread: CUT }));
+  assert.match(d.logs.at(-1), /^Poll OK: state=charging \(energy counter not read, 3\/3 — last state kept\)/);
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started'], 'three cut polls are still held');
+  await d.poll(read({ unread: CUT }));
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started', 'smartcharger_charging_stopped']);
+  assert.ok(d.logs.some((l) => /Energy counter not read for 4 polls — taking the charger as not charging/.test(l)));
+  // and a good read whose counter has moved starts the count — and the charge — again
+  await d.poll(read({ kwh: 100.4 }), read({ unread: CUT }));
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
-  assert.deepStrictEqual(d.fired, ['smartcharger_charging_stopped', 'smartcharger_charging_started']);
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started', 'smartcharger_charging_stopped', 'smartcharger_charging_started']);
 });
 
-test('the first poll after a start that cannot read the voltages leaves the restored session alone', async () => {
+test('only the counter counts as missing: voltages alone not read change nothing', async () => {
+  const volts = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
   const d = fakeCharger();
-  d._sessionStartedAt = Date.now() - 3600_000;           // restored from the store in onInit
+  await charging(d);
+  for (let i = 0; i < 6; i++) await d.poll(read({ kwh: 100.2 + i / 10, unread: volts }));
+  assert.strictEqual(d.values.evcharger_charging_state, 'plugged_in_charging');
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started']);
+  assert.ok(!d.logs.some((l) => /not read for/.test(l)));
+});
+
+test('the first poll after a start that cannot read the counter leaves the restored session alone', async () => {
+  const d = fakeCharger();
+  d._sessionStartedAt = T0 - 3600_000;                   // restored from the store in onInit
   d._sessionMeterStartKwh = 90;
   d.store.mbSession = { startedAt: d._sessionStartedAt, meterStartKwh: 90 };
   await d.poll(read({ unread: CUT }));
@@ -160,25 +187,24 @@ test('the first poll after a start that cannot read the voltages leaves the rest
   assert.strictEqual(sessionsStarted(d), 0, 'the restored session goes on rather than a new one');
 });
 
-test('while the state is not known yet, the power the meter does show is not zeroed', async () => {
-  // Only the voltages are missing: the lifetime counter moves, and that is a measurement.
-  const d = fakeCharger();
-  const volts = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
+test('the power the counter shows is not zeroed while the voltages are not read', async () => {
   // Since 1.3.6 the estimate runs from one step of the counter to a later one, two minutes
   // or more apart (emma-charger-136.test.js).
+  const volts = ['phaseAVoltage', 'phaseBVoltage', 'phaseCVoltage'];
+  const d = fakeCharger();
   await d.poll(read({ kwh: 100, unread: volts }));
   await d.poll(read({ kwh: 100.05, unread: volts }));   // the counter steps: the span starts
-  d._meterStep.at -= 120_000;                            // two minutes later …
+  d.t += 90;                                             // two minutes after that step …
   await d.poll(read({ kwh: 100.25, unread: volts }));   // … 200 Wh more
   assert.ok(d.values.measure_power > 5900 && d.values.measure_power <= 6000,
     `measure_power ${d.values.measure_power} W — 200 Wh in 120 s is 6 kW`);
 });
 
-test('a register the EMMA does not have still reads as 0 V, as before', async () => {
+test('a phase the EMMA does not have still reads as 0 V, as before', async () => {
   // Exception 2 is "not there", not "not read": the client leaves it out of `unread`.
   const d = fakeCharger();
-  await d.poll(read());
-  await d.poll(read({ volts: [0, null, null] }));
+  await charging(d);
+  await d.poll(read({ volts: [0, null, null], kwh: 100.1 }));
   assert.strictEqual(d.values.evcharger_charging_state, 'plugged_out');
-  assert.deepStrictEqual(d.fired, ['smartcharger_charging_stopped']);
+  assert.deepStrictEqual(d.fired, ['smartcharger_charging_started', 'smartcharger_charging_stopped']);
 });
