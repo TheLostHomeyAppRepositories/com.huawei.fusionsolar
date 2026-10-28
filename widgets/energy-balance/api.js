@@ -2,7 +2,7 @@
 
 // Today's figures are deltas against the baselines app.js stores at midnight; the helper
 // (dailyDelta) lives in lib/widget-data.js with the other shared pieces.
-const { getDevice, cap, dailyDelta, lang } = require('../../lib/widget-data');
+const { getDevice, getDevices, cap, capSum, meterInverter, dailyDelta, lang } = require('../../lib/widget-data');
 
 // The two kinds of "PV today" a source can report; see pvToday below.
 const PV = 'pv';   // production at the panels
@@ -10,6 +10,11 @@ const AC = 'ac';   // what the inverter delivered — the battery already netted
 
 function reading(device, capId, kind) {
   const kwh = cap(device, capId, null);
+  return kwh === null ? null : { kwh, kind };
+}
+
+function sumReading(devices, capId, kind) {
+  const kwh = capSum(devices, capId);
   return kwh === null ? null : { kwh, kind };
 }
 
@@ -21,10 +26,13 @@ function deltaReading(homey, raw, key, kind) {
 module.exports = {
   async getData({ homey }) {
 
-    const sun2000     = getDevice(homey, 'sun2000_modbus');
+    // Every Modbus inverter and battery, summed; the grid counters from the inverter the
+    // meter is wired to — the same one app.js baselines at midnight (meterInverter).
+    const sun2000s    = getDevices(homey, 'sun2000_modbus');
+    const sun2000     = meterInverter(homey);
     const sun2000emma = getDevice(homey, 'sun2000_emma_modbus');
     const pmEmma      = getDevice(homey, 'powermeter_emma_modbus');
-    const luna        = getDevice(homey, 'luna2000_modbus');
+    const lunas       = getDevices(homey, 'luna2000_modbus');
     const lunaEmma    = getDevice(homey, 'luna2000_emma_modbus');
     // FusionSolar OpenAPI: local sources first, cloud after. The grid counters live under
     // their own names on the meter — meter_power is the import total and
@@ -52,7 +60,7 @@ module.exports = {
     // Which of the two quantities was found matters for the house total below (1.2.299):
     // PV production still contains what went into the battery, the AC output (Modbus
     // 32114, the EMMA inverter yield, inv_daily) already has the battery netted out.
-    const pvToday = reading(sun2000, 'meter_power.daily', AC)
+    const pvToday = sumReading(sun2000s, 'meter_power.daily', AC)
                  ?? reading(sun2000emma, 'meter_power.pv_daily', PV)
                  ?? reading(sun2000emma, 'meter_power.daily', AC)
                  ?? reading(sunOa, 'meter_power.pv_daily', PV)
@@ -84,10 +92,10 @@ module.exports = {
                      ?? cap(pmEmma, 'meter_power.imported_today', null);
 
     // Battery today
-    const battChargedKwh    = cap(luna, 'meter_power.today_batt_input',  null)
+    const battChargedKwh    = capSum(lunas, 'meter_power.today_batt_input')
                            ?? cap(lunaEmma, 'meter_power.today_batt_input',  null)
                            ?? cap(lunaOa, 'meter_power.today_batt_input',  null);
-    const battDischargedKwh = cap(luna, 'meter_power.today_batt_output', null)
+    const battDischargedKwh = capSum(lunas, 'meter_power.today_batt_output')
                            ?? cap(lunaEmma, 'meter_power.today_batt_output', null)
                            ?? cap(lunaOa, 'meter_power.today_batt_output', null);
 
@@ -118,7 +126,7 @@ module.exports = {
     const keptKwh = (pvTodayKwh !== null && gridExportKwh !== null)
       ? Math.max(0, pvTodayKwh - gridExportKwh) : null;
     if (houseConsumptionKwh === null && keptKwh !== null && gridImportKwh !== null) {
-      const hasBattery = !!(luna || lunaEmma || lunaOa || ispBatt);
+      const hasBattery = !!(lunas.length || lunaEmma || lunaOa || ispBatt);
       let batteryNetKwh = 0;
       if (pvToday.kind === PV && hasBattery) {
         batteryNetKwh = (battChargedKwh !== null && battDischargedKwh !== null)

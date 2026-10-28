@@ -168,7 +168,8 @@ test('the energy-balance widget asks for the production figure before the AC one
     'the AC counter is consulted first, so the production figure never gets a turn');
   // Local before cloud, everywhere. A Modbus reading is seconds old and the cloud minutes,
   // and this file's own comment says the order is load-bearing.
-  before(c, "sun2000, 'meter_power.daily'", "sunOa, 'meter_power.pv_daily'",
+  // Since 1.3.9 the Modbus inverters are summed (every one paired, not the first).
+  before(c, "sumReading(sun2000s, 'meter_power.daily'", "sunOa, 'meter_power.pv_daily'",
     'the cloud is consulted ahead of a local Modbus inverter on the same house');
 });
 
@@ -176,7 +177,7 @@ test('the daily-yield widget uses the same order', () => {
   const c = chain(read('widgets', 'daily-yield', 'api.js'), 'const dailyKwh');
   before(c, "sunOa,       'meter_power.pv_daily'", "sunOa,       'meter_power.inv_daily'",
     "the two widgets disagree about what today's yield is");
-  before(c, "sun2000,     'meter_power.daily'", "sunOa,       'meter_power.pv_daily'",
+  before(c, "capSum(sun2000s, 'meter_power.daily')", "sunOa,       'meter_power.pv_daily'",
     'the cloud is consulted ahead of a local Modbus inverter on the same house');
   assert.match(c, /cap\(kiosk,\s+'meter_power\.daily'/, 'the kiosk fallback was dropped');
 });

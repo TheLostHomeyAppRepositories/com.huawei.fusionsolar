@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDevice, cap, dailyDelta, lang } = require('../../lib/widget-data');
+const { getDevice, getDevices, cap, capSum, dailyDelta, lang } = require('../../lib/widget-data');
 
 
 module.exports = {
@@ -11,7 +11,8 @@ module.exports = {
     // plain meter_power holds the GRID IMPORT total, not production. Read here the way the
     // others are read, it would have drawn a house's grid consumption as its solar yield.
     // The inverter's own figures are meter_power.inv_daily and meter_power.inv_total.
-    const sun2000     = getDevice(homey, 'sun2000_modbus');
+    // Every Modbus inverter, summed: a plant with two of them showed the first one's yield.
+    const sun2000s    = getDevices(homey, 'sun2000_modbus');
     const sun2000emma = getDevice(homey, 'sun2000_emma_modbus');
     const sunOa       = getDevice(homey, 'sun2000_openapi_fusionsolar');
     const kiosk       = getDevice(homey, 'fusionsolar_kiosk');
@@ -23,7 +24,7 @@ module.exports = {
     // meter_power.pv_daily is the station's PV production; inv_daily is the inverter's AC
     // output, which on a hybrid excludes everything that went into the battery. See #28 and
     // the arithmetic in the OpenAPI inverter driver. inv_daily remains the fallback.
-    const dailyKwh        = cap(sun2000,     'meter_power.daily', null)
+    const dailyKwh        = capSum(sun2000s, 'meter_power.daily')
                          ?? cap(sun2000emma, 'meter_power.pv_daily', null)
                          ?? cap(sun2000emma, 'meter_power.daily', null)
                          ?? cap(sunOa,       'meter_power.pv_daily', null)
@@ -35,15 +36,15 @@ module.exports = {
     // lifetime counter — and the EMMA pair mixed quantities the same way, since its
     // meter_power is the inverter yield and meter_power.pv_total the PV production. Both
     // inverters' own counters stay as fallbacks and stay on their devices.
-    const totalKwh        = cap(sun2000,     'meter_power', null)
+    const totalKwh        = capSum(sun2000s, 'meter_power')
                          ?? cap(sun2000emma, 'meter_power.pv_total', null)
                          ?? cap(sun2000emma, 'meter_power', null)
                          ?? cap(sunOa,       'meter_power.pv_total', null)
                          ?? cap(sunOa,       'meter_power.inv_total', null)
                          ?? cap(kiosk,       'meter_power', null)
                          ?? ispTotal;
-    const optimizerTotal  = cap(sun2000, 'optimizer_total_count', null);
-    const optimizerOnline = cap(sun2000, 'optimizer_online_count', null);
+    const optimizerTotal  = capSum(sun2000s, 'optimizer_total_count');
+    const optimizerOnline = capSum(sun2000s, 'optimizer_online_count');
 
     // CO₂ is worked out in the widget from dailyKwh and the factor in its settings.
     return { dailyKwh, totalKwh, optimizerTotal, optimizerOnline, lang: lang(homey) };

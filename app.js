@@ -4,7 +4,7 @@ const { App }             = require('homey');
 const OpenAPICoordinator  = require('./lib/openapi-coordinator');
 const changeLog           = require('./lib/change-log');
 const { downsample }      = require('./lib/chart-downsample');
-const { isReachable }     = require('./lib/widget-data');
+const { isReachable, meterInverter } = require('./lib/widget-data');
 const localTime           = require('./lib/local-time');
 const { readMemory }      = require('./lib/memory-usage');
 
@@ -299,7 +299,8 @@ class FusionSolarApp extends App {
     let unread = false;
     try {
       const today = this._todayStr();
-      const sun2000     = this._getDevice('sun2000_modbus');
+      // With several Modbus inverters, the one the meter is wired to — as the widget reads it.
+      const sun2000     = meterInverter(this.homey);
       const sun2000emma = this._getDevice('sun2000_emma_modbus');
       const pmOa        = this._getDevice('powermeter_openapi_fusionsolar');
       const sunOa       = this._getDevice('sun2000_openapi_fusionsolar');

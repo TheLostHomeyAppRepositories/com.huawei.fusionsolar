@@ -1237,6 +1237,8 @@ The app includes 12 Homey dashboard widgets that provide live and daily energy d
 
 The energy widgets prefer the local devices — `sun2000_modbus` / `luna2000_modbus`, then the EMMA and SDongle A variants (and a DTSU666 for the grid) — and fall back to the FusionSolar cloud (OpenAPI, then iSitePower) and, for PV, a kiosk device. A device Homey shows as unavailable contributes nothing: the next one in the chain answers, or the figure shows as an em dash instead of its last value. Only lifetime `meter_*` totals keep their last reading. The charger widgets read the OCPP or EMMA charger, the EMS widgets the Energy Management device.
 
+**Several inverters and batteries over Modbus** (since 1.3.9) — two SUN2000 with a LUNA2000 each on unit IDs 1 and 2, say — are taken together: solar power, battery power, today's yield and charge/discharge, lifetime yield and optimizer counts add up, and the battery's state of charge, charge ceiling, discharge floor and backup reserve are weighted by each battery's rated capacity (a plain mean where one does not report it). The grid comes from the inverter the meter is wired to, whichever was paired first. An inverter or battery that cannot be reached is left out of the sums, and one unit paired twice counts once. The EMMA and OpenAPI devices are not summed: their figures already cover the plant.
+
 Behaviour shared by every widget:
 
 - **Language** follows the language set in the Homey app itself (`homey.i18n.getLanguage()`, delivered with each API response), *not* the browser or phone language — an English phone paired with a German Homey still renders German widgets. Available in English, German and Dutch.

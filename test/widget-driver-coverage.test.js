@@ -38,7 +38,8 @@ function referencedDrivers() {
   const ids = new Set();
   for (const file of SOURCES) {
     const src = fs.readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/_?getDevice\(\s*(?:homey|this)?\s*,?\s*'([a-z0-9_]+)'/g)) {
+    // getDevices: the drivers whose devices are summed (1.3.9).
+    for (const m of src.matchAll(/_?getDevices?\(\s*(?:homey|this)?\s*,?\s*'([a-z0-9_]+)'/g)) {
       ids.add(m[1]);
     }
   }

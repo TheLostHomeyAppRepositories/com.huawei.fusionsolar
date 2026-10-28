@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDevice, cap, setting, isReachable, lang } = require('../../lib/widget-data');
+const { getDevice, getDevices, cap, setting, capSum, capWeighted, isReachable, lang } = require('../../lib/widget-data');
 
 
 // The batteries report their state in Huawei's English words — "Running", "Sleep mode",
@@ -46,7 +46,11 @@ module.exports = {
     // The FusionSolar OpenAPI battery was missing from this chain, so a plant reached only
     // through that cloud drew an empty widget. Local sources stay first: Modbus and the
     // EMMA gateway are seconds old, the cloud is minutes old at best.
-    const luna     = getDevice(homey, 'luna2000_modbus');
+    // Every LUNA2000 over Modbus, one per inverter: with two of them the widget showed the
+    // first alone (Wim_Hartman, 2026-10-28). They stand in the chain as one battery, the first
+    // that answers, and when they are the one shown their figures are taken together below.
+    const lunas    = getDevices(homey, 'luna2000_modbus');
+    const luna     = lunas.find(isReachable) || lunas[0] || null;
     const lunaEmma = getDevice(homey, 'luna2000_emma_modbus');
     const lunaOa   = getDevice(homey, 'luna2000_openapi_fusionsolar');
     const ispBatt  = getDevice(homey, 'isitepower_battery_openapi_fusionsolar');
@@ -58,17 +62,27 @@ module.exports = {
     const device   = paired.find(isReachable) || paired[0] || null;
     const unreachable = !!device && !isReachable(device);
 
-    const soc                = cap(device, 'measure_battery', null);
-    const powerW             = cap(device, 'measure_power', null);
-    const todayChargedKwh    = cap(luna, 'meter_power.today_batt_input', null)
+    // The Modbus batteries together: the powers and the day's energy add up, and the state of
+    // charge and the three limits are weighted by capacity (capWeighted). With the ceiling,
+    // floor and charge weighted alike, what the widget works out to full and to empty is
+    // exactly the sum of what each battery has left. One battery reads as it always did.
+    const together = device === luna && lunas.length > 1;
+    const soc                = together ? capWeighted(lunas, (d) => cap(d, 'measure_battery', null))
+                                        : cap(device, 'measure_battery', null);
+    const powerW             = together ? capSum(lunas, 'measure_power') : cap(device, 'measure_power', null);
+    const todayChargedKwh    = capSum(lunas, 'meter_power.today_batt_input')
                             ?? cap(lunaEmma, 'meter_power.today_batt_input', null)
                             ?? cap(lunaOa, 'meter_power.today_batt_input', null);
-    const todayDischargedKwh = cap(luna, 'meter_power.today_batt_output', null)
+    const todayDischargedKwh = capSum(lunas, 'meter_power.today_batt_output')
                             ?? cap(lunaEmma, 'meter_power.today_batt_output', null)
                             ?? cap(lunaOa, 'meter_power.today_batt_output', null);
 
-    // Status: prefer luna2000_battery_status, derive from power if not available
-    const rawStatus = cap(luna, 'luna2000_battery_status', null)
+    // Status: prefer luna2000_battery_status, derive from power if not available. Two
+    // batteries in different states have no one word between them, and the summed power
+    // says which way the energy goes.
+    const lunaStatuses = [...new Set(lunas.filter(isReachable)
+      .map((d) => cap(d, 'luna2000_battery_status', null)).filter((v) => v !== null))];
+    const rawStatus = (lunaStatuses.length === 1 ? lunaStatuses[0] : null)
                    ?? cap(lunaOa, 'luna2000_battery_status', null)    // since 1.2.281
                    ?? cap(lunaOa, 'openapi_battery_status', null)     // until the device has moved over
                    ?? cap(ispBatt, 'openapi_battery_status', null);
@@ -83,8 +97,13 @@ module.exports = {
     // cap() returns null for an unreachable device unless the capability name starts with
     // meter_, which this one does not. That is right here: a battery nobody can reach
     // should not be counting down to anything.
-    const capacityKwh = cap(device, 'battery_rated_capacity', null)
-                     ?? cap(device, 'isitepower_total_capacity', null);
+    // Together only when every battery says its own: a sum missing one would count down to
+    // a time that is not there.
+    const reachableLunas = lunas.filter(isReachable);
+    const capacities = reachableLunas.map((d) => cap(d, 'battery_rated_capacity', null));
+    const capacityKwh = together
+      ? (capacities.every((c) => typeof c === 'number') ? capSum(reachableLunas, 'battery_rated_capacity') : null)
+      : (cap(device, 'battery_rated_capacity', null) ?? cap(device, 'isitepower_total_capacity', null));
 
     // Where the battery will actually stop, so the estimate can count to that instead of
     // to 0 % and 100 % — which it never reaches. Sent raw, one number each, because the
@@ -97,9 +116,12 @@ module.exports = {
       const n = typeof v === 'string' ? parseFloat(v) : v;
       return typeof n === 'number' && Number.isFinite(n) ? n : null;
     };
-    const socCeiling = num(setting(device, 'charging_cutoff_capacity'));
-    const socFloor   = num(setting(device, 'discharge_cutoff_capacity'));
-    const socReserve = num(cap(device, 'measure_battery.backup', null));
+    const socCeiling = together ? capWeighted(lunas, (d) => setting(d, 'charging_cutoff_capacity'))
+                                : num(setting(device, 'charging_cutoff_capacity'));
+    const socFloor   = together ? capWeighted(lunas, (d) => setting(d, 'discharge_cutoff_capacity'))
+                                : num(setting(device, 'discharge_cutoff_capacity'));
+    const socReserve = together ? capWeighted(lunas, (d) => cap(d, 'measure_battery.backup', null))
+                                : num(cap(device, 'measure_battery.backup', null));
 
     // The EMMA battery says how many kWh are left to full and to empty — the estimate the
     // widget would otherwise have to build from a capacity somebody typed in. meter_*
