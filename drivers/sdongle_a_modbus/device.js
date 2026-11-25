@@ -41,6 +41,21 @@ const REQUIRED_CAPABILITIES = [
   'sdongle_software_version',        // the dongle's own OS version, register 30050
 ];
 
+// Register → capability for the five powers, in tile order.
+const POWER_CAPABILITIES = {
+  loadPower:        'measure_power',
+  totalInputPower:  'measure_power.solar',
+  gridPower:        'measure_power.grid_active_power',
+  batteryPower:     'measure_power.battery',
+  totalActivePower: 'measure_power.active_power',
+};
+
+// Huawei's no-value markers as a version before 1.3.16 stored them: 0x7FFFFFFF and
+// 0x80000000 (INT32, either sign) and 0xFFFFFFFF (UINT32). No real power comes near 2.1 GW.
+function isStoredMarker(v) {
+  return typeof v === 'number' && Math.abs(v) >= 0x7FFFFFFF;
+}
+
 class SdonglaAModbusDevice extends Device {
 
   async onInit() {
@@ -147,9 +162,24 @@ class SdonglaAModbusDevice extends Device {
       // which _set skips, so the tile keeps the last real reading (1.3.16).
       const power = {};
       const noValue = [];
-      for (const key of ['loadPower', 'totalInputPower', 'gridPower', 'batteryPower', 'totalActivePower']) {
+      for (const key of Object.keys(POWER_CAPABILITIES)) {
         power[key] = huawei32(data[key], SDONGLE_A_REGISTERS[key][2]);
         if (typeof data[key] === 'number' && power[key] === null) noValue.push(key);
+      }
+      // "Last reading kept" must not keep a marker. Versions before 1.3.16 stored the
+      // marker itself as a reading, and a dongle without a Huawei meter never sends a real
+      // grid or house power to replace it — so 2147483647 W stood on the tile for good
+      // (forum log 9bf89137, 1.3.18). Such a value is cleared; a real last reading stays.
+      for (const key of noValue) {
+        const cap = POWER_CAPABILITIES[key];
+        const stored = this.hasCapability(cap) ? this.getCapabilityValue(cap) : null;
+        if (!isStoredMarker(stored)) continue;
+        try {
+          await this.setCapabilityValue(cap, null);
+          this.log(`Cleared ${cap}: it still held ${stored}, the no-value marker, from an earlier version`);
+        } catch (err) {
+          this.error(`Clearing ${cap} failed:`, err.message);
+        }
       }
       // Said when it starts and when it ends, not every poll: a plant without a battery may
       // well never have a value for one of them.
